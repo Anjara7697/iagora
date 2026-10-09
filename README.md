@@ -165,6 +165,22 @@ rôle `prospect` / `agent` / `advisor`). PostgreSQL ne garde que le journal `int
 - Statuts : `open` ⇄ `handed_off` (transfert à un conseiller, F-20) → `closed` (définitif).
 - Un prospect désinscrit ne peut plus recevoir de message sortant (`agent` / `advisor`), mais peut toujours écrire.
 
+### Console web (frontend)
+
+Une console sans mise en forme poussée, pour voir et tester l'agent sans ligne de commande :
+
+```bash
+cd frontend && cp .env.example .env.local && npm install && npm run dev   # http://localhost:3000
+```
+
+Connexion avec le compte créé par `create-admin`. Pages : **Accueil** (compteurs), **Prospects** (recherche, étape,
+score), **fiche prospect** (identité, profil collecté, conversation, fiche de transfert, historique des scores et
+étapes, décisions de l'agent avec leur trace), **Transferts** (conversations remises à un conseiller) et
+**Simulateur** (jouer un prospect fictif en `@demo.example.com` et voir la réponse et la trace de l'agent).
+Le simulateur se désactive avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false` (déploiement réel).
+Le jeton de connexion est conservé dans le navigateur (`localStorage`) : suffisant pour un outil interne, à durcir
+(cookie `HttpOnly`) avant une exposition publique.
+
 ### Base de connaissances (RAG)
 
 L'agent ne répond aux questions factuelles (durée, admission, rythme…) que d'après des documents validés,
@@ -221,5 +237,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 ## État d'avancement
 
 Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
-Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence).
-Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord.
+Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence), console web (prospects, conversations, transferts, simulateur).
+Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
