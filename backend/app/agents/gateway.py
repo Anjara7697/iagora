@@ -170,6 +170,7 @@ class DbGateway:
         doc = await conversations.get_doc(self._db, conversation_id)
         channel = await self._session.scalar(select(Channel).where(Channel.name == doc["channel"]))
         # Trace dans le journal (F-20 : chaque transfert est tracé).
+        await follow_ups.cancel_pending(self._session, doc["prospect_id"])  # un humain a repris
         self._session.add(
             Interaction(
                 prospect_id=doc["prospect_id"],
@@ -183,6 +184,8 @@ class DbGateway:
         await self._session.commit()
 
     async def close_conversation(self, conversation_id: str, summary: str | None) -> None:
+        doc = await conversations.get_doc(self._db, conversation_id)
+        await follow_ups.cancel_pending(self._session, doc["prospect_id"])
         await conversations.update_conversation(
             self._db,
             conversation_id,
