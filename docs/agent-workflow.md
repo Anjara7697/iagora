@@ -74,11 +74,20 @@ graph TD;
 ### Règles de décision (ordre de priorité)
 
 1. **Désinscrit ou demande d'arrêt** → opt-out enregistré, relances annulées, aucun message (scénario 4).
-2. **Cas qui exigent un humain** : modèle indisponible, situation sensible, demande d'un conseiller, incertitude (< 0,5) → transfert (F-20).
-3. **Pas intéressé** → clôture, aucune relance.
-4. **Rendez-vous** : créneau choisi → réservation ; demande de rendez-vous, ou score ≥ 50 avec qualification complète → proposition de créneaux (F-18).
-5. **Message neutre et score ≤ 24** → entretien espacé (nurturing) et relance programmée (scénario 1).
-6. Sinon → poursuite de l'échange et qualification.
+2. **Cas qui exigent un humain, quoi qu'il arrive** : modèle indisponible, situation sensible → transfert (F-20).
+3. **Demande de rendez-vous** (même formulée « avec un conseiller ») → l'agent organise le rendez-vous lui-même
+   avec des créneaux réels (F-18). Sans agenda, le transfert a lieu juste après : le prospect n'est jamais bloqué.
+4. **Demande d'un humain, cas particulier, incertitude** (< 0,5) → transfert.
+5. **Pas intéressé** → clôture, aucune relance.
+6. **Rendez-vous** : créneau choisi → réservation ; score ≥ 50 avec qualification complète → proposition de créneaux.
+7. **Message neutre et score ≤ 24** → entretien espacé (nurturing) et relance programmée (scénario 1).
+8. Sinon → poursuite de l'échange et qualification.
+
+**Relances** : toute réponse du prospect, tout transfert à un humain et toute clôture annulent les relances en attente (F-16).
+
+**Questions** : une question précise sans extrait de la base de connaissances est transférée (jamais devinée). Une
+question sur la *liste* des formations (`asks_catalogue`) est répondue grâce à la liste validée des trois programmes
+(noms et publics uniquement, aucun chiffre) qui figure dans les consignes du modèle.
 
 Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `policy.py`.
 
@@ -111,6 +120,10 @@ LLM_PROVIDER=openai
 LLM_MODEL=<nom du modèle>
 OPENAI_API_KEY=...
 ```
+
+> Les intentions (`question`, `meeting_request`, `needs_advisor`...) sont lues par le modèle, avec des définitions
+> précises et des exemples dans `prompts.py`. Un filet de sécurité par mots-clés couvre les cas où il hésite entre « veut un
+> rendez-vous » et « veut un conseiller ».
 
 Ajouter un autre fournisseur (Anthropic, Hugging Face...) : écrire une fonction `_build_xxx` dans
 `app/integrations/llm/factory.py` et l'inscrire dans `_BUILDERS`. Aucun autre fichier ne change.
