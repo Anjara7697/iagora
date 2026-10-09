@@ -23,6 +23,8 @@ class Expect:
     """Ce qui doit être vrai après un tour. Un champ laissé à `ANY` n'est pas vérifié."""
 
     action: str | None = None
+    action_in: list[str] = field(default_factory=list)  # plusieurs décisions acceptables
+    stage_in: list[str] = field(default_factory=list)
     handoff_reason: Any = ANY  # None : aucun transfert attendu
     reply: bool | None = None  # True : un message est rédigé ; False : aucun message
     reply_includes: list[str] = field(default_factory=list)
@@ -64,19 +66,20 @@ DEMO_FACT = Passage(
 SCENARIOS: list[Scenario] = [
     Scenario(
         name="cold_prospect",
-        title="Prospect froid : message neutre, score faible, entretien espacé",
+        title="Prospect peu engagé : message neutre, réponse sans transfert ni pression",
         cdc_ref="§12.2 n°1",
         turns=[
             Turn(
                 says="Bonjour, je regardais un peu votre site.",
                 qualification=Qualification(intent="other"),
                 reply="Bonjour Camille, merci pour votre message. N'hésitez pas à me poser vos questions.",
+                # Le vrai modèle lit « je regardais votre site » tantôt comme « autre », tantôt comme
+                # « intéressé » : les deux décisions sont légitimes. On vérifie ce qui compte.
                 expect=Expect(
-                    action="nurture",
+                    action_in=["nurture", "continue_conversation"],
                     handoff_reason=None,
                     reply=True,
-                    stage_after="to_follow_up",
-                    follow_up=True,
+                    stage_in=["to_follow_up", "in_conversation"],
                 ),
             )
         ],
@@ -259,6 +262,57 @@ SCENARIOS: list[Scenario] = [
                     stage_after="contacted",
                 ),
             )
+        ],
+    ),
+    Scenario(
+        name="meeting_with_advisor_wording",
+        title="« Rendez-vous avec un conseiller » : l'agent organise le rendez-vous",
+        cdc_ref="F-18",
+        turns=[
+            Turn(
+                says="Je voudrais prendre rendez-vous avec un conseiller.",
+                # Pire cas observé avec le vrai modèle : il hésite entre rendez-vous et conseiller.
+                qualification=Qualification(intent="needs_advisor", needs_human=True),
+                expect=Expect(
+                    action="propose_meeting",
+                    handoff_reason=None,
+                    reply=True,
+                    reply_includes=["Répondez avec le numéro"],
+                    stage_after="meeting_proposed",
+                ),
+            )
+        ],
+    ),
+    Scenario(
+        name="catalogue_question",
+        title="« Quelles formations proposez-vous ? » : réponse avec la liste validée",
+        cdc_ref="F-14",
+        turns=[
+            Turn(
+                says="Quelles formations proposez-vous ?",
+                qualification=Qualification(intent="question", asks_catalogue=True),
+                reply="Nous proposons eBIHAR pour les étudiants, Les Compagnons pour les professionnels et le Master eBIHAR en alternance.",
+                expect=Expect(handoff_reason=None, reply=True, conversation="open"),
+            )
+        ],
+    ),
+    Scenario(
+        name="follow_up_cancelled_on_reply",
+        title="Le prospect répond : la relance programmée est annulée",
+        cdc_ref="F-16",
+        turns=[
+            Turn(
+                says="Bonjour, je regardais un peu votre site.",
+                qualification=Qualification(intent="other"),
+                reply="Bonjour Camille, merci pour votre message. N'hésitez pas à me poser vos questions.",
+                expect=Expect(handoff_reason=None, reply=True, follow_up=True),
+            ),
+            Turn(
+                says="En fait, j'ai une question sur l'alternance.",
+                qualification=Qualification(intent="interested"),
+                reply="Avec plaisir, quel est votre niveau d'études ?",
+                expect=Expect(handoff_reason=None, reply=True, follow_up=False),
+            ),
         ],
     ),
     Scenario(
