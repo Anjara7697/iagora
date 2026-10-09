@@ -19,6 +19,14 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U iagora" --health-interval 5s
           --health-timeout 3s --health-retries 10
+      mongo:
+        image: mongo:7
+        # --health-cmd passe par `sh -c` : pas de parenthèses ni de guillemets dans la commande.
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 1"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       POSTGRES_DSN: postgresql+asyncpg://iagora:iagora@localhost:5432/iagora
     defaults:
@@ -37,10 +45,11 @@ jobs:
       - run: mypy
       - name: Migrations (upgrade, puis vérification qu'aucun modèle n'est hors migration)
         run: alembic upgrade head && alembic check
-      - name: Tests (base PostgreSQL dédiée, distincte de la base migrée)
+      - name: Tests (PostgreSQL dédiée, distincte de la base migrée, et MongoDB réel)
         env:
           PGPASSWORD: iagora
           TEST_DATABASE_URL: postgresql+asyncpg://iagora:iagora@localhost:5432/iagora_test
+          TEST_MONGO_URI: mongodb://localhost:27017
         run: |
           psql -h localhost -U iagora -d iagora -c "CREATE DATABASE iagora_test"
           pytest

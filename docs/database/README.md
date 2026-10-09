@@ -19,10 +19,31 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | Unicité `(conversation_id, external_message_id)` et `(channel_id, external_id)` | NF-05 / §10.3 : idempotence (webhooks rejoués, relève IMAP répétée) |
 | `users.is_active`, unicité `username` / `email` | Gestion des comptes (S-06) |
 | Horodatages `timestamptz` (et non `timestamp`) | Rendez-vous et relances : éviter toute ambiguïté de fuseau |
+| Tables `conversations` et `messages` supprimées de PostgreSQL ; `interactions.conversation_ref` ajouté | §9.5 : conversations dans MongoDB. Une seule source de vérité pour le contenu (voir ci-dessous) |
 | Énumérations en texte + contrainte CHECK | Valeurs de F-12, F-13, S-06 ; liste d'étapes modifiable par migration (F-13) |
 | `ON DELETE CASCADE` depuis `prospects` ; `SET NULL` pour les conseillers | S-02 (effacement) ; F-22 (réaffectation sans perte d'historique) |
 
-## Points à trancher (voir la PR)
+## Conversations dans MongoDB
 
-1. **Conversations en double** : le cahier des charges place les conversations dans MongoDB (§9.5), le schéma d'origine dans PostgreSQL (`conversations`, `messages`). Les tables PostgreSQL sont conservées pour l'instant ; MongoDB reste disponible. À décider avant le workflow de conversation (S4).
-2. **Authentification** : `users` n'a pas de mot de passe ni de jeton ; à traiter avec S-06 (étape dédiée).
+Collection `conversations`, un document par conversation :
+
+```json
+{
+  "_id": "ObjectId", "prospect_id": 12, "channel": "email", "status": "open | handed_off | closed",
+  "summary": null, "started_at": "...", "last_message_at": "...", "closed_at": null,
+  "messages": [
+    {"id": "uuid", "role": "prospect | agent | advisor", "content": "...",
+     "external_message_id": null, "created_at": "...", "metadata": {}}
+  ]
+}
+```
+
+- Index : `(prospect_id, last_message_at)` ; unique partiel `(prospect_id, channel)` pour les statuts `open` et `handed_off`.
+- Pas de transaction entre MongoDB et PostgreSQL : le message est écrit dans MongoDB (opération atomique, idempotente sur
+  `external_message_id`), puis journalisé dans `interactions`. Un rejeu répare un journal manquant.
+- Limite : les messages sont embarqués dans le document (16 Mo maximum par document). Largement suffisant pour une
+  conversation commerciale ; à revoir si des conversations de plusieurs milliers de messages apparaissaient.
+
+## Points restants
+
+1. **Production** : activer l'authentification MongoDB avant déploiement (désactivée en développement local).

@@ -1,16 +1,21 @@
 import os
 from collections.abc import AsyncIterator
+from typing import Any
 
 import app.models  # noqa: F401
 import pytest
 from app.config import get_settings
 from app.core.security import create_access_token, hash_password
 from app.database.base import Base
+from app.database.clients import get_mongo_db
 from app.database.session import get_session
 from app.main import app
 from app.models import Channel, Target, User
 from app.models.enums import UserRole
+from app.services.conversations import ensure_indexes
 from httpx import ASGITransport, AsyncClient
+from mongomock_motor import AsyncMongoMockClient
+from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -48,6 +53,24 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     await engine.dispose()
 
 
+@pytest.fixture
+async def mongo_db() -> AsyncIterator[Any]:
+    """MongoDB de test : `mongomock` par défaut, un vrai MongoDB si TEST_MONGO_URI est défini
+    (la CI utilise MongoDB 7)."""
+    uri = os.environ.get("TEST_MONGO_URI")
+    if uri:
+        client = AsyncIOMotorClient(uri, tz_aware=True, serverSelectionTimeoutMS=5000)
+        await client.drop_database("iagora_test")
+    else:
+        client = AsyncMongoMockClient(tz_aware=True)
+    db = client["iagora_test"]
+    await ensure_indexes(db)
+    yield db
+    if uri:
+        await client.drop_database("iagora_test")
+        client.close()
+
+
 PASSWORD = "correct-horse-battery"
 
 
@@ -66,7 +89,7 @@ async def _make_user(factory, role: UserRole, **over) -> User:
 
 
 @pytest.fixture
-async def make_client(session_factory):
+async def make_client(session_factory, mongo_db):
     """Fabrique un client HTTP authentifié avec le rôle demandé (None : anonyme)."""
     clients: list[AsyncClient] = []
 
@@ -75,6 +98,7 @@ async def make_client(session_factory):
             yield s
 
     app.dependency_overrides[get_session] = _override
+    app.dependency_overrides[get_mongo_db] = lambda: mongo_db
 
     async def _make(role: UserRole | None = UserRole.ADMIN) -> AsyncClient:
         headers = {}

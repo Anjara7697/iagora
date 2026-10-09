@@ -6,3 +6,4 @@ ruff>=0.6,<1.0
 mypy>=1.11,<2.0
 pre-commit>=3.8,<5.0
 aiosqlite>=0.20,<1.0
+mongomock-motor>=0.0.30

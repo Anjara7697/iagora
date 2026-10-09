@@ -79,6 +79,7 @@ Documentation interactive : `http://localhost:8000/docs`. Endpoints disponibles 
 | Prospects | `POST, GET /prospects` · `GET, PATCH /prospects/{id}` |
 | Consentement | `POST /prospects/{id}/opt-out` · `POST /prospects/{id}/consent` |
 | Interactions | `POST, GET /prospects/{id}/interactions` |
+| Conversations (MongoDB) | `POST /conversations` · `GET, PATCH /conversations/{id}` · `POST /conversations/{id}/messages` · `GET /prospects/{id}/conversation` |
 | Campagnes | `POST, GET /campaigns` · `GET, PATCH /campaigns/{id}` |
 | Authentification | `POST /auth/login` · `GET /auth/me` |
 | Utilisateurs (ADMIN) | `POST, GET /users` · `GET, PATCH /users/{id}` |
@@ -115,6 +116,18 @@ démarrer sans cela quand `ENVIRONMENT=production`.
 déjà connu, 201 si créé), rattachement à la campagne, interaction d'entrée. Un prospect désinscrit ne
 peut plus recevoir d'interaction sortante.
 
+### Conversations (MongoDB)
+
+Une conversation est un document MongoDB (prospect, canal, statut, résumé, messages horodatés avec leur
+rôle `prospect` / `agent` / `advisor`). PostgreSQL ne garde que le journal `interactions`, avec une référence
+`conversation_ref` : le contenu d'un message n'existe qu'à un seul endroit.
+
+- Une seule conversation active (`open` ou `handed_off`) par prospect et par canal ; `POST /conversations` renvoie
+  l'existante (200) au lieu d'en créer une seconde.
+- Un message rejoué avec le même `external_message_id` ne crée pas de doublon (200).
+- Statuts : `open` ⇄ `handed_off` (transfert à un conseiller, F-20) → `closed` (définitif).
+- Un prospect désinscrit ne peut plus recevoir de message sortant (`agent` / `advisor`), mais peut toujours écrire.
+
 ## Base de données et migrations
 
 Modèles : `backend/app/models/` ; schéma de référence et décisions : `docs/database/README.md`.
@@ -133,8 +146,10 @@ alembic check                                 # vérifier que les modèles et le
 cd backend
 ruff check . && ruff format --check .   # lint + format
 mypy                                    # typage strict
-pytest                                  # tests (SQLite en mémoire) + couverture (seuil 70 %, NF-07)
-# Tests sur PostgreSQL : TEST_DATABASE_URL=postgresql+asyncpg://user:pwd@localhost:5432/iagora_test pytest
+pytest                                  # tests (SQLite et mongomock en mémoire) + couverture (seuil 70 %, NF-07)
+# Avec de vraies bases (comme la CI) :
+#   TEST_DATABASE_URL=postgresql+asyncpg://user:pwd@localhost:5432/iagora_test \
+#   TEST_MONGO_URI=mongodb://localhost:27017 pytest
 
 cd ../frontend
 npm run lint && npm run typecheck && npm run build
@@ -156,5 +171,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles.
-Prochaines étapes : conversations (MongoDB), scoring et statuts, puis workflow LangGraph.
+Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB).
+Prochaines étapes : scoring et statuts, puis workflow LangGraph.

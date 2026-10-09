@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -8,12 +9,19 @@ from app.api.errors import register_error_handlers
 from app.api.router import api_router
 from app.config import get_settings
 from app.core.logging import configure_logging
-from app.database.clients import close_clients
+from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine
+from app.services.conversations import ensure_indexes
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    try:
+        await ensure_indexes(get_mongo_db())
+    except Exception:  # MongoDB pas encore prêt : l'API démarre, /health/ready signalera l'état
+        logger.exception("Création des index MongoDB impossible au démarrage")
     yield
     await dispose_engine()
     await close_clients()
