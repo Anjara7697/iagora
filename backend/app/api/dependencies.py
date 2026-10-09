@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, params, status
 from fastapi.security import OAuth2PasswordBearer
@@ -6,12 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.core.security import decode_access_token
+from app.database.clients import get_mongo_db
 from app.database.session import get_session
 from app.models import User
 from app.models.enums import UserRole
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 DbSession = Annotated[AsyncSession, Depends(get_session)]
+MongoDb = Annotated[Any, Depends(get_mongo_db)]  # AsyncIOMotorDatabase
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 

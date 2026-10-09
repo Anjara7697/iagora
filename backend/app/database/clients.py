@@ -11,7 +11,9 @@ from app.config import get_settings
 
 @lru_cache
 def get_mongo_client() -> "AsyncIOMotorClient[Any]":
-    return AsyncIOMotorClient(get_settings().mongo_uri, serverSelectionTimeoutMS=2000)
+    return AsyncIOMotorClient(
+        get_settings().mongo_uri, serverSelectionTimeoutMS=2000, tz_aware=True
+    )
 
 
 def get_mongo_db() -> "AsyncIOMotorDatabase[Any]":
