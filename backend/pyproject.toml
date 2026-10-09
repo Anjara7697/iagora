@@ -28,6 +28,7 @@ addopts = "--cov=app --cov-report=term-missing"
 
 [tool.coverage.run]
 omit = ["app/**/__init__.py"]
+concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
 # Objectif CdC NF-07 : >= 70 % sur le backend critique du MVP

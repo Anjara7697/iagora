@@ -35,9 +35,15 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
-      - run: pytest
       - name: Migrations (upgrade, puis vérification qu'aucun modèle n'est hors migration)
         run: alembic upgrade head && alembic check
+      - name: Tests (base PostgreSQL dédiée, distincte de la base migrée)
+        env:
+          PGPASSWORD: iagora
+          TEST_DATABASE_URL: postgresql+asyncpg://iagora:iagora@localhost:5432/iagora_test
+        run: |
+          psql -h localhost -U iagora -d iagora -c "CREATE DATABASE iagora_test"
+          pytest
 
   frontend:
     runs-on: ubuntu-latest

@@ -18,6 +18,10 @@ class CreatedAtMixin:
 
 
 class TimestampMixin(CreatedAtMixin):
+    # Récupère `updated_at` (valeur calculée par la base) dans le même aller-retour que l'UPDATE :
+    # sans cela l'attribut est expiré et son rechargement échoue en contexte async.
+    __mapper_args__ = {"eager_defaults": True}  # noqa: RUF012
+
     updated_at: Mapped[datetime] = utc_now_column(onupdate=True)
 
 
