@@ -56,6 +56,10 @@ class ConversationRead(BaseModel):
     last_message_at: datetime | None = None
     closed_at: datetime | None = None
     messages: list[MessageRead] = []
+    handoff: dict[str, Any] | None = Field(
+        None,
+        description="Fiche de transfert remise au conseiller (F-21), le cas échéant",
+    )
 
     _tz = field_validator("started_at", "last_message_at", "closed_at")(_aware)
 

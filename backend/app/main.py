@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
 from app.config import get_settings
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         await ensure_indexes(get_mongo_db())
+        await ensure_run_indexes(get_mongo_db())
     except Exception:  # MongoDB pas encore prêt : l'API démarre, /health/ready signalera l'état
         logger.exception("Création des index MongoDB impossible au démarrage")
     yield

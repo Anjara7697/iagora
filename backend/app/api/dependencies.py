@@ -1,13 +1,17 @@
+from functools import lru_cache
 from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, params, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.defaults import EmptyKnowledgeBase, UnconfiguredCalendar
 from app.config import Settings, get_settings
 from app.core.security import decode_access_token
 from app.database.clients import get_mongo_db
 from app.database.session import get_session
+from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.llm.factory import create_language_model
 from app.models import User
 from app.models.enums import UserRole
 
@@ -58,3 +62,33 @@ def require_roles(*roles: UserRole) -> params.Depends:
 ANY_ROLE = require_roles(UserRole.ADMIN, UserRole.ADVISOR, UserRole.VIEWER)
 CAN_WRITE = require_roles(UserRole.ADMIN, UserRole.ADVISOR)
 ADMIN_ONLY = require_roles(UserRole.ADMIN)
+
+
+# --- Dépendances du workflow agentique (remplaçables dans les tests) ---
+
+
+@lru_cache
+def _language_model(provider: str, model: str, key_set: bool) -> LanguageModel:
+    return create_language_model(get_settings())
+
+
+def get_language_model(settings: SettingsDep) -> LanguageModel:
+    # Le cache est indexé par la configuration : un changement de variables recrée le client.
+    return _language_model(
+        settings.llm_provider,
+        settings.llm_model,
+        bool(settings.gemini_api_key or settings.openai_api_key),
+    )
+
+
+def get_calendar() -> Calendar:
+    return UnconfiguredCalendar()
+
+
+def get_knowledge_base() -> KnowledgeBase:
+    return EmptyKnowledgeBase()
+
+
+Llm = Annotated[LanguageModel, Depends(get_language_model)]
+CalendarDep = Annotated[Calendar, Depends(get_calendar)]
+KnowledgeDep = Annotated[KnowledgeBase, Depends(get_knowledge_base)]
