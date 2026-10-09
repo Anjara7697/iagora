@@ -19,5 +19,8 @@ class ScoreEvent(CreatedAtMixin, Base):
         ForeignKey("campaign_prospects.id", ondelete="CASCADE"), index=True
     )
     score_type: Mapped[ScoreType] = mapped_column(str_enum(ScoreType, "score_type"))
-    points: Mapped[int]
+    points: Mapped[int]  # variation effectivement appliquée (après plafonnement)
+    new_value: Mapped[int]  # valeur du score après la variation : « passe de 52 à 82 »
     reason: Mapped[str] = mapped_column(Text)  # obligatoire : OB-05, F-11
+    # Auteur : un utilisateur, ou NULL pour une décision automatique (agent, règle).
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

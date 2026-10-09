@@ -84,3 +84,17 @@ class AppointmentStatus(StrEnum):
     DONE = "done"
     CANCELLED = "cancelled"
     NO_SHOW = "no_show"
+
+
+class ScoringSignal(StrEnum):
+    """Signaux d'engagement convertis en points par les règles de app/services/scoring.py."""
+
+    MESSAGE_RECEIVED = "message_received"
+    QUESTION_ASKED = "question_asked"
+    POSITIVE_SENTIMENT = "positive_sentiment"
+    NEGATIVE_SENTIMENT = "negative_sentiment"
+    MEETING_REQUESTED = "meeting_requested"
+    MEETING_DECLINED = "meeting_declined"
+    NO_RESPONSE = "no_response"
+    PROFILE_TARGET_MATCH = "profile_target_match"
+    PROFILE_COMPLETED = "profile_completed"
