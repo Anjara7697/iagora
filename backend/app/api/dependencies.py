@@ -9,8 +9,9 @@ from app.agents.defaults import EmptyKnowledgeBase, UnconfiguredCalendar
 from app.config import Settings, get_settings
 from app.core.security import decode_access_token
 from app.database.clients import get_mongo_db
-from app.database.session import get_session
+from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.knowledge.factory import create_knowledge_base
 from app.integrations.llm.factory import create_language_model
 from app.models import User
 from app.models.enums import UserRole
@@ -85,8 +86,23 @@ def get_calendar() -> Calendar:
     return UnconfiguredCalendar()
 
 
-def get_knowledge_base() -> KnowledgeBase:
-    return EmptyKnowledgeBase()
+@lru_cache
+def _knowledge_base(
+    provider: str, model: str, key_set: bool, environment: str, min_score: float
+) -> KnowledgeBase:
+    settings = get_settings()
+    kb = create_knowledge_base(settings, lambda: get_sessionmaker()())
+    return kb if kb is not None else EmptyKnowledgeBase()
+
+
+def get_knowledge_base(settings: SettingsDep) -> KnowledgeBase:
+    return _knowledge_base(
+        settings.embedding_provider,
+        settings.embedding_model,
+        bool(settings.gemini_api_key),
+        settings.environment,
+        settings.rag_min_score,
+    )
 
 
 Llm = Annotated[LanguageModel, Depends(get_language_model)]
