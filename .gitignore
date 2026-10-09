@@ -27,3 +27,7 @@ docker-compose.override.yml
 .DS_Store
 .idea/
 .vscode/
+
+# Rapports de recette générés localement
+reports/
+rapport*.md

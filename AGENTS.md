@@ -16,3 +16,4 @@ Projet : Agent Intelligent Commercial 2.0 (cahier des charges v1.0). Voir `READM
 ## Sécurité
 - Aucun secret dans Git, le code ou les logs. Seul `.env.example` est versionné (S-04).
 - Uniquement les API officielles des plateformes, pas de scraping (S-08).
+- Les outils de recette (`app/devtools`, commandes `seed-demo`, `scenario`, `chat`) ne s'exécutent jamais en production et ne manipulent que des données fictives en `@demo.example.com`.
