@@ -12,6 +12,8 @@ services:
       POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-iagora}:${POSTGRES_PASSWORD:-iagora}@postgres:5432/${POSTGRES_DB:-iagora}
       MONGO_URI: mongodb://mongo:27017
       REDIS_URL: redis://redis:6379/0
+    # Applique les migrations puis lance l'API (en production : étape de déploiement séparée).
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     depends_on:
