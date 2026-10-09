@@ -8,6 +8,7 @@ from app.models.campaign import Campaign, CampaignSource, CampaignTarget, Source
 from app.models.channel import Channel, ConsentEvent, ProspectChannel
 from app.models.conversation import Interaction
 from app.models.follow_up import FollowUp
+from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
 from app.models.prospect import CampaignProspect, Prospect, StageEvent
 from app.models.scoring import ScoreEvent
 from app.models.user import User
@@ -22,6 +23,8 @@ __all__ = [
     "ConsentEvent",
     "FollowUp",
     "Interaction",
+    "KnowledgeChunk",
+    "KnowledgeDocument",
     "Prospect",
     "ProspectChannel",
     "ScoreEvent",

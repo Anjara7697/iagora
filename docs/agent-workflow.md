@@ -146,7 +146,7 @@ la livraison (email IONOS, Meta, LinkedIn) viendra avec les connecteurs.
 
 | Port | Implémentation actuelle | Suite prévue |
 |---|---|---|
-| `KnowledgeBase` | Vide : toute question factuelle est transférée | RAG sur les documents validés par DATUM Academy |
+| `KnowledgeBase` | RAG pgvector si une clé d'embeddings est configurée (voir `docs/rag.md`), sinon vide : toute question factuelle est transférée | Documents officiels de DATUM Academy |
 | `Calendar` | « Non configuré » : toute demande de rendez-vous est transférée | Google Calendar et Zoom |
 | `Messenger` | Enregistre sans envoyer | Connecteurs email / Meta / LinkedIn |
 | Déclenchement | Manuel (`POST /agent/runs`) | Automatique à chaque message reçu (F-06) |

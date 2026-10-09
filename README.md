@@ -165,6 +165,18 @@ rôle `prospect` / `agent` / `advisor`). PostgreSQL ne garde que le journal `int
 - Statuts : `open` ⇄ `handed_off` (transfert à un conseiller, F-20) → `closed` (définitif).
 - Un prospect désinscrit ne peut plus recevoir de message sortant (`agent` / `advisor`), mais peut toujours écrire.
 
+### Base de connaissances (RAG)
+
+L'agent ne répond aux questions factuelles (durée, admission, rythme…) que d'après des documents validés,
+stockés dans PostgreSQL avec l'extension **pgvector** (l'image Docker est `pgvector/pgvector:pg16`). Une question
+sans extrait suffisamment pertinent est transférée au conseiller. Voir `docs/rag.md`.
+
+```bash
+docker compose exec backend python -m app.cli kb-ingest /chemin/vers/documents   # documents officiels (.md)
+docker compose exec backend python -m app.cli kb-list
+docker compose exec backend python -m app.cli kb-search "Combien de temps dure eBIHAR ?"
+```
+
 ## Base de données et migrations
 
 Modèles : `backend/app/models/` ; schéma de référence et décisions : `docs/database/README.md`.
@@ -209,4 +221,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 ## État d'avancement
 
 Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
-Prochaines étapes : RAG (base de connaissances), connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord.
+Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence).
+Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord.

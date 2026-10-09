@@ -3,6 +3,8 @@
 Utilisées par les tests automatiques et par la recette hors ligne
 (`python -m app.cli scenario --fake`)."""
 
+import hashlib
+import math
 import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
@@ -19,6 +21,7 @@ from app.graph.ports import (
     T,
 )
 from app.graph.state import Qualification
+from app.models.types import EMBEDDING_DIMENSIONS
 
 
 class FakeLLM:
@@ -118,3 +121,29 @@ class FakeKnowledge:
         self.queries.append(query)
         wanted = _tokens(query)
         return [p for p in self.passages if wanted & _tokens(p.text)][:limit]
+
+
+class HashEmbeddings:
+    """Embeddings déterministes sans réseau : sac de mots significatifs hachés en 768 dimensions.
+
+    Ce n'est PAS sémantique (« tarif » et « prix » n'ont rien en commun), mais deux textes qui
+    partagent des mots ont une similarité élevée : suffisant pour tester le découpage, le stockage,
+    le seuil et le filtrage par programme, hors ligne et sans quota.
+    """
+
+    model_id = "fake/hash-768"
+
+    @staticmethod
+    def _vector(text: str) -> list[float]:
+        vec = [0.0] * EMBEDDING_DIMENSIONS
+        for word in _tokens(text):
+            digest = hashlib.sha256(word.encode()).digest()
+            vec[int.from_bytes(digest[:4], "big") % EMBEDDING_DIMENSIONS] += 1.0
+        norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+        return [x / norm for x in vec]
+
+    async def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
+        return [self._vector(t) for t in texts]
+
+    async def embed_query(self, text: str) -> list[float]:
+        return self._vector(text)

@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(30.0, gt=0)
     llm_max_retries: int = Field(3, ge=0, le=8)
 
+    # Base de connaissances (RAG). Changer de modèle d'embedding impose `kb-reindex` : des vecteurs
+    # de modèles différents ne sont pas comparables. La dimension (768) est fixée par le schéma.
+    embedding_provider: str = "gemini"
+    embedding_model: str = "gemini-embedding-001"
+    rag_top_k: int = Field(4, ge=1, le=10)
+    # Similarité cosinus minimale pour qu'un extrait soit retenu : en dessous, la base « ne sait
+    # pas » et l'agent transfère au conseiller. À calibrer avec `kb-eval` après tout changement.
+    rag_min_score: float = Field(0.6, ge=0.0, le=1.0)
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
