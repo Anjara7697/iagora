@@ -242,3 +242,24 @@ async def test_unique_active_conversation_index(client, mongo_db):
     doc = {"prospect_id": pid, "channel": "email", "status": "open", "messages": []}
     with pytest.raises(DuplicateKeyError):
         await mongo_db["conversations"].insert_one(doc)
+
+
+async def test_list_conversations_summaries_filtered_by_status(client):
+    a = await _prospect(client, "a@example.com")
+    b = await _prospect(client, "b@example.com")
+    conv_a = (await _open(client, a, message=_msg(content="Premier"))).json()["conversation"]
+    conv_b = (await _open(client, b)).json()["conversation"]
+    await client.post(f"{API}/conversations/{conv_a['id']}/messages", json=_msg("agent", "Réponse"))
+    await client.patch(f"{API}/conversations/{conv_b['id']}", json={"status": "handed_off"})
+
+    everything = (await client.get(f"{API}/conversations")).json()
+    assert everything["total"] == 2
+    row = next(i for i in everything["items"] if i["id"] == conv_a["id"])
+    assert row["message_count"] == 2 and row["last_message_role"] == "agent"
+    assert row["last_message_preview"] == "Réponse" and "messages" not in row
+    empty = next(i for i in everything["items"] if i["id"] == conv_b["id"])
+    assert empty["message_count"] == 0 and empty["last_message_preview"] is None
+
+    queue = (await client.get(f"{API}/conversations", params={"status": "handed_off"})).json()
+    assert [i["id"] for i in queue["items"]] == [conv_b["id"]] and queue["total"] == 1
+    assert (await client.get(f"{API}/conversations", params={"status": "nope"})).status_code == 422

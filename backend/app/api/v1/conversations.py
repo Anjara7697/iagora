@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Response, status
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
 from app.models.enums import ConversationStatus
+from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationRead,
     ConversationResult,
+    ConversationSummary,
     ConversationUpdate,
     MessageCreate,
     MessageResult,
@@ -30,6 +34,18 @@ async def create_conversation(
     if not created:
         response.status_code = status.HTTP_200_OK
     return ConversationResult(conversation=conversation, created=created)
+
+
+@router.get("/conversations", response_model=Page[ConversationSummary])
+async def list_conversations(
+    db: MongoDb,
+    status_: Annotated[ConversationStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Page[ConversationSummary]:
+    """Liste des conversations (ex. `?status=handed_off` : file des transferts, F-20)."""
+    items, total = await service.list_conversations(db, status_, limit, offset)
+    return Page[ConversationSummary](items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationRead)
