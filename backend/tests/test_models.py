@@ -33,10 +33,12 @@ def test_expected_tables_exist():
     expected = {
         "users", "prospects", "targets", "campaigns", "campaign_targets", "sources",
         "campaign_sources", "campaign_prospects", "channels", "prospect_channels",
-        "conversations", "messages", "interactions", "score_events", "follow_ups",
+        "interactions", "score_events", "follow_ups",
         "appointments", "consent_events", "stage_events",
     }  # fmt: skip
     assert expected <= set(Base.metadata.tables)
+    # Conversations et messages sont dans MongoDB, pas dans PostgreSQL.
+    assert not {"conversations", "messages"} & set(Base.metadata.tables)
 
 
 def test_cdc_enumerations():
