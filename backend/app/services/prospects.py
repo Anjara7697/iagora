@@ -229,6 +229,22 @@ async def get_memberships(session: AsyncSession, prospect_id: int) -> list[Campa
     return list(result)
 
 
+async def get_memberships_for(
+    session: AsyncSession, prospect_ids: list[int]
+) -> dict[int, list[CampaignProspect]]:
+    """Rattachements de plusieurs prospects en une requête (évite un appel par ligne)."""
+    grouped: dict[int, list[CampaignProspect]] = {pid: [] for pid in prospect_ids}
+    if prospect_ids:
+        rows = await session.scalars(
+            select(CampaignProspect)
+            .where(CampaignProspect.prospect_id.in_(prospect_ids))
+            .order_by(CampaignProspect.id)
+        )
+        for m in rows:
+            grouped[m.prospect_id].append(m)
+    return grouped
+
+
 async def list_prospects(
     session: AsyncSession,
     *,

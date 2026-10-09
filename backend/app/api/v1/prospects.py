@@ -13,7 +13,6 @@ from app.schemas.prospect import (
     ProspectDetail,
     ProspectIngest,
     ProspectIngestResult,
-    ProspectRead,
     ProspectUpdate,
 )
 from app.services import interactions as interaction_service
@@ -48,7 +47,7 @@ async def ingest_prospect(
     )
 
 
-@router.get("", response_model=Page[ProspectRead])
+@router.get("", response_model=Page[ProspectDetail])
 async def list_prospects(
     session: DbSession,
     q: str | None = None,
@@ -57,13 +56,24 @@ async def list_prospects(
     advisor_id: int | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> Page[ProspectRead]:
+) -> Page[ProspectDetail]:
+    """Liste paginée ; chaque prospect porte ses rattachements (étape, scores)."""
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
         limit=limit, offset=offset,
     )  # fmt: skip
-    return Page[ProspectRead](
-        items=[ProspectRead.model_validate(p) for p in items],
+    memberships = await service.get_memberships_for(session, [p.id for p in items])
+    return Page[ProspectDetail](
+        items=[
+            ProspectDetail.model_validate(p).model_copy(
+                update={
+                    "campaigns": [
+                        CampaignMembershipRead.model_validate(m) for m in memberships[p.id]
+                    ]
+                }
+            )
+            for p in items
+        ],
         total=total,
         limit=limit,
         offset=offset,
