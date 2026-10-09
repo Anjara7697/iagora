@@ -39,7 +39,9 @@ docker-compose.yml  backend + PostgreSQL + MongoDB + Redis
 Prérequis : Docker, ou bien Python >= 3.11 et Node >= 20.
 
 ```bash
-cp .env.example .env        # puis renseigner les valeurs (jamais commité)
+cp .env.example .env        # Windows : copy .env.example .env
+# Optionnel pour Docker (valeurs de dev par défaut), requis pour lancer le backend hors Docker.
+# Ne jamais commiter .env.
 ```
 
 ### Avec Docker (backend + bases)
