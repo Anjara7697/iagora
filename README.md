@@ -8,7 +8,7 @@ Prospection, qualification et conversion assistées par IA pour DATUM Academy
 | Couche | Technologies |
 |---|---|
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async) |
-| Orchestration IA | LangChain / LangGraph *(à venir, semaine 3)* |
+| Orchestration IA | LangGraph, LangChain ; modèle de langage interchangeable (Gemini par défaut) |
 | Données | PostgreSQL, MongoDB, Redis |
 | Interface | Next.js 15 (TypeScript) |
 | DevOps | Docker, GitHub Actions |
@@ -80,6 +80,7 @@ Documentation interactive : `http://localhost:8000/docs`. Endpoints disponibles 
 | Consentement | `POST /prospects/{id}/opt-out` · `POST /prospects/{id}/consent` |
 | Interactions | `POST, GET /prospects/{id}/interactions` |
 | Étapes, scores, affectation | `GET, PATCH /campaign-prospects/{id}` · `POST /campaign-prospects/{id}/scores` · `GET /campaign-prospects/{id}/history` |
+| Agent (LangGraph) | `POST /agent/runs` · `GET /agent/runs/{id}` · `GET /prospects/{id}/agent-runs` |
 | Conversations (MongoDB) | `POST /conversations` · `GET, PATCH /conversations/{id}` · `POST /conversations/{id}/messages` · `GET /prospects/{id}/conversation` |
 | Campagnes | `POST, GET /campaigns` · `GET, PATCH /campaigns/{id}` |
 | Authentification | `POST /auth/login` · `GET /auth/me` |
@@ -116,6 +117,14 @@ démarrer sans cela quand `ENVIRONMENT=production`.
 `POST /prospects` reçoit un prospect : déduplication sur email / téléphone / identifiants réseaux (200 si
 déjà connu, 201 si créé), rattachement à la campagne, interaction d'entrée. Un prospect désinscrit ne
 peut plus recevoir d'interaction sortante.
+
+### Agent commercial (LangGraph)
+
+Workflow qui qualifie, score, décide et répond, avec transfert à un conseiller, rendez-vous et opt-out.
+Voir **[docs/agent-workflow.md](docs/agent-workflow.md)** (graphe, règles de décision, garde-fous, changement de fournisseur).
+
+Pour l'activer avec Gemini : ajouter `GEMINI_API_KEY=...` dans votre `.env` local (jamais dans Git), puis
+`docker compose up -d --build`. Sans clé, l'agent ne plante pas : il transfère au conseiller.
 
 ### Étapes, scoring et affectation
 
@@ -188,5 +197,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation.
-Prochaine étape : workflow LangGraph (agents, RAG), puis intégrations réelles.
+Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
+Prochaines étapes : RAG (base de connaissances), connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord.
