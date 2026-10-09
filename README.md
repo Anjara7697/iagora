@@ -70,6 +70,22 @@ npm ci
 npm run dev                  # http://localhost:3000
 ```
 
+## API (état actuel)
+
+Documentation interactive : `http://localhost:8000/docs`. Endpoints disponibles (préfixe `/api/v1`) :
+
+| Ressource | Endpoints |
+|---|---|
+| Prospects | `POST, GET /prospects` · `GET, PATCH /prospects/{id}` |
+| Consentement | `POST /prospects/{id}/opt-out` · `POST /prospects/{id}/consent` |
+| Interactions | `POST, GET /prospects/{id}/interactions` |
+| Campagnes | `POST, GET /campaigns` · `GET, PATCH /campaigns/{id}` |
+| Santé | `GET /health` · `GET /health/ready` |
+
+`POST /prospects` reçoit un prospect : déduplication sur email / téléphone / identifiants réseaux (200 si
+déjà connu, 201 si créé), rattachement à la campagne, interaction d'entrée. Un prospect désinscrit ne
+peut plus recevoir d'interaction sortante. **Pas encore protégé par authentification** (S-06, étape à venir).
+
 ## Base de données et migrations
 
 Modèles : `backend/app/models/` ; schéma de référence et décisions : `docs/database/README.md`.
@@ -88,7 +104,8 @@ alembic check                                 # vérifier que les modèles et le
 cd backend
 ruff check . && ruff format --check .   # lint + format
 mypy                                    # typage strict
-pytest                                  # tests + couverture (seuil 70 %, NF-07)
+pytest                                  # tests (SQLite en mémoire) + couverture (seuil 70 %, NF-07)
+# Tests sur PostgreSQL : TEST_DATABASE_URL=postgresql+asyncpg://user:pwd@localhost:5432/iagora_test pytest
 
 cd ../frontend
 npm run lint && npm run typecheck && npm run build
@@ -110,5 +127,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles de données et migration initiale. Prochaines étapes :
-endpoints CRUD (prospects, campagnes, interactions), puis workflow LangGraph.
+Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions.
+Prochaines étapes : authentification et rôles (S-06), conversations, scoring et statuts, puis workflow LangGraph.
