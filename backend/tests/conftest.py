@@ -4,6 +4,7 @@ from typing import Any
 
 import app.models  # noqa: F401
 import pytest
+from app.agents.runtime import ensure_run_indexes
 from app.config import get_settings
 from app.core.security import create_access_token, hash_password
 from app.database.base import Base
@@ -65,6 +66,7 @@ async def mongo_db() -> AsyncIterator[Any]:
         client = AsyncMongoMockClient(tz_aware=True)
     db = client["iagora_test"]
     await ensure_indexes(db)
+    await ensure_run_indexes(db)
     yield db
     if uri:
         await client.drop_database("iagora_test")
