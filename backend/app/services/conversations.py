@@ -36,7 +36,7 @@ from app.schemas.conversation import (
     MessageCreate,
     MessageRead,
 )
-from app.services import references
+from app.services import follow_ups, references
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
@@ -218,6 +218,8 @@ async def add_message(
         )
 
     await _ensure_journal(session, doc, message, data.role)
+    if created and data.role is SenderType.PROSPECT:
+        await follow_ups.cancel_pending(session, doc["prospect_id"])  # il répond : plus de relance
     return MessageRead(**message), created
 
 

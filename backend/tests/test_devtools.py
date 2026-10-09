@@ -252,3 +252,20 @@ def test_offline_runtime_needs_no_key(monkeypatch):
     monkeypatch.setattr(commands, "get_settings", lambda: dev)
     rt = commands.build_runtime(fake=True)
     assert rt.llm.provider == "fake" and "hors ligne" in rt.mode
+
+
+# --- La base de connaissances de test se comporte comme un vrai moteur de recherche ---
+
+
+async def test_fake_knowledge_only_returns_relevant_passages():
+    fact = Passage("demo (FICTIF)", "Le programme de démonstration dure 18 mois en alternance.")
+    kb = FakeKnowledge([fact])
+    assert await kb.search("Combien de temps dure le programme ?", None) == [fact]
+    for unrelated in (
+        "bonjour",
+        "Quelles formations proposez-vous ?",
+        "Combien coûte la formation ?",
+        "",
+    ):
+        assert await kb.search(unrelated, None) == []
+    assert kb.queries[0].startswith("Combien de temps")

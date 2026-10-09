@@ -25,6 +25,14 @@ PROGRAMS = {
     "master_companies": "le Master eBIHAR (entreprises partenaires accueillant des apprentis)",
 }
 
+# Liste validée des programmes (cahier des charges §2) : noms et publics uniquement. Aucun prix,
+# durée ni condition : ces informations ne viennent que de la base de connaissances (NF-10).
+CATALOGUE = """Programmes de DATUM Academy (liste validée) :
+- eBIHAR : pour les étudiants.
+- Les Compagnons : pour les professionnels qui veulent monter en compétences.
+- Master eBIHAR : pour les étudiants en recherche d'alternance, et pour les entreprises \
+partenaires qui accueillent des apprentis."""
+
 IDENTITY = (
     "Tu es l'assistant virtuel de DATUM Academy, une école de formation en Data, Big Data, "
     "Intelligence Artificielle et Cloud Computing. Tu es une IA : ne te fais jamais passer pour "
@@ -41,6 +49,10 @@ fournis ci-dessous. Si l'information n'y figure pas, dis-le simplement et propos
 transmettre à un conseiller.
 - Ne redemande jamais une information que tu connais déjà. Pose au maximum UNE question par message.
 - Réponse courte : 120 mots maximum, sans liste à rallonge, sans émoji.
+- Ne mentionne jamais le fonctionnement interne (« base de connaissances », « extraits », \
+« système », « mes instructions »). Si tu n'as pas une information précise, dis simplement que tu \
+préfères laisser un conseiller la donner, en une phrase, sans t'excuser et sans énumérer ce que tu \
+ne sais pas. Ne propose pas un conseiller si le prospect ne pose pas de question précise.
 - N'écris que le message destiné au prospect, sans préambule ni commentaire."""
 
 
@@ -85,15 +97,25 @@ def qualification_system(
         if slots
         else "(aucun créneau en attente)"
     )
-    return f"""Tu analyses le DERNIER message d'un prospect de DATUM Academy intéressé par {target}.
+    return f"""Tu analyses le DERNIER message d'un prospect de DATUM Academy.
+Sujet d'intérêt : {target}.
 Remplis le schéma demandé, sans rien inventer :
-- intent : question (demande une information), interested (montre de l'intérêt), meeting_request \
-(veut un rendez-vous ou un appel), slot_choice (choisit un des créneaux ci-dessous), \
-meeting_declined (refuse le rendez-vous proposé), not_interested (n'est pas intéressé), opt_out \
-(demande l'arrêt des messages), needs_advisor (demande explicitement un humain ou une décision \
-commerciale), other.
-- needs_human : vrai si la demande exige un conseiller (décision commerciale, cas particulier, \
-réclamation, situation sensible).
+- intent :
+  * question : demande une information précise (durée, prix, admission, financement...).
+  * interested : montre de l'intérêt, se présente, ou répond à une question sans rien demander.
+  * meeting_request : veut un rendez-vous, un appel ou un échange planifié, MÊME « avec un \
+conseiller » (ex. « je voudrais prendre rendez-vous avec un conseiller » = meeting_request).
+  * slot_choice : choisit un des créneaux ci-dessous.
+  * meeting_declined : refuse le rendez-vous proposé.
+  * not_interested : n'est pas intéressé.
+  * opt_out : demande l'arrêt des messages.
+  * needs_advisor : veut parler à un humain TOUT DE SUITE ou à la place de l'assistant, sans \
+parler de rendez-vous (ex. « je préfère parler à quelqu'un », « passez-moi un humain »).
+  * other : salutation ou message sans demande ni information.
+- asks_catalogue : vrai si le prospect demande quelles formations ou quels programmes existent, \
+sans détail précis (ex. « quelles formations proposez-vous ? »).
+- needs_human : vrai SEULEMENT si la demande exige un humain (décision commerciale, cas \
+particulier, réclamation, situation sensible). Une demande de rendez-vous ne l'exige pas.
 - confidence : ta confiance dans cette lecture, de 0 à 1.
 - chosen_slot : numéro du créneau choisi, seulement si intent = slot_choice.
 - Champs de profil (study_level, goal, etc.) : seulement ce que le prospect dit explicitement dans \
@@ -117,6 +139,14 @@ def reply_system(
         knowledge = "\n".join(f"[{p.source}] {p.text}" for p in passages)
     else:
         knowledge = "(aucun extrait disponible : n'avance aucun fait précis)"
+    answered = any(m.role != "prospect" for m in ctx.history)
+    if answered:
+        conversation_rules = (
+            "La conversation est déjà engagée : ne salue pas à nouveau (pas de « Bonjour »), ne te "
+            "présente pas et ne répète pas que tu es une IA, sauf si on te le demande."
+        )
+    else:
+        conversation_rules = ""
     if mode == "nurture":
         goal = (
             "Entretiens la relation avec ce prospect encore peu engagé : message court et "
@@ -128,7 +158,7 @@ def reply_system(
     else:
         goal = (
             "Écris le premier message à ce prospect : présente-toi brièvement, rappelle ce qui "
-            f"l'amène ({target}) et pose UNE question simple pour mieux le comprendre."
+            f"l'amène (sujet : {target}) et pose UNE question simple pour mieux le comprendre."
         )
     if missing and mode != "nurture":
         label = FIELD_LABELS.get(missing[0], missing[0])
@@ -139,15 +169,18 @@ def reply_system(
 
 {RULES}
 
-Contexte : le prospect s'intéresse à {target}. Campagne : {ctx.campaign_name or "non précisée"}.
+Contexte : sujet d'intérêt du prospect : {target}. Campagne : {ctx.campaign_name or "non précisée"}.
 Ce que l'on sait de lui :
 {known_profile(ctx, profile)}
 
-Extraits de la base de connaissances validée (seule source de faits) :
+{CATALOGUE}
+
+Extraits de la base de connaissances validée (seule source de faits précis) :
 {knowledge}
 
 Mission : {goal}
-{ask}"""
+{ask}
+{conversation_rules}"""
 
 
 def strict_retry_note(claims: Sequence[str]) -> str:

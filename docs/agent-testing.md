@@ -40,8 +40,14 @@ Deux usages d'un même catalogue (`backend/app/devtools/scenarios.py`) :
   liste les réponses rédigées pour que l'on juge le ton à la main.
 
 Le catalogue couvre les cinq scénarios du cahier des charges (§12.2) et d'autres cas : question couverte par la base de
-connaissances, piège du prix inventé, situation sensible, demande d'un conseiller, désintérêt, premier contact,
-qualification progressive. Le scénario « modèle indisponible » exige d'injecter une panne : il est ignoré avec `--live`.
+connaissances, question sur la liste des formations, piège du prix inventé, situation sensible, demande d'un conseiller,
+« rendez-vous avec un conseiller », relance annulée quand le prospect répond, désintérêt, premier contact, qualification
+progressive.
+
+> **Leçon de la première recette avec un vrai modèle.** Deux scénarios ont échoué parce que le faux modèle scripte une
+> lecture (« autre », « rendez-vous ») que le vrai modèle ne fait pas toujours. Les attentes sont donc écrites sur ce qui
+> compte (aucun transfert à tort, un message rédigé, une relance annulée) plutôt que sur une étiquette précise : voir
+> `Expect.action_in` / `stage_in`. Tout écart observé en `--live` doit devenir un scénario hors ligne qui le reproduit. Le scénario « modèle indisponible » exige d'injecter une panne : il est ignoré avec `--live`.
 
 Vérifications appliquées à **tous** les scénarios : décision justifiée, trace présente, et aucun chiffre non sourcé dans
 ce que le modèle a rédigé (NF-10).

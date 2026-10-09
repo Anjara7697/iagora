@@ -72,6 +72,17 @@ _SENSITIVE = [
 ]
 
 
+_MEETING = [r"rendez[- ]?vous", r"\brdv\b", r"creneau", r"disponibilites?\b"]
+
+
+def mentions_meeting(text: str) -> bool:
+    """Le message parle-t-il d'un rendez-vous ? Filet de sécurité quand le modèle hésite entre
+    « veut un rendez-vous » et « veut un conseiller » : « un rendez-vous avec un conseiller » est
+    d'abord une demande de rendez-vous, que l'agent sait organiser lui-même."""
+    t = normalize(text)
+    return any(re.search(p, t) for p in _MEETING)
+
+
 def is_opt_out(text: str) -> bool:
     t = normalize(text)
     return any(re.search(p, t) for p in _OPT_OUT)
@@ -148,15 +159,34 @@ def decide(state: SalesAgentState) -> Decision:
     if q is not None and q.intent == "opt_out":
         return Decision(Action.OPT_OUT, "Demande d'arrêt des communications")
 
-    # 2. Cas qui exigent un humain (F-20).
+    # 2. Cas qui exigent un humain, indépendamment du reste (F-20).
     if state.get("llm_failed"):
         return Decision(Action.HUMAN_HANDOFF, "Modèle de langage indisponible : transfert (NF-05)")
     if state.get("risk_alerts"):
         return Decision(Action.HUMAN_HANDOFF, "Situation sensible détectée")
+
+    # 3. Une demande de rendez-vous passe avant la demande générique d'un conseiller : l'agent
+    #    organise le rendez-vous lui-même (créneaux réels). Sans agenda, le transfert a lieu
+    #    juste après (motif « agenda_indisponible »), donc le prospect n'est jamais bloqué.
+    asks_human = q is not None and (q.needs_human or q.intent == "needs_advisor")
+    wants_meeting = q is not None and (
+        q.intent == "meeting_request"
+        or (asks_human and mentions_meeting(state.get("inbound_text", "")))
+    )
+    if (
+        wants_meeting
+        and q is not None
+        and q.confidence >= MIN_CONFIDENCE
+        and stage not in _ADVANCED_STAGES
+    ):
+        return Decision(Action.PROPOSE_MEETING, "Le prospect demande un rendez-vous")
+
     if q is not None:
-        if q.needs_human or q.intent == "needs_advisor":
+        if q.intent == "needs_advisor":
+            return Decision(Action.HUMAN_HANDOFF, "Le prospect demande explicitement un conseiller")
+        if q.needs_human:
             return Decision(
-                Action.HUMAN_HANDOFF, "Le prospect demande un conseiller ou une décision"
+                Action.HUMAN_HANDOFF, "Demande qui exige un conseiller (décision, cas particulier)"
             )
         if q.confidence < MIN_CONFIDENCE:
             return Decision(Action.HUMAN_HANDOFF, "Incertitude élevée sur la demande du prospect")
@@ -172,8 +202,6 @@ def decide(state: SalesAgentState) -> Decision:
             return Decision(Action.BOOK_MEETING, f"Le prospect a choisi le créneau {q.chosen_slot}")
         return Decision(Action.PROPOSE_MEETING, "Créneau choisi non reconnu : nouvelle proposition")
     if stage not in _ADVANCED_STAGES:
-        if q is not None and q.intent == "meeting_request":
-            return Decision(Action.PROPOSE_MEETING, "Le prospect demande un rendez-vous")
         if q is not None and q.intent == "meeting_declined":
             return Decision(Action.NURTURE, "Rendez-vous refusé : relance programmée")
         if total >= PROPOSE_MEETING_MIN_SCORE and not missing and ctx.pending_slots == []:

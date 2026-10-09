@@ -132,6 +132,22 @@ def evaluate(
                 f"{result.action!r} au lieu de {expect.action!r}",
             )
         )
+    if expect.action_in:
+        checks.append(
+            _check(
+                "action",
+                result.action in expect.action_in,
+                f"{result.action!r} hors de {expect.action_in}",
+            )
+        )
+    if expect.stage_in:
+        checks.append(
+            _check(
+                "étape",
+                observed["stage"] in expect.stage_in,
+                f"{observed['stage']!r} hors de {expect.stage_in}",
+            )
+        )
     if expect.handoff_reason is not ANY:
         checks.append(
             _check(

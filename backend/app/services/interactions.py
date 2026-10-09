@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Interaction
 from app.models.enums import ConsentStatus, Direction
 from app.schemas.interaction import InteractionCreate
-from app.services import references
+from app.services import follow_ups, references
 from app.services.errors import ConflictError
 from app.services.prospects import get_prospect
 
@@ -46,6 +46,8 @@ async def create_interaction(
     if channel_id and data.direction is Direction.INBOUND:
         prospect.current_channel_id = channel_id
     await session.commit()
+    if data.direction is Direction.INBOUND:
+        await follow_ups.cancel_pending(session, prospect_id)
     return interaction, True
 
 

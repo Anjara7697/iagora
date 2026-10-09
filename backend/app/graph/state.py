@@ -49,6 +49,13 @@ class Qualification(BaseModel):
         False, description="Vrai si la demande exige un conseiller (décision, cas sensible)"
     )
     confidence: float = Field(1.0, ge=0.0, le=1.0, description="Confiance dans cette lecture")
+    asks_catalogue: bool = Field(
+        False,
+        description=(
+            "Vrai si le prospect demande quelles formations ou quels programmes existent, sans "
+            "demander de détail précis (durée, prix, admission, financement)"
+        ),
+    )
     chosen_slot: int | None = Field(
         None, description="Numéro (à partir de 1) du créneau choisi parmi ceux proposés"
     )

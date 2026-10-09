@@ -3,10 +3,12 @@
 Utilisées par les tests automatiques et par la recette hors ligne
 (`python -m app.cli scenario --fake`)."""
 
+import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from app.graph import policy
 from app.graph.ports import (
     BookedMeeting,
     CalendarError,
@@ -87,11 +89,28 @@ class FakeCalendar:
         )
 
 
+_STOPWORDS = {
+    "quel", "quels", "quelle", "quelles", "combien", "comment", "pour", "dans", "avec", "vous",
+    "votre", "vos", "nous", "cette", "sont", "elle", "elles", "peut", "faire", "plus", "tout",
+    "bonjour", "merci", "alors", "ainsi", "aussi", "mais", "donc", "leur", "leurs", "être",
+}  # fmt: skip
+
+
+def _tokens(text: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", policy.normalize(text))
+    return {w for w in words if len(w) >= 4 and w not in _STOPWORDS}
+
+
 class FakeKnowledge:
+    """Base de connaissances de test. Comme un vrai moteur de recherche, elle ne renvoie un
+    extrait que s'il est pertinent (mots significatifs en commun avec la question) : une
+    salutation ou une question hors sujet ne ramène rien."""
+
     def __init__(self, passages: list[Passage] | None = None) -> None:
         self.passages = passages or []
         self.queries: list[str] = []
 
     async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
         self.queries.append(query)
-        return self.passages[:limit]
+        wanted = _tokens(query)
+        return [p for p in self.passages if wanted & _tokens(p.text)][:limit]

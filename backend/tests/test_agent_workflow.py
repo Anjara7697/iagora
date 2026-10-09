@@ -582,3 +582,91 @@ def test_workflow_has_the_nodes_of_the_specification():
 
 def test_messenger_marks_messages_as_not_delivered_yet():
     assert RecordingMessenger  # la livraison réelle (email, Meta) viendra avec les connecteurs
+
+
+# --- Les relances ne partent jamais vers quelqu'un qui est déjà en échange (F-16) ---
+
+
+async def scheduled(session_factory):
+    async with session_factory() as s:
+        return [f.status.value for f in await s.scalars(select(FollowUp))]
+
+
+async def test_a_reply_from_the_prospect_cancels_the_pending_follow_up(
+    client, env, session_factory
+):
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="other")
+    await run(client, cid)
+    assert await scheduled(session_factory) == ["scheduled"]  # relance de précaution programmée
+    await say(client, cid, "En fait j'ai une question.")  # il répond
+    assert await scheduled(session_factory) == ["cancelled"]
+
+
+async def test_an_agent_message_does_not_cancel_follow_ups(client, env, session_factory):
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="other")
+    await run(client, cid)
+    await say(client, cid, "Message d'un conseiller", role="advisor")
+    assert await scheduled(session_factory) == ["scheduled"]
+
+
+async def test_an_inbound_interaction_cancels_but_an_outbound_one_does_not(
+    client, env, session_factory
+):
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="other")
+    await run(client, cid)
+    body = {"type": "email", "direction": "outbound", "channel": "email", "content": "x"}
+    await client.post(f"{API}/prospects/{pid}/interactions", json=body)
+    assert await scheduled(session_factory) == ["scheduled"]
+    await client.post(f"{API}/prospects/{pid}/interactions", json={**body, "direction": "inbound"})
+    assert await scheduled(session_factory) == ["cancelled"]
+
+
+async def test_a_handoff_to_a_human_cancels_follow_ups(client, env, session_factory):
+    from datetime import UTC, datetime
+
+    pid, mid, cid = await lead(client, "Je vais porter plainte.")
+    async with session_factory() as s:
+        s.add(FollowUp(prospect_id=pid, campaign_prospect_id=mid, scheduled_at=datetime.now(UTC)))
+        await s.commit()
+    env.llm.qualification = Qualification(intent="other")
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "situation_sensible"
+    assert await scheduled(session_factory) == ["cancelled"]  # un humain a repris
+
+
+@pytest.mark.parametrize("status", ["closed", "handed_off"])
+async def test_manually_closing_or_handing_off_a_conversation_cancels_follow_ups(
+    client, env, session_factory, status
+):
+    from datetime import UTC, datetime
+
+    pid, mid, cid = await lead(client, None)
+    async with session_factory() as s:
+        s.add(FollowUp(prospect_id=pid, campaign_prospect_id=mid, scheduled_at=datetime.now(UTC)))
+        await s.commit()
+    assert (
+        await client.patch(f"{API}/conversations/{cid}", json={"summary": "x"})
+    ).status_code == 200
+    assert await scheduled(session_factory) == ["scheduled"]  # un simple résumé ne change rien
+    await client.patch(f"{API}/conversations/{cid}", json={"status": status})
+    assert await scheduled(session_factory) == ["cancelled"]
+
+
+# --- Questions sur le catalogue : réponse, pas de transfert ---
+
+
+async def test_a_catalogue_question_is_answered_while_a_specific_question_is_not(client, env):
+    pid, mid, cid = await lead(client, "Quelles formations proposez-vous ?")
+    env.llm.qualification = Qualification(intent="question", asks_catalogue=True)
+    env.llm.reply = "Nous proposons eBIHAR, Les Compagnons et le Master eBIHAR."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None and "Compagnons" in out["reply"]
+    assert "Programmes de DATUM Academy (liste validée)" in env.llm.generate_calls[-1][0]
+
+    await say(client, cid, "Et quel est le prix du Master ?")
+    env.llm.qualification = Qualification(intent="question")  # précis : pas du catalogue
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"

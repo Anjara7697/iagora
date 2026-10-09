@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Response, status
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
+from app.models.enums import ConversationStatus
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationRead,
@@ -10,6 +11,7 @@ from app.schemas.conversation import (
     MessageResult,
 )
 from app.services import conversations as service
+from app.services import follow_ups
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -41,10 +43,13 @@ async def get_conversation(conversation_id: str, db: MongoDb) -> ConversationRea
     dependencies=[CAN_WRITE],
 )
 async def update_conversation(
-    conversation_id: str, payload: ConversationUpdate, db: MongoDb
+    conversation_id: str, payload: ConversationUpdate, session: DbSession, db: MongoDb
 ) -> ConversationRead:
-    """Statut (open, handed_off, closed) et résumé."""
-    return await service.update_conversation(db, conversation_id, payload)
+    """Statut (open, handed_off, closed) et résumé. Clôturer ou transférer annule les relances."""
+    conversation = await service.update_conversation(db, conversation_id, payload)
+    if conversation.status in (ConversationStatus.HANDED_OFF, ConversationStatus.CLOSED):
+        await follow_ups.cancel_pending(session, conversation.prospect_id)
+    return conversation
 
 
 @router.post(
