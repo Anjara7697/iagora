@@ -21,10 +21,11 @@ jobs:
           --health-timeout 3s --health-retries 10
       mongo:
         image: mongo:7
+        # --health-cmd passe par `sh -c` : pas de parenthèses ni de guillemets dans la commande.
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongosh --quiet --eval db.adminCommand('ping')"
+          --health-cmd "mongosh --quiet --eval 1"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       POSTGRES_DSN: postgresql+asyncpg://iagora:iagora@localhost:5432/iagora
