@@ -126,6 +126,17 @@ Voir **[docs/agent-workflow.md](docs/agent-workflow.md)** (graphe, règles de d�
 Pour l'activer avec Gemini : ajouter `GEMINI_API_KEY=...` dans votre `.env` local (jamais dans Git), puis
 `docker compose up -d --build`. Sans clé, l'agent ne plante pas : il transfère au conseiller.
 
+### Tester l'agent
+
+Jeu de données de démo, scénarios rejouables (hors ligne ou avec le vrai modèle) et simulateur de conversation :
+voir **[docs/agent-testing.md](docs/agent-testing.md)**.
+
+```bash
+python -m app.cli seed-demo          # données de démonstration
+python -m app.cli scenario           # recette hors ligne (--live : vrai modèle)
+python -m app.cli chat               # jouer le prospect
+```
+
 ### Étapes, scoring et affectation
 
 `GET /prospects/{id}` liste les rattachements du prospect à ses campagnes (`campaigns[].id` = identifiant du rattachement,
