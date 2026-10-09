@@ -1,1 +1,29 @@
-.env.example
+# Secrets : seul .env.example est versionné (S-04)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Docker / OS / IDE
+docker-compose.override.yml
+.DS_Store
+.idea/
+.vscode/
