@@ -1,11 +1,15 @@
-# Lancement : cp .env.example .env && docker compose up --build
+# Lancement : docker compose up --build
+# Le fichier .env est optionnel : sans lui, des valeurs de développement par défaut sont utilisées.
+# Pour personnaliser : cp .env.example .env (Windows : copy .env.example .env)
 services:
   backend:
     build: ./backend
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       # Dans le réseau Docker, les bases sont joignables par le nom du service.
-      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-iagora}:${POSTGRES_PASSWORD:-iagora}@postgres:5432/${POSTGRES_DB:-iagora}
       MONGO_URI: mongodb://mongo:27017
       REDIS_URL: redis://redis:6379/0
     ports:
@@ -21,15 +25,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-iagora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iagora}
+      POSTGRES_DB: ${POSTGRES_DB:-iagora}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iagora} -d ${POSTGRES_DB:-iagora}"]
       interval: 5s
       timeout: 3s
       retries: 10
