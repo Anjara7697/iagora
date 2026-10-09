@@ -85,8 +85,9 @@ python -m app.cli chat --target compagnons_pros --trace
 ```
 
 Écrivez comme le prospect. Commandes : `/trace` (détail des étapes du graphe), `/state` (étape, scores, consentement,
-profil), `/reset` (nouveau prospect), `/quit`. L'agenda et la base de connaissances y sont des **doublures de
-démonstration** (un créneau fictif, un seul fait fictif) : ce ne sont pas de vraies données.
+profil), `/reset` (nouveau prospect), `/quit`. L'agenda y est une **doublure** (créneaux fictifs). Avec le vrai
+modèle, la base de connaissances est le vrai RAG interrogé sur les documents **fictifs** chargés par `seed-demo` ;
+avec `--fake`, un seul fait fictif.
 
 ## Nettoyage
 
