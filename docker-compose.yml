@@ -1,0 +1,62 @@
+# Lancement : docker compose up --build
+# Le fichier .env est optionnel : sans lui, des valeurs de développement par défaut sont utilisées.
+# Pour personnaliser : cp .env.example .env (Windows : copy .env.example .env)
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Dans le réseau Docker, les bases sont joignables par le nom du service.
+      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-iagora}:${POSTGRES_PASSWORD:-iagora}@postgres:5432/${POSTGRES_DB:-iagora}
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_URL: redis://redis:6379/0
+    # Applique les migrations puis lance l'API (en production : étape de déploiement séparée).
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iagora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iagora}
+      POSTGRES_DB: ${POSTGRES_DB:-iagora}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iagora} -d ${POSTGRES_DB:-iagora}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  mongo_data:
