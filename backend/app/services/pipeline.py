@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CampaignProspect, ScoreEvent, StageEvent, User
-from app.models.enums import UserRole
+from app.models.enums import ConversionStage, UserRole
 from app.schemas.pipeline import HistoryRead, MembershipUpdate, ScoreEventRead, StageEventRead
 from app.services.errors import NotFoundError, ValidationFailure
 
@@ -44,19 +44,52 @@ async def update_membership(
         )  # fmt: skip
         membership.assigned_advisor_id = data.assigned_advisor_id
 
-    new_stage = data.conversion_stage
-    if new_stage is not None and new_stage != membership.conversion_stage:
-        session.add(
-            StageEvent(
-                campaign_prospect_id=membership.id,
-                from_stage=membership.conversion_stage,
-                to_stage=new_stage,
-                reason=(data.reason or "").strip(),
-                actor_user_id=actor.id,
-            )
-        )
-        membership.conversion_stage = new_stage
+    if data.conversion_stage is not None:
+        _apply_stage(session, membership, data.conversion_stage, data.reason or "", actor.id)
 
+    await session.commit()
+    return membership
+
+
+def _apply_stage(
+    session: AsyncSession,
+    membership: CampaignProspect,
+    stage: ConversionStage,
+    reason: str,
+    actor_user_id: int | None,
+) -> None:
+    """Change l'étape et enregistre l'événement (F-13) ; ne fait rien si l'étape est la même."""
+    if stage == membership.conversion_stage:
+        return
+    session.add(
+        StageEvent(
+            campaign_prospect_id=membership.id,
+            from_stage=membership.conversion_stage,
+            to_stage=stage,
+            reason=reason.strip(),
+            actor_user_id=actor_user_id,
+        )
+    )
+    membership.conversion_stage = stage
+
+
+async def change_stage(
+    session: AsyncSession,
+    membership_id: int,
+    stage: ConversionStage,
+    reason: str,
+    *,
+    actor_user_id: int | None = None,
+) -> CampaignProspect:
+    """Changement d'étape décidé par le système (actor_user_id=None : décision automatique)."""
+    if not reason.strip():
+        raise ValidationFailure("Un changement d'étape doit être justifié")
+    membership = await session.scalar(
+        select(CampaignProspect).where(CampaignProspect.id == membership_id).with_for_update()
+    )
+    if membership is None:
+        raise NotFoundError(f"Rattachement {membership_id} introuvable")
+    _apply_stage(session, membership, stage, reason, actor_user_id)
     await session.commit()
     return membership
 
