@@ -80,11 +80,40 @@ Documentation interactive : `http://localhost:8000/docs`. Endpoints disponibles 
 | Consentement | `POST /prospects/{id}/opt-out` · `POST /prospects/{id}/consent` |
 | Interactions | `POST, GET /prospects/{id}/interactions` |
 | Campagnes | `POST, GET /campaigns` · `GET, PATCH /campaigns/{id}` |
-| Santé | `GET /health` · `GET /health/ready` |
+| Authentification | `POST /auth/login` · `GET /auth/me` |
+| Utilisateurs (ADMIN) | `POST, GET /users` · `GET, PATCH /users/{id}` |
+| Santé (public) | `GET /health` · `GET /health/ready` |
+
+### Authentification et rôles (S-06)
+
+Toutes les routes, sauf la santé et la connexion, exigent un jeton : `Authorization: Bearer <jeton>`
+(obtenu via `POST /auth/login`, champ `username` = email ou nom d'utilisateur ; bouton « Authorize » dans `/docs`).
+
+| Action | ADMIN | ADVISOR | VIEWER |
+|---|---|---|---|
+| Consulter prospects, interactions, campagnes | oui | oui | oui |
+| Modifier un prospect, interactions, opt-out / consentement | oui | oui | non |
+| Créer / modifier une campagne | oui | non | non |
+| Gérer les comptes | oui | non | non |
+
+Le rôle est relu en base à chaque requête : désactiver un compte ou changer son rôle prend effet immédiatement.
+
+**Créer le premier administrateur** (aucune route publique d'inscription) :
+
+```bash
+# Docker
+docker compose exec -e ADMIN_PASSWORD='un-mot-de-passe-de-12-caracteres-min' backend \
+  python -m app.cli create-admin --username admin --email admin@example.com
+# Local (le mot de passe est demandé si ADMIN_PASSWORD n'est pas défini)
+cd backend && python -m app.cli create-admin --username admin --email admin@example.com
+```
+
+En production, définir `JWT_SECRET_KEY` (32 caractères minimum, voir `.env.example`) : l'application refuse de
+démarrer sans cela quand `ENVIRONMENT=production`.
 
 `POST /prospects` reçoit un prospect : déduplication sur email / téléphone / identifiants réseaux (200 si
 déjà connu, 201 si créé), rattachement à la campagne, interaction d'entrée. Un prospect désinscrit ne
-peut plus recevoir d'interaction sortante. **Pas encore protégé par authentification** (S-06, étape à venir).
+peut plus recevoir d'interaction sortante.
 
 ## Base de données et migrations
 
@@ -127,5 +156,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions.
-Prochaines étapes : authentification et rôles (S-06), conversations, scoring et statuts, puis workflow LangGraph.
+Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles.
+Prochaines étapes : conversations (MongoDB), scoring et statuts, puis workflow LangGraph.
