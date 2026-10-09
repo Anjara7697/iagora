@@ -70,6 +70,18 @@ npm ci
 npm run dev                  # http://localhost:3000
 ```
 
+## Base de données et migrations
+
+Modèles : `backend/app/models/` ; schéma de référence et décisions : `docs/database/README.md`.
+Avec Docker, les migrations sont appliquées au démarrage du backend. En local :
+
+```bash
+cd backend
+alembic upgrade head                          # appliquer
+alembic revision --autogenerate -m "message"  # créer une migration après modification des modèles
+alembic check                                 # vérifier que les modèles et les migrations sont synchronisés
+```
+
 ## Qualité du code
 
 ```bash
@@ -98,5 +110,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Étape actuelle : **initialisation** (squelette, outillage, CI). Prochaines étapes :
-modèles et migrations Alembic à partir de `docs/database/`, endpoints CRUD, puis workflow LangGraph.
+Fait : initialisation, modèles de données et migration initiale. Prochaines étapes :
+endpoints CRUD (prospects, campagnes, interactions), puis workflow LangGraph.
