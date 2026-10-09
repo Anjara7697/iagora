@@ -124,7 +124,10 @@ class WorkflowNodes:
                 "qualification": None,
                 "risk_alerts": alerts,
                 "llm_failed": True,
-                "trace": _t("qualify_prospect", f"modèle indisponible : {type(exc).__name__}"),
+                "trace": _t(
+                    "qualify_prospect",
+                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                ),
             }
 
         profile = dict(state["profile"])
@@ -239,7 +242,10 @@ class WorkflowNodes:
                 "needs_human": True,
                 "handoff_reason": "llm_indisponible",
                 "llm_failed": True,
-                "trace": _t("generate_response", f"modèle indisponible : {type(exc).__name__}"),
+                "trace": _t(
+                    "generate_response",
+                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                ),
             }
         if claims or not reply:
             return {

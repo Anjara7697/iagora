@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 from app.graph import policy
 from app.graph.ports import (
@@ -73,6 +74,9 @@ class FakeCalendar:
         self.slots = make_slots() if slots is None else slots
         self.fail_booking = fail_booking
         self.booked: list[Slot] = []
+        # Identifiants uniques par instance : plusieurs recettes sur la même base ne se heurtent pas
+        # (contrainte d'unicité sur l'identifiant d'événement).
+        self._run_id = uuid4().hex[:8]
 
     async def get_available_slots(self, count: int) -> list[Slot]:
         return self.slots[:count]
@@ -82,9 +86,9 @@ class FakeCalendar:
             raise CalendarError("créneau pris entre-temps")
         self.booked.append(slot)
         return BookedMeeting(
-            calendar_event_id=f"evt-{slot.id}",
+            calendar_event_id=f"evt-{self._run_id}-{slot.id}",
             meeting_url=f"https://zoom.example/{slot.id}",
-            zoom_meeting_id=f"zoom-{slot.id}",
+            zoom_meeting_id=f"zoom-{self._run_id}-{slot.id}",
             slot=slot,
         )
 
