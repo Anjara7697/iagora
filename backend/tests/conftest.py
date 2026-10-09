@@ -45,6 +45,9 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
                 Channel(name="email", type="email"),
                 Channel(name="facebook", type="social"),
                 Target(code="ebihar_students", name="Étudiants eBIHAR"),
+                Target(code="compagnons_pros", name="Professionnels Les Compagnons"),
+                Target(code="master_candidates", name="Master eBIHAR - candidats"),
+                Target(code="master_companies", name="Master eBIHAR - entreprises"),
             ]
         )
         await s.commit()
