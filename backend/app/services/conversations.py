@@ -83,6 +83,7 @@ def to_read(doc: dict[str, Any]) -> ConversationRead:
         last_message_at=doc.get("last_message_at"),
         closed_at=doc.get("closed_at"),
         messages=[MessageRead(**m) for m in doc.get("messages", [])],
+        handoff=doc.get("handoff"),
     )
 
 
@@ -102,6 +103,27 @@ async def _get_doc(db: Db, conversation_id: str) -> dict[str, Any]:
     if doc is None:
         raise NotFoundError(f"Conversation {conversation_id} introuvable")
     return doc  # type: ignore[no-any-return]
+
+
+async def get_doc(db: Db, conversation_id: str) -> dict[str, Any]:
+    """Document brut de la conversation (usage interne : workflow, passerelle)."""
+    return await _get_doc(db, conversation_id)
+
+
+async def set_handoff(db: Db, conversation_id: str, sheet: dict[str, Any]) -> None:
+    """Enregistre la fiche de transfert (F-21) et passe la conversation à `handed_off`.
+    Une conversation clôturée garde son statut."""
+    doc = await _get_doc(db, conversation_id)
+    changes: dict[str, Any] = {
+        "handoff": {**sheet, "created_at": _now()},
+        "summary": sheet.get("summary") or doc.get("summary"),
+    }
+    if doc["status"] == ConversationStatus.OPEN.value:
+        changes["status"] = ConversationStatus.HANDED_OFF.value
+    await db[COLLECTION].update_one({"_id": doc["_id"]}, {"$set": changes})
+    logger.info(
+        "Conversation %s transférée à un conseiller : %s", conversation_id, sheet.get("reason")
+    )
 
 
 async def get_conversation(db: Db, conversation_id: str) -> ConversationRead:

@@ -8,7 +8,7 @@ Prospection, qualification et conversion assistées par IA pour DATUM Academy
 | Couche | Technologies |
 |---|---|
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 (async) |
-| Orchestration IA | LangChain / LangGraph *(à venir, semaine 3)* |
+| Orchestration IA | LangGraph, LangChain ; modèle de langage interchangeable (Gemini par défaut) |
 | Données | PostgreSQL, MongoDB, Redis |
 | Interface | Next.js 15 (TypeScript) |
 | DevOps | Docker, GitHub Actions |
@@ -79,6 +79,8 @@ Documentation interactive : `http://localhost:8000/docs`. Endpoints disponibles 
 | Prospects | `POST, GET /prospects` · `GET, PATCH /prospects/{id}` |
 | Consentement | `POST /prospects/{id}/opt-out` · `POST /prospects/{id}/consent` |
 | Interactions | `POST, GET /prospects/{id}/interactions` |
+| Étapes, scores, affectation | `GET, PATCH /campaign-prospects/{id}` · `POST /campaign-prospects/{id}/scores` · `GET /campaign-prospects/{id}/history` |
+| Agent (LangGraph) | `POST /agent/runs` · `GET /agent/runs/{id}` · `GET /prospects/{id}/agent-runs` |
 | Conversations (MongoDB) | `POST /conversations` · `GET, PATCH /conversations/{id}` · `POST /conversations/{id}/messages` · `GET /prospects/{id}/conversation` |
 | Campagnes | `POST, GET /campaigns` · `GET, PATCH /campaigns/{id}` |
 | Authentification | `POST /auth/login` · `GET /auth/me` |
@@ -115,6 +117,30 @@ démarrer sans cela quand `ENVIRONMENT=production`.
 `POST /prospects` reçoit un prospect : déduplication sur email / téléphone / identifiants réseaux (200 si
 déjà connu, 201 si créé), rattachement à la campagne, interaction d'entrée. Un prospect désinscrit ne
 peut plus recevoir d'interaction sortante.
+
+### Agent commercial (LangGraph)
+
+Workflow qui qualifie, score, décide et répond, avec transfert à un conseiller, rendez-vous et opt-out.
+Voir **[docs/agent-workflow.md](docs/agent-workflow.md)** (graphe, règles de décision, garde-fous, changement de fournisseur).
+
+Pour l'activer avec Gemini : ajouter `GEMINI_API_KEY=...` dans votre `.env` local (jamais dans Git), puis
+`docker compose up -d --build`. Sans clé, l'agent ne plante pas : il transfère au conseiller.
+
+### Étapes, scoring et affectation
+
+`GET /prospects/{id}` liste les rattachements du prospect à ses campagnes (`campaigns[].id` = identifiant du rattachement,
+utilisé par les routes `/campaign-prospects/{id}`).
+
+- **Étape (F-13)** : `PATCH` avec `conversion_stage` et une `reason` obligatoire. Chaque changement est horodaté et attribué
+  dans l'historique ; rester sur la même étape ne crée rien.
+- **Affectation (F-22)** : `assigned_advisor_id` (ADMIN uniquement ; `null` retire l'affectation). Le conseiller doit être
+  un compte actif ADVISOR ou ADMIN. L'historique suit le prospect, pas le conseiller.
+- **Scoring (F-10, F-11, F-12)** : deux composantes de 0 à 100, l'*intérêt* et l'*adéquation* ; le **total** = 60 % intérêt
+  + 40 % adéquation (arrondi). Le niveau en découle : < 25 froid, 25-49 tiède, 50-74 chaud, ≥ 75 très chaud.
+  `POST .../scores` accepte soit un `signal` (règles prédéfinies, ex. `meeting_requested` = +30 d'intérêt), soit un
+  ajustement manuel `score_type` + `points` + `reason`. Chaque variation produit un événement justifié, avec la valeur
+  résultante et son auteur ; le total est recalculé et tracé à chaque changement. Poids, seuils et règles sont des valeurs de
+  conception (CdC §4.2), regroupées dans `backend/app/services/scoring.py`.
 
 ### Conversations (MongoDB)
 
@@ -171,5 +197,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB).
-Prochaines étapes : scoring et statuts, puis workflow LangGraph.
+Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
+Prochaines étapes : RAG (base de connaissances), connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord.

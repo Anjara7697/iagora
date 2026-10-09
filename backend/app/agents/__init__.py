@@ -1,1 +1,2 @@
-"""Agents LangGraph (Lead, Qualification, Scoring, Conversation, Scheduling) - CdC 9.2."""
+"""Agents : assemblage concret du workflow (base de données, messagerie, agenda, modèle de
+langage). Le graphe (app/graph) reste indépendant de tout fournisseur (NF-02)."""

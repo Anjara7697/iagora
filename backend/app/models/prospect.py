@@ -109,3 +109,5 @@ class StageEvent(CreatedAtMixin, Base):
     )
     to_stage: Mapped[ConversionStage] = mapped_column(str_enum(ConversionStage, "stage_event_to"))
     reason: Mapped[str | None] = mapped_column(Text)
+    # Auteur : un utilisateur, ou NULL pour une décision automatique (agent, règle).
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))

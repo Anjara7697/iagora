@@ -20,6 +20,7 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | `users.is_active`, unicité `username` / `email` | Gestion des comptes (S-06) |
 | Horodatages `timestamptz` (et non `timestamp`) | Rendez-vous et relances : éviter toute ambiguïté de fuseau |
 | Tables `conversations` et `messages` supprimées de PostgreSQL ; `interactions.conversation_ref` ajouté | §9.5 : conversations dans MongoDB. Une seule source de vérité pour le contenu (voir ci-dessous) |
+| `score_events.new_value` et `actor_user_id`, `stage_events.actor_user_id` | OB-05, F-11 : valeur résultante (« passe de 52 à 82 ») et auteur de chaque décision (`NULL` = automatique) |
 | Énumérations en texte + contrainte CHECK | Valeurs de F-12, F-13, S-06 ; liste d'étapes modifiable par migration (F-13) |
 | `ON DELETE CASCADE` depuis `prospects` ; `SET NULL` pour les conseillers | S-02 (effacement) ; F-22 (réaffectation sans perte d'historique) |
 
