@@ -3,6 +3,7 @@
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -20,7 +21,7 @@ from app.schemas.agent import AgentRunResult
 from app.schemas.campaign import CampaignCreate, SourceInput
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import campaigns, conversations, pipeline, prospects
+from app.services import campaigns, conversations, follow_ups, pipeline, prospects
 from app.services.prospects import get_prospect
 
 DEMO_DOMAIN = "demo.example.com"
@@ -289,6 +290,10 @@ async def run_scenario(
                 target_code=scenario.target_code,
                 profile=scenario.profile,
             )
+            if scenario.preset_follow_up:
+                await follow_ups.schedule_follow_up(
+                    session, pid, mid, None, timedelta(days=3), "relance de précaution (recette)"
+                )
             for turn in scenario.turns:
                 if turn.says is not None:
                     await conversations.add_message(
@@ -311,6 +316,15 @@ async def run_scenario(
                     stage_after=observed["stage"],
                 )
                 tr.checks = evaluate(turn.expect, result, observed, tail)
+                if (
+                    result.handoff_reason == "llm_indisponible"
+                    and turn.expect.handoff_reason != "llm_indisponible"
+                ):
+                    # Rend la cause visible dans le rapport (quota, clé, réseau…).
+                    cause = next(
+                        (t.summary for t in result.trace if "modèle indisponible" in t.summary), ""
+                    )
+                    tr.checks.append(_check("modèle de langage joignable", False, cause))
                 # NF-10 : aucun chiffre non sourcé dans ce que le modèle a rédigé.
                 sources = [p.text for p in kb.passages] if isinstance(kb, FakeKnowledge) else []
                 sources += [turn.says or ""]

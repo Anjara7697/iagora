@@ -55,6 +55,7 @@ class Scenario:
     target_code: str = "ebihar_students"
     profile: dict[str, str] = field(default_factory=dict)
     knowledge: list[Passage] = field(default_factory=list)
+    preset_follow_up: bool = False  # une relance est déjà programmée avant le premier tour
     fake_only: bool = False  # nécessite d'injecter une panne : impossible avec le vrai modèle
 
 
@@ -300,17 +301,14 @@ SCENARIOS: list[Scenario] = [
         name="follow_up_cancelled_on_reply",
         title="Le prospect répond : la relance programmée est annulée",
         cdc_ref="F-16",
+        # Une relance existe déjà : le résultat ne dépend pas de la façon dont le modèle classe
+        # un premier message neutre. Le prospect répond, la relance doit disparaître.
+        preset_follow_up=True,
         turns=[
             Turn(
-                says="Bonjour, je regardais un peu votre site.",
-                qualification=Qualification(intent="other"),
-                reply="Bonjour Camille, merci pour votre message. N'hésitez pas à me poser vos questions.",
-                expect=Expect(handoff_reason=None, reply=True, follow_up=True),
-            ),
-            Turn(
-                says="En fait, j'ai une question sur l'alternance.",
-                qualification=Qualification(intent="interested"),
-                reply="Avec plaisir, quel est votre niveau d'études ?",
+                says="Finalement oui, je suis en Bac+3 et l'alternance m'intéresse.",
+                qualification=Qualification(intent="interested", study_level="Bac+3"),
+                reply="Avec plaisir, quel est votre projet après cette formation ?",
                 expect=Expect(handoff_reason=None, reply=True, follow_up=False),
             ),
         ],

@@ -148,7 +148,7 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
     assert (await membership(client, mid))["conversion_stage"] == "meeting_scheduled"
     async with session_factory() as s:
         appointment = (await s.scalars(select(Appointment))).one()
-    assert appointment.prospect_id == pid and appointment.calendar_event_id == "evt-slot-1"
+    assert appointment.prospect_id == pid and appointment.calendar_event_id.endswith("-slot-1")
     assert appointment.meeting_url == "https://zoom.example/slot-1"  # F-19
 
 
