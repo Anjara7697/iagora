@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(60, ge=1)
 
+    # Modèle de langage (workflow agentique). Changer de fournisseur = changer ces variables.
+    llm_provider: str = "gemini"
+    llm_model: str = "gemini-2.5-flash"
+    llm_temperature: float = Field(0.3, ge=0.0, le=2.0)
+    llm_timeout_seconds: float = Field(30.0, gt=0)
+    llm_max_retries: int = Field(3, ge=0, le=8)
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None

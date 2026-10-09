@@ -21,6 +21,11 @@ strict = true
 plugins = ["pydantic.mypy"]
 files = ["app"]
 
+[[tool.mypy.overrides]]
+# Fournisseur optionnel (pip install langchain-openai), absent de requirements.txt.
+module = "langchain_openai"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
