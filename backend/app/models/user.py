@@ -14,5 +14,7 @@ class User(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True)
     email: Mapped[str] = mapped_column(String(255), unique=True)
+    # Hash argon2 ; jamais le mot de passe en clair (S-04).
+    hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(str_enum(UserRole, "user_role"))
     is_active: Mapped[bool] = mapped_column(server_default=true())

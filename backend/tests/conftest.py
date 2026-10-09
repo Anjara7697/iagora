@@ -3,10 +3,13 @@ from collections.abc import AsyncIterator
 
 import app.models  # noqa: F401
 import pytest
+from app.config import get_settings
+from app.core.security import create_access_token, hash_password
 from app.database.base import Base
 from app.database.session import get_session
 from app.main import app
-from app.models import Channel, Target
+from app.models import Channel, Target, User
+from app.models.enums import UserRole
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -45,13 +48,51 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     await engine.dispose()
 
 
+PASSWORD = "correct-horse-battery"
+
+
+async def _make_user(factory, role: UserRole, **over) -> User:
+    async with factory() as s:
+        user = User(
+            username=f"{role.value.lower()}-user",
+            email=f"{role.value.lower()}@example.com",
+            hashed_password=hash_password(PASSWORD),
+            role=role,
+            **over,
+        )
+        s.add(user)
+        await s.commit()
+        return user
+
+
 @pytest.fixture
-async def client(session_factory) -> AsyncIterator[AsyncClient]:
+async def make_client(session_factory):
+    """Fabrique un client HTTP authentifié avec le rôle demandé (None : anonyme)."""
+    clients: list[AsyncClient] = []
+
     async def _override() -> AsyncIterator[AsyncSession]:
         async with session_factory() as s:
             yield s
 
     app.dependency_overrides[get_session] = _override
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-        yield c
+
+    async def _make(role: UserRole | None = UserRole.ADMIN) -> AsyncClient:
+        headers = {}
+        if role is not None:
+            user = await _make_user(session_factory, role)
+            token = create_access_token(user.id, get_settings())
+            headers["Authorization"] = f"Bearer {token}"
+        c = AsyncClient(transport=ASGITransport(app=app), base_url="http://test", headers=headers)
+        clients.append(c)
+        return c
+
+    yield _make
+    for c in clients:
+        await c.aclose()
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client(make_client) -> AsyncClient:
+    """Client authentifié ADMIN (la plupart des tests métier)."""
+    return await make_client(UserRole.ADMIN)

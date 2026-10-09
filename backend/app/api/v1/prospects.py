@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Response, status
 
-from app.api.dependencies import DbSession
+from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession
 from app.models import Prospect
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
@@ -19,7 +19,7 @@ from app.schemas.prospect import (
 from app.services import interactions as interaction_service
 from app.services import prospects as service
 
-router = APIRouter(prefix="/prospects", tags=["prospects"])
+router = APIRouter(prefix="/prospects", tags=["prospects"], dependencies=[ANY_ROLE])
 
 
 async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
@@ -29,7 +29,12 @@ async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     )
 
 
-@router.post("", response_model=ProspectIngestResult, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ProspectIngestResult,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[CAN_WRITE],
+)
 async def ingest_prospect(
     payload: ProspectIngest, session: DbSession, response: Response
 ) -> ProspectIngestResult:
@@ -70,21 +75,21 @@ async def get_prospect(prospect_id: int, session: DbSession) -> ProspectDetail:
     return await _detail(session, await service.get_prospect(session, prospect_id))
 
 
-@router.patch("/{prospect_id}", response_model=ProspectDetail)
+@router.patch("/{prospect_id}", response_model=ProspectDetail, dependencies=[CAN_WRITE])
 async def update_prospect(
     prospect_id: int, payload: ProspectUpdate, session: DbSession
 ) -> ProspectDetail:
     return await _detail(session, await service.update_prospect(session, prospect_id, payload))
 
 
-@router.post("/{prospect_id}/opt-out", response_model=ProspectDetail)
+@router.post("/{prospect_id}/opt-out", response_model=ProspectDetail, dependencies=[CAN_WRITE])
 async def opt_out(prospect_id: int, payload: OptOutRequest, session: DbSession) -> ProspectDetail:
     """Enregistre la désinscription : bloque les communications sortantes et annule les relances."""
     prospect = await service.opt_out(session, prospect_id, payload.source, payload.channel)
     return await _detail(session, prospect)
 
 
-@router.post("/{prospect_id}/consent", response_model=ProspectDetail)
+@router.post("/{prospect_id}/consent", response_model=ProspectDetail, dependencies=[CAN_WRITE])
 async def grant_consent(
     prospect_id: int, payload: ConsentRequest, session: DbSession
 ) -> ProspectDetail:
@@ -96,6 +101,7 @@ async def grant_consent(
     "/{prospect_id}/interactions",
     response_model=InteractionRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[CAN_WRITE],
 )
 async def create_interaction(
     prospect_id: int, payload: InteractionCreate, session: DbSession, response: Response
