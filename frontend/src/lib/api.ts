@@ -37,7 +37,8 @@ function detailOf(payload: unknown, fallback: string): string {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail: unknown }).detail;
     if (typeof detail === "string") return detail;
-    if (Array.isArray(detail) && detail[0] && typeof detail[0].msg === "string") return detail[0].msg;
+    if (Array.isArray(detail) && detail[0] && typeof detail[0].msg === "string")
+      return detail[0].msg;
   }
   return fallback;
 }
@@ -69,7 +70,15 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     window.location.assign("/login");
   }
   const text = await res.text();
-  const payload: unknown = text ? JSON.parse(text) : null;
+  let payload: unknown;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    throw new ApiError(
+      res.status,
+      "Réponse du serveur illisible. Réessayez dans quelques instants.",
+    );
+  }
   if (!res.ok) throw new ApiError(res.status, detailOf(payload, `Erreur ${res.status}`));
   return payload as T;
 }

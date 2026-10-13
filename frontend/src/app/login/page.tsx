@@ -21,7 +21,7 @@ export default function LoginPage() {
         form: { username, password },
       });
       setToken(token.access_token);
-      router.replace("/");
+      router.replace("/prospects");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Connexion impossible");
     } finally {
@@ -30,23 +30,68 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="center">
-      <form className="card login" onSubmit={submit}>
-        <h1>Commercial 2.0</h1>
-        <p className="muted">Console de l&apos;agent commercial — DATUM Academy</p>
-        <label>
-          Email ou nom d&apos;utilisateur
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
-        </label>
-        <label>
-          Mot de passe
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        {error && <p className="error">{error}</p>}
-        <button className="primary" disabled={busy}>
-          {busy ? "Connexion…" : "Se connecter"}
-        </button>
-      </form>
+    <main className="login-layout">
+      <section className="login-intro">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            ▪
+          </span>
+          IAGORA<span className="version">2.0</span>
+        </div>
+        <div>
+          <span className="eyebrow">Agent intelligent commercial</span>
+          <h1>
+            Chaque échange,
+            <br />
+            une nouvelle possibilité.
+          </h1>
+          <p>
+            Retrouvez vos prospects, suivez leurs parcours et accompagnez-les vers la bonne
+            formation.
+          </p>
+        </div>
+        <span className="eyebrow">DATUM Academy</span>
+      </section>
+      <section className="login-panel">
+        <form className="login" onSubmit={submit} aria-busy={busy}>
+          <span className="eyebrow">Votre espace de travail</span>
+          <h2>Bienvenue sur IAGORA</h2>
+          <p className="muted">Connectez-vous avec votre compte professionnel.</p>
+          <label>
+            Email ou nom d&apos;utilisateur
+            <input
+              name="username"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+              required
+              disabled={busy}
+            />
+          </label>
+          <label>
+            Mot de passe
+            <input
+              name="password"
+              autoComplete="current-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={busy}
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="primary" disabled={busy}>
+            {busy ? "Connexion…" : "Se connecter →"}
+          </button>
+          <p className="muted">Besoin d’un accès ? Contactez votre administrateur.</p>
+        </form>
+      </section>
     </main>
   );
 }

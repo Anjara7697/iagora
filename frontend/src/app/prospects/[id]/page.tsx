@@ -1,7 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
+import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
@@ -13,12 +15,11 @@ import type { AgentRun, Conversation, History, Prospect } from "@/lib/types";
 const LEVEL = (t: number) => (t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold");
 
 export default function ProspectPage() {
+  const user = useCurrentUser();
   const { id } = useParams<{ id: string }>();
   const prospect = useApi<Prospect>(`/prospects/${id}`);
   const conversation = useApi<Conversation>(`/prospects/${id}/conversation`);
   const runs = useApi<AgentRun[]>(`/prospects/${id}/agent-runs`);
-  const membership = prospect.data?.campaigns[0];
-  const history = useApi<History>(membership ? `/campaign-prospects/${membership.id}/history` : null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -31,7 +32,6 @@ export default function ProspectPage() {
       prospect.reload();
       conversation.reload();
       runs.reload();
-      history.reload();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Échec");
     } finally {
@@ -46,7 +46,34 @@ export default function ProspectPage() {
       <Loading loading={prospect.loading} error={prospect.error} />
       {p && (
         <>
-          <h1>{fullName(p)}</h1>
+          <Link href="/prospects" className="profile-back">
+            ← Tous les prospects
+          </Link>
+          <header className="profile-header">
+            <span className="prospect-avatar profile-avatar" aria-hidden="true">
+              {[p.first_name, p.last_name]
+                .filter(Boolean)
+                .map((name) => name![0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "?"}
+            </span>
+            <div>
+              <span className="eyebrow">Fiche prospect · #{p.id}</span>
+              <h1>{fullName(p)}</h1>
+              <div className="row">
+                <span className={`badge consent-${p.consent_status}`}>
+                  {label(CONSENT, p.consent_status)}
+                </span>
+                <span className="muted">{p.email || p.phone || "Coordonnées non renseignées"}</span>
+              </div>
+            </div>
+          </header>
+          {p.consent_status === "opted_out" && (
+            <div className="card warnbox">
+              Ce prospect est désinscrit. Les communications sortantes sont bloquées.
+            </div>
+          )}
           <div className="grid2">
             <div className="card">
               <h3>Identité</h3>
@@ -89,29 +116,14 @@ export default function ProspectPage() {
                   </span>
                 </div>
               ))}
-              {history.data && (
-                <details>
-                  <summary>Historique des étapes et des scores</summary>
-                  <ul className="trace">
-                    {history.data.stage_events.map((e) => (
-                      <li key={`s${e.id}`}>
-                        {formatDate(e.created_at)} — étape : {label(STAGES, e.from_stage)} → <b>{label(STAGES, e.to_stage)}</b>{" "}
-                        {e.reason ? `(${e.reason})` : ""}
-                      </li>
-                    ))}
-                    {history.data.score_events.map((e) => (
-                      <li key={`p${e.id}`}>
-                        {formatDate(e.created_at)} — {e.score_type} {e.points >= 0 ? "+" : ""}
-                        {e.points} → {e.new_value} ({e.reason})
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
+              {p.campaigns.map((m, index) => (
+                <MembershipHistory key={m.id} id={m.id} index={index + 1} />
+              ))}
             </div>
           </div>
 
           <h2>Conversation</h2>
+          <Loading loading={conversation.loading} error={null} />
           {conversation.error?.status === 404 && <p className="muted">Aucune conversation.</p>}
           {conversation.error && conversation.error.status !== 404 && (
             <p className="error">{conversation.error.message}</p>
@@ -122,15 +134,32 @@ export default function ProspectPage() {
                 <span className={`badge conv-${conv.status}`}>{conv.status}</span>
                 <span className="muted">canal {conv.channel}</span>
                 <span className="spacer" />
-                <button className="primary" disabled={busy || conv.status !== "open"} onClick={runAgent}>
+                <button
+                  className="primary"
+                  disabled={
+                    busy ||
+                    conv.status !== "open" ||
+                    p.consent_status === "opted_out" ||
+                    user?.role === "VIEWER"
+                  }
+                  onClick={runAgent}
+                >
                   {busy ? "L'agent réfléchit…" : "Lancer l'agent"}
                 </button>
               </div>
+              {user?.role === "VIEWER" && (
+                <p className="muted">
+                  Votre accès observateur permet de consulter les échanges et les décisions.
+                </p>
+              )}
               {actionError && <p className="error">{actionError}</p>}
               {conv.handoff && (
                 <div className="card warnbox">
-                  <strong>Fiche de transfert</strong> — {label(HANDOFF_REASONS, conv.handoff.reason)}
-                  {conv.handoff.pending_question && <p>Question : « {conv.handoff.pending_question} »</p>}
+                  <strong>Fiche de transfert</strong> —{" "}
+                  {label(HANDOFF_REASONS, conv.handoff.reason)}
+                  {conv.handoff.pending_question && (
+                    <p>Question : « {conv.handoff.pending_question} »</p>
+                  )}
                   <p>{conv.handoff.summary}</p>
                   <p>
                     <b>Action recommandée :</b> {conv.handoff.recommended_action}
@@ -143,7 +172,9 @@ export default function ProspectPage() {
 
           <h2>Décisions de l&apos;agent</h2>
           <Loading loading={runs.loading} error={runs.error} />
-          {runs.data?.length === 0 && <p className="muted">L&apos;agent n&apos;a pas encore traité ce prospect.</p>}
+          {runs.data?.length === 0 && (
+            <p className="muted">L&apos;agent n&apos;a pas encore traité ce prospect.</p>
+          )}
           {runs.data?.map((r) => (
             <div key={r.run_id} className="card">
               <div className="muted">{formatDate(r.started_at)}</div>
@@ -153,6 +184,34 @@ export default function ProspectPage() {
           ))}
         </>
       )}
+    </>
+  );
+}
+
+function MembershipHistory({ id, index }: { id: number; index: number }) {
+  const history = useApi<History>(`/campaign-prospects/${id}/history`);
+  return (
+    <>
+      {history.data && (
+        <details>
+          <summary>Historique du parcours {index}</summary>
+          <ul className="trace">
+            {history.data.stage_events.map((e) => (
+              <li key={`s${e.id}`}>
+                {formatDate(e.created_at)} — étape : {label(STAGES, e.from_stage)} →{" "}
+                <b>{label(STAGES, e.to_stage)}</b> {e.reason ? `(${e.reason})` : ""}
+              </li>
+            ))}
+            {history.data.score_events.map((e) => (
+              <li key={`p${e.id}`}>
+                {formatDate(e.created_at)} — {e.score_type} {e.points >= 0 ? "+" : ""}
+                {e.points} → {e.new_value} ({e.reason})
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <Loading loading={history.loading} error={history.error} />
     </>
   );
 }

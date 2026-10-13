@@ -21,6 +21,8 @@ node_modules/
 out/
 *.tsbuildinfo
 next-env.d.ts
+test-results/
+playwright-report/
 
 # Docker / OS / IDE
 docker-compose.override.yml
