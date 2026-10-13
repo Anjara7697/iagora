@@ -3,8 +3,18 @@ import type { ApiError } from "@/lib/api";
 import { LEVELS, STAGES, label } from "@/lib/labels";
 
 export function Loading({ loading, error }: { loading: boolean; error: ApiError | null }) {
-  if (loading) return <p className="muted">Chargement…</p>;
-  if (error) return <p className="error">{error.message}</p>;
+  if (loading)
+    return (
+      <p className="muted" role="status">
+        Chargement…
+      </p>
+    );
+  if (error)
+    return (
+      <p className="error" role="alert">
+        {error.message}
+      </p>
+    );
   return null;
 }
 

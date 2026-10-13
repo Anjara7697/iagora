@@ -11,14 +11,15 @@ export function useApi<T>(path: string | null) {
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    if (path === null) return;
+    if (path === null) {
+      setState({ data: null, error: null, loading: false });
+      return;
+    }
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState({ data: null, loading: true, error: null });
     api<T>(path)
       .then((data) => !cancelled && setState({ data, error: null, loading: false }))
-      .catch(
-        (error: ApiError) => !cancelled && setState({ data: null, error, loading: false }),
-      );
+      .catch((error: ApiError) => !cancelled && setState({ data: null, error, loading: false }));
     return () => {
       cancelled = true;
     };
