@@ -10,6 +10,7 @@ import {
   setToken,
   SIMULATOR_ENABLED,
 } from "@/lib/api";
+import AgentModeCard from "./AgentModeCard";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
@@ -19,11 +20,14 @@ const ROLE_LABELS = {
   ADVISOR: "Conseiller",
   VIEWER: "Observateur",
 };
+const INTELLIGENCE_LINKS = [
+  { href: "/knowledge", label: "Base de connaissances", icon: "❖" },
+];
 const LINKS = [
   { href: "/", label: "Aujourd’hui", icon: "◷" },
-  { href: "/conversations", label: "Conversations", icon: "✉", badge: true },
+  { href: "/todo", label: "À traiter", icon: "✓", badge: true },
+  { href: "/conversations", label: "Conversations", icon: "✉" },
   { href: "/prospects", label: "Prospects", icon: "▦" },
-  { href: "/handoffs", label: "Transferts", icon: "⇄" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -62,10 +66,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isLogin, router, attempt]);
 
-  // Nombre de conversations en attente d'un conseiller (badge du menu).
+  // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
   useEffect(() => {
     if (!user) return;
-    api<{ total: number }>("/conversations?status=handed_off&limit=1")
+    api<{ total: number }>("/todo?limit=1")
       .then((page) => setWaiting(page.total))
       .catch(() => setWaiting(null));
   }, [user, pathname]);
@@ -101,6 +105,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const links = SIMULATOR_ENABLED
     ? [...LINKS, { href: "/simulator", label: "Simulateur", icon: "◇" }]
     : LINKS;
+  const groups = [
+    { name: "Travail", items: links },
+    { name: "Intelligence", items: INTELLIGENCE_LINKS },
+  ];
   const title = pathname.startsWith("/prospects/")
     ? "Fiche prospect"
     : (links.find((l) => l.href === pathname)?.label ?? "IAGORA");
@@ -125,38 +133,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             IAGORA<span className="version">2.0</span>
           </Link>
           <nav aria-label="Navigation principale">
-            <p className="nav-group">Travail</p>
-            {links.map((link) => {
-              const active =
-                pathname === link.href ||
-                (link.href !== "/" && pathname.startsWith(`${link.href}/`));
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`nav-item ${active ? "active" : ""}`}
-                  onClick={() => setNavOpen(false)}
-                >
-                  <span aria-hidden="true">{link.icon}</span>
-                  {link.label}
-                  {"badge" in link && link.badge && waiting ? (
-                    <span
-                      className="nav-count"
-                      aria-label={`${waiting} en attente`}
+            {groups.map((group) => (
+              <div key={group.name}>
+                <p className="nav-group">{group.name}</p>
+                {group.items.map((link) => {
+                  const active =
+                    pathname === link.href ||
+                    (link.href !== "/" && pathname.startsWith(`${link.href}/`));
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      aria-current={active ? "page" : undefined}
+                      className={`nav-item ${active ? "active" : ""}`}
+                      onClick={() => setNavOpen(false)}
                     >
-                      {waiting}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
+                      <span aria-hidden="true">{link.icon}</span>
+                      {link.label}
+                      {"badge" in link && link.badge && waiting ? (
+                        <span
+                          className="nav-count"
+                          aria-label={`${waiting} en attente`}
+                        >
+                          {waiting}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
           <div className="sidebar-footer">
             <span className="eyebrow">DATUM Academy</span>
             <p>Votre espace de suivi commercial.</p>
             <span className="badge">{ROLE_LABELS[user.role]}</span>
           </div>
+          <AgentModeCard
+            readOnly={user.role === "VIEWER"}
+            refreshKey={pathname}
+          />
         </aside>
         <div className="workspace">
           <header className="app-header">

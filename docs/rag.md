@@ -38,6 +38,20 @@ recherche et fournit la source citée. **Un fait par phrase claire** donne de me
 
 L'agent ne cherche que dans les documents de la **cible du prospect** et dans ceux marqués « toutes ».
 
+## Interface d'administration
+
+La page **Base de connaissances** de la console (menu « Intelligence ») permet, sans ligne de commande :
+
+- de lister les documents (programme, nombre d'extraits, mise à jour, marque « Fictif ») et de lire leurs sections ;
+- d'**ajouter ou modifier** un document (saisie ou chargement d'un fichier `.md`) et de le **supprimer** : réservé aux
+  administrateurs ; le texte source est conservé pour pouvoir être modifié ;
+- de **tester une question** : extraits trouvés, score de chacun et verdict du seuil (tout rôle) ;
+- de **recalculer les vecteurs** après un changement de modèle (administrateur) ; une bannière signale les documents
+  concernés et l'absence de clé d'embeddings.
+
+API : `GET /knowledge/status | documents | documents/{slug}`, `PUT/DELETE /knowledge/documents/{slug}`,
+`POST /knowledge/search`, `POST /knowledge/reindex` (écritures réservées aux administrateurs).
+
 ## Commandes (`python -m app.cli …`, via `docker compose exec backend`)
 
 | Commande | Rôle |

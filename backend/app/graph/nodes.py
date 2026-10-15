@@ -258,7 +258,11 @@ class WorkflowNodes:
             }
         return {
             "reply_text": reply,
-            "reply_metadata": {"mode": mode, "sources": [p.source for p in passages]},
+            "reply_metadata": {
+                "mode": mode,
+                "sources": [p.source for p in passages],
+                "confidence": q.confidence if q is not None else None,
+            },
             "needs_human": False,
             "trace": _t(
                 "generate_response",

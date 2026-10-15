@@ -1,6 +1,7 @@
 """Gestion de la base de connaissances : ingestion, ré-indexation, suppression (RAG, F-14)."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import delete, func, select
@@ -32,6 +33,14 @@ class DocumentSummary:
     chunks: int
     embedding_model: str
     is_demo: bool
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class DocumentDetail:
+    summary: DocumentSummary
+    source_text: str | None
+    chunks: list[tuple[str | None, str]]  # (section, texte)
 
 
 async def _replace_chunks(
@@ -68,6 +77,9 @@ async def ingest_document(
         and doc.embedding_model == embeddings.model_id
         and doc.is_demo == is_demo
     ):
+        if doc.source_text is None:  # document antérieur à la colonne : on complète sans recalcul
+            doc.source_text = raw
+            await session.commit()
         return IngestResult(slug, IngestStatus.UNCHANGED, len(parsed.chunks))
     status = IngestStatus.UPDATED if doc is not None else IngestStatus.CREATED
     if doc is None:
@@ -76,6 +88,7 @@ async def ingest_document(
     doc.title = parsed.title
     doc.target_code = parsed.target_code
     doc.content_hash = parsed.content_hash
+    doc.source_text = raw
     doc.embedding_model = embeddings.model_id
     doc.is_demo = is_demo
     await session.flush()
@@ -135,6 +148,31 @@ async def list_documents(session: AsyncSession) -> list[DocumentSummary]:
         .order_by(KnowledgeDocument.slug)
     )
     return [
-        DocumentSummary(d.slug, d.title, d.target_code, n, d.embedding_model, d.is_demo)
+        DocumentSummary(
+            d.slug, d.title, d.target_code, n, d.embedding_model, d.is_demo, d.updated_at
+        )
         for d, n in rows
     ]
+
+
+async def get_document(session: AsyncSession, slug: str) -> DocumentDetail | None:
+    doc = await session.scalar(select(KnowledgeDocument).where(KnowledgeDocument.slug == slug))
+    if doc is None:
+        return None
+    chunks = list(
+        await session.scalars(
+            select(KnowledgeChunk)
+            .where(KnowledgeChunk.document_id == doc.id)
+            .order_by(KnowledgeChunk.position)
+        )
+    )
+    summary = DocumentSummary(
+        doc.slug,
+        doc.title,
+        doc.target_code,
+        len(chunks),
+        doc.embedding_model,
+        doc.is_demo,
+        doc.updated_at,
+    )
+    return DocumentDetail(summary, doc.source_text, [(c.heading, c.text) for c in chunks])

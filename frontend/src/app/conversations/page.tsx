@@ -145,6 +145,11 @@ function Detail({
   const conv = conversation.data;
   const p = prospect.data;
   const readOnly = user?.role === "VIEWER";
+  const pendingDraft = conv?.messages.some(
+    (m) =>
+      (m.metadata.draft as { status?: string } | undefined)?.status ===
+      "pending",
+  );
   const optedOut = p?.consent_status === "opted_out";
   const name = rowName(summary);
 
@@ -249,6 +254,17 @@ function Detail({
       )}
       {conv && <ConversationView messages={conv.messages} />}
 
+      {pendingDraft && (
+        <p className="warnbox card">
+          Un brouillon de l&apos;agent attend votre validation :{" "}
+          <Link
+            href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${conv?.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
+          >
+            le traiter dans « À traiter »
+          </Link>
+          .
+        </p>
+      )}
       {readOnly && (
         <p className="muted">
           Votre accès observateur permet de consulter les échanges.
@@ -288,7 +304,10 @@ function Detail({
                 <button disabled={busy} onClick={() => setStatus("handed_off")}>
                   Prendre la main
                 </button>
-                <button disabled={busy || optedOut} onClick={runAgent}>
+                <button
+                  disabled={busy || optedOut || pendingDraft}
+                  onClick={runAgent}
+                >
                   {busy ? "L'agent réfléchit…" : "Relancer l'agent"}
                 </button>
               </>

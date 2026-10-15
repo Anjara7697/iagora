@@ -320,9 +320,9 @@ dl + h3 {
   font-display: swap;
   src: url("/fonts/instrument-sans-latin-ext.woff2") format("woff2");
   unicode-range:
-    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
-    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020-2027, U+20A0-20AB, U+20AD-20C0, U+2113,
-    U+2C60-2C7F, U+A720-A7FF;
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020-2027,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
   font-family: "IBM Plex Mono";
@@ -1084,4 +1084,214 @@ td {
   width: 44px;
   height: 44px;
   font-size: 15px;
+}
+
+/* --- Mode assisté : À traiter, brouillons, mode de l'agent --- */
+.agent-mode {
+  margin: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+}
+.agent-mode p {
+  margin: 4px 0 10px;
+  color: var(--muted);
+}
+.agent-mode-assisted {
+  border-color: #fcd34d;
+}
+.agent-mode-manual {
+  border-color: #f0a8a5;
+  background: #fdf1f0;
+}
+button.danger {
+  color: var(--err);
+  border-color: #f0a8a5;
+  background: #fdf1f0;
+}
+.agent-mode button {
+  width: 100%;
+  white-space: normal;
+}
+.kind-validation {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.kind-escalation,
+.priority-critical,
+.risk-high {
+  background: #fdf1f0;
+  color: var(--err);
+}
+.kind-kb_gap {
+  background: #eaeefc;
+  color: var(--accent);
+}
+.kind-incident {
+  background: #fdf1f0;
+  color: var(--err);
+}
+.priority-high,
+.risk-medium {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.risk-low {
+  background: #e3f4e8;
+  color: #1f6b3a;
+}
+.recommendation {
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #c9d3f5;
+  border-radius: 8px;
+  background: #f4f6fe;
+}
+.recommendation h3 {
+  margin: 6px 0 12px;
+  font-size: 1.05rem;
+}
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.recommendation-grid p,
+.recommendation-grid ul {
+  margin: 4px 0 8px;
+}
+.recommendation-grid ul {
+  padding-left: 18px;
+}
+.confidence {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+.confidence-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: #dde2f3;
+  overflow: hidden;
+}
+.confidence-bar div {
+  height: 100%;
+  background: var(--accent);
+}
+.draft-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed #a9b4de;
+  border-radius: 8px;
+}
+.draft-panel header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.draft-text {
+  white-space: pre-wrap;
+  padding: 10px 12px;
+  background: #fafafc;
+  border-radius: 6px;
+}
+.draft-panel textarea {
+  font: inherit;
+  min-height: 160px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  resize: vertical;
+}
+.draft-reject label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.bubble.draft-pending {
+  border-style: dashed;
+}
+.bubble.dead {
+  opacity: 0.55;
+}
+.bubble-draft {
+  font-size: 12px;
+  color: var(--warn);
+}
+
+/* --- Base de connaissances --- */
+.kb-search {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.kb-search input {
+  flex: 1;
+  min-width: 240px;
+}
+.kb-results {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.kb-results li {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.kb-results li.retained {
+  border-color: #b7dfc4;
+  background: #f4fbf6;
+}
+.kb-results li.dropped {
+  opacity: 0.7;
+}
+.kb-results p {
+  margin: 6px 0 0;
+}
+.score-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #e8e5e1;
+}
+.score-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.score-bar span {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--err);
+}
+.kb-editor {
+  width: 100%;
+  min-height: 280px;
+  margin: 12px 0 8px;
+  padding: 0.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+.kb-sections {
+  padding-left: 20px;
+}
+.kb-sections p {
+  margin: 4px 0 12px;
 }

@@ -139,3 +139,70 @@ export type History = {
     created_at: string;
   }[];
 };
+
+export type AgentMode = "assisted" | "auto" | "manual";
+
+export type TodoKind = "validation" | "escalation" | "kb_gap" | "incident";
+export type Priority = "critical" | "high" | "medium" | "low";
+
+export type TodoItem = {
+  id: string;
+  kind: TodoKind;
+  priority: Priority;
+  conversation_id: string;
+  prospect: ConversationProspect | null;
+  channel: string;
+  title: string;
+  detail: string | null;
+  created_at: string | null;
+  draft: {
+    message_id: string;
+    content: string;
+    sources: string[];
+    confidence: number | null;
+    created_at: string;
+  } | null;
+  handoff: HandoffSheet | null;
+  recommendation: {
+    action: string;
+    reason: string | null;
+    risk: "low" | "medium" | "high";
+    confidence: number | null;
+    sources: string[];
+  } | null;
+};
+
+export type TodoPage = Page<TodoItem> & {
+  counts: Partial<Record<TodoKind, number>>;
+};
+
+export type KnowledgeStatus = {
+  configured: boolean;
+  embedding_model: string | null;
+  min_score: number;
+  top_k: number;
+};
+
+export type KnowledgeDocument = {
+  slug: string;
+  title: string;
+  target_code: string | null;
+  chunks: number;
+  embedding_model: string;
+  is_demo: boolean;
+  updated_at: string | null;
+  needs_reindex: boolean;
+};
+
+export type KnowledgeDocumentDetail = KnowledgeDocument & {
+  source_text: string | null;
+  sections: { heading: string | null; text: string }[];
+};
+
+export type SearchHit = {
+  source: string;
+  text: string;
+  score: number;
+  retained: boolean;
+};
+export type SearchResult = { threshold: number; results: SearchHit[] };

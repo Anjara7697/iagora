@@ -46,12 +46,13 @@ async def _matching_prospect_ids(
     return list(await session.scalars(stmt))
 
 
-async def _attach_prospects(
-    session: AsyncSession, items: list[ConversationSummary]
-) -> list[ConversationSummary]:
-    ids = list({c.prospect_id for c in items})
+async def prospect_cards(
+    session: AsyncSession, prospect_ids: list[int]
+) -> dict[int, ConversationProspect]:
+    """Nom, étape et score de chaque prospect (rattachement le plus récent), en deux requêtes."""
+    ids = list(set(prospect_ids))
     if not ids:
-        return items
+        return {}
     prospects = {
         p.id: p for p in await session.scalars(select(Prospect).where(Prospect.id.in_(ids)))
     }
@@ -63,31 +64,31 @@ async def _attach_prospects(
     )
     for m in memberships:
         best[m.prospect_id] = m  # le rattachement le plus récent l'emporte
-    result: list[ConversationSummary] = []
-    for conv in items:
-        p = prospects.get(conv.prospect_id)
-        membership = best.get(conv.prospect_id)
-        summary: dict[str, Any] = {}
-        if p is not None:
-            summary = {
-                "id": p.id,
-                "first_name": p.first_name,
-                "last_name": p.last_name,
-                "email": p.email,
+    cards: dict[int, ConversationProspect] = {}
+    for pid, p in prospects.items():
+        card: dict[str, Any] = {
+            "id": p.id,
+            "first_name": p.first_name,
+            "last_name": p.last_name,
+            "email": p.email,
+        }
+        membership = best.get(pid)
+        if membership is not None:
+            card |= {
+                "stage": membership.conversion_stage.value,
+                "total_score": membership.total_score,
+                "level": scoring.level_for(membership.total_score).value,
+                "assigned_advisor_id": membership.assigned_advisor_id,
             }
-            if membership is not None:
-                summary |= {
-                    "stage": membership.conversion_stage.value,
-                    "total_score": membership.total_score,
-                    "level": scoring.level_for(membership.total_score).value,
-                    "assigned_advisor_id": membership.assigned_advisor_id,
-                }
-        result.append(
-            conv.model_copy(
-                update={"prospect": ConversationProspect(**summary) if summary else None}
-            )
-        )
-    return result
+        cards[pid] = ConversationProspect(**card)
+    return cards
+
+
+async def _attach_prospects(
+    session: AsyncSession, items: list[ConversationSummary]
+) -> list[ConversationSummary]:
+    cards = await prospect_cards(session, [c.prospect_id for c in items])
+    return [c.model_copy(update={"prospect": cards.get(c.prospect_id)}) for c in items]
 
 
 async def list_inbox(

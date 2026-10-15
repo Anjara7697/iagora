@@ -117,3 +117,38 @@ export function relativeTime(
     month: "short",
   });
 }
+
+export const TODO_KINDS: Record<string, string> = {
+  validation: "Validation requise",
+  escalation: "Escalade",
+  kb_gap: "Lacune KB",
+  incident: "Incident",
+};
+
+export const PRIORITIES: Record<string, string> = {
+  critical: "Critique",
+  high: "Élevée",
+  medium: "Moyenne",
+  low: "Faible",
+};
+
+export const RISKS: Record<string, string> = {
+  low: "Faible",
+  medium: "Moyen",
+  high: "Élevé",
+};
+
+export const DRAFT_STATUS: Record<string, string> = {
+  pending: "Brouillon en attente de validation",
+  approved: "Validé",
+  rejected: "Refusé",
+  superseded: "Remplacé par une nouvelle version",
+  cancelled: "Annulé (désinscription)",
+};
+
+export const TARGETS: Record<string, string> = {
+  ebihar_students: "eBIHAR — étudiants",
+  compagnons_pros: "Les Compagnons — professionnels",
+  master_candidates: "Master eBIHAR — candidats",
+  master_companies: "Master eBIHAR — entreprises",
+};

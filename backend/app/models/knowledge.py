@@ -19,6 +19,8 @@ class KnowledgeDocument(TimestampMixin, Base):
     # Programme concerné (code de cible) ; NULL = information valable pour tous les programmes.
     target_code: Mapped[str | None] = mapped_column(String(60))
     content_hash: Mapped[str] = mapped_column(String(64))
+    # Texte source (Markdown) tel qu'ingéré, pour le relire et le modifier depuis l'interface.
+    source_text: Mapped[str | None] = mapped_column(Text)
     # Modèle d'embedding des vecteurs de ce document : des vecteurs de modèles différents ne sont
     # pas comparables, la recherche ne considère que le modèle courant.
     embedding_model: Mapped[str] = mapped_column(String(120))
