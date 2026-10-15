@@ -154,10 +154,12 @@ def decide(state: SalesAgentState) -> Decision:
     stage = ctx.stage
 
     # 1. Désinscription : prioritaire sur tout (S-03).
-    if ctx.consent_status == "opted_out":
-        return Decision(Action.CLOSE, "Le prospect s'est déjà désinscrit : aucune communication")
+    # Un STOP est traité en premier, même si l'arrêt a déjà été enregistré à l'arrivée du message
+    # (opération idempotente) : la conversation est alors close et le prospect sort du pipeline.
     if q is not None and q.intent == "opt_out":
         return Decision(Action.OPT_OUT, "Demande d'arrêt des communications")
+    if ctx.consent_status == "opted_out":
+        return Decision(Action.CLOSE, "Le prospect s'est déjà désinscrit : aucune communication")
 
     # Relance programmée (le prospect est resté silencieux) : message d'entretien, rien à qualifier.
     if state.get("trigger") == "follow_up":
