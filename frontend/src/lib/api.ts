@@ -1,7 +1,9 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 // Le simulateur crée des données de test : désactivable pour un déploiement réel.
-export const SIMULATOR_ENABLED = process.env.NEXT_PUBLIC_ENABLE_SIMULATOR !== "false";
+export const SIMULATOR_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_SIMULATOR !== "false";
 
 const TOKEN_KEY = "iagora.token";
 
@@ -31,7 +33,11 @@ export class ApiError extends Error {
   }
 }
 
-type Options = { method?: string; body?: unknown; form?: Record<string, string> };
+type Options = {
+  method?: string;
+  body?: unknown;
+  form?: Record<string, string>;
+};
 
 function detailOf(payload: unknown, fallback: string): string {
   if (payload && typeof payload === "object" && "detail" in payload) {
@@ -79,15 +85,50 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
       "Réponse du serveur illisible. Réessayez dans quelques instants.",
     );
   }
-  if (!res.ok) throw new ApiError(res.status, detailOf(payload, `Erreur ${res.status}`));
+  if (!res.ok)
+    throw new ApiError(res.status, detailOf(payload, `Erreur ${res.status}`));
   return payload as T;
 }
 
-export function qs(params: Record<string, string | number | undefined | null>): string {
+export function qs(
+  params: Record<string, string | number | undefined | null>,
+): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
+    if (value !== undefined && value !== null && value !== "")
+      search.set(key, String(value));
   }
   const text = search.toString();
   return text ? `?${text}` : "";
+}
+
+/** Télécharge un fichier (export CSV) avec la session en cours. */
+export async function download(path: string, filename: string): Promise<void> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(0, "Serveur injoignable : le backend est-il démarré ?");
+  }
+  if (!res.ok) {
+    let detail = `Erreur ${res.status}`;
+    try {
+      detail = detailOf(await res.json(), detail);
+    } catch {
+      /* corps non JSON */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

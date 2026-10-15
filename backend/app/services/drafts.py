@@ -179,3 +179,23 @@ async def cancel_pending_for_conversation(db: Any, conversation_id: str) -> int:
             )
             count += 1
     return count
+
+
+async def retry_delivery(db: Any, conversation_id: str, message_id: str) -> MessageRead:
+    """Remet un message dont l'envoi a échoué ou été bloqué dans la file d'envoi."""
+    doc = await conversations.get_doc(db, conversation_id)
+    if doc.get("status") == "closed":
+        raise ConflictError("La conversation est clôturée")
+    message = next((m for m in doc.get("messages", []) if m["id"] == message_id), None)
+    if message is None:
+        raise NotFoundError("Message introuvable")
+    metadata = dict(message.get("metadata") or {})
+    if metadata.get("delivery") not in ("failed", "blocked"):
+        raise ConflictError("Seul un envoi en échec ou bloqué peut être relancé")
+    metadata["delivery"] = "not_sent"
+    metadata["delivery_info"] = {**(metadata.get("delivery_info") or {}), "attempts": 0}
+    await db[conversations.COLLECTION].update_one(
+        {"_id": doc["_id"], "messages.id": message_id}, {"$set": {"messages.$.metadata": metadata}}
+    )
+    refreshed = await conversations.get_doc(db, conversation_id)
+    return MessageRead(**next(m for m in refreshed["messages"] if m["id"] == message_id))
