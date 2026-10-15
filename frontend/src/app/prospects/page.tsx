@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Loading, Pager, ProspectLink, ScoreBadge, StageBadge } from "@/components/ui";
+import {
+  DemoBadge,
+  Loading,
+  Pager,
+  ProspectLink,
+  ScoreBadge,
+  StageBadge,
+} from "@/components/ui";
 import { formatDate, fullName, label, CONSENT, STAGES } from "@/lib/labels";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
@@ -13,7 +20,11 @@ const LIMIT = 25;
 const PIPELINE_COLUMNS = [
   { key: "unassigned", title: "Sans campagne", stages: [] as string[] },
   { key: "new", title: "À qualifier", stages: ["new", "to_qualify"] },
-  { key: "conversation", title: "En échange", stages: ["contacted", "in_conversation"] },
+  {
+    key: "conversation",
+    title: "En échange",
+    stages: ["contacted", "in_conversation"],
+  },
   { key: "qualified", title: "Qualifié", stages: ["qualified"] },
   {
     key: "meeting",
@@ -25,7 +36,8 @@ const PIPELINE_COLUMNS = [
   { key: "follow_up", title: "À relancer", stages: ["to_follow_up"] },
   { key: "exit", title: "Sorties", stages: ["lost"] },
 ];
-const level = (t: number) => (t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold");
+const level = (t: number) =>
+  t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold";
 function Avatar({ prospect }: { prospect: Prospect }) {
   return (
     <span className="prospect-avatar" aria-hidden="true">
@@ -45,9 +57,10 @@ function Prospects() {
   const [stage, setStage] = useState("");
   const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
   const [offset, setOffset] = useState(0);
+  const [hideDemo, setHideDemo] = useState(false);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, demo: hideDemo ? "exclude" : undefined, limit: LIMIT, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
@@ -55,17 +68,20 @@ function Prospects() {
     setQ("");
     setStage("");
     setCampaign("");
+    setHideDemo(false);
     setOffset(0);
   }
   const columns = PIPELINE_COLUMNS.filter(
     (column) =>
       (!stage || column.stages.includes(stage) || column.key === "exit") &&
-      (column.key !== "unassigned" || data?.items.some((p) => p.campaigns.length === 0)),
+      (column.key !== "unassigned" ||
+        data?.items.some((p) => p.campaigns.length === 0)),
   );
   function inColumn(p: Prospect, column: (typeof PIPELINE_COLUMNS)[number]) {
     if (column.key === "exit")
       return (
-        p.consent_status === "opted_out" || p.campaigns.some((m) => m.conversion_stage === "lost")
+        p.consent_status === "opted_out" ||
+        p.campaigns.some((m) => m.conversion_stage === "lost")
       );
     if (p.consent_status === "opted_out") return false;
     if (column.key === "unassigned") return p.campaigns.length === 0;
@@ -78,22 +94,35 @@ function Prospects() {
           <span className="eyebrow">Travail · Suivi commercial</span>
           <h1>Prospects</h1>
           <p className="muted">
-            Un parcours, des échanges et une prochaine étape pour chaque prospect.
+            Un parcours, des échanges et une prochaine étape pour chaque
+            prospect.
           </p>
         </div>
       </div>
       <div className="view-toolbar">
-        <div className="view-switch" role="group" aria-label="Affichage des prospects">
-          <button aria-pressed={view === "pipeline"} onClick={() => setView("pipeline")}>
+        <div
+          className="view-switch"
+          role="group"
+          aria-label="Affichage des prospects"
+        >
+          <button
+            aria-pressed={view === "pipeline"}
+            onClick={() => setView("pipeline")}
+          >
             Pipeline
           </button>
-          <button aria-pressed={view === "table"} onClick={() => setView("table")}>
+          <button
+            aria-pressed={view === "table"}
+            onClick={() => setView("table")}
+          >
             Table
           </button>
         </div>
         <span className="spacer" />
         <span className="muted" aria-live="polite">
-          {!loading && data ? `${data.total} prospect${data.total > 1 ? "s" : ""}` : "Chargement…"}
+          {!loading && data
+            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
+            : "Chargement…"}
         </span>
       </div>
       <form className="filters card" onSubmit={(e) => e.preventDefault()}>
@@ -146,6 +175,17 @@ function Prospects() {
             ))}
           </select>
         </div>
+        <label className="inline-field">
+          <input
+            type="checkbox"
+            checked={hideDemo}
+            onChange={(e) => {
+              setHideDemo(e.target.checked);
+              setOffset(0);
+            }}
+          />
+          Masquer les prospects fictifs
+        </label>
         <button type="button" onClick={reset}>
           Réinitialiser
         </button>
@@ -164,7 +204,9 @@ function Prospects() {
           {data.items.length === 0 ? (
             <section className="empty-state">
               <h2>Aucun prospect ne correspond</h2>
-              <p className="muted">Essayez une autre recherche ou réinitialisez les filtres.</p>
+              <p className="muted">
+                Essayez une autre recherche ou réinitialisez les filtres.
+              </p>
               <button onClick={reset}>Réinitialiser les filtres</button>
             </section>
           ) : (
@@ -173,8 +215,9 @@ function Prospects() {
                 <>
                   <p className="muted pipeline-note">
                     Cette page affiche {data.items.length} prospect
-                    {data.items.length > 1 ? "s" : ""} sur {data.total}. Les colonnes regroupent les
-                    étapes ; un prospect peut apparaître dans plusieurs colonnes.
+                    {data.items.length > 1 ? "s" : ""} sur {data.total}. Les
+                    colonnes regroupent les étapes ; un prospect peut apparaître
+                    dans plusieurs colonnes.
                   </p>
                   <div
                     className="pipeline"
@@ -184,7 +227,9 @@ function Prospects() {
                   >
                     {columns.map((column) => {
                       const { key, title } = column;
-                      const items = data.items.filter((p) => inColumn(p, column));
+                      const items = data.items.filter((p) =>
+                        inColumn(p, column),
+                      );
                       return (
                         <section
                           className={`pipeline-column ${key === "exit" ? "exits" : ""}`}
@@ -196,17 +241,26 @@ function Prospects() {
                             <span className="mono">{items.length}</span>
                           </header>
                           {items.map((p) => (
-                            <Link className="pipeline-card" key={p.id} href={`/prospects/${p.id}`}>
+                            <Link
+                              className="pipeline-card"
+                              key={p.id}
+                              href={`/prospects/${p.id}`}
+                            >
                               <div className="row">
                                 <Avatar prospect={p} />
                                 <strong>{fullName(p)}</strong>
+                                <DemoBadge email={p.email} />
                               </div>
                               <span className="muted">
-                                {p.email || p.phone || "Coordonnées non renseignées"}
+                                {p.email ||
+                                  p.phone ||
+                                  "Coordonnées non renseignées"}
                               </span>
                               <div className="row">
                                 {p.campaigns
-                                  .filter((m) => column.stages.includes(m.conversion_stage))
+                                  .filter((m) =>
+                                    column.stages.includes(m.conversion_stage),
+                                  )
                                   .map((m) => (
                                     <span key={m.id} className="row">
                                       <StageBadge stage={m.conversion_stage} />
@@ -216,14 +270,22 @@ function Prospects() {
                                       />
                                     </span>
                                   ))}
-                                <span className={`badge consent-${p.consent_status}`}>
+                                <span
+                                  className={`badge consent-${p.consent_status}`}
+                                >
                                   {label(CONSENT, p.consent_status)}
                                 </span>
                               </div>
-                              <span className="mono muted">Créé le {formatDate(p.created_at)}</span>
+                              <span className="mono muted">
+                                Créé le {formatDate(p.created_at)}
+                              </span>
                             </Link>
                           ))}
-                          {!items.length && <p className="muted">Aucun prospect sur cette page.</p>}
+                          {!items.length && (
+                            <p className="muted">
+                              Aucun prospect sur cette page.
+                            </p>
+                          )}
                         </section>
                       );
                     })}
@@ -232,7 +294,9 @@ function Prospects() {
               ) : (
                 <div className="table-wrap">
                   <table>
-                    <caption className="sr-only">Prospects et rattachements aux campagnes</caption>
+                    <caption className="sr-only">
+                      Prospects et rattachements aux campagnes
+                    </caption>
                     <thead>
                       <tr>
                         <th scope="col">Prospect</th>
@@ -248,8 +312,13 @@ function Prospects() {
                             <div className="row">
                               <Avatar prospect={p} />
                               <div>
-                                <ProspectLink id={p.id}>{fullName(p)}</ProspectLink>
-                                <div className="muted">{p.email || p.phone || "—"}</div>
+                                <ProspectLink id={p.id}>
+                                  {fullName(p)}
+                                </ProspectLink>{" "}
+                                <DemoBadge email={p.email} />
+                                <div className="muted">
+                                  {p.email || p.phone || "—"}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -258,7 +327,10 @@ function Prospects() {
                               p.campaigns.map((m) => (
                                 <div key={m.id} className="row">
                                   <StageBadge stage={m.conversion_stage} />
-                                  <ScoreBadge total={m.total_score} level={level(m.total_score)} />
+                                  <ScoreBadge
+                                    total={m.total_score}
+                                    level={level(m.total_score)}
+                                  />
                                 </div>
                               ))
                             ) : (
@@ -266,11 +338,15 @@ function Prospects() {
                             )}
                           </td>
                           <td>
-                            <span className={`badge consent-${p.consent_status}`}>
+                            <span
+                              className={`badge consent-${p.consent_status}`}
+                            >
                               {label(CONSENT, p.consent_status)}
                             </span>
                           </td>
-                          <td className="mono muted">{formatDate(p.created_at)}</td>
+                          <td className="mono muted">
+                            {formatDate(p.created_at)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -279,7 +355,12 @@ function Prospects() {
               )}
             </>
           )}
-          <Pager total={data.total} limit={data.limit} offset={data.offset} onChange={setOffset} />
+          <Pager
+            total={data.total}
+            limit={data.limit}
+            offset={data.offset}
+            onChange={setOffset}
+          />
         </>
       )}
     </>

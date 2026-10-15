@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
-import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
   CHANNELS,
@@ -104,6 +104,7 @@ function InboxRow({
         <span className="inbox-row-main">
           <span className="inbox-row-top">
             <strong>{name}</strong>
+            <DemoBadge email={c.prospect?.email} />
             <span className="mono">{relativeTime(c.last_message_at)}</span>
           </span>
           <span className="row">

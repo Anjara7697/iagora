@@ -23,6 +23,7 @@ from app.models.enums import (
 )
 from app.schemas.prospect import ProspectIngest, ProspectUpdate
 from app.services import references
+from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
 logger = logging.getLogger(__name__)
@@ -254,8 +255,13 @@ async def list_prospects(
     advisor_id: int | None,
     limit: int,
     offset: int,
+    demo: str = "all",
 ) -> tuple[list[Prospect], int]:
     stmt = select(Prospect)
+    if demo == "exclude":
+        stmt = stmt.where(~demo_filter())
+    elif demo == "only":
+        stmt = stmt.where(demo_filter())
     if q:
         like = f"%{q.strip().lower()}%"
         stmt = stmt.where(

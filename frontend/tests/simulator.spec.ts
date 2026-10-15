@@ -257,3 +257,43 @@ test("déclenchement automatique : la décision de l'agent est reprise sans erre
     page.getByText("Le programme dure 18 mois.").first(),
   ).toBeVisible();
 });
+
+test("mode démo : bandeau permanent et purge des données fictives avec confirmation", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let purged = false;
+  await page.route("**/api/v1/demo**", async (route) => {
+    const request = route.request();
+    if (request.method() === "DELETE") {
+      purged = true;
+      await route.fulfill({ json: { prospects: 3, conversations: 2 } });
+    } else {
+      await route.fulfill({
+        json: { prospects: purged ? 0 : 3, conversations: purged ? 0 : 2 },
+      });
+    }
+  });
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("admin");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/simulator");
+  await expect(page.getByRole("note")).toContainText("MODE DÉMO");
+  await expect(page.getByRole("note")).toContainText("aucun message");
+  await expect(
+    page.getByText("3 prospect(s), 2 conversation(s)"),
+  ).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page
+    .getByRole("button", { name: "Supprimer les données fictives" })
+    .click();
+  expect(purged).toBe(false);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page
+    .getByRole("button", { name: "Supprimer les données fictives" })
+    .click();
+  await expect(
+    page.getByText("3 prospect(s) fictif(s) et 2 conversation(s) supprimés."),
+  ).toBeVisible();
+});
