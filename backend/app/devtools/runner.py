@@ -22,6 +22,7 @@ from app.schemas.campaign import CampaignCreate, SourceInput
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
 from app.services import campaigns, conversations, follow_ups, pipeline, prospects
+from app.services.agent_settings import AgentMode
 from app.services.prospects import get_prospect
 
 DEMO_DOMAIN = "demo.example.com"
@@ -304,7 +305,13 @@ async def run_scenario(
                     llm.qualification = turn.qualification or Qualification(intent="other")
                     llm.reply = turn.reply or "Bonjour, merci pour votre message."
                 result = await run_agent(
-                    session, db, llm=llm, calendar=cal, knowledge=kb, conversation_id=cid
+                    session,
+                    db,
+                    llm=llm,
+                    calendar=cal,
+                    knowledge=kb,
+                    conversation_id=cid,
+                    mode=AgentMode.AUTO,
                 )
                 observed, tail, llm_written = await _observe(session, db, pid, mid, cid)
                 tr = TurnReport(

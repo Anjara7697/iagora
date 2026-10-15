@@ -18,7 +18,8 @@ from app.models import Channel
 from app.models.enums import ConversationStatus, SenderType
 from app.schemas.agent import AgentRunResult, TraceRead
 from app.schemas.conversation import ConversationCreate
-from app.services import conversations
+from app.services import agent_settings, conversations, drafts
+from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
@@ -64,28 +65,35 @@ async def run_agent(
     conversation_id: str | None = None,
     prospect_id: int | None = None,
     channel: str | None = None,
+    mode: AgentMode | None = None,
 ) -> AgentRunResult:
+    """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests)."""
     started_at = datetime.now(UTC)
     doc = await _resolve_conversation(session, db, conversation_id, prospect_id, channel)
     conv_id = str(doc["_id"])
     pid = int(doc["prospect_id"])
 
+    mode = mode or await agent_settings.get_mode(db)
+    if mode is AgentMode.MANUAL:
+        raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucune réponse automatique")
     if doc["status"] == ConversationStatus.CLOSED.value:
         raise ConflictError("La conversation est clôturée")
     if doc["status"] == ConversationStatus.HANDED_OFF.value:
         raise ConflictError("Conversation transférée à un conseiller : l'agent n'intervient plus")
-    messages = doc.get("messages", [])
+    messages = drafts.live_messages(doc.get("messages", []))
     if not messages:
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
         trigger, inbound_text = "inbound_message", messages[-1]["content"]
+    elif drafts.is_pending(messages[-1]):
+        raise ConflictError("Un brouillon est en attente de validation")
     else:
         raise ConflictError("Aucun message du prospect à traiter")
 
     deps = Deps(
         llm=llm,
         gateway=DbGateway(session, db),
-        messenger=RecordingMessenger(session, db),
+        messenger=RecordingMessenger(session, db, mode),
         calendar=calendar,
         knowledge=knowledge,
     )

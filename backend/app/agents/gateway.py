@@ -34,7 +34,15 @@ from app.models.enums import (
 )
 from app.schemas.appointment import AppointmentData
 from app.schemas.conversation import ConversationUpdate
-from app.services import appointments, conversations, follow_ups, pipeline, prospects, scoring
+from app.services import (
+    appointments,
+    conversations,
+    drafts,
+    follow_ups,
+    pipeline,
+    prospects,
+    scoring,
+)
 from app.services.errors import NotFoundError
 
 
@@ -152,6 +160,7 @@ class DbGateway:
 
     async def record_opt_out(self, prospect_id: int, channel: str, source: str) -> None:
         await prospects.opt_out(self._session, prospect_id, source, channel)
+        await drafts.cancel_pending_for_prospect(self._db, prospect_id)
 
     async def schedule_follow_up(
         self,

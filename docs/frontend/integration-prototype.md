@@ -42,6 +42,19 @@ La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
   d'urgence) n'existe pas encore côté API ; il fait l'objet du lot suivant (page « À traiter »). Les messages
   sont pour l'instant enregistrés dans la conversation sans être expédiés (connecteurs à venir).
 
+## Troisième lot : mode assisté et « À traiter »
+
+- Page **À traiter** : brouillons à valider, escalades, lacunes de la base de connaissances et incidents, avec
+  filtres par type (compteurs), priorité, recommandation de l'agent (pourquoi, sources, confiance, risque) et
+  actions *Approuver*, *Modifier*, *Régénérer*, *Refuser (motif)*. Elle remplace la page « Transferts ».
+- **Mode de l'agent** dans le menu latéral : mode assisté par défaut et *arrêt d'urgence* (passage en manuel) ; la
+  reprise se fait en mode assisté. Le mode automatique n'est accessible qu'à l'API (administrateur).
+- Conversations : les brouillons apparaissent dans le fil avec leur statut ; « Relancer l'agent » est désactivé tant
+  qu'un brouillon attend.
+- Écarts assumés avec la maquette : « Approuver et envoyer » devient « Approuver » (aucun envoi réel avant les
+  connecteurs), pas de pied de message automatique, pas de raccourcis clavier, pas de doublons ni d'incidents
+  d'intégration (aucune donnée côté API), pas de vue « Traités aujourd'hui ».
+
 ## Validation
 
 Dans `frontend/` :

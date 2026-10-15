@@ -151,3 +151,24 @@ la livraison (email IONOS, Meta, LinkedIn) viendra avec les connecteurs.
 | `Messenger` | Enregistre sans envoyer | Connecteurs email / Meta / LinkedIn |
 | Déclenchement | Manuel (`POST /agent/runs`) | Automatique à chaque message reçu (F-06) |
 | Relances | Programmées, pas exécutées | Planificateur de relances (F-16) |
+
+## Mode assisté : brouillons et validation humaine
+
+Trois modes, réglés globalement (`GET/PUT /agent/mode`, stocké dans MongoDB) :
+
+| Mode | Comportement |
+|---|---|
+| `assisted` (défaut) | L'agent rédige des **brouillons** (`delivery: draft`, `draft.status: pending`). Un conseiller les approuve, les modifie, les régénère ou les refuse (avec motif). Seul l'accusé de transfert (texte fixe) est enregistré directement. |
+| `auto` | Les réponses sont enregistrées directement, sans validation. Réservé aux administrateurs. |
+| `manual` | **Arrêt d'urgence** : l'agent ne traite plus aucun message (`POST /agent/runs` répond 409). Tout conseiller peut l'activer. |
+
+Cycle d'un brouillon : `pending` → `approved` (texte d'origine conservé s'il a été modifié) / `rejected` (motif) /
+`superseded` (régénéré) / `cancelled` (désinscription du prospect, S-03). Un brouillon refusé, remplacé ou annulé ne
+compte plus dans le fil : l'agent peut répondre à nouveau. Tant qu'un brouillon est en attente, l'agent ne produit pas
+une seconde réponse (409). « Approuvé » signifie *prêt à partir* : l'envoi réel viendra avec les connecteurs.
+
+`GET /todo` rassemble ce qui attend un conseiller : brouillons à valider, escalades, lacunes de la base de
+connaissances et incidents, triés par priorité (critique, élevée, moyenne, faible ; valeurs de conception à valider).
+Actions : `POST /conversations/{id}/drafts/{message_id}/approve | reject | regenerate`.
+
+Les scénarios de recette (`scenario`) s'exécutent en mode `auto` pour rester indépendants du réglage global.

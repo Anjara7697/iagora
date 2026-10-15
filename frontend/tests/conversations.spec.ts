@@ -88,6 +88,8 @@ async function mockApi(
         role: opts.role ?? "ADVISOR",
         email: "c@example.com",
       };
+    else if (path === "/todo")
+      body = { items: [], total: 1, limit: 1, offset: 0, counts: {} };
     else if (path === "/conversations") {
       calls.listQueries.push(url.search);
       const wanted = url.searchParams.get("status");

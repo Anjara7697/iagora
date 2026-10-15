@@ -10,6 +10,7 @@ import {
   setToken,
   SIMULATOR_ENABLED,
 } from "@/lib/api";
+import AgentModeCard from "./AgentModeCard";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
@@ -21,9 +22,9 @@ const ROLE_LABELS = {
 };
 const LINKS = [
   { href: "/", label: "Aujourd’hui", icon: "◷" },
-  { href: "/conversations", label: "Conversations", icon: "✉", badge: true },
+  { href: "/todo", label: "À traiter", icon: "✓", badge: true },
+  { href: "/conversations", label: "Conversations", icon: "✉" },
   { href: "/prospects", label: "Prospects", icon: "▦" },
-  { href: "/handoffs", label: "Transferts", icon: "⇄" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -62,10 +63,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [isLogin, router, attempt]);
 
-  // Nombre de conversations en attente d'un conseiller (badge du menu).
+  // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
   useEffect(() => {
     if (!user) return;
-    api<{ total: number }>("/conversations?status=handed_off&limit=1")
+    api<{ total: number }>("/todo?limit=1")
       .then((page) => setWaiting(page.total))
       .catch(() => setWaiting(null));
   }, [user, pathname]);
@@ -157,6 +158,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <p>Votre espace de suivi commercial.</p>
             <span className="badge">{ROLE_LABELS[user.role]}</span>
           </div>
+          <AgentModeCard
+            readOnly={user.role === "VIEWER"}
+            refreshKey={pathname}
+          />
         </aside>
         <div className="workspace">
           <header className="app-header">
