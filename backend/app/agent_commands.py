@@ -38,3 +38,31 @@ async def cmd_run_follow_ups(*, anytime: bool) -> None:
     print(f"{summary.executed} relance(s) exécutée(s), {summary.cancelled} annulée(s).")
     for note in summary.notes:
         print(f"  - {note}")
+
+
+async def cmd_email(*, sync: bool) -> int:
+    """`email-check` (test de connexion) et `email-sync` (un passage réception + envoi)."""
+    from app.integrations.email.factory import create_email_client
+
+    settings = get_settings()
+    client = create_email_client(settings, require_enabled=False)
+    if client is None:
+        print("Boîte email non configurée : renseignez EMAIL_USERNAME et EMAIL_PASSWORD (.env).")
+        return 1
+    try:
+        if not sync:
+            result = await client.check()
+            for name, status in result.items():
+                print(f"{name.upper()} : {status}")
+            return 0 if all(v == "ok" for v in result.values()) else 1
+        report = await auto.email_cycle(
+            settings,
+            client,
+            db=get_mongo_db(),
+            session_factory=lambda: get_sessionmaker()(),
+        )
+        print(report.as_dict())
+        return 0
+    finally:
+        await dispose_engine()
+        await close_clients()

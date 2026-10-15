@@ -236,3 +236,19 @@ export type SearchHit = {
   retained: boolean;
 };
 export type SearchResult = { threshold: number; results: SearchHit[] };
+
+export type EmailStatus = {
+  configured: boolean;
+  enabled: boolean;
+  send_enabled: boolean;
+  sender: string | null;
+  imap_host: string;
+  smtp_host: string;
+  sandbox_recipients: string[];
+  last_run_at: string | null;
+  last_error: string | null;
+  last_report: Record<string, unknown> | null;
+  outbox: Record<string, number>;
+};
+
+export type EmailCheck = { imap: string; smtp: string };

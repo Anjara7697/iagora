@@ -72,6 +72,8 @@ def main() -> None:
     followups.add_argument(
         "--anytime", action="store_true", help="Ignorer la fenêtre d'envoi (essais uniquement)"
     )
+    sub.add_parser("email-check", help="Tester la connexion IMAP/SMTP (rien n'est lu ni envoyé)")
+    sub.add_parser("email-sync", help="Un passage : lire les nouveaux emails, envoyer les validés")
     sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
     args = parser.parse_args()
 
@@ -99,6 +101,8 @@ def main() -> None:
         asyncio.run(kb_commands.cmd_kb_delete(args.slug, args.demo))
     elif args.command == "run-follow-ups":
         asyncio.run(agent_commands.cmd_run_follow_ups(anytime=args.anytime))
+    elif args.command in ("email-check", "email-sync"):
+        sys.exit(asyncio.run(agent_commands.cmd_email(sync=args.command == "email-sync")))
     elif args.command == "kb-eval":
         sys.exit(asyncio.run(commands.cmd_kb_eval()))
     elif args.command == "create-admin":

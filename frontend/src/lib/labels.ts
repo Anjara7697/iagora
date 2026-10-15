@@ -146,6 +146,14 @@ export const DRAFT_STATUS: Record<string, string> = {
   cancelled: "Annulé (désinscription)",
 };
 
+export const DELIVERY: Record<string, string> = {
+  not_sent: "Prêt à envoyer",
+  sending: "Envoi en cours",
+  sent: "Envoyé",
+  failed: "Échec d’envoi",
+  blocked: "Envoi bloqué",
+};
+
 export const TARGETS: Record<string, string> = {
   ebihar_students: "eBIHAR — étudiants",
   compagnons_pros: "Les Compagnons — professionnels",

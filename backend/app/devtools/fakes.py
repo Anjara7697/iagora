@@ -21,6 +21,7 @@ from app.graph.ports import (
     T,
 )
 from app.graph.state import Qualification
+from app.integrations.email.base import EmailError, InboundEmail, OutboundEmail
 from app.models.types import EMBEDDING_DIMENSIONS
 
 
@@ -147,3 +148,34 @@ class HashEmbeddings:
 
     async def embed_query(self, text: str) -> list[float]:
         return self._vector(text)
+
+
+class FakeEmailClient:
+    """Boîte email de test : aucun réseau. `inbox` contient les emails non lus ; `sent` garde ce
+    qui a été envoyé ; `fail_sends` simule des refus du serveur SMTP."""
+
+    def __init__(self, inbox: list[InboundEmail] | None = None, fail_sends: int = 0) -> None:
+        self.inbox = list(inbox or [])
+        self.seen: list[str] = []
+        self.sent: list[OutboundEmail] = []
+        self.fail_sends = fail_sends
+        self.unreachable = False
+
+    async def fetch_unseen(self, limit: int = 50) -> list[InboundEmail]:
+        if self.unreachable:
+            raise EmailError("IMAP : connexion impossible")
+        return [m for m in self.inbox if m.uid not in self.seen][:limit]
+
+    async def mark_seen(self, uid: str) -> None:
+        self.seen.append(uid)
+
+    async def send(self, email: OutboundEmail) -> str:
+        if self.fail_sends > 0:
+            self.fail_sends -= 1
+            raise EmailError("SMTP : envoi refusé")
+        self.sent.append(email)
+        return f"<sent-{len(self.sent)}@fake.test>"
+
+    async def check(self) -> dict[str, str]:
+        state = "IMAP : connexion impossible" if self.unreachable else "ok"
+        return {"imap": state, "smtp": "ok"}
