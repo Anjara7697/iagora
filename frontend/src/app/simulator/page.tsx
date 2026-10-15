@@ -143,11 +143,27 @@ export default function SimulatorPage() {
     });
 
   async function runAgent(s: Session) {
-    const run = await api<AgentRun>("/agent/runs", {
-      method: "POST",
-      body: { conversation_id: s.conversationId },
-    });
-    setRuns((r) => [...r, run]);
+    let run: AgentRun;
+    try {
+      run = await api<AgentRun>("/agent/runs", {
+        method: "POST",
+        body: { conversation_id: s.conversationId },
+      });
+    } catch (err) {
+      // Déclenchement automatique : l'agent a déjà répondu au message ; on reprend sa décision.
+      if (
+        !(err instanceof ApiError) ||
+        err.status !== 409 ||
+        !err.message.includes("Aucun message du prospect")
+      )
+        throw err;
+      const latest = await api<AgentRun[]>(
+        `/prospects/${s.prospectId}/agent-runs`,
+      );
+      if (latest.length === 0) throw err;
+      run = latest[0];
+    }
+    setRuns((r) => (r.some((x) => x.run_id === run.run_id) ? r : [...r, run]));
     setShown(null);
     await refresh(s);
   }

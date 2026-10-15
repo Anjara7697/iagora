@@ -35,11 +35,24 @@ const run = (over: Record<string, unknown> = {}) => ({
 
 async function mockApi(
   page: Page,
-  opts: { mode?: string; nextRun?: Record<string, unknown> } = {},
+  opts: {
+    mode?: string;
+    auto?: boolean;
+    nextRun?: Record<string, unknown>;
+  } = {},
 ) {
   const messages: Msg[] = [];
   const posts: { path: string; body: unknown }[] = [];
   let runs = 0;
+  let lastRun: Record<string, unknown> | null = null;
+  const agentReply = (result: Record<string, unknown>) =>
+    messages.push({
+      id: `a${runs}`,
+      role: "agent",
+      content: String(result.reply),
+      created_at: "2026-10-01T10:00:01Z",
+      metadata: { sources: ["Programme eBIHAR / Durée"], confidence: 0.9 },
+    });
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -101,9 +114,20 @@ async function mockApi(
         created_at: "2026-10-01T10:00:00Z",
         metadata: {},
       });
+      if (opts.auto) {
+        // Déclenchement automatique : l'agent répond dès que le message est enregistré.
+        runs += 1;
+        lastRun = run({ run_id: `r${runs}`, ...(opts.nextRun ?? {}) });
+        agentReply(lastRun);
+      }
       code = 201;
       body = { created: true };
-    } else if (path === "/agent/runs") {
+    } else if (path === "/agent/runs" && opts.auto) {
+      code = 409;
+      body = { detail: "Aucun message du prospect à traiter" };
+    } else if (path === "/prospects/5/agent-runs")
+      body = lastRun ? [lastRun] : [];
+    else if (path === "/agent/runs") {
       runs += 1;
       const result = run({ run_id: `r${runs}`, ...(opts.nextRun ?? {}) });
       messages.push({
@@ -215,4 +239,21 @@ test("arrêt d'urgence : avertissement", async ({ page }) => {
   await page.getByRole("button", { name: "Se connecter" }).click();
   await page.goto("/simulator");
   await expect(page.getByText("Arrêt d'urgence actif")).toBeVisible();
+});
+
+test("déclenchement automatique : la décision de l'agent est reprise sans erreur", async ({
+  page,
+}) => {
+  await mockApi(page, { auto: true, mode: "auto" });
+  await start(page);
+  await page.getByLabel("Message du prospect").fill("Bonjour");
+  await page.getByRole("button", { name: "Envoyer" }).click();
+  const decision = page.getByRole("complementary", {
+    name: "Décision de l'agent",
+  });
+  await expect(decision.getByText("Poursuivre l'échange")).toBeVisible();
+  await expect(page.getByText("Aucun message du prospect")).toHaveCount(0);
+  await expect(
+    page.getByText("Le programme dure 18 mois.").first(),
+  ).toBeVisible();
 });
