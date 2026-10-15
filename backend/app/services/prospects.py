@@ -195,6 +195,9 @@ async def ingest_prospect(
                     raise ConflictError(
                         "Cet identifiant de réception appartient à un autre prospect"
                     )
+                # Les tâches de fond utilisent leur propre session : libérer le verrou avant
+                # qu'elles puissent mettre à jour le profil de cette même fiche.
+                await session.commit()
                 return prospect, False, replay
         await _enrich(session, prospect, data)
         if target and prospect.target_id is None:
