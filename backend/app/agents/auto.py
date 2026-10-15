@@ -27,7 +27,7 @@ from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
 from app.models import FollowUp
 from app.models.enums import FollowUpStatus
-from app.services import agent_settings, drafts, email_sync
+from app.services import agent_settings, drafts, email_sync, lease
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
@@ -230,6 +230,11 @@ async def follow_up_loop(settings: Settings) -> None:
 
     while True:
         try:
+            if not await lease.acquire(
+                get_mongo_db(), "follow-up-worker", settings.follow_up_interval_seconds * 3
+            ):
+                await asyncio.sleep(settings.follow_up_interval_seconds)
+                continue  # une autre instance exécute les relances
             await run_due_follow_ups(
                 lambda: get_sessionmaker()(),
                 get_mongo_db(),
@@ -277,6 +282,11 @@ async def email_loop(settings: Settings) -> None:
         return
     while True:
         try:
+            if not await lease.acquire(
+                get_mongo_db(), "email-worker", settings.email_poll_seconds * 3
+            ):
+                await asyncio.sleep(settings.email_poll_seconds)
+                continue  # une autre instance lit la boîte email
             await email_cycle(
                 settings, client, db=get_mongo_db(), session_factory=lambda: get_sessionmaker()()
             )

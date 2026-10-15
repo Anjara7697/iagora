@@ -107,6 +107,12 @@ class Settings(BaseSettings):
             raise ValueError(
                 "JWT_SECRET_KEY doit être défini (32 caractères minimum) en production"
             )
+        if self.environment == "production":
+            if self.debug:
+                raise ValueError("DEBUG doit être désactivé en production")
+            for origin in self.cors_origins:
+                if origin == "*" or "localhost" in origin or "127.0.0.1" in origin:
+                    raise ValueError(f"CORS_ORIGINS invalide en production : {origin}")
         return self
 
 

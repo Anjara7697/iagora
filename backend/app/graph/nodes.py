@@ -131,7 +131,7 @@ class WorkflowNodes:
                 "llm_failed": True,
                 "trace": _t(
                     "qualify_prospect",
-                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                    f"modèle indisponible : {type(exc).__name__}",
                 ),
             }
 
@@ -249,7 +249,7 @@ class WorkflowNodes:
                 "llm_failed": True,
                 "trace": _t(
                     "generate_response",
-                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                    f"modèle indisponible : {type(exc).__name__}",
                 ),
             }
         if claims or not reply:

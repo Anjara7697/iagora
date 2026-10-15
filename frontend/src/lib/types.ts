@@ -14,6 +14,8 @@ export type User = { id: number; username: string; email: string; role: Role };
 export type Membership = {
   id: number;
   campaign_source_id?: number;
+  campaign_id?: number | null;
+  campaign_name?: string | null;
   conversion_stage: string;
   interest_status: string | null;
   interest_score: number;

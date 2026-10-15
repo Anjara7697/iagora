@@ -145,9 +145,7 @@ async def _run_agent(
         state: SalesAgentState = await graph.ainvoke(initial)
     except Exception as exc:
         logger.exception("Exécution de l'agent en erreur (prospect %s)", pid)
-        await db[RUNS].insert_one(
-            {**run_doc, "status": "error", "error": f"{type(exc).__name__}: {exc}"}
-        )
+        await db[RUNS].insert_one({**run_doc, "status": "error", "error": type(exc).__name__})
         raise
 
     decision = state["decision"]
