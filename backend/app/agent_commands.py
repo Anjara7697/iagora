@@ -14,6 +14,9 @@ from app.database.session import dispose_engine, get_sessionmaker
 async def cmd_run_follow_ups(*, anytime: bool) -> None:
     settings = get_settings()
     if anytime:
+        from app.devtools.commands import guard_not_production
+
+        guard_not_production()  # ignorer la fenêtre d'envoi est un outil d'essai
         settings = settings.model_copy(
             update={
                 "follow_up_window_start_hour": 0,

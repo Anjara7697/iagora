@@ -8,11 +8,19 @@ import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
-import { CONSENT, HANDOFF_REASONS, STAGES, formatDate, fullName, label } from "@/lib/labels";
+import {
+  CHANNELS,
+  CONSENT,
+  CONVERSATION_STATUS,
+  HANDOFF_REASONS,
+  PROFILE_FIELDS,
+  STAGES,
+  formatDate,
+  fullName,
+  label,
+} from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { AgentRun, Conversation, History, Prospect } from "@/lib/types";
-
-const LEVEL = (t: number) => (t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold");
 
 export default function ProspectPage() {
   const user = useCurrentUser();
@@ -22,13 +30,17 @@ export default function ProspectPage() {
   const runs = useApi<AgentRun[]>(`/prospects/${id}/agent-runs`);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   async function runAgent() {
     if (!conversation.data) return;
     setBusy(true);
     setActionError(null);
     try {
-      await api("/agent/runs", { method: "POST", body: { conversation_id: conversation.data.id } });
+      await api("/agent/runs", {
+        method: "POST",
+        body: { conversation_id: conversation.data.id },
+      });
       prospect.reload();
       conversation.reload();
       runs.reload();
@@ -39,16 +51,61 @@ export default function ProspectPage() {
     }
   }
 
+  async function consentAction(kind: "opt-out" | "consent") {
+    if (kind === "opt-out") {
+      if (
+        !window.confirm(
+          "Enregistrer la désinscription ? Les relances et les brouillons en attente seront annulés et plus aucun message ne pourra être envoyé à ce prospect.",
+        )
+      )
+        return;
+    }
+    const source =
+      kind === "opt-out"
+        ? "demande enregistrée par un conseiller"
+        : (
+            window.prompt(
+              "Source du consentement (ex. accord donné par téléphone le 12/10) :",
+            ) ?? ""
+          ).trim();
+    if (!source) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await api(`/prospects/${id}/${kind}`, {
+        method: "POST",
+        body: { source, channel: conversation.data?.channel ?? null },
+      });
+      setNotice(
+        kind === "opt-out"
+          ? "Désinscription enregistrée."
+          : "Consentement enregistré.",
+      );
+      prospect.reload();
+      conversation.reload();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Échec");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const p = prospect.data;
   const conv = conversation.data;
+  const canWrite = user?.role === "ADMIN" || user?.role === "ADVISOR";
+  const canGrant = p?.consent_status !== "opted_out" || user?.role === "ADMIN";
   return (
     <>
-      <Loading loading={prospect.loading} error={prospect.error} onRetry={prospect.reload} />
+      <Link href="/prospects" className="profile-back">
+        ← Tous les prospects
+      </Link>
+      <Loading
+        loading={prospect.loading}
+        error={prospect.error}
+        onRetry={prospect.reload}
+      />
       {p && (
         <>
-          <Link href="/prospects" className="profile-back">
-            ← Tous les prospects
-          </Link>
           <header className="profile-header">
             <span className="prospect-avatar profile-avatar" aria-hidden="true">
               {[p.first_name, p.last_name]
@@ -66,13 +123,45 @@ export default function ProspectPage() {
                 <span className={`badge consent-${p.consent_status}`}>
                   {label(CONSENT, p.consent_status)}
                 </span>
-                <span className="muted">{p.email || p.phone || "Coordonnées non renseignées"}</span>
+                <span className="muted">
+                  {p.email || p.phone || "Coordonnées non renseignées"}
+                </span>
               </div>
             </div>
           </header>
+          {canWrite && (
+            <div className="row">
+              {p.consent_status !== "opted_out" && (
+                <button
+                  className="danger"
+                  disabled={busy}
+                  onClick={() => consentAction("opt-out")}
+                >
+                  Enregistrer une désinscription
+                </button>
+              )}
+              {p.consent_status !== "granted" && canGrant && (
+                <button
+                  disabled={busy}
+                  onClick={() => consentAction("consent")}
+                >
+                  {p.consent_status === "opted_out"
+                    ? "Lever la désinscription (administrateur)"
+                    : "Enregistrer un consentement"}
+                </button>
+              )}
+            </div>
+          )}
+          {notice && <p role="status">{notice}</p>}
+          {actionError && (
+            <p className="error" role="alert">
+              {actionError}
+            </p>
+          )}
           {p.consent_status === "opted_out" && (
             <div className="card warnbox">
-              Ce prospect est désinscrit. Les communications sortantes sont bloquées.
+              Ce prospect est désinscrit. Les communications sortantes sont
+              bloquées.
             </div>
           )}
           <div className="grid2">
@@ -98,7 +187,7 @@ export default function ProspectPage() {
                 <dl>
                   {Object.entries(p.profile).map(([k, v]) => (
                     <div key={k}>
-                      <dt>{k}</dt>
+                      <dt>{PROFILE_FIELDS[k] ?? k}</dt>
                       <dd>{String(v)}</dd>
                     </div>
                   ))}
@@ -107,11 +196,20 @@ export default function ProspectPage() {
             </div>
             <div className="card">
               <h3>Pipeline</h3>
-              {p.campaigns.length === 0 && <p className="muted">Aucune campagne.</p>}
+              {p.campaigns.length === 0 && (
+                <p className="muted">Aucune campagne.</p>
+              )}
               {p.campaigns.map((m) => (
                 <div key={m.id} className="row">
+                  {m.campaign_id && (
+                    <Link href={`/campaigns/${m.campaign_id}`}>
+                      <strong>
+                        {m.campaign_name ?? `Campagne ${m.campaign_id}`}
+                      </strong>
+                    </Link>
+                  )}
                   <StageBadge stage={m.conversion_stage} />
-                  <ScoreBadge total={m.total_score} level={LEVEL(m.total_score)} />
+                  <ScoreBadge total={m.total_score} level={m.interest_status} />
                   <span className="muted">
                     intérêt {m.interest_score} · adéquation {m.fit_score}
                   </span>
@@ -125,15 +223,24 @@ export default function ProspectPage() {
 
           <h2>Conversation</h2>
           <Loading loading={conversation.loading} error={null} />
-          {conversation.error?.status === 404 && <p className="muted">Aucune conversation.</p>}
+          {conversation.error?.status === 404 && (
+            <p className="muted">Aucune conversation.</p>
+          )}
           {conversation.error && conversation.error.status !== 404 && (
             <p className="error">{conversation.error.message}</p>
           )}
           {conv && (
             <>
               <div className="row">
-                <span className={`badge conv-${conv.status}`}>{conv.status}</span>
-                <span className="muted">canal {conv.channel}</span>
+                <span className={`badge conv-${conv.status}`}>
+                  {label(CONVERSATION_STATUS, conv.status)}
+                </span>
+                <span className="muted">
+                  canal {label(CHANNELS, conv.channel)}
+                </span>
+                <Link href={`/conversations?id=${conv.id}`}>
+                  Ouvrir dans Conversations
+                </Link>
                 <span className="spacer" />
                 <button
                   className="primary"
@@ -150,10 +257,10 @@ export default function ProspectPage() {
               </div>
               {user?.role === "VIEWER" && (
                 <p className="muted">
-                  Votre accès observateur permet de consulter les échanges et les décisions.
+                  Votre accès observateur permet de consulter les échanges et
+                  les décisions.
                 </p>
               )}
-              {actionError && <p className="error">{actionError}</p>}
               {conv.handoff && (
                 <div className="card warnbox">
                   <strong>Fiche de transfert</strong> —{" "}
@@ -163,7 +270,8 @@ export default function ProspectPage() {
                   )}
                   <p>{conv.handoff.summary}</p>
                   <p>
-                    <b>Action recommandée :</b> {conv.handoff.recommended_action}
+                    <b>Action recommandée :</b>{" "}
+                    {conv.handoff.recommended_action}
                   </p>
                 </div>
               )}
@@ -172,9 +280,15 @@ export default function ProspectPage() {
           )}
 
           <h2>Décisions de l&apos;agent</h2>
-          <Loading loading={runs.loading} error={runs.error} onRetry={runs.reload} />
+          <Loading
+            loading={runs.loading}
+            error={runs.error}
+            onRetry={runs.reload}
+          />
           {runs.data?.length === 0 && (
-            <p className="muted">L&apos;agent n&apos;a pas encore traité ce prospect.</p>
+            <p className="muted">
+              L&apos;agent n&apos;a pas encore traité ce prospect.
+            </p>
           )}
           {runs.data?.map((r) => (
             <div key={r.run_id} className="card">
@@ -199,20 +313,27 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
           <ul className="trace">
             {history.data.stage_events.map((e) => (
               <li key={`s${e.id}`}>
-                {formatDate(e.created_at)} — étape : {label(STAGES, e.from_stage)} →{" "}
-                <b>{label(STAGES, e.to_stage)}</b> {e.reason ? `(${e.reason})` : ""}
+                {formatDate(e.created_at)} — étape :{" "}
+                {label(STAGES, e.from_stage)} →{" "}
+                <b>{label(STAGES, e.to_stage)}</b>{" "}
+                {e.reason ? `(${e.reason})` : ""}
               </li>
             ))}
             {history.data.score_events.map((e) => (
               <li key={`p${e.id}`}>
-                {formatDate(e.created_at)} — {e.score_type} {e.points >= 0 ? "+" : ""}
+                {formatDate(e.created_at)} — {e.score_type}{" "}
+                {e.points >= 0 ? "+" : ""}
                 {e.points} → {e.new_value} ({e.reason})
               </li>
             ))}
           </ul>
         </details>
       )}
-      <Loading loading={history.loading} error={history.error} onRetry={history.reload} />
+      <Loading
+        loading={history.loading}
+        error={history.error}
+        onRetry={history.reload}
+      />
     </>
   );
 }

@@ -29,4 +29,4 @@ class Interaction(CreatedAtMixin, Base):
     sentiment: Mapped[str | None] = mapped_column(String(50))
     # Référence (ObjectId) de la conversation MongoDB quand l'interaction est un message :
     # le contenu complet n'est stocké qu'à un seul endroit, dans MongoDB.
-    conversation_ref: Mapped[str | None] = mapped_column(String(24))
+    conversation_ref: Mapped[str | None] = mapped_column(String(24), index=True)

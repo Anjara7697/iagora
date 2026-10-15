@@ -80,6 +80,7 @@ class CampaignProspect(TimestampMixin, Base):
         str_enum(ConversionStage, "conversion_stage"),
         default=ConversionStage.NEW,
         server_default=ConversionStage.NEW.value,
+        index=True,
     )
     interest_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     fit_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

@@ -227,3 +227,16 @@ export function pageTitle(pathname: string): string {
 /** Prospect fictif (simulateur, démonstration) : adresse réservée, jamais contactée pour de vrai. */
 export const isDemoEmail = (email: string | null | undefined): boolean =>
   !!email && email.trim().toLowerCase().endsWith("@demo.example.com");
+
+/** Champs du profil collectés par l'agent (F-09), en français. */
+export const PROFILE_FIELDS: Record<string, string> = {
+  study_level: "Niveau d’études",
+  field_of_study: "Domaine d’études",
+  goal: "Projet",
+  availability: "Disponibilité",
+  budget: "Budget",
+  city: "Ville",
+  profession: "Profession",
+  company: "Entreprise",
+  experience: "Expérience",
+};

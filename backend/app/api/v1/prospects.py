@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
-from app.models import Prospect
-from app.models.enums import ConsentStatus, UserRole
+from app.models import CampaignProspect, Prospect
+from app.models.enums import ConsentStatus, InterestLevel, UserRole
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
@@ -23,10 +23,23 @@ from app.services import prospects as service
 router = APIRouter(prefix="/prospects", tags=["prospects"], dependencies=[ANY_ROLE])
 
 
+def _memberships(
+    items: list[CampaignProspect], labels: dict[int, tuple[int, str]]
+) -> list[CampaignMembershipRead]:
+    out = []
+    for m in items:
+        read = CampaignMembershipRead.model_validate(m)
+        if m.campaign_source_id in labels:
+            read.campaign_id, read.campaign_name = labels[m.campaign_source_id]
+        out.append(read)
+    return out
+
+
 async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     memberships = await service.get_memberships(session, prospect.id)
+    labels = await service.campaign_labels(session, [m.campaign_source_id for m in memberships])
     return ProspectDetail.model_validate(prospect).model_copy(
-        update={"campaigns": [CampaignMembershipRead.model_validate(m) for m in memberships]}
+        update={"campaigns": _memberships(memberships, labels)}
     )
 
 
@@ -56,6 +69,8 @@ async def list_prospects(
     campaign_id: int | None = None,
     stage: str | None = None,
     advisor_id: int | None = None,
+    level: Annotated[InterestLevel | None, Query(description="Niveau d'intérêt")] = None,
+    consent_status: Annotated[ConsentStatus | None, Query(description="Consentement")] = None,
     demo: Annotated[
         Literal["all", "exclude", "only"],
         Query(description="Prospects fictifs : tous, exclus, ou seuls"),
@@ -67,16 +82,17 @@ async def list_prospects(
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
         limit=limit, offset=offset, demo=demo,
+        level=level.value if level else None,
+        consent_status=consent_status.value if consent_status else None,
     )  # fmt: skip
     memberships = await service.get_memberships_for(session, [p.id for p in items])
+    labels = await service.campaign_labels(
+        session, [m.campaign_source_id for ms in memberships.values() for m in ms]
+    )
     return Page[ProspectDetail](
         items=[
             ProspectDetail.model_validate(p).model_copy(
-                update={
-                    "campaigns": [
-                        CampaignMembershipRead.model_validate(m) for m in memberships[p.id]
-                    ]
-                }
+                update={"campaigns": _memberships(memberships[p.id], labels)}
             )
             for p in items
         ],
