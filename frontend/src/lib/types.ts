@@ -13,6 +13,7 @@ export type User = { id: number; username: string; email: string; role: Role };
 
 export type Membership = {
   id: number;
+  assignment_is_override?: boolean;
   last_seen_at?: string;
   campaign_source_id?: number;
   campaign_id?: number | null;
@@ -52,6 +53,9 @@ export type Source = {
 };
 export type Campaign = {
   id: number;
+  responsible_advisor_id?: number | null;
+  responsible_advisor_name?: string | null;
+  responsible_advisor_active?: boolean | null;
   name: string;
   status: string;
   description?: string | null;
@@ -117,6 +121,7 @@ export type Conversation = {
 };
 
 export type ConversationProspect = {
+  assigned_advisor_name?: string | null;
   campaign_id?: number | null;
   campaign_name?: string | null;
   source_name?: string | null;

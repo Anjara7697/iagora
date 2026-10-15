@@ -10,6 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
     text,
 )
@@ -88,6 +89,7 @@ class CampaignProspect(TimestampMixin, Base):
     assigned_advisor_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
+    assignment_is_override: Mapped[bool] = mapped_column(default=False, server_default=false())
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

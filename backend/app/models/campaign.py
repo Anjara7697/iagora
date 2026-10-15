@@ -24,6 +24,9 @@ class Campaign(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    responsible_advisor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[CampaignStatus] = mapped_column(
         str_enum(CampaignStatus, "campaign_status"), default=CampaignStatus.DRAFT

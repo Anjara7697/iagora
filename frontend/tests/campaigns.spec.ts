@@ -121,6 +121,13 @@ async function mockApi(
         };
       } else body = current;
     } else if (path === "/targets") body = TARGET_LIST;
+    else if (path === "/advisors")
+      body = {
+        items: [{ id: 9, username: "Nadia" }],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      };
     else if (path === "/prospects") {
       calls.queries.push(url.search);
       body = { items: [], total: 0, limit: 25, offset: 0 };
@@ -132,6 +139,95 @@ async function mockApi(
   });
   return calls;
 }
+
+test("responsable : choix explicite du sort des prospects et mise à jour de la campagne", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let current = campaign();
+  let payload: unknown;
+  await page.route("**/api/v1/campaigns/1", (route) =>
+    route.fulfill({ json: current }),
+  );
+  await page.route("**/api/v1/campaigns/1/responsible", (route) => {
+    payload = route.request().postDataJSON();
+    current = campaign({
+      responsible_advisor_id: 9,
+      responsible_advisor_name: "Nadia",
+    });
+    return route.fulfill({ json: current });
+  });
+  await login(page, "/campaigns/1");
+  const form = page.getByRole("form", { name: "Affectation de la campagne" });
+  await form
+    .getByLabel("Conseiller responsable de la campagne")
+    .selectOption("9");
+  await expect(
+    form.getByRole("button", { name: "Enregistrer le responsable" }),
+  ).toBeDisabled();
+  await form.getByLabel("Prospects déjà présents").selectOption("keep");
+  await expect(
+    form.getByText(/Les affectations actuelles deviennent des exceptions/),
+  ).toBeVisible();
+  await form
+    .getByRole("button", { name: "Enregistrer le responsable" })
+    .click();
+  await expect(
+    page
+      .getByRole("region", { name: "Responsable de campagne" })
+      .getByText("Nadia", { exact: true })
+      .first(),
+  ).toBeVisible();
+  expect(payload).toEqual({ advisor_id: 9, existing_prospects: "keep" });
+});
+
+test("responsable : erreur conservée, aucun contrôle d'affectation pour un conseiller", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/campaigns/1/responsible", (route) =>
+    route.fulfill({ status: 422, json: { detail: "Compte indisponible" } }),
+  );
+  await login(page, "/campaigns/1");
+  const form = page.getByRole("form", { name: "Affectation de la campagne" });
+  await form
+    .getByLabel("Conseiller responsable de la campagne")
+    .selectOption("9");
+  await form
+    .getByLabel("Prospects déjà présents")
+    .selectOption("transfer_inherited");
+  await form
+    .getByRole("button", { name: "Enregistrer le responsable" })
+    .click();
+  await expect(form.getByRole("alert")).toHaveText("Compte indisponible");
+  await expect(
+    form.getByLabel("Conseiller responsable de la campagne"),
+  ).toHaveValue("9");
+  await mockApi(page, { role: "ADVISOR" });
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Responsable de campagne" }),
+  ).toBeVisible();
+  await expect(form).toHaveCount(0);
+});
+
+test("Mes campagnes : filtre du responsable envoyé avec le statut", async ({
+  page,
+}) => {
+  const calls = await mockApi(page);
+  await login(page);
+  await page
+    .getByRole("button", { name: "Mes campagnes", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Actives", exact: true }).click();
+  await expect
+    .poll(() =>
+      calls.queries.some(
+        (q) => q.includes("advisor_id=1") && q.includes("status=active"),
+      ),
+    )
+    .toBe(true);
+});
 
 async function login(page: Page, then = "/campaigns") {
   await page.goto("/login");
@@ -273,7 +369,7 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
 
   await page.getByRole("button", { name: "Modifier la campagne" }).click();
   await page.getByLabel("Compagnons", { exact: false }).check();
-  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect
     .poll(() =>
       calls.requests.find(

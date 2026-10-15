@@ -251,3 +251,6 @@ réception REST connectée aux conversations, contexte partagé et reprise des t
 Voir [docs/advisor-workflow.md](docs/advisor-workflow.md) : affectation administrative, changements
 d'étape justifiés, interactions paginées, liens directs, filtre « Mes prospects » et convention des
 indicateurs pour les prospects présents dans plusieurs sources.
+
+Voir aussi [l'affectation par campagne](docs/campaign-ownership.md) : un responsable par campagne,
+héritage des nouveaux prospects, choix explicite pour les prospects existants et exceptions individuelles.

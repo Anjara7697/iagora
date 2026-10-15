@@ -2,17 +2,16 @@
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CampaignProspect, ScoreEvent, StageEvent, User
-from app.models.enums import ConversionStage, UserRole
+from app.models import CampaignProspect, CampaignSource, ScoreEvent, StageEvent, User
+from app.models.enums import ConversionStage
 from app.schemas.pipeline import HistoryRead, MembershipUpdate, ScoreEventRead, StageEventRead
+from app.services import campaign_ownership
 from app.services.errors import NotFoundError, ValidationFailure
 
 logger = logging.getLogger(__name__)
-
-ASSIGNABLE_ROLES = {UserRole.ADVISOR, UserRole.ADMIN}
 
 
 async def get_membership(session: AsyncSession, membership_id: int) -> CampaignProspect:
@@ -25,24 +24,55 @@ async def get_membership(session: AsyncSession, membership_id: int) -> CampaignP
 async def update_membership(
     session: AsyncSession, membership_id: int, data: MembershipUpdate, *, actor: User
 ) -> CampaignProspect:
+    assignment_change = (
+        "assigned_advisor_id" in data.model_fields_set or data.inherit_campaign_advisor
+    )
+    campaign = None
+    if assignment_change:
+        cid = await session.scalar(
+            select(CampaignSource.campaign_id)
+            .join(CampaignProspect, CampaignProspect.campaign_source_id == CampaignSource.id)
+            .where(CampaignProspect.id == membership_id)
+        )
+        if cid is None:
+            raise NotFoundError(f"Rattachement {membership_id} introuvable")
+        campaign = await campaign_ownership.lock_campaign(session, cid)
     membership = await session.scalar(
-        select(CampaignProspect).where(CampaignProspect.id == membership_id).with_for_update()
+        select(CampaignProspect)
+        .where(CampaignProspect.id == membership_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if membership is None:
         raise NotFoundError(f"Rattachement {membership_id} introuvable")
 
-    if "assigned_advisor_id" in data.model_fields_set:
-        if data.assigned_advisor_id is not None:
-            advisor = await session.get(User, data.assigned_advisor_id)
-            if advisor is None or not advisor.is_active or advisor.role not in ASSIGNABLE_ROLES:
-                raise ValidationFailure("Le conseiller doit être un compte actif ADVISOR ou ADMIN")
+    if assignment_change and campaign is not None:
+        advisor_id = (
+            await campaign_ownership.inherited_id(session, campaign)
+            if data.inherit_campaign_advisor
+            else data.assigned_advisor_id
+        )
+        if not data.inherit_campaign_advisor:
+            await campaign_ownership.validate_advisor(session, advisor_id)
         # Réaffectation : l'historique (interactions, scores, étapes) est rattaché au prospect
         # et à la campagne, jamais au conseiller : rien n'est perdu (F-22).
         logger.info(
             "Rattachement %s : conseiller %s -> %s par l'utilisateur %s",
-            membership.id, membership.assigned_advisor_id, data.assigned_advisor_id, actor.id,
+            membership.id, membership.assigned_advisor_id, advisor_id, actor.id,
         )  # fmt: skip
-        membership.assigned_advisor_id = data.assigned_advisor_id
+        await session.execute(
+            update(CampaignProspect)
+            .where(
+                CampaignProspect.prospect_id == membership.prospect_id,
+                CampaignProspect.campaign_source_id.in_(
+                    select(CampaignSource.id).where(CampaignSource.campaign_id == campaign.id)
+                ),
+            )
+            .values(
+                assigned_advisor_id=advisor_id,
+                assignment_is_override=not data.inherit_campaign_advisor,
+            )
+        )
 
     if data.conversion_stage is not None:
         _apply_stage(session, membership, data.conversion_stage, data.reason or "", actor.id)

@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CampaignProspect, Prospect
+from app.models import CampaignProspect, Prospect, User
 from app.models.enums import ConversationStatus
 from app.schemas.conversation import ConversationProspect, ConversationSummary
 from app.services import commercial_context, conversations, scoring
@@ -60,6 +60,20 @@ async def prospect_cards(
         p.id: p for p in await session.scalars(select(Prospect).where(Prospect.id.in_(ids)))
     }
     best = await commercial_context.memberships(session, ids)
+    advisors = {
+        u.id: u.username
+        for u in await session.scalars(
+            select(User).where(
+                User.id.in_(
+                    [
+                        m.assigned_advisor_id
+                        for m in best.values()
+                        if m.assigned_advisor_id is not None
+                    ]
+                )
+            )
+        )
+    }
     labels = await campaign_labels(session, [m.campaign_source_id for m in best.values()])
     names = await commercial_context.source_names(
         session, [m.campaign_source_id for m in best.values()]
@@ -84,6 +98,9 @@ async def prospect_cards(
                 "total_score": membership.total_score,
                 "level": scoring.level_for(membership.total_score).value,
                 "assigned_advisor_id": membership.assigned_advisor_id,
+                "assigned_advisor_name": advisors.get(membership.assigned_advisor_id)
+                if membership.assigned_advisor_id
+                else None,
             }
         cards[pid] = ConversationProspect(**card)
     return cards
