@@ -35,6 +35,7 @@ class CampaignUpdate(_CampaignDates):
     name: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = None
     status: CampaignStatus | None = None
+    target_codes: list[str] | None = Field(None, description="Remplace l'ensemble des cibles")
 
 
 class SourceRead(BaseModel):
@@ -68,3 +69,32 @@ class CampaignRead(BaseModel):
     updated_at: datetime
     targets: list[TargetRead] = []
     sources: list[SourceRead] = []
+
+
+class SourceCount(BaseModel):
+    source_id: int
+    name: str
+    platform: str
+    prospects: int
+
+
+class CampaignStats(BaseModel):
+    """Tableau de bord d'une campagne : entonnoir, niveaux d'intérêt et sources (F-01, F-13)."""
+
+    prospects: int
+    average_score: float
+    by_stage: dict[str, int]
+    by_level: dict[str, int] = Field(description="Niveau d'intérêt ; « none » : non évalué")
+    by_source: list[SourceCount]
+    meetings: int = Field(description="Rendez-vous planifiés ou tenus")
+    converted: int
+
+
+class CampaignOverview(BaseModel):
+    """Chiffres clés d'une campagne pour la liste."""
+
+    campaign_id: int
+    prospects: int
+    hot: int = Field(description="Prospects chauds ou très chauds")
+    meetings: int
+    converted: int

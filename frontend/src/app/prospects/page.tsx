@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Loading, Pager, ProspectLink, ScoreBadge, StageBadge } from "@/components/ui";
 import { formatDate, fullName, label, CONSENT, STAGES } from "@/lib/labels";
 import { qs } from "@/lib/api";
@@ -38,10 +39,11 @@ function Avatar({ prospect }: { prospect: Prospect }) {
   );
 }
 
-export default function ProspectsPage() {
+function Prospects() {
+  const params = useSearchParams();
   const [q, setQ] = useState("");
   const [stage, setStage] = useState("");
-  const [campaign, setCampaign] = useState("");
+  const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
   const [offset, setOffset] = useState(0);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
@@ -281,5 +283,13 @@ export default function ProspectsPage() {
         </>
       )}
     </>
+  );
+}
+
+export default function ProspectsPage() {
+  return (
+    <Suspense fallback={<p className="muted">Chargement…</p>}>
+      <Prospects />
+    </Suspense>
   );
 }
