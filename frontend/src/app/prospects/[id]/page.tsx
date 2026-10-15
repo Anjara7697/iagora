@@ -264,7 +264,7 @@ export default function ProspectPage() {
                     {m.source_name ? ` · ${m.source_name}` : ""}
                   </h3>
                   <MembershipActions
-                    key={`${m.id}:${m.assigned_advisor_id}:${m.conversion_stage}`}
+                    key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
                     membership={m}
                     onDone={refreshTracking}
                   />

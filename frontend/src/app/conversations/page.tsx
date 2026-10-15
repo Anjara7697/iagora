@@ -200,6 +200,13 @@ function Detail({
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
+          <p>
+            Conseiller responsable :{" "}
+            {summary.prospect?.assigned_advisor_name ??
+              (summary.prospect?.assigned_advisor_id
+                ? `Conseiller #${summary.prospect.assigned_advisor_id}`
+                : "Non affecté")}
+          </p>
           {summary.prospect?.campaign_name ? (
             <p>
               Contexte de l’agent : {summary.prospect.campaign_name}

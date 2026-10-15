@@ -2,11 +2,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.api.dependencies import ADMIN_ONLY, ANY_ROLE, DbSession
+from app.api.dependencies import ADMIN_ONLY, ANY_ROLE, CurrentUser, DbSession
 from app.models.enums import CampaignStatus
 from app.schemas.campaign import (
     CampaignCreate,
     CampaignOverview,
+    CampaignOwnershipUpdate,
     CampaignRead,
     CampaignStats,
     CampaignUpdate,
@@ -14,6 +15,7 @@ from app.schemas.campaign import (
     TargetRead,
 )
 from app.schemas.common import Page
+from app.services import campaign_ownership
 from app.services import campaigns as service
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"], dependencies=[ANY_ROLE])
@@ -30,11 +32,14 @@ async def create_campaign(payload: CampaignCreate, session: DbSession) -> Campai
 @router.get("", response_model=Page[CampaignRead])
 async def list_campaigns(
     session: DbSession,
+    advisor_id: int | None = None,
     status_: Annotated[CampaignStatus | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[CampaignRead]:
-    rows, total = await service.list_campaigns(session, status_, limit, offset)
+    rows, total = await service.list_campaigns(
+        session, status_, limit, offset, advisor_id=advisor_id
+    )
     return Page[CampaignRead](
         items=[await service.to_read(session, c) for c in rows],
         total=total,
@@ -65,6 +70,14 @@ async def update_campaign(
     campaign_id: int, payload: CampaignUpdate, session: DbSession
 ) -> CampaignRead:
     campaign = await service.update_campaign(session, campaign_id, payload)
+    return await service.to_read(session, campaign)
+
+
+@router.put("/{campaign_id}/responsible", response_model=CampaignRead, dependencies=[ADMIN_ONLY])
+async def set_campaign_responsible(
+    campaign_id: int, payload: CampaignOwnershipUpdate, session: DbSession, user: CurrentUser
+) -> CampaignRead:
+    campaign = await campaign_ownership.set_responsible(session, campaign_id, payload, user.id)
     return await service.to_read(session, campaign)
 
 

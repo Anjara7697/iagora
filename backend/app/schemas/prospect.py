@@ -81,6 +81,7 @@ class CampaignMembershipRead(BaseModel):
     fit_score: int
     total_score: int
     assigned_advisor_id: int | None
+    assignment_is_override: bool = False
     first_seen_at: datetime
     last_seen_at: datetime
 

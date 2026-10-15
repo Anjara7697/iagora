@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
+import CampaignOwnership from "@/components/CampaignOwnership";
 import { useCurrentUser } from "@/components/AppShell";
 import {
   DemoBadge,
@@ -427,6 +428,11 @@ export default function CampaignPage() {
             </Link>
           </div>
 
+          <CampaignOwnership
+            key={`${c.id}:${c.responsible_advisor_id}`}
+            campaign={c}
+            onDone={campaign.reload}
+          />
           {canEdit && !editing && (
             <div className="row">
               <button

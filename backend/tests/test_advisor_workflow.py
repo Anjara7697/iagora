@@ -201,7 +201,8 @@ async def test_multisource_campaign_counts_one_prospect_and_keeps_source_counts(
     advisor = await make_client(UserRole.ADVISOR)
     aid = (await advisor.get(f"{API}/auth/me")).json()["id"]
     await client.patch(f"{API}/campaign-prospects/{first}", json={"assigned_advisor_id": aid})
-    assert (await advisor.get(f"{API}/prospects?advisor_id={aid}")).json()["total"] == 0
+    # Une exception individuelle s'applique désormais à toutes les sources de la campagne.
+    assert (await advisor.get(f"{API}/prospects?advisor_id={aid}")).json()["total"] == 1
     await client.patch(f"{API}/campaign-prospects/{last}", json={"assigned_advisor_id": aid})
     assert (await advisor.get(f"{API}/prospects?advisor_id={aid}")).json()["total"] == 1
     other = (

@@ -26,8 +26,9 @@ const PLATFORM_MARK: Record<string, string> = {
 export default function CampaignsPage() {
   const user = useCurrentUser();
   const [status, setStatus] = useState("");
+  const [mine, setMine] = useState(false);
   const list = useApi<Page<Campaign>>(
-    `/campaigns${qs({ status, limit: 100 })}`,
+    `/campaigns${qs({ status, advisor_id: mine ? user?.id : undefined, limit: 100 })}`,
     {
       keepPrevious: true,
     },
@@ -118,6 +119,11 @@ export default function CampaignsPage() {
       )}
 
       <div className="chips" role="group" aria-label="Statut">
+        {user && user.role !== "VIEWER" && (
+          <button aria-pressed={mine} onClick={() => setMine(!mine)}>
+            Mes campagnes
+          </button>
+        )}
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -168,6 +174,9 @@ export default function CampaignsPage() {
               >
                 <span>
                   <strong>{c.name}</strong>
+                  <span className="muted campaign-sub">
+                    Responsable : {c.responsible_advisor_name ?? "Non affecté"}
+                  </span>
                   <span className="muted campaign-sub">
                     {c.targets.map((t) => label(TARGETS, t.code)).join(", ") ||
                       "Aucun programme"}

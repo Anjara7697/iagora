@@ -48,8 +48,8 @@ réponse conseiller → étape → historique/indicateurs, les rôles, les liens
 directs et le cas d'un prospect multisource. Les tests navigateur vérifient les
 formulaires et parcours avec API simulée ; ils ne prouvent pas une livraison email.
 
-L'affectation reste manuelle et administrative. Les règles d'affectation
-automatiques configurables prévues en F-22 restent à développer. Une
+L'affectation administrative peut désormais se définir au niveau de la campagne,
+avec héritage et exceptions : voir [affectation par campagne](campaign-ownership.md). Une
 réaffectation conserve les interactions, scores et événements d'étape ; son
 auteur est journalisé côté serveur, sans nouveau journal d'affectation en base.
 Les intégrations de rendez-vous et la recette IONOS restent des lots séparés.

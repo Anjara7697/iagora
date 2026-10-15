@@ -262,6 +262,58 @@ test("Mes prospects : filtre appliqué à la liste et à l’export", async ({
   expect(exportUrl).toContain("demo=all");
 });
 
+test("exception individuelle : retour au responsable de la campagne", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let override = true;
+  let payload: unknown;
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([{ id: 8, username: "Nadia" }]) }),
+  );
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({
+      json: {
+        ...prospect,
+        campaigns: [
+          {
+            ...member,
+            assigned_advisor_id: 8,
+            assignment_is_override: override,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) => {
+    payload = route.request().postDataJSON();
+    override = false;
+    return route.fulfill({
+      json: {
+        ...member,
+        assigned_advisor_id: 8,
+        assignment_is_override: false,
+      },
+    });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  const follow = page.getByRole("region", {
+    name: "Suivi du parcours 11",
+    exact: true,
+  });
+  await expect(
+    follow.getByText("Exception individuelle à la règle de campagne."),
+  ).toBeVisible();
+  await follow
+    .getByRole("button", { name: "Suivre le responsable de campagne" })
+    .click();
+  await expect(
+    follow.getByText("Affectation selon la règle de campagne."),
+  ).toBeVisible();
+  expect(payload).toEqual({ inherit_campaign_advisor: true });
+});
+
 test("connexion, pipeline multirattachement, table, fiche et déconnexion", async ({
   page,
 }) => {

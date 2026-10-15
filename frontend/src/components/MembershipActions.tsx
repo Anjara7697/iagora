@@ -60,6 +60,11 @@ export default function MembershipActions({
       <p>
         Conseiller affecté : <strong>{currentName}</strong>
       </p>
+      <p className="muted">
+        {m.assignment_is_override
+          ? "Exception individuelle à la règle de campagne."
+          : "Affectation selon la règle de campagne."}
+      </p>
       <Loading
         loading={advisors.loading}
         error={advisors.error}
@@ -76,6 +81,10 @@ export default function MembershipActions({
             );
           }}
         >
+          <p className="muted">
+            Une modification ici crée une exception pour ce prospect dans cette
+            campagne, sur toutes ses sources.
+          </p>
           <label>
             Conseiller responsable
             <select
@@ -129,6 +138,20 @@ export default function MembershipActions({
           >
             Enregistrer l’affectation
           </button>
+          {m.assignment_is_override && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void save(
+                  { inherit_campaign_advisor: true },
+                  "Règle de campagne rétablie.",
+                )
+              }
+            >
+              Suivre le responsable de campagne
+            </button>
+          )}
         </form>
       )}
       {canWrite && (

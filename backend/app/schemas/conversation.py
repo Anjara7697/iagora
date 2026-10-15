@@ -80,6 +80,7 @@ class ConversationProspect(BaseModel):
     total_score: int | None = None
     level: str | None = None
     assigned_advisor_id: int | None = None
+    assigned_advisor_name: str | None = None
 
 
 class ConversationSummary(BaseModel):
