@@ -62,6 +62,13 @@ La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
   configurés, modèle changé). Voir `docs/rag.md`.
 - Migration 0007 : `kb_documents.source_text` conserve le texte source.
 
+## Cinquième lot : simulateur
+
+- Le simulateur reprend le design : prospect simulé (étape, score, consentement), **messages types** (durée, prix,
+  financement hors base, rendez-vous, situation sensible, désinscription…), conversation avec brouillons, panneau
+  « Décision de l'agent » (justification, trace, scores, sources, confiance) et historique des tours.
+- Un brouillon peut être approuvé ou refusé sur place ; il reste traitable dans « À traiter ».
+
 ## Validation
 
 Dans `frontend/` :
