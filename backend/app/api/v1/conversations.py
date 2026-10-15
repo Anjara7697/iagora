@@ -172,7 +172,7 @@ async def add_message(
     message, created = await service.add_message(session, db, conversation_id, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
-    elif payload.role is SenderType.PROSPECT:
+    if message.role is SenderType.PROSPECT:
         if policy.is_opt_out(message.content):
             return MessageResult(conversation_id=conversation_id, message=message, created=created)
         await trigger_agent(

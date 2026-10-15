@@ -302,3 +302,31 @@ async def test_concurrent_rest_replays_keep_one_entry_and_one_reply(client, enab
     assert len(await replies(client, pid)) == 1
     rows = (await client.get(f"{API}/prospects/{pid}/interactions")).json()["items"]
     assert len([r for r in rows if r["type"] == "lead_received"]) == 1
+
+
+async def test_message_replay_repairs_a_failed_enqueue(client, env, monkeypatch):  # noqa: F811
+    from app.services import agent_events
+
+    pid = (await receive(client, message=None, **await campaign(client))).json()["prospect"]["id"]
+    cid = (
+        await client.post(f"{API}/conversations", json={"prospect_id": pid, "channel": "email"})
+    ).json()["conversation"]["id"]
+    app.dependency_overrides[get_settings] = lambda: Settings(_env_file=None, agent_auto_reply=True)
+    original = agent_events.enqueue_reply
+    attempts = 0
+
+    async def fail_once(db, conversation_id):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("file temporairement indisponible")
+        return await original(db, conversation_id)
+
+    monkeypatch.setattr(agent_events, "enqueue_reply", fail_once)
+    payload = {"role": "prospect", "content": "Bonjour", "external_message_id": "retry-enqueue"}
+    with pytest.raises(RuntimeError):
+        await client.post(f"{API}/conversations/{cid}/messages", json=payload)
+    retry = await client.post(f"{API}/conversations/{cid}/messages", json=payload)
+    assert retry.status_code == 200 and len(await replies(client, pid)) == 1
+    await client.post(f"{API}/conversations/{cid}/messages", json=payload)
+    assert len(await replies(client, pid)) == 1
