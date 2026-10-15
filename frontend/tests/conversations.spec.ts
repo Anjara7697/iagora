@@ -219,3 +219,63 @@ test("prospect désinscrit : réponse impossible", async ({ page }) => {
   await expect(page.getByText("s'est désinscrit")).toBeVisible();
   await expect(page.getByLabel("Votre réponse")).toBeDisabled();
 });
+
+test("fil à trois auteurs : prospect reçu, brouillon en attente, message envoyé après validation", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/conversations/c1", async (route) => {
+    const base = conversation("handed_off");
+    await route.fulfill({
+      json: {
+        ...base,
+        messages: [
+          ...base.messages,
+          {
+            id: "m2",
+            role: "agent",
+            content: "Bonjour Marie, le financement est possible.",
+            created_at: "2026-10-01T10:05:00Z",
+            metadata: { delivery: "sent", draft: { status: "approved" } },
+          },
+          {
+            id: "m3",
+            role: "agent",
+            content: "Un second message en attente.",
+            created_at: "2026-10-02T09:00:00Z",
+            metadata: { delivery: "draft", draft: { status: "pending" } },
+          },
+          {
+            id: "m4",
+            role: "advisor",
+            content: "Je reprends la main.",
+            created_at: "2026-10-02T10:00:00Z",
+            metadata: { delivery: "not_sent" },
+          },
+        ],
+      },
+    });
+  });
+  await open(page);
+  await page
+    .getByRole("complementary", { name: "Liste des conversations" })
+    .getByRole("button", { name: /Marie Dupont/ })
+    .click();
+  const detail = page.getByRole("region", { name: /Conversation avec/ });
+  await expect(
+    detail.getByText(/Marie Dupont · Email ·/).first(),
+  ).toBeVisible();
+  await expect(detail.getByText("Reçu", { exact: true })).toBeVisible();
+  await expect(
+    detail.getByText(/Agent IA · envoyé après validation/),
+  ).toBeVisible();
+  await expect(detail.getByText("Distribué")).toBeVisible();
+  await expect(
+    detail.getByText(/Agent IA · brouillon du .*en attente de validation/),
+  ).toBeVisible();
+  await expect(detail.getByText(/^Conseiller · /)).toBeVisible();
+  await expect(detail.getByText("Canal de réponse retenu")).toBeVisible();
+  await expect(
+    detail.getByText(/Relances : jours ouvrés, 8 h–19 h/),
+  ).toBeVisible();
+});

@@ -8,7 +8,7 @@ Les priorités sont des valeurs de conception (à valider avec les conseillers) 
 - brouillon à valider : élevée, moyenne ou faible selon que le prospect est chaud, tiède ou froid.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,8 @@ from app.schemas.todo import (
     TodoKind,
     TodoPage,
     TodoRecommendation,
+    TreatedItem,
+    TreatedPage,
 )
 from app.services import drafts, inbox
 
@@ -89,6 +91,7 @@ async def list_todo(
     kind: str | None,
     limit: int,
     offset: int,
+    footer: str | None = None,
 ) -> TodoPage:
     match = {
         "$or": [
@@ -133,6 +136,8 @@ async def list_todo(
                         sources=sources,
                         confidence=confidence,
                         created_at=_aware(message["created_at"]) or datetime.now(UTC),
+                        subject=_reply_subject(doc) if doc["channel"] == "email" else None,
+                        footer=footer if doc["channel"] == "email" else None,
                     ),
                     recommendation=TodoRecommendation(
                         action="Valider ou modifier la réponse de l'agent",
@@ -187,6 +192,63 @@ async def list_todo(
         offset=offset,
         counts=counts,
     )
+
+
+def _reply_subject(doc: dict[str, Any]) -> str | None:
+    """« Re: objet » du dernier email du prospect (même règle que l'envoi)."""
+    for message in reversed(doc.get("messages", [])):
+        if message.get("role") == "prospect":
+            subject = ((message.get("metadata") or {}).get("email") or {}).get("subject")
+            if not subject:
+                return "DATUM Academy"
+            return subject if subject.lower().startswith(("re:", "réf:")) else f"Re: {subject}"
+    return None
+
+
+async def treated(session: AsyncSession, db: Any, *, hours: int = 24) -> TreatedPage:
+    """Brouillons décidés (validés ou refusés) sur la période, avec l'état d'envoi."""
+    since = datetime.now(UTC) - timedelta(hours=hours)
+    docs = [
+        d
+        async for d in db["conversations"]
+        .find({"messages.metadata.draft.decided_at": {"$gte": since}})
+        .sort([("last_message_at", -1)])
+        .limit(MAX_SCANNED)
+    ]
+    cards = await inbox.prospect_cards(session, [int(d["prospect_id"]) for d in docs])
+    items: list[TreatedItem] = []
+    for doc in docs:
+        conv_id = str(doc["_id"])
+        for message in doc.get("messages", []):
+            meta = message.get("metadata") or {}
+            draft = meta.get("draft") or {}
+            decided = _aware(draft.get("decided_at"))
+            status = draft.get("status")
+            if decided is None or decided < since or status not in ("approved", "rejected"):
+                continue
+            info = meta.get("delivery_info") or {}
+            delivery = meta.get("delivery")
+            execution = "rejected" if status == "rejected" else "approved"
+            if status == "approved" and delivery in ("sending", "sent", "failed", "blocked"):
+                execution = delivery
+            items.append(
+                TreatedItem(
+                    id=f"draft:{conv_id}:{message['id']}",
+                    conversation_id=conv_id,
+                    prospect=cards.get(int(doc["prospect_id"])),
+                    channel=doc["channel"],
+                    decision=status,
+                    decided_at=decided,
+                    decided_by=draft.get("decided_by"),
+                    edited=bool(draft.get("edited")),
+                    content=message["content"],
+                    reason=draft.get("reason"),
+                    execution=execution,
+                    execution_detail=info.get("reason") or info.get("error"),
+                )
+            )
+    items.sort(key=lambda i: i.decided_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+    return TreatedPage(items=items, total=len(items), hours=hours)
 
 
 def _last_prospect_text(doc: dict[str, Any]) -> str | None:

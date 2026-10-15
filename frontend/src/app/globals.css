@@ -1976,3 +1976,43 @@ a.campaign-row:hover {
 .kb-gap p {
   margin: 4px 0 0;
 }
+
+.draft-footer {
+  border-top: 1px dashed #cfcac4;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.draft-footer p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #45403c;
+}
+.draft-exact {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.todo-tabs {
+  margin: 12px;
+}
+
+.author-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8e8781;
+  margin-right: 6px;
+}
+.author-dot.author-agent {
+  background: #6153d4;
+}
+.author-dot.author-advisor {
+  background: #1f7a48;
+}
+.bubble.agent .bubble-meta,
+.bubble.advisor .bubble-meta {
+  color: #3e34a0;
+}
+.bubble.draft-pending {
+  border-style: dashed;
+}

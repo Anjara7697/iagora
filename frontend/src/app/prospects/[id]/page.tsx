@@ -275,7 +275,11 @@ export default function ProspectPage() {
                   </p>
                 </div>
               )}
-              <ConversationView messages={conv.messages} />
+              <ConversationView
+                messages={conv.messages}
+                prospectName={fullName(p)}
+                channel={conv.channel}
+              />
             </>
           )}
 
