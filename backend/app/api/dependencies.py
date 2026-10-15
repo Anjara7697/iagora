@@ -11,6 +11,8 @@ from app.core.security import decode_access_token
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.embeddings.base import EmbeddingError, EmbeddingModel
+from app.integrations.embeddings.factory import create_embeddings
 from app.integrations.knowledge.factory import create_knowledge_base
 from app.integrations.llm.factory import create_language_model
 from app.models import User
@@ -87,6 +89,20 @@ def get_calendar() -> Calendar:
 
 
 @lru_cache
+def _embeddings(provider: str, model: str, key_set: bool) -> EmbeddingModel | None:
+    try:
+        return create_embeddings(get_settings())
+    except EmbeddingError:
+        return None
+
+
+def get_embeddings(settings: SettingsDep) -> EmbeddingModel | None:
+    return _embeddings(
+        settings.embedding_provider, settings.embedding_model, bool(settings.gemini_api_key)
+    )
+
+
+@lru_cache
 def _knowledge_base(
     provider: str, model: str, key_set: bool, environment: str, min_score: float
 ) -> KnowledgeBase:
@@ -108,3 +124,4 @@ def get_knowledge_base(settings: SettingsDep) -> KnowledgeBase:
 Llm = Annotated[LanguageModel, Depends(get_language_model)]
 CalendarDep = Annotated[Calendar, Depends(get_calendar)]
 KnowledgeDep = Annotated[KnowledgeBase, Depends(get_knowledge_base)]
+EmbeddingsDep = Annotated[EmbeddingModel | None, Depends(get_embeddings)]
