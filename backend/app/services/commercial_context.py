@@ -11,16 +11,22 @@ from app.models import Campaign, CampaignProspect, CampaignSource, Source
 from app.models.enums import CampaignStatus
 
 
-def latest_ids() -> Select[tuple[int]]:
-    ranked = select(
+def latest_ids(*, per_campaign: bool = False) -> Select[tuple[int]]:
+    partition = [CampaignProspect.prospect_id]
+    if per_campaign:
+        partition.append(CampaignSource.campaign_id)
+    stmt = select(
         CampaignProspect.id,
         func.row_number()
         .over(
-            partition_by=CampaignProspect.prospect_id,
+            partition_by=partition,
             order_by=(CampaignProspect.last_seen_at.desc(), CampaignProspect.id.desc()),
         )
         .label("rank"),
-    ).subquery()
+    )
+    if per_campaign:
+        stmt = stmt.join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+    ranked = stmt.subquery()
     return select(ranked.c.id).where(ranked.c.rank == 1)
 
 

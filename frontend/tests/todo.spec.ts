@@ -69,6 +69,40 @@ const gapItem = {
   },
 };
 
+test("pagination et lien direct vers une tâche hors de la page courante", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/todo?**", (route) => {
+    const offset = Number(
+      new URL(route.request().url()).searchParams.get("offset"),
+    );
+    return route.fulfill({
+      json: {
+        items: offset ? [gapItem] : [draftItem],
+        total: 51,
+        limit: 50,
+        offset,
+        counts: { validation: 50, kb_gap: 1 },
+      },
+    });
+  });
+  await page.route("**/api/v1/todo/item?**", (route) =>
+    route.fulfill({
+      json: { ...gapItem, id: "handoff:old", conversation_id: "old" },
+    }),
+  );
+  await open(page);
+  await page.getByRole("button", { name: "Éléments suivants" }).click();
+  await expect(
+    page.getByRole("button", { name: /Ahmed Belkacem/ }),
+  ).toBeVisible();
+  await page.goto("/todo?id=handoff%3Aold");
+  await expect(
+    page.getByText("Question sans extrait validé.").first(),
+  ).toBeVisible();
+});
+
 type Calls = { posts: { path: string; method: string; body: unknown }[] };
 
 async function mockApi(
@@ -243,7 +277,9 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
 });
 
-test("l'arrêt d'urgence est également disponible en mode automatique", async ({ page }) => {
+test("l'arrêt d'urgence est également disponible en mode automatique", async ({
+  page,
+}) => {
   const calls = await mockApi(page, { role: "ADMIN", mode: "auto" });
   await open(page);
   await expect(page.getByText("Agent — Mode automatique")).toBeVisible();
@@ -251,7 +287,9 @@ test("l'arrêt d'urgence est également disponible en mode automatique", async (
   await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
   expect(calls.posts).toContainEqual({
-    path: "/agent/mode", method: "PUT", body: { mode: "manual" },
+    path: "/agent/mode",
+    method: "PUT",
+    body: { mode: "manual" },
   });
 });
 
@@ -261,7 +299,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
   await mockApi(page);
   await page.route("**/api/v1/todo?**", async (route) => {
     const url = new URL(route.request().url());
-    if (url.searchParams.get("limit") === "100")
+    if (url.searchParams.get("limit") === "50")
       await route.fulfill({
         json: {
           items: [
@@ -275,7 +313,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
             },
           ],
           total: 1,
-          limit: 100,
+          limit: 50,
           offset: 0,
           counts: { validation: 1 },
         },

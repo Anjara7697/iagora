@@ -227,8 +227,7 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
       <p className="muted">
         Approuver valide le message : il part ensuite par le canal du prospect
         dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
-        en arrêt d’urgence. Son état reste lisible
-        dans « Traités ».
+        en arrêt d’urgence. Son état reste lisible dans « Traités ».
       </p>
     </section>
   );
@@ -435,7 +434,8 @@ function Todo() {
   const params = useSearchParams();
   const selectedId = params.get("id");
   const [kind, setKind] = useState<KindFilter>("");
-  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 100 })}`);
+  const [offset, setOffset] = useState(0);
+  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
   const treated = useApi<TreatedPage>("/todo/treated", { keepPrevious: true });
@@ -443,13 +443,21 @@ function Todo() {
   const selectedTreated = treatedItems.find((i) => i.id === selectedId) ?? null;
 
   const items = list.data?.items ?? [];
-  const selected = items.find((i) => i.id === selectedId) ?? null;
+  const inPage = items.find((i) => i.id === selectedId) ?? null;
+  const direct = useApi<TodoItem>(
+    tab === "todo" && selectedId && !inPage
+      ? `/todo/item${qs({ id: selectedId })}`
+      : null,
+  );
+  const selected =
+    inPage ?? (direct.data?.id === selectedId ? direct.data : null);
   const counts = all.data?.counts ?? {};
   const total = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
   const refresh = () => {
     list.reload();
     all.reload();
     treated.reload();
+    direct.reload();
   };
 
   return (
@@ -547,14 +555,23 @@ function Todo() {
           )}
           <div className="inbox-filters" hidden={tab === "treated"}>
             <div className="chips" role="group" aria-label="Type">
-              <button aria-pressed={kind === ""} onClick={() => setKind("")}>
+              <button
+                aria-pressed={kind === ""}
+                onClick={() => {
+                  setKind("");
+                  setOffset(0);
+                }}
+              >
                 Tout ({total})
               </button>
               {KIND_ORDER.map((k) => (
                 <button
                   key={k}
                   aria-pressed={kind === k}
-                  onClick={() => setKind(k)}
+                  onClick={() => {
+                    setKind(k);
+                    setOffset(0);
+                  }}
                 >
                   {label(TODO_KINDS, k)} ({counts[k] ?? 0})
                 </button>
@@ -585,6 +602,28 @@ function Todo() {
               />
             ))}
           </ul>
+          {tab === "todo" &&
+            list.data &&
+            (list.data.total > 50 || offset > 0) && (
+              <div className="pager">
+                <button
+                  disabled={offset === 0 || list.loading}
+                  onClick={() => setOffset(Math.max(0, offset - 50))}
+                >
+                  Éléments précédents
+                </button>
+                <span>
+                  {offset + 1}–{Math.min(offset + 50, list.data.total)} /{" "}
+                  {list.data.total}
+                </span>
+                <button
+                  disabled={offset + 50 >= list.data.total || list.loading}
+                  onClick={() => setOffset(offset + 50)}
+                >
+                  Éléments suivants
+                </button>
+              </div>
+            )}
         </aside>
         {tab === "treated" && selectedTreated ? (
           <TreatedDetail
@@ -594,6 +633,17 @@ function Todo() {
           />
         ) : tab === "todo" && selected ? (
           <Detail item={selected} onDone={refresh} />
+        ) : tab === "todo" && selectedId ? (
+          <section className="inbox-detail inbox-placeholder">
+            <Loading
+              loading={direct.loading}
+              error={direct.error}
+              onRetry={direct.reload}
+            />
+            {direct.error?.status === 404 && (
+              <Link href="/conversations">Consulter les conversations</Link>
+            )}
+          </section>
         ) : (
           <section className="inbox-detail inbox-placeholder">
             <p className="muted">Sélectionnez un élément pour le traiter.</p>

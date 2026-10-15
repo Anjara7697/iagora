@@ -135,6 +135,31 @@ async function open(page: Page) {
   await page.goto("/conversations");
 }
 
+test("lien direct : ouvrir une conversation hors de la page puis afficher une erreur explicite", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/conversations/older/summary", (route) =>
+    route.fulfill({ json: summary("older", "handed_off") }),
+  );
+  await page.route("**/api/v1/conversations/older", (route) =>
+    route.fulfill({ json: { ...conversation("handed_off"), id: "older" } }),
+  );
+  await open(page);
+  await page.goto("/conversations?id=older");
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fiche de transfert")).toBeVisible();
+  await page.goto("/conversations?id=missing");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Introuvable" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toHaveCount(0);
+});
+
 test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
   page,
 }) => {

@@ -139,7 +139,8 @@ async def get_conversation(db: Db, conversation_id: str) -> ConversationRead:
 
 
 def to_summary(doc: dict[str, Any]) -> ConversationSummary:
-    last = doc.get("last_message")
+    messages = doc.get("messages", [])
+    last = doc.get("last_message") or (messages[-1] if messages else None)
     return ConversationSummary(
         id=str(doc["_id"]),
         prospect_id=doc["prospect_id"],
@@ -147,7 +148,7 @@ def to_summary(doc: dict[str, Any]) -> ConversationSummary:
         status=doc["status"],
         started_at=doc["started_at"],
         last_message_at=doc.get("last_message_at"),
-        message_count=doc.get("message_count", 0),
+        message_count=doc.get("message_count", len(messages)),
         last_message_role=last["role"] if last else None,
         last_message_preview=last["content"][:160] if last else None,
         handoff=doc.get("handoff"),

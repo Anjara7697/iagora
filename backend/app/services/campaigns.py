@@ -24,7 +24,7 @@ from app.schemas.campaign import (
     SourceRead,
     TargetRead,
 )
-from app.services import references
+from app.services import commercial_context, references
 from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError
 
@@ -206,11 +206,29 @@ async def stats(session: AsyncSession, campaign_id: int) -> CampaignStats:
     per_source: dict[int, int] = {}
     scores: list[int] = []
     meetings = converted = 0
-    for stage, level, score, source_id in rows:
+    # Les sources comptent leurs propres contacts ; les indicateurs de campagne
+    # retiennent une seule fois chaque prospect, sur son rattachement le plus récent.
+    all_rows = list(rows)
+    for _, _, _, source_id in all_rows:
+        per_source[source_id] = per_source.get(source_id, 0) + 1
+    selected = await session.execute(
+        select(
+            CampaignProspect.conversion_stage,
+            CampaignProspect.interest_status,
+            CampaignProspect.total_score,
+        )
+        .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+        .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
+        .where(
+            CampaignSource.campaign_id == campaign_id,
+            ~demo_filter(),
+            CampaignProspect.id.in_(commercial_context.latest_ids(per_campaign=True)),
+        )
+    )
+    for stage, level, score in selected:
         by_stage[stage.value] = by_stage.get(stage.value, 0) + 1
         key = level.value if level else "none"
         by_level[key] = by_level.get(key, 0) + 1
-        per_source[source_id] = per_source.get(source_id, 0) + 1
         scores.append(score)
         meetings += stage in _MEETING_STAGES
         converted += stage is ConversionStage.CONVERTED
@@ -246,7 +264,10 @@ async def overview(session: AsyncSession) -> list[CampaignOverview]:
         )
         .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
         .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
-        .where(~demo_filter())  # les prospects fictifs ne faussent pas les chiffres
+        .where(
+            ~demo_filter(),
+            CampaignProspect.id.in_(commercial_context.latest_ids(per_campaign=True)),
+        )
     )
     totals: dict[int, CampaignOverview] = {}
     for campaign_id, stage, level in rows:

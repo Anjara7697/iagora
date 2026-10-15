@@ -124,6 +124,17 @@ async def get_conversation(conversation_id: str, db: MongoDb) -> ConversationRea
     return await service.get_conversation(db, conversation_id)
 
 
+@router.get("/conversations/{conversation_id}/summary", response_model=ConversationSummary)
+async def get_conversation_summary(
+    conversation_id: str, session: DbSession, db: MongoDb
+) -> ConversationSummary:
+    """Ouvre un lien direct indépendamment des filtres et de la pagination de la boîte."""
+    doc = await service.get_doc(db, conversation_id)
+    summary = service.to_summary(doc)
+    cards = await inbox.prospect_cards(session, [summary.prospect_id])
+    return summary.model_copy(update={"prospect": cards.get(summary.prospect_id)})
+
+
 @router.patch(
     "/conversations/{conversation_id}",
     response_model=ConversationRead,

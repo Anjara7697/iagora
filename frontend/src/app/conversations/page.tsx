@@ -336,7 +336,7 @@ function Detail({
           <div className="row">
             <button
               className="primary"
-              disabled={busy || optedOut || !text.trim()}
+              disabled={busy || !p || optedOut || !text.trim()}
               onClick={send}
             >
               Envoyer en tant que {user?.username}
@@ -373,8 +373,9 @@ function Detail({
             </button>
           </div>
           <p className="muted">
-            Le message est enregistré dans la conversation. Son envoi sur le
-            canal du prospect viendra avec les connecteurs (email, Messenger…).
+            {summary.channel === "email"
+              ? "Le message est enregistré puis placé dans la file d’envoi email. La livraison dépend de la configuration du connecteur ; consultez son état dans l’échange."
+              : "Le message est enregistré. La livraison sur ce canal reste à confirmer avec son connecteur."}
           </p>
         </div>
       )}
@@ -411,7 +412,14 @@ function Inbox() {
   );
 
   const items = list.data?.items ?? [];
-  const selected = items.find((c) => c.id === selectedId) ?? null;
+  const inPage = items.find((c) => c.id === selectedId) ?? null;
+  const direct = useApi<ConversationSummary>(
+    selectedId && !inPage
+      ? `/conversations/${encodeURIComponent(selectedId)}/summary`
+      : null,
+  );
+  const selected =
+    inPage ?? (direct.data?.id === selectedId ? direct.data : null);
   const select = (id: string) =>
     router.replace(`/conversations?id=${id}`, { scroll: false });
   const reset = (apply: () => void) => {
@@ -509,8 +517,19 @@ function Inbox() {
           <Detail
             key={selected.id}
             summary={selected}
-            onChanged={list.reload}
+            onChanged={() => {
+              list.reload();
+              direct.reload();
+            }}
           />
+        ) : selectedId ? (
+          <section className="inbox-detail inbox-placeholder">
+            <Loading
+              loading={direct.loading}
+              error={direct.error}
+              onRetry={direct.reload}
+            />
+          </section>
         ) : (
           <section className="inbox-detail inbox-placeholder">
             <p className="muted">

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import DUMMY_HASH, hash_password, verify_password
 from app.models import User
+from app.models.enums import UserRole
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
@@ -56,6 +57,15 @@ async def get_user(session: AsyncSession, user_id: int) -> User:
 async def list_users(session: AsyncSession, limit: int, offset: int) -> tuple[list[User], int]:
     total = await session.scalar(select(func.count()).select_from(User)) or 0
     rows = await session.scalars(select(User).order_by(User.id).limit(limit).offset(offset))
+    return list(rows), total
+
+
+async def list_advisors(session: AsyncSession, limit: int, offset: int) -> tuple[list[User], int]:
+    base = select(User).where(
+        User.is_active.is_(True), User.role.in_((UserRole.ADMIN, UserRole.ADVISOR))
+    )
+    total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
+    rows = await session.scalars(base.order_by(User.username, User.id).limit(limit).offset(offset))
     return list(rows), total
 
 

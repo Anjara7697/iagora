@@ -245,3 +245,9 @@ Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom,
 
 Voir [docs/intake.md](docs/intake.md) : file « À attribuer », rattachement explicite campagne/source,
 réception REST connectée aux conversations, contexte partagé et reprise des traitements après redémarrage.
+
+### Suivi par les conseillers
+
+Voir [docs/advisor-workflow.md](docs/advisor-workflow.md) : affectation administrative, changements
+d'étape justifiés, interactions paginées, liens directs, filtre « Mes prospects » et convention des
+indicateurs pour les prospects présents dans plusieurs sources.

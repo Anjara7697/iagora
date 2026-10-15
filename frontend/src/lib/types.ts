@@ -13,6 +13,7 @@ export type User = { id: number; username: string; email: string; role: Role };
 
 export type Membership = {
   id: number;
+  last_seen_at?: string;
   campaign_source_id?: number;
   campaign_id?: number | null;
   campaign_name?: string | null;

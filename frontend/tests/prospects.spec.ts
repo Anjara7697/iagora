@@ -89,6 +89,179 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/prospects$/);
 }
 
+test("suivi : affectation administrative, étape justifiée et historique actualisé", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  let current = { ...member };
+  const changes: unknown[] = [];
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([{ id: 8, username: "Nadia" }]) }),
+  );
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({ json: { ...prospect, campaigns: [current] } }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) => {
+    const body = route.request().postDataJSON();
+    changes.push(body);
+    current = { ...current, ...body };
+    return route.fulfill({ json: current });
+  });
+  await page.route("**/api/v1/campaign-prospects/11/history", (route) =>
+    route.fulfill({
+      json: {
+        score_events: [],
+        stage_events:
+          current.conversion_stage === "converted"
+            ? [
+                {
+                  id: 1,
+                  from_stage: "qualified",
+                  to_stage: "converted",
+                  reason: "Inscription confirmée",
+                  created_at: "2026-10-15T12:00:00Z",
+                },
+              ]
+            : [],
+      },
+    }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  const follow = page.getByRole("region", {
+    name: "Suivi du parcours 11",
+    exact: true,
+  });
+  await follow.getByLabel("Conseiller responsable").selectOption("8");
+  await follow
+    .getByRole("button", { name: "Enregistrer l’affectation" })
+    .click();
+  await expect(
+    follow.getByText("Nadia", { exact: true }).first(),
+  ).toBeVisible();
+  const stage = follow.getByRole("form", { name: "Étape du parcours 11" });
+  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  await expect(
+    stage.getByRole("button", { name: "Enregistrer l’étape" }),
+  ).toBeDisabled();
+  await stage.getByLabel("Motif du changement").fill("Inscription confirmée");
+  await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
+  await expect(
+    page.getByText("Converti", { exact: true }).first(),
+  ).toBeVisible();
+  await page.getByText("Historique du parcours 1", { exact: true }).click();
+  await expect(page.getByText(/\(Inscription confirmée\)/)).toBeVisible();
+  expect(changes).toEqual([
+    { assigned_advisor_id: 8 },
+    { conversion_stage: "converted", reason: "Inscription confirmée" },
+  ]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("suivi : conseiller sans droit d’affectation, échec visible sans faux succès", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR");
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) =>
+    route.fulfill({ status: 409, json: { detail: "Modification refusée" } }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
+  const stage = page.getByRole("form", {
+    name: "Étape du parcours 11",
+    exact: true,
+  });
+  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  await stage.getByLabel("Motif du changement").fill("Justification conservée");
+  await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Modification refusée" }),
+  ).toBeVisible();
+  await expect(stage.getByLabel("Motif du changement")).toHaveValue(
+    "Justification conservée",
+  );
+  await expect(page.getByText("Suivi enregistré.")).toHaveCount(0);
+});
+
+test("interactions : pagination, contenu canonique lié et lecture seule", async ({
+  page,
+}) => {
+  await mockApi(page, "VIEWER");
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  );
+  await page.route("**/api/v1/prospects/1/interactions?**", (route) => {
+    const offset = Number(
+      new URL(route.request().url()).searchParams.get("offset"),
+    );
+    return route.fulfill({
+      json: pageOf(
+        [
+          {
+            id: offset + 1,
+            type: "message",
+            direction: "inbound",
+            content: offset ? "Ancien formulaire" : null,
+            conversation_ref: offset ? null : "older-conversation",
+            created_at: "2026-10-01T10:00:00Z",
+          },
+        ],
+        21,
+        offset,
+      ),
+    });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  const history = page.getByRole("region", {
+    name: "Historique des interactions",
+  });
+  await expect(
+    history.getByRole("link", { name: "Consulter l’échange" }),
+  ).toHaveAttribute("href", "/conversations?id=older-conversation");
+  await history.getByRole("button", { name: "Interactions suivantes" }).click();
+  await expect(history.getByText("Ancien formulaire")).toBeVisible();
+  await expect(page.getByLabel("Nouvelle étape")).toHaveCount(0);
+  await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
+});
+
+test("Mes prospects : filtre appliqué à la liste et à l’export", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR");
+  let exportUrl = "";
+  await page.route("**/api/v1/prospects/export**", (route) => {
+    exportUrl = route.request().url();
+    return route.fulfill({
+      body: "id;nom\n1;Alice",
+      headers: { "content-type": "text/csv" },
+    });
+  });
+  await login(page);
+  const mine = page.waitForRequest(
+    (r) => r.url().includes("/prospects?") && r.url().includes("advisor_id=1"),
+  );
+  await page
+    .getByRole("button", { name: "Mes prospects", exact: true })
+    .click();
+  await mine;
+  await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click(),
+  ]);
+  expect(exportUrl).toContain("advisor_id=1");
+  expect(exportUrl).toContain("demo=all");
+});
+
 test("connexion, pipeline multirattachement, table, fiche et déconnexion", async ({
   page,
 }) => {

@@ -78,11 +78,12 @@ function Prospects() {
   const [levelFilter, setLevelFilter] = useState("");
   const [channelFilter, setChannelFilter] = useState("");
   const [consentFilter, setConsentFilter] = useState("");
+  const [mine, setMine] = useState(false);
   const user = useCurrentUser();
   const [exportError, setExportError] = useState<string | null>(null);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
@@ -96,6 +97,7 @@ function Prospects() {
     setLevelFilter("");
     setChannelFilter("");
     setConsentFilter("");
+    setMine(false);
     setOffset(0);
   }
   const columns = PIPELINE_COLUMNS.filter(
@@ -127,6 +129,17 @@ function Prospects() {
         </div>
       </div>
       <div className="view-toolbar">
+        {user && user.role !== "VIEWER" && (
+          <button
+            aria-pressed={mine}
+            onClick={() => {
+              setMine(!mine);
+              setOffset(0);
+            }}
+          >
+            Mes prospects
+          </button>
+        )}
         <button
           aria-pressed={pendingCampaign}
           onClick={() => {
@@ -164,7 +177,7 @@ function Prospects() {
               setExportError(null);
               try {
                 await download(
-                  `/prospects/export${qs({ q, stage, campaign_id: campaign, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter })}`,
+                  `/prospects/export${qs({ q, stage, campaign_id: campaign, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, demo: hideDemo ? "exclude" : "all" })}`,
                   "prospects.csv",
                 );
               } catch (err) {

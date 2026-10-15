@@ -2,12 +2,28 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.api.dependencies import ADMIN_ONLY, CurrentUser, DbSession
+from app.api.dependencies import ADMIN_ONLY, ANY_ROLE, CurrentUser, DbSession
 from app.schemas.common import Page
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import AdvisorRead, UserCreate, UserRead, UserUpdate
 from app.services import users as service
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[ADMIN_ONLY])
+advisors_router = APIRouter(prefix="/advisors", tags=["users"], dependencies=[ANY_ROLE])
+
+
+@advisors_router.get("", response_model=Page[AdvisorRead])
+async def list_advisors(
+    session: DbSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Page[AdvisorRead]:
+    rows, total = await service.list_advisors(session, limit, offset)
+    return Page[AdvisorRead](
+        items=[AdvisorRead.model_validate(u) for u in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)

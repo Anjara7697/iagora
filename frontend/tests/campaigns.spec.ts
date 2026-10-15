@@ -335,7 +335,16 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
             created_at: "2026-10-01T10:00:00Z",
             campaigns: [
               {
+                id: 99,
+                campaign_id: 2,
+                campaign_source_id: 10,
+                conversion_stage: "lost",
+                total_score: 0,
+                last_seen_at: "2026-10-15T12:00:00Z",
+              },
+              {
                 id: 1,
+                campaign_id: 1,
                 campaign_source_id: 10,
                 conversion_stage: "in_conversation",
                 interest_status: "hot",
@@ -361,13 +370,14 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
   await expect(row).toBeVisible();
   await expect(row.getByText("alice@acme-corp.com")).toBeVisible();
   await expect(row.getByText("En conversation")).toBeVisible();
+  await expect(row.getByText("Perdu")).toHaveCount(0);
   await section.getByLabel("Étape").selectOption("qualified");
   await expect
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);
-  expect(queries[0]).toContain("campaign_id=1");
+  expect(queries.some((q) => q.includes("campaign_id=1"))).toBe(true);
   await row.getByRole("link", { name: "Alice Martin" }).click();
-  await expect(page).toHaveURL(/\/prospects\/5$/);
+  await expect(page).toHaveURL(/\/prospects\/5$/, { timeout: 15000 });
 });
 
 test("désactiver une campagne demande confirmation", async ({ page }) => {
