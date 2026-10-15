@@ -11,8 +11,18 @@ import {
   ScoreBadge,
   StageBadge,
 } from "@/components/ui";
-import { formatDate, fullName, label, CONSENT, STAGES } from "@/lib/labels";
-import { qs } from "@/lib/api";
+import {
+  formatDate,
+  fullName,
+  label,
+  CHANNELS,
+  CONSENT,
+  LEVELS,
+  STAGES,
+  TARGETS,
+} from "@/lib/labels";
+import { ApiError, download, qs } from "@/lib/api";
+import { useCurrentUser } from "@/components/AppShell";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, Page, Prospect } from "@/lib/types";
 
@@ -58,9 +68,15 @@ function Prospects() {
   const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
   const [offset, setOffset] = useState(0);
   const [hideDemo, setHideDemo] = useState(false);
+  const [targetCode, setTargetCode] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+  const [channelFilter, setChannelFilter] = useState("");
+  const [consentFilter, setConsentFilter] = useState("");
+  const user = useCurrentUser();
+  const [exportError, setExportError] = useState<string | null>(null);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, demo: hideDemo ? "exclude" : undefined, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
@@ -69,6 +85,10 @@ function Prospects() {
     setStage("");
     setCampaign("");
     setHideDemo(false);
+    setTargetCode("");
+    setLevelFilter("");
+    setChannelFilter("");
+    setConsentFilter("");
     setOffset(0);
   }
   const columns = PIPELINE_COLUMNS.filter(
@@ -119,6 +139,25 @@ function Prospects() {
           </button>
         </div>
         <span className="spacer" />
+        {user && user.role !== "VIEWER" && (
+          <button
+            onClick={async () => {
+              setExportError(null);
+              try {
+                await download(
+                  `/prospects/export${qs({ q, stage, campaign_id: campaign, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter })}`,
+                  "prospects.csv",
+                );
+              } catch (err) {
+                setExportError(
+                  err instanceof ApiError ? err.message : "Échec de l’export",
+                );
+              }
+            }}
+          >
+            Exporter en CSV (Excel)
+          </button>
+        )}
         <span className="muted" aria-live="polite">
           {!loading && data
             ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
@@ -175,6 +214,61 @@ function Prospects() {
             ))}
           </select>
         </div>
+        {[
+          [
+            "Programme",
+            "target-filter",
+            targetCode,
+            setTargetCode,
+            TARGETS,
+            "Tous les programmes",
+          ],
+          [
+            "Intérêt",
+            "level-filter",
+            levelFilter,
+            setLevelFilter,
+            LEVELS,
+            "Tous les niveaux",
+          ],
+          [
+            "Canal",
+            "channel-filter",
+            channelFilter,
+            setChannelFilter,
+            CHANNELS,
+            "Tous les canaux",
+          ],
+          [
+            "Consentement",
+            "consent-filter",
+            consentFilter,
+            setConsentFilter,
+            CONSENT,
+            "Tous",
+          ],
+        ].map(([title, id, value, setter, options, all]) => (
+          <div className="filter-field" key={id as string}>
+            <label htmlFor={id as string}>{title as string}</label>
+            <select
+              id={id as string}
+              value={value as string}
+              onChange={(e) => {
+                (setter as (v: string) => void)(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">{all as string}</option>
+              {Object.entries(options as Record<string, string>).map(
+                ([key, text]) => (
+                  <option key={key} value={key}>
+                    {text}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+        ))}
         <label className="inline-field">
           <input
             type="checkbox"
@@ -190,6 +284,11 @@ function Prospects() {
           Réinitialiser
         </button>
       </form>
+      {exportError && (
+        <p className="error" role="alert">
+          {exportError}
+        </p>
+      )}
       {campaigns.error && (
         <div className="row">
           <p role="alert" className="error">

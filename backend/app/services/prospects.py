@@ -2,6 +2,7 @@
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -11,10 +12,12 @@ from app.models import (
     Campaign,
     CampaignProspect,
     CampaignSource,
+    Channel,
     ConsentEvent,
     FollowUp,
     Interaction,
     Prospect,
+    Target,
 )
 from app.models.enums import (
     ConsentEventType,
@@ -261,19 +264,19 @@ async def get_memberships_for(
     return grouped
 
 
-async def list_prospects(
-    session: AsyncSession,
+def _filtered(
     *,
     q: str | None,
     campaign_id: int | None,
     stage: str | None,
     advisor_id: int | None,
-    limit: int,
-    offset: int,
     demo: str = "all",
     level: str | None = None,
     consent_status: str | None = None,
-) -> tuple[list[Prospect], int]:
+    target_code: str | None = None,
+    source_id: int | None = None,
+    channel: str | None = None,
+) -> Any:
     stmt = select(Prospect)
     if demo == "exclude":
         stmt = stmt.where(~demo_filter())
@@ -290,12 +293,23 @@ async def list_prospects(
         )
     if consent_status is not None:
         stmt = stmt.where(Prospect.consent_status == consent_status)
-    if campaign_id is not None or stage is not None or advisor_id is not None or level is not None:
+    if target_code is not None:
+        stmt = stmt.where(
+            Prospect.target_id.in_(select(Target.id).where(Target.code == target_code))
+        )
+    if channel is not None:
+        stmt = stmt.where(
+            Prospect.origin_channel_id.in_(select(Channel.id).where(Channel.name == channel))
+        )
+    memberships = (campaign_id, stage, advisor_id, level, source_id)
+    if any(v is not None for v in memberships):
         cp = select(CampaignProspect.prospect_id).join(
             CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id
         )
         if campaign_id is not None:
             cp = cp.where(CampaignSource.campaign_id == campaign_id)
+        if source_id is not None:
+            cp = cp.where(CampaignSource.source_id == source_id)
         if stage is not None:
             cp = cp.where(CampaignProspect.conversion_stage == stage)
         if advisor_id is not None:
@@ -303,9 +317,48 @@ async def list_prospects(
         if level is not None:
             cp = cp.where(CampaignProspect.interest_status == level)
         stmt = stmt.where(Prospect.id.in_(cp))
+    return stmt
+
+
+async def list_prospects(
+    session: AsyncSession,
+    *,
+    q: str | None,
+    campaign_id: int | None,
+    stage: str | None,
+    advisor_id: int | None,
+    limit: int,
+    offset: int,
+    demo: str = "all",
+    level: str | None = None,
+    consent_status: str | None = None,
+    target_code: str | None = None,
+    source_id: int | None = None,
+    channel: str | None = None,
+) -> tuple[list[Prospect], int]:
+    stmt = _filtered(
+        q=q,
+        campaign_id=campaign_id,
+        stage=stage,
+        advisor_id=advisor_id,
+        demo=demo,
+        level=level,
+        consent_status=consent_status,
+        target_code=target_code,
+        source_id=source_id,
+        channel=channel,
+    )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))
     return list(items), total
+
+
+async def export_prospects(
+    session: AsyncSession, *, limit: int = 5000, **filters: Any
+) -> list[Prospect]:
+    """Prospects correspondant aux filtres (mêmes critères que la liste), plafonnés."""
+    stmt = _filtered(**filters)
+    return list(await session.scalars(stmt.order_by(Prospect.id).limit(limit)))
 
 
 async def update_prospect(

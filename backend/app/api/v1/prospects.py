@@ -1,6 +1,9 @@
+import csv
+import io
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
 from app.models import CampaignProspect, Prospect
@@ -75,6 +78,9 @@ async def list_prospects(
         Literal["all", "exclude", "only"],
         Query(description="Prospects fictifs : tous, exclus, ou seuls"),
     ] = "all",
+    target_code: Annotated[str | None, Query(description="Programme visé")] = None,
+    source_id: Annotated[int | None, Query(description="Source de leads")] = None,
+    channel: Annotated[str | None, Query(description="Canal d'arrivée")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ProspectDetail]:
@@ -82,6 +88,7 @@ async def list_prospects(
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
         limit=limit, offset=offset, demo=demo,
+        target_code=target_code, source_id=source_id, channel=channel,
         level=level.value if level else None,
         consent_status=consent_status.value if consent_status else None,
     )  # fmt: skip
@@ -99,6 +106,65 @@ async def list_prospects(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+def _csv_cell(value: object) -> str:
+    """Valeur de cellule sûre pour Excel : neutralise les formules (=, +, -, @)."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+@router.get("/export", dependencies=[CAN_WRITE])
+async def export_prospects(
+    session: DbSession,
+    q: str | None = None,
+    campaign_id: int | None = None,
+    stage: str | None = None,
+    advisor_id: int | None = None,
+    level: InterestLevel | None = None,
+    consent_status: ConsentStatus | None = None,
+    target_code: str | None = None,
+    source_id: int | None = None,
+    channel: str | None = None,
+    demo: Literal["all", "exclude", "only"] = "exclude",
+) -> StreamingResponse:
+    """Export CSV (Excel : UTF-8 avec BOM, séparateur « ; ») des prospects filtrés, 5 000 au plus.
+    Les prospects fictifs sont exclus par défaut. Réservé aux conseillers et administrateurs."""
+    items = await service.export_prospects(
+        session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
+        level=level.value if level else None,
+        consent_status=consent_status.value if consent_status else None,
+        target_code=target_code, source_id=source_id, channel=channel, demo=demo,
+    )  # fmt: skip
+    memberships = await service.get_memberships_for(session, [p.id for p in items])
+    labels = await service.campaign_labels(
+        session, [m.campaign_source_id for ms in memberships.values() for m in ms]
+    )
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
+    writer.writerow(
+        ["id", "prénom", "nom", "email", "téléphone", "consentement", "créé le",
+         "campagne", "étape", "niveau d'intérêt", "score"]
+    )  # fmt: skip
+    for p in items:
+        rows: list[CampaignProspect | None] = [*memberships[p.id]] or [None]
+        for m in rows:
+            campaign = labels.get(m.campaign_source_id, (0, ""))[1] if m else ""
+            writer.writerow(
+                [_csv_cell(v) for v in (
+                    p.id, p.first_name, p.last_name, p.email, p.phone, p.consent_status.value,
+                    p.created_at.strftime("%Y-%m-%d %H:%M"), campaign,
+                    m.conversion_stage.value if m else "",
+                    m.interest_status.value if m and m.interest_status else "",
+                    m.total_score if m else "",
+                )]
+            )  # fmt: skip
+    body = "\ufeff" + buffer.getvalue()
+    return StreamingResponse(
+        iter([body]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="prospects.csv"'},
     )
 
 
