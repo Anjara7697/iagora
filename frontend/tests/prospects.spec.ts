@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const member = {
+const member: Record<string, unknown> = {
   id: 11,
   conversion_stage: "qualified",
   total_score: 80,
