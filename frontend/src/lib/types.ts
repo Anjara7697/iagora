@@ -1,6 +1,11 @@
 // Types alignés sur les schémas de l'API (backend/app/schemas).
 
-export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+export type Page<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 
 export type Role = "ADMIN" | "ADVISOR" | "VIEWER";
 
@@ -73,6 +78,17 @@ export type Conversation = {
   handoff: HandoffSheet | null;
 };
 
+export type ConversationProspect = {
+  id: number;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  stage: string | null;
+  total_score: number | null;
+  level: string | null;
+  assigned_advisor_id: number | null;
+};
+
 export type ConversationSummary = {
   id: string;
   prospect_id: number;
@@ -83,6 +99,7 @@ export type ConversationSummary = {
   last_message_role: string | null;
   last_message_preview: string | null;
   handoff: HandoffSheet | null;
+  prospect: ConversationProspect | null;
 };
 
 export type TraceEntry = { node: string; summary: string; at: string };
