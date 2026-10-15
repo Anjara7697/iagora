@@ -1,15 +1,21 @@
-from fastapi import APIRouter, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, Query, Response, status
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
+from app.models.enums import ConversationStatus
+from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationRead,
     ConversationResult,
+    ConversationSummary,
     ConversationUpdate,
     MessageCreate,
     MessageResult,
 )
 from app.services import conversations as service
+from app.services import follow_ups, inbox
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -30,6 +36,27 @@ async def create_conversation(
     return ConversationResult(conversation=conversation, created=created)
 
 
+@router.get("/conversations", response_model=Page[ConversationSummary])
+async def list_conversations(
+    session: DbSession,
+    db: MongoDb,
+    status_: Annotated[ConversationStatus | None, Query(alias="status")] = None,
+    channel: str | None = None,
+    q: Annotated[str | None, Query(description="Nom ou email du prospect")] = None,
+    advisor_id: Annotated[int | None, Query(description="Conseiller affecté")] = None,
+    unassigned: Annotated[bool, Query(description="Prospects sans conseiller")] = False,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> Page[ConversationSummary]:
+    """Boîte de réception : conversations enrichies du prospect (nom, étape, score).
+    `?status=handed_off` : file des transferts (F-20)."""
+    items, total = await inbox.list_inbox(
+        session, db, status=status_, channel=channel, q=q, advisor_id=advisor_id,
+        unassigned=unassigned, limit=limit, offset=offset,
+    )  # fmt: skip
+    return Page[ConversationSummary](items=items, total=total, limit=limit, offset=offset)
+
+
 @router.get("/conversations/{conversation_id}", response_model=ConversationRead)
 async def get_conversation(conversation_id: str, db: MongoDb) -> ConversationRead:
     return await service.get_conversation(db, conversation_id)
@@ -41,10 +68,13 @@ async def get_conversation(conversation_id: str, db: MongoDb) -> ConversationRea
     dependencies=[CAN_WRITE],
 )
 async def update_conversation(
-    conversation_id: str, payload: ConversationUpdate, db: MongoDb
+    conversation_id: str, payload: ConversationUpdate, session: DbSession, db: MongoDb
 ) -> ConversationRead:
-    """Statut (open, handed_off, closed) et résumé."""
-    return await service.update_conversation(db, conversation_id, payload)
+    """Statut (open, handed_off, closed) et résumé. Clôturer ou transférer annule les relances."""
+    conversation = await service.update_conversation(db, conversation_id, payload)
+    if conversation.status in (ConversationStatus.HANDED_OFF, ConversationStatus.CLOSED):
+        await follow_ups.cancel_pending(session, conversation.prospect_id)
+    return conversation
 
 
 @router.post(

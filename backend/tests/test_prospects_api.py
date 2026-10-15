@@ -164,3 +164,29 @@ async def test_interactions_idempotent_and_listed_newest_first(client):
     items = (await client.get(f"{API}/prospects/{pid}/interactions")).json()["items"]
     assert [i["external_id"] for i in items][:2] == ["x2", "x1"]
     assert (await client.get(f"{API}/prospects/999/interactions")).status_code == 404
+
+
+async def test_list_carries_each_prospect_memberships(client):
+    camp = (
+        await client.post(
+            f"{API}/campaigns",
+            json={
+                "name": "Liste",
+                "status": "active",
+                "sources": [{"name": "LinkedIn", "type": "ads", "platform": "linkedin"}],
+            },
+        )
+    ).json()
+    await client.post(
+        f"{API}/prospects",
+        json={
+            "email": "a@example.com",
+            "campaign_id": camp["id"],
+            "source_id": camp["sources"][0]["id"],
+        },
+    )
+    await client.post(f"{API}/prospects", json={"email": "b@example.com"})
+    items = (await client.get(f"{API}/prospects")).json()["items"]
+    by_email = {i["email"]: i for i in items}
+    assert by_email["a@example.com"]["campaigns"][0]["conversion_stage"] == "new"
+    assert by_email["b@example.com"]["campaigns"] == []

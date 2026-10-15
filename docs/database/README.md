@@ -48,3 +48,13 @@ Collection `conversations`, un document par conversation :
 ## Points restants
 
 1. **Production** : activer l'authentification MongoDB avant déploiement (désactivée en développement local).
+
+## Base de connaissances (RAG, migration 0006)
+
+- `kb_documents` : un document source validé (`slug` unique = nom du fichier, `title`, `target_code` — NULL pour
+  une information valable pour tous les programmes —, `content_hash`, `embedding_model`, `is_demo`).
+- `kb_chunks` : les extraits d'un document (`heading`, `text`) et leur vecteur `embedding` (type pgvector
+  `vector(768)`). Suppression en cascade avec le document.
+
+La dimension 768 est fixée par le schéma : en changer exige une migration et `kb-reindex`. Les tests locaux sur SQLite
+stockent le vecteur en JSON et calculent la similarité en Python ; PostgreSQL utilise l'opérateur `<=>` (cosinus).

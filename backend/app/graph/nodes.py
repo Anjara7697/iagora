@@ -124,7 +124,10 @@ class WorkflowNodes:
                 "qualification": None,
                 "risk_alerts": alerts,
                 "llm_failed": True,
-                "trace": _t("qualify_prospect", f"modèle indisponible : {type(exc).__name__}"),
+                "trace": _t(
+                    "qualify_prospect",
+                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                ),
             }
 
         profile = dict(state["profile"])
@@ -203,7 +206,8 @@ class WorkflowNodes:
 
         query = text if text.strip() else (ctx.campaign_name or "")
         passages: list[Passage] = await self.deps.knowledge.search(query, state.get("target_code"))
-        if q is not None and q.intent == "question" and not passages:
+        asks_catalogue = q is not None and q.asks_catalogue
+        if q is not None and q.intent == "question" and not passages and not asks_catalogue:
             # F-20 / NF-10 : question hors base de connaissances -> on ne devine pas.
             return {
                 "needs_human": True,
@@ -220,7 +224,7 @@ class WorkflowNodes:
             )
         ]
         sources = [p.text for p in passages] + [m.content for m in ctx.history]
-        sources += [ctx.campaign_name or "", ctx.source_name or ""]
+        sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
 
         try:
             reply = (await self.deps.llm.generate(system, messages)).strip()
@@ -238,7 +242,10 @@ class WorkflowNodes:
                 "needs_human": True,
                 "handoff_reason": "llm_indisponible",
                 "llm_failed": True,
-                "trace": _t("generate_response", f"modèle indisponible : {type(exc).__name__}"),
+                "trace": _t(
+                    "generate_response",
+                    f"modèle indisponible : {type(exc).__name__} — {str(exc)[:200]}",
+                ),
             }
         if claims or not reply:
             return {

@@ -32,11 +32,12 @@ from app.models.enums import (
 from app.schemas.conversation import (
     ConversationCreate,
     ConversationRead,
+    ConversationSummary,
     ConversationUpdate,
     MessageCreate,
     MessageRead,
 )
-from app.services import references
+from app.services import follow_ups, references
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
@@ -130,6 +131,56 @@ async def get_conversation(db: Db, conversation_id: str) -> ConversationRead:
     return to_read(await _get_doc(db, conversation_id))
 
 
+def to_summary(doc: dict[str, Any]) -> ConversationSummary:
+    last = doc.get("last_message")
+    return ConversationSummary(
+        id=str(doc["_id"]),
+        prospect_id=doc["prospect_id"],
+        channel=doc["channel"],
+        status=doc["status"],
+        started_at=doc["started_at"],
+        last_message_at=doc.get("last_message_at"),
+        message_count=doc.get("message_count", 0),
+        last_message_role=last["role"] if last else None,
+        last_message_preview=last["content"][:160] if last else None,
+        handoff=doc.get("handoff"),
+    )
+
+
+async def list_conversations(
+    db: Db,
+    status: ConversationStatus | None,
+    limit: int,
+    offset: int,
+    *,
+    channel: str | None = None,
+    prospect_ids: list[int] | None = None,
+) -> tuple[list[ConversationSummary], int]:
+    """Conversations, les plus récemment actives d'abord (sans transférer tout l'historique)."""
+    match: dict[str, Any] = {"status": status.value} if status else {}
+    if channel:
+        match["channel"] = channel
+    if prospect_ids is not None:
+        match["prospect_id"] = {"$in": prospect_ids}
+    col = db[COLLECTION]
+    total = await col.count_documents(match)
+    pipeline: list[dict[str, Any]] = [
+        {"$match": match},
+        {"$sort": {"last_message_at": -1, "started_at": -1}},
+        {"$skip": offset},
+        {"$limit": limit},
+        {
+            "$project": {
+                "prospect_id": 1, "channel": 1, "status": 1, "started_at": 1,
+                "last_message_at": 1, "handoff": 1,
+                "message_count": {"$size": {"$ifNull": ["$messages", []]}},
+                "last_message": {"$arrayElemAt": [{"$ifNull": ["$messages", []]}, -1]},
+            }
+        },
+    ]  # fmt: skip
+    return [to_summary(doc) async for doc in col.aggregate(pipeline)], total
+
+
 async def latest_for_prospect(
     session: AsyncSession, db: Db, prospect_id: int, channel: str | None
 ) -> ConversationRead:
@@ -218,6 +269,8 @@ async def add_message(
         )
 
     await _ensure_journal(session, doc, message, data.role)
+    if created and data.role is SenderType.PROSPECT:
+        await follow_ups.cancel_pending(session, doc["prospect_id"])  # il répond : plus de relance
     return MessageRead(**message), created
 
 

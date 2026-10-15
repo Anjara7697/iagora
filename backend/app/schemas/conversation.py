@@ -64,6 +64,37 @@ class ConversationRead(BaseModel):
     _tz = field_validator("started_at", "last_message_at", "closed_at")(_aware)
 
 
+class ConversationProspect(BaseModel):
+    """Prospect résumé pour une ligne de liste (nom, étape, score)."""
+
+    id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
+    stage: str | None = None
+    total_score: int | None = None
+    level: str | None = None
+    assigned_advisor_id: int | None = None
+
+
+class ConversationSummary(BaseModel):
+    """Ligne de liste (file des transferts, suivi) : sans l'historique complet."""
+
+    id: str
+    prospect_id: int
+    channel: str
+    status: ConversationStatus
+    started_at: datetime
+    last_message_at: datetime | None = None
+    message_count: int
+    last_message_role: SenderType | None = None
+    last_message_preview: str | None = None
+    handoff: dict[str, Any] | None = None
+    prospect: ConversationProspect | None = None
+
+    _tz = field_validator("started_at", "last_message_at")(_aware)
+
+
 class ConversationResult(BaseModel):
     conversation: ConversationRead
     created: bool = Field(description="False si la conversation ouverte existait déjà")

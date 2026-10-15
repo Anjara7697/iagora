@@ -36,6 +36,8 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
     async with engine.begin() as conn:
+        if not url.startswith("sqlite"):
+            await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -45,6 +47,9 @@ async def session_factory() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
                 Channel(name="email", type="email"),
                 Channel(name="facebook", type="social"),
                 Target(code="ebihar_students", name="Étudiants eBIHAR"),
+                Target(code="compagnons_pros", name="Professionnels Les Compagnons"),
+                Target(code="master_candidates", name="Master eBIHAR - candidats"),
+                Target(code="master_companies", name="Master eBIHAR - entreprises"),
             ]
         )
         await s.commit()

@@ -101,6 +101,7 @@ class Passage:
 
     source: str
     text: str
+    score: float | None = None  # similarité avec la question (traçabilité, calibrage du seuil)
 
 
 @dataclass

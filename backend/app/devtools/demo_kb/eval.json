@@ -1,0 +1,14 @@
+[
+  {"question": "Combien de temps dure le programme eBIHAR ?", "target": "ebihar_students", "expect": "ebihar"},
+  {"question": "Quelles sont les conditions d'admission pour eBIHAR ?", "target": "ebihar_students", "expect": "ebihar"},
+  {"question": "Quels sont les débouchés après le programme ?", "target": "ebihar_students", "expect": "ebihar"},
+  {"question": "Le programme Les Compagnons se suit-il à distance ?", "target": "compagnons_pros", "expect": "compagnons"},
+  {"question": "Quelle expérience faut-il pour intégrer Les Compagnons ?", "target": "compagnons_pros", "expect": "compagnons"},
+  {"question": "Quel est le rythme d'alternance du Master eBIHAR ?", "target": "master_candidates", "expect": "master_ebihar"},
+  {"question": "Jusqu'à quand peut-on candidater au Master ?", "target": "master_candidates", "expect": "master_ebihar"},
+  {"question": "Peut-on rencontrer un conseiller en visioconférence ?", "target": "ebihar_students", "expect": "faq_generale"},
+  {"question": "Les cours sont-ils en français ?", "target": "ebihar_students", "expect": "faq_generale"},
+  {"question": "Quel est le prix exact de la formation ?", "target": "ebihar_students", "expect": "faq_generale"},
+  {"question": "Quelle est la meilleure recette de pizza ?", "target": "ebihar_students", "expect": null},
+  {"question": "Quel temps fera-t-il demain à Lyon ?", "target": "ebihar_students", "expect": null}
+]

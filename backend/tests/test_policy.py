@@ -251,3 +251,63 @@ def test_grounded_figures_are_accepted():
 def test_slot_formatting_uses_paris_time():
     # 1er mars 2027 = lundi ; 13h UTC = 14h à Paris (hiver).
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"
+
+
+# --- Priorité de la demande de rendez-vous (écart relevé en recette avec le vrai modèle) ---
+
+
+@pytest.mark.parametrize(
+    "q",
+    [
+        Qualification(intent="meeting_request"),
+        Qualification(intent="meeting_request", needs_human=True),  # le modèle sur-signale
+        Qualification(intent="needs_advisor", needs_human=True),  # le modèle hésite sur l'intention
+    ],
+)
+def test_a_meeting_request_is_organised_not_handed_off(q):
+    s = state(q, total=5)
+    s["inbound_text"] = "Je voudrais prendre rendez-vous avec un conseiller."
+    assert policy.decide(s).action is Action.PROPOSE_MEETING
+
+
+def test_wanting_a_human_without_a_meeting_is_still_a_handoff():
+    s = state(Qualification(intent="needs_advisor", needs_human=True))
+    s["inbound_text"] = "Je préfère parler à quelqu'un maintenant."
+    d = policy.decide(s)
+    assert d.action is Action.HUMAN_HANDOFF and "conseiller" in d.reason
+
+
+def test_a_meeting_request_never_overrides_safety_rules():
+    unsure = state(Qualification(intent="meeting_request", confidence=0.2))
+    assert policy.decide(unsure).action is Action.HUMAN_HANDOFF  # trop incertain
+    sensitive = state(Qualification(intent="meeting_request"))
+    sensitive["risk_alerts"] = ["plainte"]
+    assert policy.decide(sensitive).action is Action.HUMAN_HANDOFF
+    failed = state(Qualification(intent="meeting_request"))
+    failed["llm_failed"] = True
+    assert policy.decide(failed).action is Action.HUMAN_HANDOFF
+    opted = state(Qualification(intent="meeting_request"), consent_status="opted_out")
+    assert policy.decide(opted).action is Action.CLOSE
+
+
+def test_handoff_reasons_say_which_signal_triggered_them():
+    """Un journal lisible permet de savoir si le modèle a signalé l'intention ou le drapeau."""
+    by_intent = policy.decide(state(Qualification(intent="needs_advisor")))
+    by_flag = policy.decide(state(Qualification(intent="other", needs_human=True)))
+    assert by_intent.reason != by_flag.reason
+    assert "explicitement" in by_intent.reason and "exige" in by_flag.reason
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Je voudrais prendre rendez-vous", True),
+        ("Un RDV cette semaine ?", True),
+        ("Avez-vous un créneau jeudi ?", True),
+        ("Quelles sont vos disponibilités ?", True),
+        ("Je préfère parler à quelqu'un", False),
+        ("Combien coûte la formation ?", False),
+    ],
+)
+def test_mentions_meeting(text, expected):
+    assert policy.mentions_meeting(text) is expected
