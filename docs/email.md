@@ -1,5 +1,8 @@
 # Connecteur email (IONOS)
 
+Pour valider le connecteur avec une boîte dédiée, suivre la
+[recette réelle du lot 3](recette-email.md) : prérequis, demande d'accès et preuves attendues.
+
 Le canal email permet à l'agent de **recevoir** les messages des prospects (IMAP) et d'**envoyer** les
 réponses validées (SMTP). Le code n'utilise que la bibliothèque standard Python (`imaplib`,
 `smtplib`) : aucune dépendance de plus, aucun SDK de plateforme dans `app/graph` (NF-01, NF-02).
