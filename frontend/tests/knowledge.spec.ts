@@ -139,15 +139,17 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
   await expect(page.getByText("0.846")).toBeVisible();
   await expect(page.getByText("Retenu", { exact: true })).toBeVisible();
   await expect(page.getByText("Écarté (sous le seuil)")).toBeVisible();
-  expect(calls.requests).toContainEqual({
-    method: "POST",
-    path: "/knowledge/search",
-    body: {
-      query: "Combien de temps dure le programme ?",
-      target_code: "ebihar_students",
-      limit: 6,
-    },
-  });
+  await expect
+    .poll(() => calls.requests)
+    .toContainEqual({
+      method: "POST",
+      path: "/knowledge/search",
+      body: {
+        query: "Combien de temps dure le programme ?",
+        target_code: "ebihar_students",
+        limit: 6,
+      },
+    });
 });
 
 test("l'administrateur ajoute un document", async ({ page }) => {
@@ -163,11 +165,13 @@ test("l'administrateur ajoute un document", async ({ page }) => {
     .fill("---\ntitle: Nouveau\n---\n## A\nUn fait.");
   await page.getByRole("button", { name: "Enregistrer" }).click();
   await expect(page.getByText("Document enregistré.")).toBeVisible();
-  expect(calls.requests).toContainEqual({
-    method: "PUT",
-    path: "/knowledge/documents/mon-nouveau-doc",
-    body: { content: "---\ntitle: Nouveau\n---\n## A\nUn fait." },
-  });
+  await expect
+    .poll(() => calls.requests)
+    .toContainEqual({
+      method: "PUT",
+      path: "/knowledge/documents/mon-nouveau-doc",
+      body: { content: "---\ntitle: Nouveau\n---\n## A\nUn fait." },
+    });
 });
 
 test("la suppression demande confirmation", async ({ page }) => {

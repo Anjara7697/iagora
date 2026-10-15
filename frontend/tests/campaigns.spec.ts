@@ -291,26 +291,28 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
   await page.getByLabel("Plateforme de la source 1").selectOption("web");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
   await expect(page).toHaveURL(/\/campaigns\/7$/);
-  expect(calls.requests).toContainEqual({
-    method: "POST",
-    path: "/campaigns",
-    body: {
-      name: "Rentrée 2027",
-      description: null,
-      status: "active",
-      start_date: null,
-      end_date: null,
-      target_codes: ["compagnons_pros"],
-      sources: [
-        {
-          name: "Webinaire",
-          type: "webinar",
-          platform: "web",
-          external_id: null,
-        },
-      ],
-    },
-  });
+  await expect
+    .poll(() => calls.requests)
+    .toContainEqual({
+      method: "POST",
+      path: "/campaigns",
+      body: {
+        name: "Rentrée 2027",
+        description: null,
+        status: "active",
+        start_date: null,
+        end_date: null,
+        target_codes: ["compagnons_pros"],
+        sources: [
+          {
+            name: "Webinaire",
+            type: "webinar",
+            platform: "web",
+            external_id: null,
+          },
+        ],
+      },
+    });
 });
 
 test("dates incohérentes : création bloquée", async ({ page }) => {
@@ -361,11 +363,13 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
   await login(page, "/campaigns/1");
   await page.getByRole("button", { name: "Activer" }).click();
   await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
-  expect(calls.requests).toContainEqual({
-    method: "PATCH",
-    path: "/campaigns/1",
-    body: { status: "active" },
-  });
+  await expect
+    .poll(() => calls.requests)
+    .toContainEqual({
+      method: "PATCH",
+      path: "/campaigns/1",
+      body: { status: "active" },
+    });
 
   await page.getByRole("button", { name: "Modifier la campagne" }).click();
   await page.getByLabel("Compagnons", { exact: false }).check();

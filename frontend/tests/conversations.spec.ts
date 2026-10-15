@@ -191,13 +191,15 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
     .getByRole("button", { name: "Envoyer en tant que conseiller" })
     .click();
   await expect(detail.getByLabel("Votre réponse")).toHaveValue("");
-  expect(calls.posts).toContainEqual({
-    path: "/conversations/c1/messages",
-    body: {
-      role: "advisor",
-      content: "Bonjour Marie, oui le CPF est possible.",
-    },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/conversations/c1/messages",
+      body: {
+        role: "advisor",
+        content: "Bonjour Marie, oui le CPF est possible.",
+      },
+    });
 
   await detail
     .getByRole("button", { name: "Rendre la main à l'agent" })
