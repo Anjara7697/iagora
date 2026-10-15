@@ -23,9 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.runtime import run_agent
 from app.config import Settings
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.email.base import EmailClient
+from app.integrations.email.factory import create_email_client
 from app.models import FollowUp
 from app.models.enums import FollowUpStatus
-from app.services import agent_settings, drafts
+from app.services import agent_settings, drafts, email_sync
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
@@ -231,4 +233,54 @@ async def follow_up_loop(settings: Settings) -> None:
         await asyncio.sleep(settings.follow_up_interval_seconds)
 
 
-__all__ = ["drafts", "follow_up_loop", "in_send_window", "reply_to_message", "run_due_follow_ups"]
+async def email_cycle(
+    settings: Settings, client: EmailClient, *, db: Any, session_factory: SessionFactory
+) -> email_sync.SyncReport:
+    """Un passage sur la boîte email : réception (l'agent répond aux nouveaux messages), envoi."""
+    from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
+
+    async def on_message(conversation_id: str) -> None:
+        if not settings.agent_auto_reply:
+            return
+        await reply_to_message(
+            conversation_id,
+            session_factory=session_factory,
+            db=db,
+            llm=get_language_model(settings),
+            calendar=get_calendar(),
+            knowledge=get_knowledge_base(settings),
+        )
+
+    return await email_sync.run_email_cycle(session_factory, db, client, settings, on_message)
+
+
+async def email_loop(settings: Settings) -> None:
+    """Boucle du connecteur email (démarrée avec l'application si EMAIL_ENABLED)."""
+    from app.database.clients import get_mongo_db
+    from app.database.session import get_sessionmaker
+
+    client = create_email_client(settings)
+    if client is None:
+        logger.warning("Connecteur email activé mais identifiants manquants : arrêt")
+        return
+    while True:
+        try:
+            await email_cycle(
+                settings, client, db=get_mongo_db(), session_factory=lambda: get_sessionmaker()()
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Connecteur email en erreur")
+        await asyncio.sleep(settings.email_poll_seconds)
+
+
+__all__ = [
+    "drafts",
+    "email_cycle",
+    "email_loop",
+    "follow_up_loop",
+    "in_send_window",
+    "reply_to_message",
+    "run_due_follow_ups",
+]

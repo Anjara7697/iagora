@@ -250,6 +250,9 @@ async def add_message(
         raise ConflictError("Le prospect s'est désinscrit : aucune communication sortante (S-03)")
 
     message = _message_doc(data)
+    if data.role is SenderType.ADVISOR:
+        # Réponse d'un conseiller : prête à partir (l'envoi réel dépend du connecteur du canal).
+        message["metadata"] = {"delivery": "not_sent"} | message["metadata"]
     guard: dict[str, Any] = {"_id": oid, "status": {"$ne": ConversationStatus.CLOSED.value}}
     if data.external_message_id:
         guard["messages.external_message_id"] = {"$ne": data.external_message_id}
