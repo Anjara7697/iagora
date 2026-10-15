@@ -200,6 +200,16 @@ function Detail({
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
+          {summary.prospect?.campaign_name ? (
+            <p>
+              Contexte de l’agent : {summary.prospect.campaign_name}
+              {summary.prospect.source_name
+                ? ` · ${summary.prospect.source_name}`
+                : ""}
+            </p>
+          ) : (
+            <p>À attribuer à une campagne depuis la fiche prospect.</p>
+          )}
           <div className="row">
             {summary.prospect?.stage && (
               <StageBadge stage={summary.prospect.stage} />

@@ -20,7 +20,14 @@ import {
   label,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
-import type { AgentRun, Conversation, History, Prospect } from "@/lib/types";
+import type {
+  AgentRun,
+  Campaign,
+  Conversation,
+  History,
+  Page,
+  Prospect,
+} from "@/lib/types";
 
 export default function ProspectPage() {
   const user = useCurrentUser();
@@ -197,7 +204,26 @@ export default function ProspectPage() {
             <div className="card">
               <h3>Pipeline</h3>
               {p.campaigns.length === 0 && (
-                <p className="muted">Aucune campagne.</p>
+                <p className="warnbox">
+                  À attribuer : choisissez une campagne et une source pour
+                  démarrer le traitement automatique.
+                </p>
+              )}
+              {canWrite && p.campaigns.length === 0 && (
+                <CampaignAttribution
+                  id={p.id}
+                  onDone={() => {
+                    prospect.reload();
+                    conversation.reload();
+                    runs.reload();
+                  }}
+                />
+              )}
+              {p.current_membership_id && (
+                <p className="muted">
+                  Contexte de l’agent : rattachement le plus récemment actif.
+                  Les scores de chaque source restent distincts.
+                </p>
               )}
               {p.campaigns.map((m) => (
                 <div key={m.id} className="row">
@@ -207,6 +233,10 @@ export default function ProspectPage() {
                         {m.campaign_name ?? `Campagne ${m.campaign_id}`}
                       </strong>
                     </Link>
+                  )}
+                  {m.source_name && <span>Source : {m.source_name}</span>}
+                  {m.id === p.current_membership_id && (
+                    <span className="badge">Contexte de l’agent</span>
                   )}
                   <StageBadge stage={m.conversion_stage} />
                   <ScoreBadge total={m.total_score} level={m.interest_status} />
@@ -246,6 +276,7 @@ export default function ProspectPage() {
                   className="primary"
                   disabled={
                     busy ||
+                    p.campaigns.length === 0 ||
                     conv.status !== "open" ||
                     p.consent_status === "opted_out" ||
                     user?.role === "VIEWER"
@@ -339,5 +370,138 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
         onRetry={history.reload}
       />
     </>
+  );
+}
+
+function CampaignAttribution({
+  id,
+  onDone,
+}: {
+  id: number;
+  onDone: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const campaigns = useApi<Page<Campaign>>(
+    `/campaigns?status=active&limit=50&offset=${offset}`,
+  );
+  const [campaign, setCampaign] = useState("");
+  const [source, setSource] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const selected = campaigns.data?.items.find((c) => c.id === Number(campaign));
+  return (
+    <form
+      aria-label="Attribution commerciale"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+          await api(`/prospects/${id}/campaigns`, {
+            method: "POST",
+            body: {
+              campaign_id: Number(campaign),
+              source_id: Number(source),
+            },
+          });
+          onDone();
+        } catch (err) {
+          setError(
+            err instanceof ApiError ? err.message : "Attribution impossible",
+          );
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <Loading
+        loading={campaigns.loading}
+        error={campaigns.error}
+        onRetry={campaigns.reload}
+      />
+      {campaigns.data && campaigns.data.total > 50 && (
+        <div className="row">
+          <button
+            type="button"
+            disabled={offset === 0 || busy}
+            onClick={() => {
+              setOffset(offset - 50);
+              setCampaign("");
+              setSource("");
+            }}
+          >
+            Campagnes précédentes
+          </button>
+          <span>
+            {offset + 1}–{Math.min(offset + 50, campaigns.data.total)} /{" "}
+            {campaigns.data.total}
+          </span>
+          <button
+            type="button"
+            disabled={offset + 50 >= campaigns.data.total || busy}
+            onClick={() => {
+              setOffset(offset + 50);
+              setCampaign("");
+              setSource("");
+            }}
+          >
+            Campagnes suivantes
+          </button>
+        </div>
+      )}
+      <label>
+        Campagne d’attribution
+        <select
+          value={campaign}
+          disabled={busy || campaigns.loading}
+          onChange={(e) => {
+            setCampaign(e.target.value);
+            setSource("");
+          }}
+        >
+          <option value="">Choisir une campagne active</option>
+          {campaigns.data?.items.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Source d’attribution
+        <select
+          value={source}
+          disabled={busy || !selected}
+          onChange={(e) => setSource(e.target.value)}
+        >
+          <option value="">Choisir une source</option>
+          {selected?.sources?.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selected?.sources?.length === 0 && (
+        <p>
+          Aucune source pour cette campagne. Un administrateur doit en ajouter
+          une depuis la fiche campagne.
+        </p>
+      )}
+      {campaigns.data?.total === 0 && (
+        <p>
+          Aucune campagne active. Un administrateur doit en créer ou en activer
+          une.
+        </p>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button disabled={busy || !campaign || !source}>
+        Attribuer et démarrer le suivi
+      </button>
+    </form>
   );
 }

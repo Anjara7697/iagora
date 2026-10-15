@@ -240,3 +240,8 @@ Fait : initialisation, modèles et migrations, endpoints prospects / campagnes /
 Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence), console web (prospects, conversations, transferts, simulateur).
 Fait aussi : déclenchement automatique de l'agent à chaque message du prospect et exécution des relances (fenêtre d'envoi, plafond, mode assisté).
 Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
+
+### Réception et attribution commerciale
+
+Voir [docs/intake.md](docs/intake.md) : file « À attribuer », rattachement explicite campagne/source,
+réception REST connectée aux conversations, contexte partagé et reprise des traitements après redémarrage.

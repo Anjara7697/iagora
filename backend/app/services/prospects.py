@@ -12,14 +12,17 @@ from app.models import (
     Campaign,
     CampaignProspect,
     CampaignSource,
+    CampaignTarget,
     Channel,
     ConsentEvent,
     FollowUp,
     Interaction,
     Prospect,
+    Source,
     Target,
 )
 from app.models.enums import (
+    CampaignStatus,
     ConsentEventType,
     ConsentStatus,
     Direction,
@@ -129,6 +132,19 @@ async def ingest_prospect(
     target = await references.get_target(session, data.target_code)
     campaign_source = await _resolve_campaign_source(session, data)
 
+    if channel is not None and data.external_id:
+        entry = await session.scalar(
+            select(Interaction).where(
+                Interaction.channel_id == channel.id,
+                Interaction.external_id == data.external_id,
+            )
+        )
+        if entry is not None:
+            existing = await find_existing(session, data)
+            if existing is None or existing.id != entry.prospect_id:
+                raise ConflictError("Cet identifiant de réception appartient à un autre prospect")
+            return existing, False, entry  # un rejeu ne change ni le contexte ni le consentement
+
     prospect = await find_existing(session, data)
     created = prospect is None
     if prospect is None:
@@ -150,13 +166,36 @@ async def ingest_prospect(
                 await session.flush()
         except IntegrityError:
             # Création concurrente du même prospect : on reprend la fiche gagnante.
-            session.expunge(prospect)
+            if prospect in session:
+                session.expunge(prospect)
             prospect = await find_existing(session, data)
             if prospect is None:
                 raise ConflictError("Conflit lors de la création du prospect") from None
             created = False
 
     if not created:
+        # Sérialiser les réceptions d'une même fiche, même depuis plusieurs processus.
+        locked = await session.scalar(
+            select(Prospect)
+            .where(Prospect.id == prospect.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        assert locked is not None  # noqa: S101 - la fiche vient d'être résolue
+        prospect = locked
+        if channel is not None and data.external_id:
+            replay = await session.scalar(
+                select(Interaction).where(
+                    Interaction.channel_id == channel.id,
+                    Interaction.external_id == data.external_id,
+                )
+            )
+            if replay is not None:
+                if replay.prospect_id != prospect.id:
+                    raise ConflictError(
+                        "Cet identifiant de réception appartient à un autre prospect"
+                    )
+                return prospect, False, replay
         await _enrich(session, prospect, data)
         if target and prospect.target_id is None:
             prospect.target_id = target.id
@@ -213,8 +252,13 @@ async def _record_entry(
         content=data.message,
         external_id=data.external_id,
     )
-    session.add(interaction)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(interaction)
+            await session.flush()
+    except IntegrityError:
+        # Deux identités différentes ne peuvent pas s'approprier la même réception externe.
+        raise ConflictError("Conflit sur l'identifiant de réception externe") from None
     return interaction
 
 
@@ -276,8 +320,11 @@ def _filtered(
     target_code: str | None = None,
     source_id: int | None = None,
     channel: str | None = None,
+    pending_campaign: bool = False,
 ) -> Any:
     stmt = select(Prospect)
+    if pending_campaign:
+        stmt = stmt.where(~Prospect.id.in_(select(CampaignProspect.prospect_id)))
     if demo == "exclude":
         stmt = stmt.where(~demo_filter())
     elif demo == "only":
@@ -335,6 +382,7 @@ async def list_prospects(
     target_code: str | None = None,
     source_id: int | None = None,
     channel: str | None = None,
+    pending_campaign: bool = False,
 ) -> tuple[list[Prospect], int]:
     stmt = _filtered(
         q=q,
@@ -347,6 +395,7 @@ async def list_prospects(
         target_code=target_code,
         source_id=source_id,
         channel=channel,
+        pending_campaign=pending_campaign,
     )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))
@@ -410,3 +459,59 @@ async def grant_consent(
     )
     await session.commit()
     return prospect
+
+
+async def attach_campaign(
+    session: AsyncSession, prospect_id: int, campaign_id: int, source_id: int, actor_id: int
+) -> CampaignProspect:
+    """Attribution explicite, sérialisée par prospect et rejouable sans nouvel historique."""
+    prospect = await session.scalar(
+        select(Prospect).where(Prospect.id == prospect_id).with_for_update()
+    )
+    if prospect is None:
+        raise NotFoundError("Prospect introuvable")
+    campaign = await session.get(Campaign, campaign_id)
+    source = await session.get(Source, source_id)
+    link = await session.scalar(
+        select(CampaignSource).where(
+            CampaignSource.campaign_id == campaign_id,
+            CampaignSource.source_id == source_id,
+        )
+    )
+    if (
+        campaign is None
+        or campaign.status is not CampaignStatus.ACTIVE
+        or source is None
+        or not source.is_active
+        or link is None
+        or link.status != "active"
+    ):
+        raise ValidationFailure("Choisir une source active d'une campagne active")
+    membership = await session.scalar(
+        select(CampaignProspect).where(
+            CampaignProspect.prospect_id == prospect_id,
+            CampaignProspect.campaign_source_id == link.id,
+        )
+    )
+    if membership is None:
+        membership = CampaignProspect(prospect_id=prospect_id, campaign_source_id=link.id)
+        session.add(membership)
+        targets = list(
+            await session.scalars(
+                select(CampaignTarget.target_id).where(
+                    CampaignTarget.campaign_id == campaign_id,
+                )
+            )
+        )
+        if prospect.target_id is None and len(targets) == 1:
+            prospect.target_id = targets[0]
+        session.add(
+            Interaction(
+                prospect_id=prospect_id,
+                type="campaign_attributed",
+                direction=Direction.INBOUND,
+                intent=f"Campagne {campaign_id}, source {source_id}, utilisateur {actor_id}",
+            )
+        )
+    await session.commit()
+    return membership

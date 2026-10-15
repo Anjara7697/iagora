@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import false, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.ports import (
@@ -36,6 +36,7 @@ from app.schemas.appointment import AppointmentData
 from app.schemas.conversation import ConversationUpdate
 from app.services import (
     appointments,
+    commercial_context,
     conversations,
     drafts,
     follow_ups,
@@ -79,15 +80,15 @@ class DbGateway:
         if doc["prospect_id"] != prospect_id:
             raise NotFoundError("Cette conversation n'appartient pas à ce prospect")
 
-        # Rattachement le plus récemment actif (un prospect peut être dans plusieurs campagnes).
+        selected = (await commercial_context.memberships(session, [prospect_id])).get(prospect_id)
+        # Même sélection que la boîte de réception et la file À traiter.
         row = (
             await session.execute(
                 select(CampaignProspect, Campaign.name, Source.name)
                 .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
                 .join(Campaign, Campaign.id == CampaignSource.campaign_id)
                 .join(Source, Source.id == CampaignSource.source_id)
-                .where(CampaignProspect.prospect_id == prospect_id)
-                .order_by(CampaignProspect.last_seen_at.desc(), CampaignProspect.id.desc())
+                .where(CampaignProspect.id == selected.id if selected else false())
                 .limit(1)
             )
         ).first()
@@ -114,9 +115,7 @@ class DbGateway:
             interest_score=membership.interest_score if membership else 0,
             fit_score=membership.fit_score if membership else 0,
             total_score=membership.total_score if membership else 0,
-            interest_level=membership.interest_status.value
-            if membership and membership.interest_status
-            else None,
+            interest_level=scoring.level_for(membership.total_score).value if membership else None,
             advisor_id=membership.assigned_advisor_id if membership else None,
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),

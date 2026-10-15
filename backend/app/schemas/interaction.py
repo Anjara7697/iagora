@@ -16,6 +16,7 @@ class InteractionCreate(BaseModel):
 
 
 class InteractionRead(BaseModel):
+    conversation_ref: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
     id: int
