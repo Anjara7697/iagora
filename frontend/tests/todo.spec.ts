@@ -225,14 +225,34 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   });
   await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
-  expect(asked).toContain("ne traitera plus aucun message");
+  expect(asked).toContain("y compris les messages déjà validés");
   expect(calls.posts).toContainEqual({
     path: "/agent/mode",
     method: "PUT",
     body: { mode: "manual" },
   });
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
+  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  expect(calls.posts).toHaveLength(1);
+  page.once("dialog", (dialog) => {
+    expect(dialog.message()).toContain("messages déjà validés");
+    void dialog.accept();
+  });
   await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
   await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+});
+
+test("l'arrêt d'urgence est également disponible en mode automatique", async ({ page }) => {
+  const calls = await mockApi(page, { role: "ADMIN", mode: "auto" });
+  await open(page);
+  await expect(page.getByText("Agent — Mode automatique")).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
+  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  expect(calls.posts).toContainEqual({
+    path: "/agent/mode", method: "PUT", body: { mode: "manual" },
+  });
 });
 
 test("brouillon : objet, pied de message non modifiable et exécution à valider", async ({

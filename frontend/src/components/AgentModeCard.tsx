@@ -12,7 +12,7 @@ const COPY: Record<AgentMode, { title: string; text: string }> = {
   },
   manual: {
     title: "Agent — Arrêt d'urgence",
-    text: "L'agent ne traite plus aucun message. Les conseillers répondent.",
+    text: "Réponses, relances et envois de l’agent suspendus, même déjà validés. Les conseillers peuvent répondre manuellement.",
   },
   auto: {
     title: "Agent — Mode automatique",
@@ -55,14 +55,14 @@ export default function AgentModeCard({
       <strong>{copy.title}</strong>
       <p>{copy.text}</p>
       {!readOnly &&
-        (mode === "assisted" ? (
+        (mode !== "manual" ? (
           <button
             className="danger"
             disabled={busy}
             onClick={() => {
               if (
                 window.confirm(
-                  "Arrêt d’urgence : l’agent ne traitera plus aucun message (réponses, relances) tant que vous ne l’aurez pas repris. Continuer ?",
+                  "Arrêt d’urgence : suspendre les réponses, les relances et les envois de l’agent, y compris les messages déjà validés ? Les conseillers pourront toujours répondre manuellement. Un email déjà en cours de transmission ne peut pas être rappelé.",
                 )
               )
                 void change("manual");
@@ -71,7 +71,17 @@ export default function AgentModeCard({
             Arrêt d&apos;urgence — passer en Manuel
           </button>
         ) : (
-          <button disabled={busy} onClick={() => change("assisted")}>
+          <button
+            disabled={busy}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Reprendre en mode assisté ? Les messages déjà validés pourront être envoyés si l’envoi est activé. Les anciens messages automatiques sans validation seront soumis à votre approbation.",
+                )
+              )
+                void change("assisted");
+            }}
+          >
             Reprendre en mode assisté
           </button>
         ))}

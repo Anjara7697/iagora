@@ -15,6 +15,7 @@ from app.api.dependencies import (
     SessionFactoryDep,
     SettingsDep,
 )
+from app.graph import policy
 from app.models.enums import ConversationStatus, SenderType
 from app.schemas.common import Page
 from app.schemas.conversation import (
@@ -28,7 +29,6 @@ from app.schemas.conversation import (
 )
 from app.services import conversations as service
 from app.services import drafts, follow_ups, inbox
-from app.services import inbound as inbound_service
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -73,13 +73,24 @@ async def create_conversation(
     llm: Llm,
     calendar: CalendarDep,
     knowledge: KnowledgeDep,
+    user: CurrentUser,
 ) -> ConversationResult:
     """Ouvre une conversation (201), ou renvoie la conversation active existante (200).
     Si elle s'ouvre sur un message du prospect, l'agent prépare sa réponse."""
+    if payload.message is not None:
+        payload.message.metadata = {
+            k: v for k, v in payload.message.metadata.items() if k not in service.RESERVED_METADATA
+        }
+        if payload.message.role is SenderType.ADVISOR:
+            payload.message.metadata["author_id"] = user.id
     conversation, created = await service.create_conversation(session, db, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
-    elif payload.message is not None and payload.message.role is SenderType.PROSPECT:
+    elif (
+        payload.message is not None
+        and payload.message.role is SenderType.PROSPECT
+        and not policy.is_opt_out(payload.message.content)
+    ):
         _trigger_agent(
             background, settings, conversation.id, session_factory, db, llm, calendar, knowledge
         )
@@ -161,16 +172,7 @@ async def add_message(
     if not created:
         response.status_code = status.HTTP_200_OK
     elif payload.role is SenderType.PROSPECT:
-        doc = await service.get_doc(db, conversation_id)
-        stop = await inbound_service.on_prospect_message(
-            session,
-            db,
-            conversation_id=conversation_id,
-            prospect_id=doc["prospect_id"],
-            channel=doc["channel"],
-            text=payload.content,
-        )
-        if stop:
+        if policy.is_opt_out(message.content):
             return MessageResult(conversation_id=conversation_id, message=message, created=created)
         _trigger_agent(
             background, settings, conversation_id, session_factory, db, llm, calendar, knowledge

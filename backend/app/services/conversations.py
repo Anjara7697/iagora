@@ -38,6 +38,7 @@ from app.schemas.conversation import (
     MessageRead,
 )
 from app.services import follow_ups, references
+from app.services import inbound as inbound_service
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
@@ -281,6 +282,24 @@ async def add_message(
     await _ensure_journal(session, doc, message, data.role)
     if created and data.role is SenderType.PROSPECT:
         await follow_ups.cancel_pending(session, doc["prospect_id"])  # il répond : plus de relance
+    if data.role is SenderType.PROSPECT and not message.get("inbound_processed"):
+        # Centralisé ici : premier message, ajout, email et rejeu après une panne SQL/Mongo.
+        # Un rejeu utilise le texte conservé et ne remplace pas un nouveau brouillon.
+        await inbound_service.on_prospect_message(
+            session,
+            db,
+            conversation_id=conversation_id,
+            prospect_id=doc["prospect_id"],
+            channel=doc["channel"],
+            text=message["content"],
+            is_new=created,
+        )
+        # Le marqueur est interne (absent du schéma d'entrée). Un ancien STOP déjà traité
+        # ne doit pas annuler un nouveau consentement explicite lors d'un simple rejeu.
+        await db[COLLECTION].update_one(
+            {"_id": oid, "messages.id": message["id"]},
+            {"$set": {"messages.$.inbound_processed": True}},
+        )
     return MessageRead(**message), created
 
 

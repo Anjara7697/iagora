@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
 from app.models import CampaignProspect, Prospect
-from app.models.enums import ConsentStatus, InterestLevel, UserRole
+from app.models.enums import ConsentStatus, Direction, InterestLevel, UserRole
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
@@ -20,6 +20,7 @@ from app.schemas.prospect import (
     ProspectUpdate,
 )
 from app.services import drafts
+from app.services import inbound as inbound_service
 from app.services import interactions as interaction_service
 from app.services import prospects as service
 
@@ -53,11 +54,19 @@ async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     dependencies=[CAN_WRITE],
 )
 async def ingest_prospect(
-    payload: ProspectIngest, session: DbSession, response: Response
+    payload: ProspectIngest, session: DbSession, response: Response, db: MongoDb
 ) -> ProspectIngestResult:
     """Reçoit un prospect : déduplication, rattachement à la campagne, interaction d'entrée.
     201 si créé, 200 si un prospect existant a été reconnu."""
     prospect, created, interaction = await service.ingest_prospect(session, payload)
+    if interaction.content:
+        await inbound_service.on_prospect_message(
+            session,
+            db,
+            prospect_id=prospect.id,
+            channel=payload.channel,
+            text=interaction.content,
+        )
     if not created:
         response.status_code = status.HTTP_200_OK
     return ProspectIngestResult(
@@ -188,6 +197,7 @@ async def opt_out(
     et les brouillons de l'agent en attente de validation."""
     prospect = await service.opt_out(session, prospect_id, payload.source, payload.channel)
     await drafts.cancel_pending_for_prospect(db, prospect_id)
+    await drafts.block_queued_for_prospect(db, prospect_id)
     return await _detail(session, prospect)
 
 
@@ -213,11 +223,24 @@ async def grant_consent(
     dependencies=[CAN_WRITE],
 )
 async def create_interaction(
-    prospect_id: int, payload: InteractionCreate, session: DbSession, response: Response
+    prospect_id: int,
+    payload: InteractionCreate,
+    session: DbSession,
+    response: Response,
+    db: MongoDb,
 ) -> InteractionRead:
     interaction, created = await interaction_service.create_interaction(
         session, prospect_id, payload
     )
+    if interaction.direction is Direction.INBOUND and interaction.content:
+        await inbound_service.on_prospect_message(
+            session,
+            db,
+            prospect_id=prospect_id,
+            channel=payload.channel,
+            text=interaction.content,
+            is_new=created,
+        )
     if not created:
         response.status_code = status.HTTP_200_OK
     return InteractionRead.model_validate(interaction)
