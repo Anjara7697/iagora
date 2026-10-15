@@ -46,6 +46,8 @@ logger = logging.getLogger(__name__)
 COLLECTION = "conversations"
 ACTIVE = [ConversationStatus.OPEN.value, ConversationStatus.HANDED_OFF.value]
 OUTBOUND_ROLES = {SenderType.AGENT, SenderType.ADVISOR}
+# Clés de métadonnées gérées par le serveur : jamais acceptées depuis l'extérieur.
+RESERVED_METADATA = {"delivery", "delivery_info", "draft"}
 
 Db = Any  # AsyncIOMotorDatabase
 
@@ -252,7 +254,7 @@ async def add_message(
     message = _message_doc(data)
     if data.role is SenderType.ADVISOR:
         # Réponse d'un conseiller : prête à partir (l'envoi réel dépend du connecteur du canal).
-        message["metadata"] = {"delivery": "not_sent"} | message["metadata"]
+        message["metadata"] = {**message["metadata"], "delivery": "not_sent"}
     guard: dict[str, Any] = {"_id": oid, "status": {"$ne": ConversationStatus.CLOSED.value}}
     if data.external_message_id:
         guard["messages.external_message_id"] = {"$ne": data.external_message_id}

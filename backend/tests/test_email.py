@@ -32,10 +32,10 @@ def settings(**over) -> Settings:
     return Settings(_env_file=None, **base)
 
 
-def mail(n=1, *, text="Bonjour, des infos ?", sender="jean@demo.example.com", **over):
+def mail(n=1, *, text="Bonjour, des infos ?", sender="jean@acme-corp.com", **over):
     fields = {
         "uid": str(n),
-        "message_id": f"<m{n}@demo.example.com>",
+        "message_id": f"<m{n}@acme-corp.com>",
         "from_address": sender,
         "from_name": "Jean Dupont",
         "subject": "Renseignements",
@@ -94,10 +94,10 @@ def env(session_factory, mongo_db):
 # --- Lecture d'un email ---
 
 
-def raw_email(body, *, subject="Question", sender="Jean <jean@demo.example.com>", **headers):
+def raw_email(body, *, subject="Question", sender="Jean <jean@acme-corp.com>", **headers):
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = sender, "agent@datum.test", subject
-    msg["Message-ID"] = "<abc@demo.example.com>"
+    msg["Message-ID"] = "<abc@acme-corp.com>"
     for key, value in headers.items():
         msg[key.replace("_", "-")] = value
     msg.set_content(body)
@@ -112,10 +112,9 @@ def test_quoted_history_is_removed():
 
 def test_parse_inbound_extracts_sender_and_text():
     parsed = parse_inbound("7", raw_email("Bonjour,\nje suis intéressé."))
-    assert parsed.from_address == "jean@demo.example.com" and parsed.from_name == "Jean"
+    assert parsed.from_address == "jean@acme-corp.com" and parsed.from_name == "Jean"
     assert (
-        parsed.text == "Bonjour,\nje suis intéressé."
-        and parsed.message_id == "<abc@demo.example.com>"
+        parsed.text == "Bonjour,\nje suis intéressé." and parsed.message_id == "<abc@acme-corp.com>"
     )
     assert not parsed.is_automatic and not parsed.suspect
 
@@ -136,11 +135,11 @@ async def test_a_new_sender_becomes_a_prospect_with_a_conversation(env):
     assert report.received == 1 and client.seen == ["1"]
     async with env.factory() as s:
         prospect = (await s.scalars(select(Prospect))).one()
-    assert prospect.email == "jean@demo.example.com" and prospect.first_name == "Jean"
+    assert prospect.email == "jean@acme-corp.com" and prospect.first_name == "Jean"
     assert prospect.consent_status is ConsentStatus.GRANTED
     (message,) = await env.messages("prospect")
     assert message["content"].startswith("Renseignements") and "des infos" in message["content"]
-    assert message["external_message_id"] == "<m1@demo.example.com>"
+    assert message["external_message_id"] == "<m1@acme-corp.com>"
     assert len(env.replied) == 1  # l'agent est sollicité
 
 
@@ -182,7 +181,7 @@ async def test_an_agent_failure_does_not_stop_the_reception(env):
     async def boom(_):
         raise RuntimeError("panne")
 
-    client = FakeEmailClient([mail(1), mail(2, sender="paul@demo.example.com")])
+    client = FakeEmailClient([mail(1), mail(2, sender="paul@acme-corp.com")])
     report = await email_sync.sync_inbound(env.factory, env.db, client, settings(), boom)
     assert report.received == 2 and report.errors == 2 and client.seen == ["1", "2"]
 
@@ -198,9 +197,9 @@ async def test_a_validated_reply_is_sent_in_the_same_thread(env):
     report = await env.deliver(client)
     assert report.sent == 1
     (out,) = client.sent
-    assert out.to_address == "jean@demo.example.com" and out.subject == "Re: Renseignements"
-    assert out.in_reply_to == "<m1@demo.example.com>"
-    assert out.references == ["<old@x>", "<m1@demo.example.com>"]
+    assert out.to_address == "jean@acme-corp.com" and out.subject == "Re: Renseignements"
+    assert out.in_reply_to == "<m1@acme-corp.com>"
+    assert out.references == ["<old@x>", "<m1@acme-corp.com>"]
     assert out.text.startswith("Voici les informations") and "STOP" in out.text
     (reply,) = await env.messages("agent")
     assert reply["metadata"]["delivery"] == "sent"
@@ -258,7 +257,7 @@ async def test_sandbox_allows_listed_recipients(env):
     await env.receive(FakeEmailClient([mail()]))
     await env.approved_reply()
     client = FakeEmailClient()
-    await env.deliver(client, email_sandbox_recipients="Jean@Demo.example.com, autre@x.test")
+    await env.deliver(client, email_sandbox_recipients="Jean@Acme-Corp.com, autre@x.test")
     assert len(client.sent) == 1
 
 
@@ -367,3 +366,55 @@ async def test_check_and_manual_sync(client, env):
 
 def test_the_agent_loop_does_not_start_without_credentials():
     assert asyncio.run(auto.email_loop(Settings(_env_file=None, email_enabled=True))) is None
+
+
+async def test_fictitious_addresses_never_receive_a_real_email(env):
+    await env.receive(FakeEmailClient([mail(sender="sim.jean@demo.example.com")]))
+    await env.approved_reply()
+    client = FakeEmailClient()
+    report = await env.deliver(client)
+    assert report.blocked == 1 and client.sent == []
+    reply = (await env.messages("agent"))[0]
+    assert "fictive" in reply["metadata"]["delivery_info"]["reason"]
+
+
+async def test_a_stop_by_email_unsubscribes_even_when_the_agent_cannot_answer(env):
+    await env.receive(FakeEmailClient([mail(text="STOP, ne m'écrivez plus.")]))
+    async with env.factory() as s:
+        prospect = (await s.scalars(select(Prospect))).one()
+    assert prospect.consent_status is ConsentStatus.OPTED_OUT and env.replied == []
+
+
+async def test_a_message_in_a_closed_conversation_is_not_sent(env):
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    doc = await env.conversation()
+    await env.db[conversations.COLLECTION].update_one(
+        {"_id": doc["_id"]}, {"$set": {"status": "closed"}}
+    )
+    client = FakeEmailClient()
+    report = await env.deliver(client)
+    assert report.blocked == 1 and client.sent == []
+
+
+async def test_a_poison_email_is_set_aside_after_three_failures(env, monkeypatch):
+    async def boom(*_args, **_kwargs):
+        raise RuntimeError("email illisible")
+
+    monkeypatch.setattr(email_sync, "_ingest_email", boom)
+    client = FakeEmailClient([mail()])
+    for expected_seen in ([], [], ["1"]):
+        await env.receive(client)
+        assert client.seen == expected_seen
+
+
+async def test_an_unexpected_error_while_sending_does_not_leave_the_message_stuck(env):
+    class Broken(FakeEmailClient):
+        async def send(self, email):
+            raise ValueError("en-tête invalide")
+
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    await env.deliver(Broken())
+    reply = (await env.messages("agent"))[0]
+    assert reply["metadata"]["delivery"] == "not_sent"  # sera retenté, pas bloqué en `sending`

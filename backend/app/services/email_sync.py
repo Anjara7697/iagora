@@ -13,12 +13,14 @@ destinataires, jamais vers un prospect désinscrit (S-03), trois essais au plus.
 Cycle de vie de `metadata.delivery` : not_sent -> sending -> sent | failed | blocked.
 """
 
+import hashlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from pymongo import ReturnDocument
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -27,7 +29,7 @@ from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
 from app.services import agent_settings, conversations
-from app.services.errors import ServiceError
+from app.services import inbound as inbound_service
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,7 @@ STATE_ID = "email_sync"
 MAX_ATTEMPTS = 3
 OUTBOX_BATCH = 20
 DEFAULT_SUBJECT = "DATUM Academy"
+DEMO_DOMAINS = ("@demo.example.com", "@example.com", "@example.org", "@example.net")
 
 SessionFactory = Callable[[], AsyncSession]
 OnMessage = Callable[[str], Awaitable[None]]  # reçoit l'identifiant de la conversation
@@ -68,7 +71,19 @@ def _split_name(display: str, address: str) -> tuple[str | None, str | None]:
     return (first.title()[:100] or None), (last.strip().title()[:100] or None)
 
 
-# --- Réception ---------------------------------------------------------------------------------
+# --- Réception ---
+
+
+async def _count_failure(db: Any, message_id: str) -> int:
+    key = "failures." + hashlib.sha256(message_id.encode()).hexdigest()[:24]
+    doc = await db[agent_settings.COLLECTION].find_one_and_update(
+        {"_id": STATE_ID},
+        {"$inc": {key: 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    counts = (doc or {}).get("failures", {})
+    return int(counts.get(key.split(".", 1)[1], 0))
 
 
 async def _ingest_email(
@@ -126,6 +141,17 @@ async def _ingest_email(
             report.duplicates += 1
             return None
         report.received += 1
+        stop = await inbound_service.on_prospect_message(
+            session,
+            db,
+            conversation_id=conversation.id,
+            prospect_id=prospect.id,
+            channel=CHANNEL,
+            text=content,
+        )
+        if stop:
+            report.notes.append(f"désinscription reçue par email : prospect {prospect.id}")
+            return None
         if mail.suspect:
             report.notes.append(f"message suspect (authentification en échec) : {message.id}")
             return None  # visible dans la conversation, mais l'agent ne répond pas
@@ -148,13 +174,13 @@ async def sync_inbound(
             else:
                 conversation_id = await _ingest_email(session_factory, db, mail, settings, report)
             await client.mark_seen(mail.uid)
-        except (ServiceError, EmailError):
+        except Exception:
             logger.exception("Email %s non traité", mail.uid)
             report.errors += 1
-            continue
-        except Exception:
-            logger.exception("Email %s en erreur", mail.uid)
-            report.errors += 1
+            if await _count_failure(db, mail.message_id) >= MAX_ATTEMPTS:
+                # Email « poison » : après plusieurs échecs on le met de côté pour ne pas boucler.
+                report.notes.append(f"email {mail.uid} abandonné après {MAX_ATTEMPTS} échecs")
+                await client.mark_seen(mail.uid)
             continue
         if conversation_id and on_message is not None:
             try:
@@ -250,7 +276,11 @@ async def _deliver_one(
         opted_out = prospect.consent_status is ConsentStatus.OPTED_OUT
 
     block: str | None = None
-    if opted_out:
+    if doc.get("status") == "closed":
+        block = "conversation clôturée"
+    elif recipient.endswith(DEMO_DOMAINS):
+        block = "adresse fictive (démo) : jamais d'envoi réel"
+    elif opted_out:
         block = "prospect désinscrit (S-03)"
     elif not recipient:
         block = "le prospect n'a pas d'adresse email"
@@ -275,7 +305,9 @@ async def _deliver_one(
                 references=references,
             )
         )
-    except EmailError as exc:
+    except Exception as exc:  # EmailError, mais aussi en-tête invalide : jamais bloqué en `sending`
+        if not isinstance(exc, EmailError):
+            logger.exception("Envoi du message %s en erreur", message.get("id"))
         again = attempts < MAX_ATTEMPTS
         await _finish(
             db,
@@ -283,7 +315,7 @@ async def _deliver_one(
             message,
             "not_sent" if again else "failed",
             attempts=attempts,
-            error=str(exc)[:300],
+            error=(str(exc) if isinstance(exc, EmailError) else type(exc).__name__)[:300],
             at=_now(),
         )
         if again:
