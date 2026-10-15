@@ -1227,6 +1227,40 @@ button.danger {
   color: var(--warn);
 }
 
+.bubble-delivery {
+  font-size: 12px;
+  color: var(--muted);
+}
+.bubble-delivery.delivery-failed,
+.bubble-delivery.delivery-blocked {
+  color: var(--warn);
+}
+
+/* --- Intégrations --- */
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 12px 0;
+}
+.kv dt {
+  color: var(--muted);
+}
+.kv dd {
+  margin: 0;
+}
+ul.plain {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
 /* --- Base de connaissances --- */
 .kb-search {
   display: flex;

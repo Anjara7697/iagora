@@ -22,6 +22,7 @@ const ROLE_LABELS = {
 };
 const INTELLIGENCE_LINKS = [
   { href: "/knowledge", label: "Base de connaissances", icon: "❖" },
+  { href: "/integrations", label: "Intégrations", icon: "⇄" },
 ];
 const LINKS = [
   { href: "/", label: "Aujourd’hui", icon: "◷" },
