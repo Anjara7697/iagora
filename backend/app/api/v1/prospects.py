@@ -5,8 +5,6 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
 from app.models import CampaignProspect, Prospect
 from app.models.enums import ConsentStatus, InterestLevel, UserRole
-from app.models import Prospect
-from app.models.enums import ConsentStatus, UserRole
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
