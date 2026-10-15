@@ -263,3 +263,47 @@ async def test_list_conversations_summaries_filtered_by_status(client):
     queue = (await client.get(f"{API}/conversations", params={"status": "handed_off"})).json()
     assert [i["id"] for i in queue["items"]] == [conv_b["id"]] and queue["total"] == 1
     assert (await client.get(f"{API}/conversations", params={"status": "nope"})).status_code == 422
+
+
+async def test_inbox_rows_carry_the_prospect_and_support_filters(client):
+    camp = (
+        await client.post(
+            f"{API}/campaigns",
+            json={
+                "name": "Inbox",
+                "status": "active",
+                "sources": [{"name": "LinkedIn", "type": "ads", "platform": "linkedin"}],
+            },
+        )
+    ).json()
+    ids = {}
+    for first, email in (("Marie", "marie@example.com"), ("Paul", "paul@example.com")):
+        created = (
+            await client.post(
+                f"{API}/prospects",
+                json={
+                    "first_name": first,
+                    "email": email,
+                    "channel": "email",
+                    "campaign_id": camp["id"],
+                    "source_id": camp["sources"][0]["id"],
+                },
+            )
+        ).json()["prospect"]
+        ids[first] = created
+        await _open(client, created["id"])
+    await _open(client, ids["Paul"]["id"], channel="facebook")
+
+    rows = (await client.get(f"{API}/conversations")).json()["items"]
+    marie = next(r for r in rows if r["prospect"]["first_name"] == "Marie")
+    assert marie["prospect"]["stage"] == "new" and marie["prospect"]["level"] == "cold"
+    assert marie["prospect"]["total_score"] == 0
+
+    by_q = (await client.get(f"{API}/conversations", params={"q": "marie"})).json()
+    assert by_q["total"] == 1 and by_q["items"][0]["prospect"]["email"] == "marie@example.com"
+    by_channel = (await client.get(f"{API}/conversations", params={"channel": "facebook"})).json()
+    assert by_channel["total"] == 1 and by_channel["items"][0]["prospect"]["first_name"] == "Paul"
+    unassigned = (await client.get(f"{API}/conversations", params={"unassigned": "true"})).json()
+    assert unassigned["total"] == 3
+    nobody = (await client.get(f"{API}/conversations", params={"advisor_id": 999})).json()
+    assert nobody["total"] == 0
