@@ -148,6 +148,38 @@ async def cancel_pending_for_prospect(db: Any, prospect_id: int) -> int:
     return cancelled
 
 
+async def block_queued_for_prospect(db: Any, prospect_id: int) -> None:
+    """Un opt-out retire aussi les messages déjà validés de la file d'envoi.
+
+    Ils ne doivent pas repartir si le prospect donne ensuite un nouveau consentement.
+    Les envois déjà pris en charge sont contrôlés une dernière fois par le transport.
+    """
+    async for doc in db[conversations.COLLECTION].find(
+        {"prospect_id": prospect_id, "messages.metadata.delivery": "not_sent"}
+    ):
+        for message in doc.get("messages", []):
+            if (message.get("metadata") or {}).get("delivery") != "not_sent":
+                continue
+            await db[conversations.COLLECTION].update_one(
+                {
+                    "_id": doc["_id"],
+                    "messages": {
+                        "$elemMatch": {
+                            "id": message["id"],
+                            "metadata.delivery": "not_sent",
+                        }
+                    },
+                },
+                {
+                    "$set": {
+                        "messages.$.metadata.delivery": "blocked",
+                        "messages.$.metadata.delivery_info.reason": "prospect désinscrit (S-03)",
+                        "messages.$.metadata.delivery_info.at": datetime.now(UTC),
+                    }
+                },
+            )
+
+
 async def supersede_pending(db: Any, conversation_id: str, reason: str) -> int:
     """Le prospect a écrit à nouveau : les brouillons en attente répondaient à un état périmé.
     L'agent en rédigera un nouveau avec tout le contexte (évite deux brouillons validables)."""

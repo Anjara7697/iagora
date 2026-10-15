@@ -47,6 +47,24 @@ est réclamé de façon atomique avant l'envoi : jamais deux envois. Jamais vers
 Cycle de vie : `not_sent → sending → sent | failed | blocked`. Un refus du serveur est retenté
 (3 essais), puis le message passe à `failed` et reste visible dans la console.
 
+## Arrêt d'urgence et désinscription (lot 1)
+
+- Le mode **Manuel** suspend la génération, les relances et les emails de l'agent en attente,
+  même déjà validés. Ils restent `not_sent`, sans consommer d'essai. La réception continue,
+  notamment pour enregistrer les demandes STOP. Les réponses écrites par un conseiller
+  restent expédiables, avec les mêmes contrôles de consentement et de bac à sable.
+- La reprise en **Assisté** réautorise les messages déjà validés. Un ancien message automatique
+  sans validation est remis en brouillon dans « À traiter » avant tout envoi. L'accusé de transfert
+  fixe conserve son exemption de validation ; il est lui aussi suspendu en mode Manuel.
+- STOP est traité sans LLM dans le service d'ajout des messages (premier message inclus),
+  ainsi que sur les entrées REST prospects/interactions. Un rejeu répare une désinscription
+  interrompue après l'écriture du message, sans ajouter de doublon ni remplacer un nouveau brouillon.
+- Une désinscription annule les brouillons et relances et bloque définitivement les messages
+  déjà prêts à envoyer : un consentement ultérieur ne réactive pas ces anciens messages.
+- Avant chaque transmission, le transport relit la conversation, le consentement et le mode.
+  Un email dont la transmission SMTP a déjà commencé ne peut pas être rappelé. Un arrêt brutal
+  pendant la transmission nécessite toujours la vérification manuelle décrite ci-dessous.
+
 ## Limites connues
 
 - Un message resté `sending` après un arrêt brutal du serveur n'est pas repris automatiquement

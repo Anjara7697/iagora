@@ -3,7 +3,8 @@
 - `assisted` (défaut) : l'agent rédige des brouillons ; rien n'est considéré comme prêt à partir
   avant la validation d'un conseiller (seul l'accusé de transfert, texte fixe, est direct) ;
 - `auto` : les réponses de l'agent sont enregistrées directement (sans validation) ;
-- `manual` : arrêt d'urgence, l'agent ne traite plus aucun message ; les conseillers répondent.
+- `manual` : arrêt d'urgence, l'agent ne traite plus aucun message et ses emails en attente
+  restent suspendus, même validés ; les conseillers peuvent toujours répondre manuellement.
 """
 
 from dataclasses import dataclass
