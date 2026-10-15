@@ -256,3 +256,37 @@ export type EmailStatus = {
 };
 
 export type EmailCheck = { imap: string; smtp: string };
+
+export type DashboardSummary = {
+  agent_mode: AgentMode;
+  hot_prospects: {
+    id: number;
+    name: string;
+    email: string | null;
+    stage: string;
+    level: string | null;
+    total_score: number;
+    campaign_id: number | null;
+    campaign_name: string | null;
+  }[];
+  activity: {
+    hours: number;
+    prospects_analysed: number;
+    drafts_generated: number;
+    sent_after_validation: number;
+    sent_without_validation: number;
+    escalations: number;
+    errors: number;
+  };
+  follow_ups: {
+    id: number;
+    prospect_id: number;
+    prospect_name: string;
+    scheduled_at: string;
+    reason: string | null;
+  }[];
+  follow_ups_total: number;
+  funnel_days: number;
+  funnel: Record<string, number>;
+  leads: number;
+};
