@@ -59,7 +59,14 @@ export default function AgentModeCard({
           <button
             className="danger"
             disabled={busy}
-            onClick={() => change("manual")}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Arrêt d’urgence : l’agent ne traitera plus aucun message (réponses, relances) tant que vous ne l’aurez pas repris. Continuer ?",
+                )
+              )
+                void change("manual");
+            }}
           >
             Arrêt d&apos;urgence — passer en Manuel
           </button>

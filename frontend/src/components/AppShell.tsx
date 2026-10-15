@@ -10,6 +10,7 @@ import {
   setToken,
   SIMULATOR_ENABLED,
 } from "@/lib/api";
+import { pageTitle } from "@/lib/labels";
 import AgentModeCard from "./AgentModeCard";
 import type { User } from "@/lib/types";
 
@@ -104,16 +105,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
     );
 
-  const links = SIMULATOR_ENABLED
+  const links = SIMULATOR_ENABLED && user.role !== "VIEWER"
     ? [...LINKS, { href: "/simulator", label: "Simulateur", icon: "◇" }]
     : LINKS;
+  const isAdmin = user.role === "ADMIN";
   const groups = [
     { name: "Travail", items: links },
-    { name: "Intelligence", items: INTELLIGENCE_LINKS },
+    {
+      name: "Intelligence",
+      items: INTELLIGENCE_LINKS.filter((l) => isAdmin || l.href !== "/integrations"),
+    },
   ];
-  const title = pathname.startsWith("/prospects/")
-    ? "Fiche prospect"
-    : (links.find((l) => l.href === pathname)?.label ?? "IAGORA");
+  const title = pageTitle(pathname);
   return (
     <UserContext.Provider value={user}>
       <a className="skip-link" href="#main-content">

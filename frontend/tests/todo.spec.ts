@@ -218,8 +218,14 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
   await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+  let asked = "";
+  page.once("dialog", (dialog) => {
+    asked = dialog.message();
+    void dialog.accept();
+  });
   await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  expect(asked).toContain("ne traitera plus aucun message");
   expect(calls.posts).toContainEqual({
     path: "/agent/mode",
     method: "PUT",

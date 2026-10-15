@@ -238,7 +238,11 @@ function Detail({
         </div>
       </div>
 
-      <Loading loading={conversation.loading} error={conversation.error} />
+      <Loading
+        loading={conversation.loading}
+        error={conversation.error}
+        onRetry={conversation.reload}
+      />
       {conv?.handoff && (
         <div className="card warnbox">
           <strong>Fiche de transfert</strong> —{" "}
@@ -273,7 +277,7 @@ function Detail({
       {optedOut && (
         <p className="muted">
           Ce prospect s&apos;est désinscrit : aucun message ne peut lui être
-          envoyé (S-03).
+          envoyé.
         </p>
       )}
       {error && (
@@ -282,6 +286,14 @@ function Detail({
         </p>
       )}
 
+      {!readOnly && conv && conv.status === "closed" && (
+        <div className="row">
+          <p className="muted">Cette conversation est clôturée.</p>
+          <button disabled={busy || optedOut} onClick={() => setStatus("open")}>
+            Rouvrir la conversation
+          </button>
+        </div>
+      )}
       {!readOnly && conv && conv.status !== "closed" && (
         <div className="inbox-composer">
           <textarea
@@ -316,7 +328,17 @@ function Detail({
                 Rendre la main à l&apos;agent
               </button>
             )}
-            <button disabled={busy} onClick={() => setStatus("closed")}>
+            <button
+              disabled={busy}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Clôturer la conversation ? Les relances et les brouillons en attente seront annulés.",
+                  )
+                )
+                  void setStatus("closed");
+              }}
+            >
               Clôturer
             </button>
           </div>
@@ -335,7 +357,11 @@ function Inbox() {
   const router = useRouter();
   const params = useSearchParams();
   const selectedId = params.get("id");
-  const [status, setStatus] = useState<StatusFilter>("");
+  const [status, setStatus] = useState<StatusFilter>(
+    (["open", "handed_off", "closed"].includes(params.get("status") ?? "")
+      ? params.get("status")
+      : "") as StatusFilter,
+  );
   const [owner, setOwner] = useState<OwnerFilter>("");
   const [channel, setChannel] = useState("");
   const [q, setQ] = useState("");
@@ -351,6 +377,7 @@ function Inbox() {
       limit: LIMIT,
       offset,
     })}`,
+    { keepPrevious: true },
   );
 
   const items = list.data?.items ?? [];
@@ -407,7 +434,11 @@ function Inbox() {
               ))}
             </select>
           </div>
-          <Loading loading={list.loading} error={list.error} />
+          <Loading
+            loading={list.loading}
+            error={list.error}
+            onRetry={list.reload}
+          />
           {list.data && items.length === 0 && (
             <p className="muted inbox-empty">
               Aucune conversation ne correspond à ces filtres.

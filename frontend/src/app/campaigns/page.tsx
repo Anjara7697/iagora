@@ -66,7 +66,7 @@ export default function CampaignsPage() {
         ))}
       </div>
 
-      <Loading loading={list.loading} error={list.error} />
+      <Loading loading={list.loading} error={list.error} onRetry={list.reload} />
       {list.data && items.length === 0 && (
         <p className="card muted">
           Aucune campagne{status ? " dans ce statut" : ""}.{" "}

@@ -48,6 +48,7 @@ function Prospects() {
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
     `/prospects${qs({ q, stage, campaign_id: campaign, limit: LIMIT, offset })}`,
+    { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
   function reset() {
@@ -157,8 +158,7 @@ function Prospects() {
           <button onClick={campaigns.reload}>Réessayer les campagnes</button>
         </div>
       )}
-      <Loading loading={loading} error={error} />
-      {error && <button onClick={reload}>Réessayer</button>}
+      <Loading loading={loading} error={error} onRetry={reload} />
       {!loading && data && (
         <>
           {data.items.length === 0 ? (

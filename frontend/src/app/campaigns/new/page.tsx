@@ -70,7 +70,7 @@ export default function NewCampaignPage() {
           <h1>Nouvelle campagne</h1>
         </div>
       </div>
-      <Loading loading={targets.loading} error={targets.error} />
+      <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
         <CampaignForm
           initial={EMPTY_VALUES}

@@ -248,7 +248,7 @@ export default function SimulatorPage() {
           {!session ? (
             <div className="card">
               <h2>Nouveau prospect fictif</h2>
-              <Loading loading={campaigns.loading} error={campaigns.error} />
+              <Loading loading={campaigns.loading} error={campaigns.error} onRetry={campaigns.reload} />
               {campaigns.data && campaigns.data.items.length === 0 && (
                 <p>
                   Aucune campagne. Lancez{" "}
