@@ -76,6 +76,7 @@ export type CampaignOverview = {
   prospects: number;
   hot: number;
   meetings: number;
+  qualified?: number;
   converted: number;
 };
 

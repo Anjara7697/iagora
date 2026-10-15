@@ -178,6 +178,14 @@ async def remove_source(session: AsyncSession, campaign_id: int, source_id: int)
 
 _MEETING_STAGES = {ConversionStage.MEETING_SCHEDULED, ConversionStage.MEETING_DONE}
 _HOT = {InterestLevel.HOT, InterestLevel.VERY_HOT}
+_QUALIFIED_STAGES = {
+    ConversionStage.QUALIFIED,
+    ConversionStage.MEETING_PROPOSED,
+    ConversionStage.MEETING_SCHEDULED,
+    ConversionStage.MEETING_DONE,
+    ConversionStage.APPLIED,
+    ConversionStage.CONVERTED,
+}
 
 
 async def stats(session: AsyncSession, campaign_id: int) -> CampaignStats:
@@ -249,6 +257,7 @@ async def overview(session: AsyncSession) -> list[CampaignOverview]:
         row.prospects += 1
         row.hot += level in _HOT
         row.meetings += stage in _MEETING_STAGES
+        row.qualified += stage in _QUALIFIED_STAGES
         row.converted += stage is ConversionStage.CONVERTED
     for campaign_id in await session.scalars(select(Campaign.id)):
         totals.setdefault(

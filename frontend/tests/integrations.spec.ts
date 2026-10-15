@@ -66,8 +66,42 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(card.getByText("Envoi désactivé")).toBeVisible();
   await expect(card.getByText("Réception active")).toBeVisible();
   await expect(card.getByText("agent@datum.test")).toBeVisible();
-  await expect(card.getByText(/n’écrit qu’à : moi@example.com/)).toBeVisible();
+  await expect(card.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
   await expect(card.getByText("Prêt à envoyer :")).toBeVisible();
+  await expect(card.getByText("Connecté", { exact: true })).toBeVisible();
+  // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
+  for (const name of [
+    "Agenda",
+    "Zoom",
+    "Meta Business",
+    "LinkedIn",
+    "Formulaire",
+  ])
+    await expect(
+      page.getByRole("region", { name }).getByText("À venir"),
+    ).toBeVisible();
+});
+
+test("lancer un passage demande confirmation quand l'envoi est activé", async ({
+  page,
+}) => {
+  await mockApi(page, { status: status({ send_enabled: true }) });
+  const calls: string[] = [];
+  await page.route("**/api/v1/integrations/email/sync", async (route) => {
+    calls.push("sync");
+    await route.fulfill({ json: { report: {} } });
+  });
+  await open(page);
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page
+    .getByRole("button", { name: "Lancer un passage maintenant" })
+    .click();
+  expect(calls).toHaveLength(0);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page
+    .getByRole("button", { name: "Lancer un passage maintenant" })
+    .click();
+  await expect(page.getByText("0 reçu(s), 0 envoyé(s)")).toBeVisible();
 });
 
 test("tester la connexion affiche IMAP et SMTP", async ({ page }) => {
