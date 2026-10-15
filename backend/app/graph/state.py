@@ -95,7 +95,7 @@ class SalesAgentState(TypedDict, total=False):
     # Entrées
     prospect_id: int
     conversation_id: str
-    trigger: Literal["inbound_message", "first_contact"]
+    trigger: Literal["inbound_message", "first_contact", "follow_up"]
     inbound_text: str
     # Contexte
     ctx: ProspectContext

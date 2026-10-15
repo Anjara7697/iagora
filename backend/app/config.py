@@ -49,6 +49,18 @@ class Settings(BaseSettings):
     # pas » et l'agent transfère au conseiller. À calibrer avec `kb-eval` après tout changement.
     rag_min_score: float = Field(0.6, ge=0.0, le=1.0)
 
+    # Déclenchement automatique de l'agent et relances (F-06, F-16).
+    # `agent_auto_reply` : dès qu'un message du prospect est enregistré, l'agent prépare sa réponse
+    # (brouillon en mode assisté). `follow_up_*` : exécuteur des relances programmées.
+    agent_auto_reply: bool = True
+    follow_up_worker_enabled: bool = True
+    follow_up_interval_seconds: int = Field(300, ge=5)
+    follow_up_max_per_silence: int = Field(3, ge=1, le=10)
+    # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).
+    follow_up_window_start_hour: int = Field(8, ge=0, le=23)
+    follow_up_window_end_hour: int = Field(19, ge=1, le=24)
+    follow_up_weekdays_only: bool = True
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None

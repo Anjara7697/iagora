@@ -159,6 +159,10 @@ def decide(state: SalesAgentState) -> Decision:
     if q is not None and q.intent == "opt_out":
         return Decision(Action.OPT_OUT, "Demande d'arrêt des communications")
 
+    # Relance programmée (le prospect est resté silencieux) : message d'entretien, rien à qualifier.
+    if state.get("trigger") == "follow_up":
+        return Decision(Action.NURTURE, "Relance programmée : message d'entretien")
+
     # 2. Cas qui exigent un humain, indépendamment du reste (F-20).
     if state.get("llm_failed"):
         return Decision(Action.HUMAN_HANDOFF, "Modèle de langage indisponible : transfert (NF-05)")

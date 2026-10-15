@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Any
 
@@ -84,6 +85,11 @@ def get_language_model(settings: SettingsDep) -> LanguageModel:
     )
 
 
+def get_session_factory() -> Callable[[], AsyncSession]:
+    """Fabrique de sessions pour les tâches de fond (qui survivent à la requête)."""
+    return get_sessionmaker()
+
+
 def get_calendar() -> Calendar:
     return UnconfiguredCalendar()
 
@@ -124,4 +130,5 @@ def get_knowledge_base(settings: SettingsDep) -> KnowledgeBase:
 Llm = Annotated[LanguageModel, Depends(get_language_model)]
 CalendarDep = Annotated[Calendar, Depends(get_calendar)]
 KnowledgeDep = Annotated[KnowledgeBase, Depends(get_knowledge_base)]
+SessionFactoryDep = Annotated[Callable[[], AsyncSession], Depends(get_session_factory)]
 EmbeddingsDep = Annotated[EmbeddingModel | None, Depends(get_embeddings)]

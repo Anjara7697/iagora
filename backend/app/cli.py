@@ -8,7 +8,7 @@ import sys
 
 from pydantic import ValidationError
 
-from app import kb_commands
+from app import agent_commands, kb_commands
 from app.database.session import dispose_engine, get_sessionmaker
 from app.devtools import commands
 from app.models.enums import UserRole
@@ -68,6 +68,10 @@ def main() -> None:
     delete = sub.add_parser("kb-delete", help="Supprimer un document (ou tous ceux de démo)")
     delete.add_argument("slug", nargs="?")
     delete.add_argument("--demo", action="store_true", help="Supprimer les documents FICTIFS")
+    followups = sub.add_parser("run-follow-ups", help="Exécuter une fois les relances échues")
+    followups.add_argument(
+        "--anytime", action="store_true", help="Ignorer la fenêtre d'envoi (essais uniquement)"
+    )
     sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
     args = parser.parse_args()
 
@@ -93,6 +97,8 @@ def main() -> None:
         if not args.slug and not args.demo:
             sys.exit("Indiquez un document ou --demo.")
         asyncio.run(kb_commands.cmd_kb_delete(args.slug, args.demo))
+    elif args.command == "run-follow-ups":
+        asyncio.run(agent_commands.cmd_run_follow_ups(anytime=args.anytime))
     elif args.command == "kb-eval":
         sys.exit(asyncio.run(commands.cmd_kb_eval()))
     elif args.command == "create-admin":

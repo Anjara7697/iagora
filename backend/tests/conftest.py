@@ -5,6 +5,7 @@ from typing import Any
 import app.models  # noqa: F401
 import pytest
 from app.agents.runtime import ensure_run_indexes
+from app.api.dependencies import get_session_factory
 from app.config import get_settings
 from app.core.security import create_access_token, hash_password
 from app.database.base import Base
@@ -106,6 +107,7 @@ async def make_client(session_factory, mongo_db):
 
     app.dependency_overrides[get_session] = _override
     app.dependency_overrides[get_mongo_db] = lambda: mongo_db
+    app.dependency_overrides[get_session_factory] = lambda: session_factory
 
     async def _make(role: UserRole | None = UserRole.ADMIN) -> AsyncClient:
         headers = {}

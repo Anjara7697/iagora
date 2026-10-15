@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -5,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agents.auto import follow_up_loop
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
@@ -24,7 +27,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         await ensure_run_indexes(get_mongo_db())
     except Exception:  # MongoDB pas encore prêt : l'API démarre, /health/ready signalera l'état
         logger.exception("Création des index MongoDB impossible au démarrage")
+    worker: asyncio.Task[None] | None = None
+    settings = get_settings()
+    if settings.follow_up_worker_enabled:
+        worker = asyncio.create_task(follow_up_loop(settings), name="follow-up-worker")
     yield
+    if worker is not None:
+        worker.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await worker
     await dispose_engine()
     await close_clients()
 
