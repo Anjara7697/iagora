@@ -7,6 +7,7 @@ from app.api.dependencies import (
     ANY_ROLE,
     CAN_WRITE,
     CalendarDep,
+    CurrentUser,
     DbSession,
     KnowledgeDep,
     Llm,
@@ -26,7 +27,8 @@ from app.schemas.conversation import (
     MessageResult,
 )
 from app.services import conversations as service
-from app.services import follow_ups, inbox
+from app.services import drafts, follow_ups, inbox
+from app.services import inbound as inbound_service
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -122,6 +124,8 @@ async def update_conversation(
     conversation = await service.update_conversation(db, conversation_id, payload)
     if conversation.status in (ConversationStatus.HANDED_OFF, ConversationStatus.CLOSED):
         await follow_ups.cancel_pending(session, conversation.prospect_id)
+    if conversation.status is ConversationStatus.CLOSED:
+        await drafts.cancel_pending_for_conversation(db, conversation_id)
     return conversation
 
 
@@ -143,13 +147,31 @@ async def add_message(
     llm: Llm,
     calendar: CalendarDep,
     knowledge: KnowledgeDep,
+    user: CurrentUser,
 ) -> MessageResult:
     """Ajoute un message. Rejeu avec le même `external_message_id` : 200, sans doublon.
-    Un message du prospect déclenche la réponse de l'agent (en tâche de fond, F-06)."""
+    Un message du prospect déclenche la réponse de l'agent (en tâche de fond, F-06).
+    Les clés réservées (`delivery`, `draft`...) sont retirées : le serveur décide de l'envoi."""
+    payload.metadata = {
+        k: v for k, v in payload.metadata.items() if k not in service.RESERVED_METADATA
+    }
+    if payload.role is SenderType.ADVISOR:
+        payload.metadata["author_id"] = user.id
     message, created = await service.add_message(session, db, conversation_id, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
     elif payload.role is SenderType.PROSPECT:
+        doc = await service.get_doc(db, conversation_id)
+        stop = await inbound_service.on_prospect_message(
+            session,
+            db,
+            conversation_id=conversation_id,
+            prospect_id=doc["prospect_id"],
+            channel=doc["channel"],
+            text=payload.content,
+        )
+        if stop:
+            return MessageResult(conversation_id=conversation_id, message=message, created=created)
         _trigger_agent(
             background, settings, conversation_id, session_factory, db, llm, calendar, knowledge
         )

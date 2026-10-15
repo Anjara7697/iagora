@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
-from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
+from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
 from app.models import Prospect
+from app.models.enums import ConsentStatus, UserRole
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
@@ -106,8 +107,15 @@ async def opt_out(
 
 @router.post("/{prospect_id}/consent", response_model=ProspectDetail, dependencies=[CAN_WRITE])
 async def grant_consent(
-    prospect_id: int, payload: ConsentRequest, session: DbSession
+    prospect_id: int, payload: ConsentRequest, session: DbSession, user: CurrentUser
 ) -> ProspectDetail:
+    """Enregistre un consentement. Lever une désinscription est réservé à un administrateur."""
+    current = await service.get_prospect(session, prospect_id)
+    if current.consent_status is ConsentStatus.OPTED_OUT and user.role is not UserRole.ADMIN:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail="Seul un administrateur peut lever une désinscription",
+        )
     prospect = await service.grant_consent(session, prospect_id, payload.source, payload.channel)
     return await _detail(session, prospect)
 

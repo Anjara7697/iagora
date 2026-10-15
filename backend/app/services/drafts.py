@@ -42,6 +42,8 @@ def live_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 async def _pending(db: Any, conversation_id: str, message_id: str) -> dict[str, Any]:
     doc = await conversations.get_doc(db, conversation_id)
+    if doc.get("status") == "closed":
+        raise ConflictError("La conversation est clôturée : ce brouillon ne peut plus être traité")
     for message in doc.get("messages", []):
         if message["id"] == message_id:
             if not is_pending(message):
@@ -54,7 +56,12 @@ async def _pending(db: Any, conversation_id: str, message_id: str) -> dict[str, 
 async def _update(
     db: Any, conversation_id: str, message_id: str, fields: dict[str, Any], content: str | None
 ) -> MessageRead:
-    match = {"_id": ObjectId(conversation_id), "messages.id": message_id}
+    # Le brouillon doit encore être en attente au moment de l'écriture : deux conseillers qui
+    # décident en même temps ne s'écrasent pas, le second reçoit un conflit.
+    match = {
+        "_id": ObjectId(conversation_id),
+        "messages": {"$elemMatch": {"id": message_id, "metadata.draft.status": PENDING}},
+    }
     # Une mise à jour par chemin racine : mongomock gère mal plusieurs « $ » dans un même $set.
     # Le statut est écrit en dernier (il fait foi pour la file « À traiter »).
     first: list[dict[str, Any]] = []
@@ -62,13 +69,21 @@ async def _update(
         first.append({"messages.$.content": content})
     if fields.get("status") == "approved":
         first.append({"messages.$.metadata.delivery": "not_sent"})  # validé ; envoi à venir
-    for update in first:
-        await db[conversations.COLLECTION].update_one(match, {"$set": update})
-    result = await db[conversations.COLLECTION].update_one(
-        match, {"$set": {f"messages.$.metadata.draft.{k}": v for k, v in fields.items()}}
+    # Une seule écriture « claim » d'abord (statut), puis le reste : si le statut n'a pas pu être
+    # posé, un autre a déjà décidé.
+    claim = await db[conversations.COLLECTION].update_one(
+        match, {"$set": {"messages.$.metadata.draft.status": fields["status"]}}
     )
-    if result.matched_count == 0:
-        raise NotFoundError("Brouillon introuvable")
+    if claim.matched_count == 0:
+        raise ConflictError("Ce brouillon a déjà été traité")
+    after = {"_id": match["_id"], "messages.id": message_id}
+    for update in first:
+        await db[conversations.COLLECTION].update_one(after, {"$set": update})
+    rest = {k: v for k, v in fields.items() if k != "status"}
+    if rest:
+        await db[conversations.COLLECTION].update_one(
+            after, {"$set": {f"messages.$.metadata.draft.{k}": v for k, v in rest.items()}}
+        )
     doc = await conversations.get_doc(db, conversation_id)
     message = next(m for m in doc["messages"] if m["id"] == message_id)
     return MessageRead(**message)
@@ -131,3 +146,36 @@ async def cancel_pending_for_prospect(db: Any, prospect_id: int) -> int:
                 )
                 cancelled += 1
     return cancelled
+
+
+async def supersede_pending(db: Any, conversation_id: str, reason: str) -> int:
+    """Le prospect a écrit à nouveau : les brouillons en attente répondaient à un état périmé.
+    L'agent en rédigera un nouveau avec tout le contexte (évite deux brouillons validables)."""
+    doc = await conversations.get_doc(db, conversation_id)
+    count = 0
+    for message in doc.get("messages", []):
+        if is_pending(message):
+            await db[conversations.COLLECTION].update_one(
+                {"_id": doc["_id"], "messages.id": message["id"]},
+                {"$set": {"messages.$.metadata.draft.status": "superseded"}},
+            )
+            await db[conversations.COLLECTION].update_one(
+                {"_id": doc["_id"], "messages.id": message["id"]},
+                {"$set": {"messages.$.metadata.draft.reason": reason}},
+            )
+            count += 1
+    return count
+
+
+async def cancel_pending_for_conversation(db: Any, conversation_id: str) -> int:
+    """Clôture : les brouillons en attente ne partiront jamais."""
+    doc = await conversations.get_doc(db, conversation_id)
+    count = 0
+    for message in doc.get("messages", []):
+        if is_pending(message):
+            await db[conversations.COLLECTION].update_one(
+                {"_id": doc["_id"], "messages.id": message["id"]},
+                {"$set": {"messages.$.metadata.draft.status": "cancelled"}},
+            )
+            count += 1
+    return count

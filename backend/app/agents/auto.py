@@ -101,6 +101,16 @@ async def _cancel(session: AsyncSession, follow_up_id: int, note: str) -> None:
         await session.commit()
 
 
+async def _release(session: AsyncSession, follow_up_id: int) -> None:
+    """Panne technique : la relance n'a pas été envoyée, elle repasse à « programmée »."""
+    await session.execute(
+        update(FollowUp)
+        .where(FollowUp.id == follow_up_id, FollowUp.status == FollowUpStatus.EXECUTED)
+        .values(status=FollowUpStatus.SCHEDULED, executed_at=None)
+    )
+    await session.commit()
+
+
 async def _relances_since_last_reply(
     session: AsyncSession, prospect_id: int, last_prospect_at: datetime | None, before_id: int
 ) -> int:
@@ -201,7 +211,9 @@ async def run_due_follow_ups(
                 continue
             except Exception:
                 logger.exception("Relance %s en erreur", follow_up_id)
-                summary.notes.append(f"relance {follow_up_id} : erreur technique")
+                await session.rollback()
+                await _release(session, follow_up_id)
+                summary.notes.append(f"relance {follow_up_id} : erreur technique (sera retentée)")
                 continue
             summary.executed += 1
     if summary.executed or summary.cancelled:
