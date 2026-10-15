@@ -6,7 +6,10 @@ from app.api.v1 import (
     campaign_prospects,
     campaigns,
     conversations,
+    dashboard,
+    demo,
     health,
+    integrations,
     knowledge,
     prospects,
     todo,
@@ -20,8 +23,12 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(prospects.router)
 api_router.include_router(campaigns.router)
+api_router.include_router(campaigns.targets_router)
 api_router.include_router(campaign_prospects.router)
 api_router.include_router(conversations.router)
 api_router.include_router(todo.router)
 api_router.include_router(knowledge.router)
+api_router.include_router(integrations.router)
+api_router.include_router(demo.router)
+api_router.include_router(dashboard.router)
 # Restent à ajouter (CdC 9.6) : webhooks, rendez-vous.

@@ -146,9 +146,123 @@ export const DRAFT_STATUS: Record<string, string> = {
   cancelled: "Annulé (désinscription)",
 };
 
+export const DELIVERY: Record<string, string> = {
+  not_sent: "Prêt à envoyer",
+  sending: "Envoi en cours",
+  sent: "Envoyé",
+  failed: "Échec d’envoi",
+  blocked: "Envoi bloqué",
+};
+
 export const TARGETS: Record<string, string> = {
   ebihar_students: "eBIHAR — étudiants",
   compagnons_pros: "Les Compagnons — professionnels",
   master_candidates: "Master eBIHAR — candidats",
   master_companies: "Master eBIHAR — entreprises",
 };
+
+export const CAMPAIGN_STATUS: Record<string, string> = {
+  draft: "Brouillon",
+  active: "Active",
+  inactive: "Inactive",
+};
+
+export const SOURCE_TYPES: Record<string, string> = {
+  ads: "Publicité",
+  form: "Formulaire",
+  landing_page: "Page d'atterrissage",
+  webinar: "Webinaire",
+  import: "Import",
+};
+
+export const PLATFORMS: Record<string, string> = {
+  linkedin: "LinkedIn",
+  meta: "Meta",
+  web: "Site web",
+  email: "Email",
+};
+
+/** Étapes regroupées pour l'entonnoir d'une campagne. */
+export const FUNNEL: { title: string; stages: string[] }[] = [
+  { title: "À qualifier", stages: ["new", "to_qualify"] },
+  { title: "En échange", stages: ["contacted", "in_conversation"] },
+  { title: "Qualifiés", stages: ["qualified"] },
+  {
+    title: "Rendez-vous",
+    stages: ["meeting_proposed", "meeting_scheduled", "meeting_done"],
+  },
+  { title: "Candidature", stages: ["applied"] },
+  { title: "Convertis", stages: ["converted"] },
+  { title: "À relancer", stages: ["to_follow_up"] },
+  { title: "Perdus", stages: ["lost"] },
+];
+
+export function formatDay(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleDateString("fr-FR") : "-";
+}
+
+/** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
+const PAGE_TITLES: [string, string][] = [
+  ["/campaigns/new", "Nouvelle campagne"],
+  ["/campaigns/", "Campagne"],
+  ["/campaigns", "Campagnes"],
+  ["/prospects/", "Fiche prospect"],
+  ["/prospects", "Prospects"],
+  ["/conversations", "Conversations"],
+  ["/todo", "À traiter"],
+  ["/knowledge", "Base de connaissances"],
+  ["/integrations", "Intégrations"],
+  ["/simulator", "Simulateur"],
+];
+
+export function pageTitle(pathname: string): string {
+  if (pathname === "/") return "Aujourd’hui";
+  return (
+    PAGE_TITLES.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
+    )?.[1] ?? "IAGORA"
+  );
+}
+
+/** Prospect fictif (simulateur, démonstration) : adresse réservée, jamais contactée pour de vrai. */
+export const isDemoEmail = (email: string | null | undefined): boolean =>
+  !!email && email.trim().toLowerCase().endsWith("@demo.example.com");
+
+/** Champs du profil collectés par l'agent (F-09), en français. */
+export const PROFILE_FIELDS: Record<string, string> = {
+  study_level: "Niveau d’études",
+  field_of_study: "Domaine d’études",
+  goal: "Projet",
+  availability: "Disponibilité",
+  budget: "Budget",
+  city: "Ville",
+  profession: "Profession",
+  company: "Entreprise",
+  experience: "Expérience",
+};
+
+const PAGE_SUBTITLES: [string, string][] = [
+  ["/campaigns/new", "Segments, sources et statuts"],
+  ["/campaigns", "Segments, sources et statuts"],
+  ["/prospects/", "Parcours, échanges et décisions de l’agent"],
+  ["/prospects", "Pipeline et table"],
+  ["/conversations", "Inbox unifiée"],
+  ["/todo", "Validations, escalades et incidents"],
+  ["/knowledge", "Connaissances de l’agent"],
+  ["/integrations", "Canaux et synchronisation"],
+  ["/simulator", "États de démo — prospects fictifs"],
+];
+
+export function pageSubtitle(pathname: string): string {
+  if (pathname === "/")
+    return new Date().toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  return (
+    PAGE_SUBTITLES.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
+    )?.[1] ?? ""
+  );
+}

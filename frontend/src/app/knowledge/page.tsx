@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Loading } from "@/components/ui";
@@ -246,7 +247,11 @@ function DocumentDetail({
   const d = detail.data;
   return (
     <section className="card" aria-label={`Document ${slug}`}>
-      <Loading loading={detail.loading} error={detail.error} />
+      <Loading
+        loading={detail.loading}
+        error={detail.error}
+        onRetry={detail.reload}
+      />
       {d && (
         <>
           <div className="row">
@@ -307,6 +312,15 @@ export default function KnowledgePage() {
   }
 
   const needsReindex = docs.data?.some((d) => d.needs_reindex) ?? false;
+  const gaps = useApi<{ counts: Record<string, number> }>("/todo?limit=1");
+  const gapCount = gaps.data?.counts?.kb_gap ?? 0;
+  const [programme, setProgramme] = useState("");
+  const programmes = Array.from(
+    new Set((docs.data ?? []).map((d) => d.target_code ?? "")),
+  );
+  const shown = (docs.data ?? []).filter(
+    (d) => !programme || (d.target_code ?? "") === programme,
+  );
 
   return (
     <>
@@ -331,6 +345,23 @@ export default function KnowledgePage() {
         )}
       </div>
 
+      {gapCount > 0 && (
+        <div className="card kb-gap" role="status">
+          <div>
+            <strong>
+              {gapCount} lacune{gapCount > 1 ? "s bloquent" : " bloque"} une
+              réponse en cours
+            </strong>
+            <p className="muted">
+              Un prospect attend une réponse que la base ne contient pas :
+              l’agent refuse de répondre sans source fiable.
+            </p>
+          </div>
+          <Link className="button-link" href="/todo">
+            Traiter la demande
+          </Link>
+        </div>
+      )}
       {status.data && !status.data.configured && (
         <p className="card warnbox" role="alert">
           Les embeddings ne sont pas configurés (clé <code>GEMINI_API_KEY</code>{" "}
@@ -387,7 +418,30 @@ export default function KnowledgePage() {
         />
       )}
 
-      <Loading loading={docs.loading} error={docs.error} />
+      <Loading
+        loading={docs.loading}
+        error={docs.error}
+        onRetry={docs.reload}
+      />
+      {docs.data && programmes.length > 1 && (
+        <div className="chips" role="group" aria-label="Programme">
+          <button
+            aria-pressed={programme === ""}
+            onClick={() => setProgramme("")}
+          >
+            Toutes
+          </button>
+          {programmes.map((code) => (
+            <button
+              key={code}
+              aria-pressed={programme === code}
+              onClick={() => setProgramme(code)}
+            >
+              {code ? label(TARGETS, code) : "Tous programmes"}
+            </button>
+          ))}
+        </div>
+      )}
       {docs.data && (
         <div className="table-wrap">
           <table>
@@ -397,11 +451,12 @@ export default function KnowledgePage() {
                 <th>Programme</th>
                 <th>Extraits</th>
                 <th>Mis à jour</th>
+                <th>Statut</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {docs.data.map((d) => (
+              {shown.map((d) => (
                 <tr key={d.slug}>
                   <td>
                     <button
@@ -414,10 +469,9 @@ export default function KnowledgePage() {
                     </button>
                     <div className="muted">
                       {d.slug}{" "}
-                      {d.is_demo && <span className="badge warn">Fictif</span>}{" "}
-                      {d.needs_reindex && (
-                        <span className="badge warn">À recalculer</span>
-                      )}
+                      {d.is_demo && (
+                        <span className="badge warn">Fictif</span>
+                      )}{" "}
                     </div>
                   </td>
                   <td>
@@ -425,6 +479,13 @@ export default function KnowledgePage() {
                   </td>
                   <td>{d.chunks}</td>
                   <td>{formatDate(d.updated_at)}</td>
+                  <td>
+                    <span
+                      className={`badge ${d.needs_reindex ? "integ-warn" : "integ-ok"}`}
+                    >
+                      {d.needs_reindex ? "À recalculer" : "À jour"}
+                    </span>
+                  </td>
                   <td>
                     {isAdmin && (
                       <button
@@ -453,7 +514,7 @@ export default function KnowledgePage() {
               ))}
               {docs.data.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={6} className="muted">
                     Aucun document.{" "}
                     {isAdmin
                       ? "Ajoutez le premier avec le bouton ci-dessus."

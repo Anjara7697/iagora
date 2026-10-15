@@ -49,9 +49,54 @@ class Settings(BaseSettings):
     # pas » et l'agent transfère au conseiller. À calibrer avec `kb-eval` après tout changement.
     rag_min_score: float = Field(0.6, ge=0.0, le=1.0)
 
+    # Déclenchement automatique de l'agent et relances (F-06, F-16).
+    # `agent_auto_reply` : dès qu'un message du prospect est enregistré, l'agent prépare sa réponse
+    # (brouillon en mode assisté). `follow_up_*` : exécuteur des relances programmées.
+    agent_auto_reply: bool = True
+    follow_up_worker_enabled: bool = True
+    follow_up_interval_seconds: int = Field(300, ge=5)
+    follow_up_max_per_silence: int = Field(3, ge=1, le=10)
+    # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).
+    follow_up_window_start_hour: int = Field(8, ge=0, le=23)
+    follow_up_window_end_hour: int = Field(19, ge=1, le=24)
+    follow_up_weekdays_only: bool = True
+
+    # Connecteur email (IMAP pour recevoir, SMTP pour envoyer). Les identifiants ne vont que dans
+    # le .env local : jamais dans Git, jamais dans les journaux (S-04). Valeurs IONOS à vérifier.
+    email_enabled: bool = False
+    email_imap_host: str = "imap.ionos.fr"
+    email_imap_port: int = 993
+    email_imap_folder: str = "INBOX"
+    email_smtp_host: str = "smtp.ionos.fr"
+    email_smtp_port: int = 587
+    email_smtp_security: Literal["starttls", "ssl"] = "starttls"
+    email_username: str = ""
+    email_password: SecretStr | None = None
+    email_from_address: str = ""  # par défaut : l'identifiant de connexion
+    email_from_name: str = "DATUM Academy"
+    email_poll_seconds: int = Field(60, ge=10)
+    # Envoi réel des messages validés : désactivé par défaut (réception seule).
+    email_send_enabled: bool = False
+    # Bac à sable : si renseigné (adresses séparées par des virgules), l'agent n'écrit QU'À ces
+    # adresses ; tout autre destinataire est bloqué. À utiliser pendant les essais.
+    email_sandbox_recipients: str = ""
+    # Un expéditeur inconnu devient un prospect (sans campagne).
+    email_create_unknown_senders: bool = True
+    email_footer: str = (
+        "Pour ne plus recevoir de messages de notre part, répondez simplement STOP à cet email."
+    )
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
+
+    @property
+    def email_sandbox_list(self) -> list[str]:
+        return [a.strip().lower() for a in self.email_sandbox_recipients.split(",") if a.strip()]
+
+    @property
+    def email_sender_address(self) -> str:
+        return (self.email_from_address or self.email_username).strip().lower()
 
     @model_validator(mode="after")
     def _require_real_secret_in_production(self) -> "Settings":
@@ -62,6 +107,12 @@ class Settings(BaseSettings):
             raise ValueError(
                 "JWT_SECRET_KEY doit être défini (32 caractères minimum) en production"
             )
+        if self.environment == "production":
+            if self.debug:
+                raise ValueError("DEBUG doit être désactivé en production")
+            for origin in self.cors_origins:
+                if origin == "*" or "localhost" in origin or "127.0.0.1" in origin:
+                    raise ValueError(f"CORS_ORIGINS invalide en production : {origin}")
         return self
 
 

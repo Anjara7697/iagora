@@ -149,8 +149,8 @@ la livraison (email IONOS, Meta, LinkedIn) viendra avec les connecteurs.
 | `KnowledgeBase` | RAG pgvector si une clé d'embeddings est configurée (voir `docs/rag.md`), sinon vide : toute question factuelle est transférée | Documents officiels de DATUM Academy |
 | `Calendar` | « Non configuré » : toute demande de rendez-vous est transférée | Google Calendar et Zoom |
 | `Messenger` | Enregistre sans envoyer | Connecteurs email / Meta / LinkedIn |
-| Déclenchement | Manuel (`POST /agent/runs`) | Automatique à chaque message reçu (F-06) |
-| Relances | Programmées, pas exécutées | Planificateur de relances (F-16) |
+| Déclenchement | Automatique à chaque message du prospect enregistré (`AGENT_AUTO_REPLY`) ; manuel possible (`POST /agent/runs`) | Webhooks et boîte email des connecteurs |
+| Relances | Programmées et exécutées par un exécuteur de fond (brouillon en mode assisté) | Envoi réel via les connecteurs |
 
 ## Mode assisté : brouillons et validation humaine
 
@@ -172,3 +172,27 @@ connaissances et incidents, triés par priorité (critique, élevée, moyenne, f
 Actions : `POST /conversations/{id}/drafts/{message_id}/approve | reject | regenerate`.
 
 Les scénarios de recette (`scenario`) s'exécutent en mode `auto` pour rester indépendants du réglage global.
+
+## Déclenchement automatique et relances
+
+**Réponse automatique (F-06).** Dès qu'un message du prospect est enregistré (`POST /conversations/{id}/messages`
+ou ouverture d'une conversation avec un message), l'agent prépare sa réponse en tâche de fond : un brouillon en mode
+assisté, rien en mode manuel (arrêt d'urgence). Les exécutions d'une même conversation sont **sérialisées** : un
+déclenchement automatique et un déclenchement manuel simultanés ne produisent jamais deux réponses (le second reçoit un
+409 « Aucun message du prospect à traiter »). Désactivable : `AGENT_AUTO_REPLY=false`. Les connecteurs (email, Meta,
+LinkedIn) n'auront qu'à enregistrer le message entrant pour déclencher l'agent.
+
+**Relances (F-16).** Un exécuteur de fond (`FOLLOW_UP_WORKER_ENABLED`, toutes les `FOLLOW_UP_INTERVAL_SECONDS`)
+traite les relances échues. Garde-fous :
+
+| Garde-fou | Comportement |
+|---|---|
+| Fenêtre d'envoi | Jours ouvrés, 8 h à 19 h (heure de Paris) ; en dehors, la relance attend |
+| Arrêt d'urgence | En mode manuel, aucune relance n'est exécutée ni consommée |
+| Désinscription, réponse du prospect | La relance est annulée, rien ne part (S-03, F-16) |
+| Plafond | Au plus `FOLLOW_UP_MAX_PER_SILENCE` (3) relances sans réponse du prospect |
+| Brouillon non validé | Pas de nouvelle relance tant que le précédent attend : elle est annulée |
+| Doublons | La relance est « réclamée » de façon atomique : deux processus ne l'envoient pas deux fois |
+
+Le message de relance est rédigé par l'agent (déclencheur `follow_up`, décision « entretien ») et suit la validation du
+mode assisté. Essai sans attendre : `python -m app.cli run-follow-ups --anytime` (ignore la fenêtre d'envoi).

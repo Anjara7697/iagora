@@ -1,7 +1,19 @@
-import { DRAFT_STATUS, ROLES, formatDate, label } from "@/lib/labels";
+import { DELIVERY, DRAFT_STATUS, ROLES, formatDate, label } from "@/lib/labels";
 import type { Message } from "@/lib/types";
 
 type Draft = { status?: string; reason?: string; edited?: boolean };
+type DeliveryInfo = { reason?: string; error?: string; attempts?: number };
+
+// Seuls les messages réellement concernés par un envoi affichent un état (pas les brouillons).
+function deliveryLine(
+  delivery: unknown,
+  info: DeliveryInfo | undefined,
+): string | null {
+  if (typeof delivery !== "string" || delivery === "draft") return null;
+  const base = label(DELIVERY, delivery);
+  const detail = info?.reason ?? info?.error;
+  return detail ? `${base} — ${detail}` : base;
+}
 
 export default function ConversationView({
   messages,
@@ -34,6 +46,19 @@ export default function ConversationView({
               </div>
             )}
             <div className="bubble-text">{m.content}</div>
+            {(() => {
+              const line = deliveryLine(
+                m.metadata.delivery,
+                m.metadata.delivery_info as DeliveryInfo | undefined,
+              );
+              return line ? (
+                <div
+                  className={`bubble-delivery delivery-${m.metadata.delivery}`}
+                >
+                  {line}
+                </div>
+              ) : null;
+            })()}
             {Array.isArray(sources) && sources.length > 0 && (
               <div className="bubble-meta">Sources : {sources.join(" ; ")}</div>
             )}

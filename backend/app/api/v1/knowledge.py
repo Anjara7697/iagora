@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Path, status
@@ -25,6 +26,8 @@ from app.schemas.knowledge import (
 )
 from app.services import knowledge as service
 from app.services.knowledge import DocumentSummary
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"], dependencies=[ANY_ROLE])
 
@@ -94,10 +97,12 @@ async def put_document(
         result = await service.ingest_document(session, model, slug, payload.content)
     except DocumentFormatError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    except EmbeddingError as exc:
+    except EmbeddingError:
+        logger.warning("Embeddings indisponibles", exc_info=True)
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Embeddings indisponibles : {exc}"
-        ) from exc
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Embeddings indisponibles : réessayez plus tard",
+        ) from None
     return IngestRead(slug=result.slug, status=result.status.value, chunks=result.chunks)
 
 
@@ -125,10 +130,12 @@ async def search(
         passages = await kb.search_all_in(
             session, payload.query, payload.target_code, payload.limit
         )
-    except EmbeddingError as exc:
+    except EmbeddingError:
+        logger.warning("Embeddings indisponibles", exc_info=True)
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Embeddings indisponibles : {exc}"
-        ) from exc
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Embeddings indisponibles : réessayez plus tard",
+        ) from None
     return SearchResult(
         threshold=settings.rag_min_score,
         results=[
@@ -149,7 +156,9 @@ async def reindex(session: DbSession, embeddings: EmbeddingsDep) -> dict[str, in
     model = _require(embeddings)
     try:
         return {"documents": await service.reindex(session, model)}
-    except EmbeddingError as exc:
+    except EmbeddingError:
+        logger.warning("Embeddings indisponibles", exc_info=True)
         raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Embeddings indisponibles : {exc}"
-        ) from exc
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Embeddings indisponibles : réessayez plus tard",
+        ) from None

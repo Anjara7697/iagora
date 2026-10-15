@@ -10,6 +10,7 @@ import {
   setToken,
   SIMULATOR_ENABLED,
 } from "@/lib/api";
+import { pageSubtitle, pageTitle } from "@/lib/labels";
 import AgentModeCard from "./AgentModeCard";
 import type { User } from "@/lib/types";
 
@@ -20,15 +21,50 @@ const ROLE_LABELS = {
   ADVISOR: "Conseiller",
   VIEWER: "Observateur",
 };
-const INTELLIGENCE_LINKS = [
-  { href: "/knowledge", label: "Base de connaissances", icon: "❖" },
+type NavItem = {
+  href?: string;
+  label: string;
+  badge?: boolean;
+  /** Écran prévu par la maquette, pas encore développé : affiché grisé, sans lien. */
+  soon?: boolean;
+  adminOnly?: boolean;
+};
+const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
+  {
+    name: "Travail",
+    items: [
+      { href: "/", label: "Aujourd’hui" },
+      { href: "/todo", label: "À traiter", badge: true },
+      { href: "/conversations", label: "Conversations" },
+      { label: "Rendez-vous", soon: true },
+      { href: "/prospects", label: "Prospects" },
+    ],
+  },
+  {
+    name: "Pilotage",
+    items: [
+      { href: "/campaigns", label: "Campagnes" },
+      { label: "Dashboard", soon: true },
+      { label: "Analytics", soon: true },
+    ],
+  },
+  {
+    name: "Intelligence",
+    items: [
+      { label: "Agent", soon: true },
+      { href: "/knowledge", label: "Knowledge Base" },
+    ],
+  },
+  {
+    name: "Administration",
+    items: [
+      { href: "/integrations", label: "Intégrations", adminOnly: true },
+      { label: "Paramètres", soon: true },
+    ],
+  },
 ];
-const LINKS = [
-  { href: "/", label: "Aujourd’hui", icon: "◷" },
-  { href: "/todo", label: "À traiter", icon: "✓", badge: true },
-  { href: "/conversations", label: "Conversations", icon: "✉" },
-  { href: "/prospects", label: "Prospects", icon: "▦" },
-];
+
+const initialsOf = (name: string) => name.slice(0, 2).toUpperCase();
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -38,6 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
   const [waiting, setWaiting] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -102,16 +139,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
     );
 
-  const links = SIMULATOR_ENABLED
-    ? [...LINKS, { href: "/simulator", label: "Simulateur", icon: "◇" }]
-    : LINKS;
-  const groups = [
-    { name: "Travail", items: links },
-    { name: "Intelligence", items: INTELLIGENCE_LINKS },
-  ];
-  const title = pathname.startsWith("/prospects/")
-    ? "Fiche prospect"
-    : (links.find((l) => l.href === pathname)?.label ?? "IAGORA");
+  const isAdmin = user.role === "ADMIN";
+  const showSimulator = SIMULATOR_ENABLED && user.role !== "VIEWER";
+  const groups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => isAdmin || !i.adminOnly),
+  })).filter((g) => g.items.length > 0);
+  const title = pageTitle(pathname);
+  const subtitle = pageSubtitle(pathname);
   return (
     <UserContext.Provider value={user}>
       <a className="skip-link" href="#main-content">
@@ -137,6 +172,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div key={group.name}>
                 <p className="nav-group">{group.name}</p>
                 {group.items.map((link) => {
+                  if (!link.href)
+                    return (
+                      <span
+                        key={link.label}
+                        className="nav-item soon"
+                        aria-disabled="true"
+                        title="Prévu, pas encore disponible"
+                      >
+                        {link.label}
+                        <span className="nav-soon">Bientôt</span>
+                      </span>
+                    );
                   const active =
                     pathname === link.href ||
                     (link.href !== "/" && pathname.startsWith(`${link.href}/`));
@@ -148,9 +195,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       className={`nav-item ${active ? "active" : ""}`}
                       onClick={() => setNavOpen(false)}
                     >
-                      <span aria-hidden="true">{link.icon}</span>
                       {link.label}
-                      {"badge" in link && link.badge && waiting ? (
+                      {link.badge && waiting ? (
                         <span
                           className="nav-count"
                           aria-label={`${waiting} en attente`}
@@ -164,11 +210,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ))}
           </nav>
-          <div className="sidebar-footer">
-            <span className="eyebrow">DATUM Academy</span>
-            <p>Votre espace de suivi commercial.</p>
-            <span className="badge">{ROLE_LABELS[user.role]}</span>
-          </div>
+          {showSimulator && (
+            <div className="nav-demo">
+              <Link
+                href="/simulator"
+                className={`nav-demo-link ${pathname === "/simulator" ? "active" : ""}`}
+                onClick={() => setNavOpen(false)}
+              >
+                États de démo · Simulateur
+              </Link>
+            </div>
+          )}
           <AgentModeCard
             readOnly={user.role === "VIEWER"}
             refreshKey={pathname}
@@ -186,12 +238,47 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               ☰
             </button>
             <strong>{title}</strong>
-            <span className="header-subtitle muted">Agent commercial 2.0</span>
+            {subtitle && (
+              <span className="header-subtitle muted">{subtitle}</span>
+            )}
             <span className="spacer" />
-            <span className="user-avatar" aria-hidden="true">
-              {user.username.slice(0, 2).toUpperCase()}
+            <form
+              className="header-search"
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = search.trim();
+                router.push(
+                  q ? `/prospects?q=${encodeURIComponent(q)}` : "/prospects",
+                );
+                setNavOpen(false);
+              }}
+            >
+              <input
+                type="search"
+                aria-label="Rechercher un prospect"
+                placeholder="Nom, email ou campagne…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </form>
+            {waiting !== null && (
+              <Link href="/todo" className="todo-pill">
+                <span
+                  className={`dot ${waiting > 0 ? "warn" : ""}`}
+                  aria-hidden="true"
+                />
+                {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
+              </Link>
+            )}
+            <span
+              className="user-avatar"
+              title={`${user.username} · ${ROLE_LABELS[user.role]}`}
+              aria-hidden="true"
+            >
+              {initialsOf(user.username)}
             </span>
-            <span className="user-name">{user.username}</span>
+            <span className="badge">{ROLE_LABELS[user.role]}</span>
             <button
               onClick={() => {
                 setToken(null);

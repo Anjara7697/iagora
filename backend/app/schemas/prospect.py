@@ -2,9 +2,10 @@ import re
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
 
 from app.models.enums import ConsentStatus, ConversionStage, InterestLevel
+from app.services.demo import is_demo_email
 
 _PHONE_SEPARATORS = re.compile(r"[\s.\-()]")
 
@@ -71,6 +72,8 @@ class CampaignMembershipRead(BaseModel):
 
     id: int
     campaign_source_id: int
+    campaign_id: int | None = None
+    campaign_name: str | None = None
     interest_status: InterestLevel | None
     conversion_stage: ConversionStage
     interest_score: int
@@ -102,6 +105,12 @@ class ProspectRead(BaseModel):
     opted_out_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_demo(self) -> bool:
+        """Prospect fictif (simulateur, démonstration) : jamais contacté pour de vrai."""
+        return is_demo_email(self.email)
 
 
 class ProspectDetail(ProspectRead):

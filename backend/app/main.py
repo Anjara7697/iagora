@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -5,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agents.auto import email_loop, follow_up_loop
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
@@ -24,7 +27,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         await ensure_run_indexes(get_mongo_db())
     except Exception:  # MongoDB pas encore prêt : l'API démarre, /health/ready signalera l'état
         logger.exception("Création des index MongoDB impossible au démarrage")
+    workers: list[asyncio.Task[None]] = []
+    settings = get_settings()
+    if settings.follow_up_worker_enabled:
+        workers.append(asyncio.create_task(follow_up_loop(settings), name="follow-up-worker"))
+    if settings.email_enabled:
+        workers.append(asyncio.create_task(email_loop(settings), name="email-worker"))
     yield
+    for worker in workers:
+        worker.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await worker
     await dispose_engine()
     await close_clients()
 
@@ -32,12 +45,22 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
-    app = FastAPI(title=settings.app_name, version="0.1.0", debug=settings.debug, lifespan=lifespan)
+    production = settings.environment == "production"
+    app = FastAPI(
+        title=settings.app_name,
+        version="0.1.0",
+        debug=settings.debug,
+        lifespan=lifespan,
+        # Pas de documentation interactive publique en production.
+        docs_url=None if production else "/docs",
+        redoc_url=None if production else "/redoc",
+        openapi_url=None if production else "/openapi.json",
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
     register_error_handlers(app)
     app.include_router(api_router, prefix=settings.api_v1_prefix)

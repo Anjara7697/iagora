@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
   CHANNELS,
@@ -220,6 +220,7 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
+          <DemoBadge email={item.prospect?.email} />
           <div className="row">
             <span className={`badge kind-${item.kind}`}>
               {label(TODO_KINDS, item.kind)}
@@ -350,7 +351,7 @@ function Todo() {
               ))}
             </div>
           </div>
-          <Loading loading={list.loading} error={list.error} />
+          <Loading loading={list.loading} error={list.error} onRetry={list.reload} />
           {list.data && items.length === 0 && (
             <p className="muted inbox-empty">Rien à traiter pour le moment.</p>
           )}

@@ -1,8 +1,16 @@
 import Link from "next/link";
 import type { ApiError } from "@/lib/api";
-import { LEVELS, STAGES, label } from "@/lib/labels";
+import { LEVELS, STAGES, isDemoEmail, label } from "@/lib/labels";
 
-export function Loading({ loading, error }: { loading: boolean; error: ApiError | null }) {
+export function Loading({
+  loading,
+  error,
+  onRetry,
+}: {
+  loading: boolean;
+  error: ApiError | null;
+  onRetry?: () => void;
+}) {
   if (loading)
     return (
       <p className="muted" role="status">
@@ -11,18 +19,38 @@ export function Loading({ loading, error }: { loading: boolean; error: ApiError 
     );
   if (error)
     return (
-      <p className="error" role="alert">
+      <div className="error" role="alert">
         {error.message}
-      </p>
+        {onRetry && (
+          <>
+            {" "}
+            <button onClick={onRetry}>Réessayer</button>
+          </>
+        )}
+      </div>
     );
   return null;
+}
+
+export function DemoBadge({ email }: { email: string | null | undefined }) {
+  return isDemoEmail(email) ? (
+    <span className="badge demo-badge" title="Prospect fictif : aucun message réel ne lui est envoyé">
+      Fictif
+    </span>
+  ) : null;
 }
 
 export function StageBadge({ stage }: { stage: string }) {
   return <span className={`badge stage-${stage}`}>{label(STAGES, stage)}</span>;
 }
 
-export function ScoreBadge({ total, level }: { total: number; level?: string | null }) {
+export function ScoreBadge({
+  total,
+  level,
+}: {
+  total: number;
+  level?: string | null;
+}) {
   return (
     <span className={`badge level-${level ?? "cold"}`}>
       {total}
@@ -31,7 +59,13 @@ export function ScoreBadge({ total, level }: { total: number; level?: string | n
   );
 }
 
-export function ProspectLink({ id, children }: { id: number; children: React.ReactNode }) {
+export function ProspectLink({
+  id,
+  children,
+}: {
+  id: number;
+  children: React.ReactNode;
+}) {
   return <Link href={`/prospects/${id}`}>{children}</Link>;
 }
 
@@ -50,13 +84,19 @@ export function Pager({
   const to = Math.min(offset + limit, total);
   return (
     <div className="pager">
-      <button disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>
+      <button
+        disabled={offset === 0}
+        onClick={() => onChange(Math.max(0, offset - limit))}
+      >
         ← Précédent
       </button>
       <span className="muted">
         {from}-{to} sur {total}
       </span>
-      <button disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>
+      <button
+        disabled={offset + limit >= total}
+        onClick={() => onChange(offset + limit)}
+      >
         Suivant →
       </button>
     </div>

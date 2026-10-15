@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Any
 
@@ -11,6 +12,8 @@ from app.core.security import decode_access_token
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.email.base import EmailClient
+from app.integrations.email.factory import create_email_client
 from app.integrations.embeddings.base import EmbeddingError, EmbeddingModel
 from app.integrations.embeddings.factory import create_embeddings
 from app.integrations.knowledge.factory import create_knowledge_base
@@ -84,8 +87,18 @@ def get_language_model(settings: SettingsDep) -> LanguageModel:
     )
 
 
+def get_session_factory() -> Callable[[], AsyncSession]:
+    """Fabrique de sessions pour les tâches de fond (qui survivent à la requête)."""
+    return get_sessionmaker()
+
+
 def get_calendar() -> Calendar:
     return UnconfiguredCalendar()
+
+
+def get_email_client(settings: SettingsDep) -> EmailClient | None:
+    """Client de la boîte email, ou None si le connecteur n'est pas configuré."""
+    return create_email_client(settings, require_enabled=False)
 
 
 @lru_cache
@@ -124,4 +137,6 @@ def get_knowledge_base(settings: SettingsDep) -> KnowledgeBase:
 Llm = Annotated[LanguageModel, Depends(get_language_model)]
 CalendarDep = Annotated[Calendar, Depends(get_calendar)]
 KnowledgeDep = Annotated[KnowledgeBase, Depends(get_knowledge_base)]
+SessionFactoryDep = Annotated[Callable[[], AsyncSession], Depends(get_session_factory)]
+EmailDep = Annotated[EmailClient | None, Depends(get_email_client)]
 EmbeddingsDep = Annotated[EmbeddingModel | None, Depends(get_embeddings)]

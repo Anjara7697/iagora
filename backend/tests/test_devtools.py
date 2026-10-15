@@ -230,7 +230,12 @@ async def test_chat_stops_cleanly_at_end_of_input(session_factory, mongo_db):
 
 
 def test_dev_commands_refuse_to_run_in_production(monkeypatch):
-    prod = Settings(_env_file=None, environment="production", jwt_secret_key="x" * 40)
+    prod = Settings(
+        _env_file=None,
+        environment="production",
+        jwt_secret_key="x" * 40,
+        cors_origins=["https://console.datum.example"],
+    )
     monkeypatch.setattr(commands, "get_settings", lambda: prod)
     with pytest.raises(SystemExit, match="production"):
         commands.guard_not_production()

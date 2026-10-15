@@ -62,6 +62,27 @@ La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
   configurés, modèle changé). Voir `docs/rag.md`.
 - Migration 0007 : `kb_documents.source_text` conserve le texte source.
 
+## Cinquième lot : simulateur
+
+- Le simulateur reprend le design : prospect simulé (étape, score, consentement), **messages types** (durée, prix,
+  financement hors base, rendez-vous, situation sensible, désinscription…), conversation avec brouillons, panneau
+  « Décision de l'agent » (justification, trace, scores, sources, confiance) et historique des tours.
+- Un brouillon peut être approuvé ou refusé sur place ; il reste traitable dans « À traiter ».
+
+## Sixième lot : campagnes
+
+La maquette n'avait pas d'écran pour les campagnes (seulement un filtre) : elles ont maintenant leur place dédiée,
+dans le menu « Travail ».
+
+- **Liste** : cartes par campagne (statut, programmes visés, sources, dates) avec chiffres clés (prospects, chauds,
+  rendez-vous, convertis), filtre par statut.
+- **Fiche** : entonnoir par étape, niveaux d'intérêt, prospects par source, score moyen ; lien « Voir les prospects »
+  (la liste des prospects accepte `?campaign=ID`).
+- **Création et modification** (administrateur) : nom, description, statut, dates, programmes visés, sources ;
+  activer et désactiver ; ajouter ou retirer une source (refusé si des prospects en proviennent).
+- API : `GET /targets`, `GET /campaigns/overview`, `GET /campaigns/{id}/stats`, `POST` et `DELETE`
+  `/campaigns/{id}/sources`, et `target_codes` dans `PATCH /campaigns/{id}`.
+
 ## Validation
 
 Dans `frontend/` :

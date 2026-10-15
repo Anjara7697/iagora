@@ -13,6 +13,9 @@ export type User = { id: number; username: string; email: string; role: Role };
 
 export type Membership = {
   id: number;
+  campaign_source_id?: number;
+  campaign_id?: number | null;
+  campaign_name?: string | null;
   conversion_stage: string;
   interest_status: string | null;
   interest_score: number;
@@ -32,17 +35,49 @@ export type Prospect = {
   consent_source: string | null;
   opted_out_at: string | null;
   created_at: string;
+  is_demo?: boolean;
   campaigns: Membership[];
 };
 
 export type Target = { id: number; code: string; name: string };
-export type Source = { id: number; name: string };
+export type Source = {
+  id: number;
+  name: string;
+  type?: string;
+  platform?: string;
+  external_id?: string | null;
+};
 export type Campaign = {
   id: number;
   name: string;
   status: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   targets: Target[];
   sources: Source[];
+};
+export type CampaignStats = {
+  prospects: number;
+  average_score: number;
+  by_stage: Record<string, number>;
+  by_level: Record<string, number>;
+  by_source: {
+    source_id: number;
+    name: string;
+    platform: string;
+    prospects: number;
+  }[];
+  meetings: number;
+  converted: number;
+};
+export type CampaignOverview = {
+  campaign_id: number;
+  prospects: number;
+  hot: number;
+  meetings: number;
+  qualified?: number;
+  converted: number;
 };
 
 export type Message = {
@@ -206,3 +241,53 @@ export type SearchHit = {
   retained: boolean;
 };
 export type SearchResult = { threshold: number; results: SearchHit[] };
+
+export type EmailStatus = {
+  configured: boolean;
+  enabled: boolean;
+  send_enabled: boolean;
+  sender: string | null;
+  imap_host: string;
+  smtp_host: string;
+  sandbox_recipients: string[];
+  last_run_at: string | null;
+  last_error: string | null;
+  last_report: Record<string, unknown> | null;
+  outbox: Record<string, number>;
+};
+
+export type EmailCheck = { imap: string; smtp: string };
+
+export type DashboardSummary = {
+  agent_mode: AgentMode;
+  hot_prospects: {
+    id: number;
+    name: string;
+    email: string | null;
+    stage: string;
+    level: string | null;
+    total_score: number;
+    campaign_id: number | null;
+    campaign_name: string | null;
+  }[];
+  activity: {
+    hours: number;
+    prospects_analysed: number;
+    drafts_generated: number;
+    sent_after_validation: number;
+    sent_without_validation: number;
+    escalations: number;
+    errors: number;
+  };
+  follow_ups: {
+    id: number;
+    prospect_id: number;
+    prospect_name: string;
+    scheduled_at: string;
+    reason: string | null;
+  }[];
+  follow_ups_total: number;
+  funnel_days: number;
+  funnel: Record<string, number>;
+  leads: number;
+};
