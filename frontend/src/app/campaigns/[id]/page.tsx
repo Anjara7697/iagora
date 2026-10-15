@@ -5,11 +5,14 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
 import { useCurrentUser } from "@/components/AppShell";
-import { Loading } from "@/components/ui";
+import { Loading, Pager, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import {
   CAMPAIGN_STATUS,
+  CONSENT,
   FUNNEL,
+  STAGES,
+  fullName,
   LEVELS,
   PLATFORMS,
   SOURCE_TYPES,
@@ -18,7 +21,14 @@ import {
   label,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
-import type { Campaign, CampaignStats, Target } from "@/lib/types";
+import { qs } from "@/lib/api";
+import type {
+  Campaign,
+  CampaignStats,
+  Page,
+  Prospect,
+  Target,
+} from "@/lib/types";
 
 const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
 const toIso = (value: string) => (value ? `${value}T00:00:00Z` : null);
@@ -225,6 +235,114 @@ function Sources({
   );
 }
 
+const PROSPECTS_LIMIT = 10;
+
+/** Prospects rattachés à la campagne : nom, étape dans CETTE campagne, score, consentement. */
+function CampaignProspects({ campaign }: { campaign: Campaign }) {
+  const [stage, setStage] = useState("");
+  const [offset, setOffset] = useState(0);
+  const list = useApi<Page<Prospect>>(
+    `/prospects${qs({ campaign_id: campaign.id, stage, limit: PROSPECTS_LIMIT, offset })}`,
+    { keepPrevious: true },
+  );
+  const sourceIds = new Set(campaign.sources.map((s) => s.id));
+  const items = list.data?.items ?? [];
+  return (
+    <section className="card" aria-label="Prospects de la campagne">
+      <div className="row">
+        <h3>Prospects de la campagne</h3>
+        <span className="spacer" />
+        <label className="inline-field">
+          Étape
+          <select
+            value={stage}
+            onChange={(e) => {
+              setStage(e.target.value);
+              setOffset(0);
+            }}
+          >
+            <option value="">Toutes</option>
+            {Object.entries(STAGES).map(([key, text]) => (
+              <option key={key} value={key}>
+                {text}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <Loading
+        loading={list.loading && !list.data}
+        error={list.error}
+        onRetry={list.reload}
+      />
+      {list.data && items.length === 0 && (
+        <p className="muted">
+          {stage
+            ? "Aucun prospect à cette étape."
+            : "Aucun prospect pour l’instant. Ils arrivent par les sources de la campagne."}
+        </p>
+      )}
+      {items.length > 0 && (
+        <div className="table-scroll">
+          <table>
+            <caption className="sr-only">Prospects de la campagne</caption>
+            <thead>
+              <tr>
+                <th scope="col">Prospect</th>
+                <th scope="col">Étape</th>
+                <th scope="col">Score</th>
+                <th scope="col">Consentement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((p) => {
+                const m =
+                  p.campaigns.find(
+                    (c) =>
+                      c.campaign_source_id !== undefined &&
+                      sourceIds.has(c.campaign_source_id),
+                  ) ?? p.campaigns[0];
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <Link href={`/prospects/${p.id}`}>
+                        {fullName(p) || p.email || `#${p.id}`}
+                      </Link>
+                      {p.email && <div className="muted">{p.email}</div>}
+                    </td>
+                    <td>
+                      {m ? <StageBadge stage={m.conversion_stage} /> : "-"}
+                    </td>
+                    <td>
+                      {m ? (
+                        <ScoreBadge
+                          total={m.total_score}
+                          level={m.interest_status}
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>{label(CONSENT, p.consent_status)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {list.data && list.data.total > PROSPECTS_LIMIT && (
+        <Pager
+          total={list.data.total}
+          limit={PROSPECTS_LIMIT}
+          offset={offset}
+          onChange={setOffset}
+        />
+      )}
+    </section>
+  );
+}
+
 export default function CampaignPage() {
   const { id } = useParams<{ id: string }>();
   const user = useCurrentUser();
@@ -273,7 +391,11 @@ export default function CampaignPage() {
       <p>
         <Link href="/campaigns">← Campagnes</Link>
       </p>
-      <Loading loading={campaign.loading} error={campaign.error} />
+      <Loading
+        loading={campaign.loading}
+        error={campaign.error}
+        onRetry={campaign.reload}
+      />
       {c && (
         <>
           <div className="page-heading">
@@ -300,7 +422,11 @@ export default function CampaignPage() {
 
           {canEdit && !editing && (
             <div className="row">
-              <button onClick={() => setEditing(true)}>
+              <button
+                disabled={!targets.data}
+                title={targets.error ? "Programmes indisponibles" : undefined}
+                onClick={() => setEditing(true)}
+              >
                 Modifier la campagne
               </button>
               {c.status !== "active" && (
@@ -315,12 +441,25 @@ export default function CampaignPage() {
               {c.status === "active" && (
                 <button
                   disabled={busy}
-                  onClick={() => patch({ status: "inactive" })}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Désactiver la campagne ? Les nouveaux prospects ne seront plus rattachés à ses sources.",
+                      )
+                    )
+                      void patch({ status: "inactive" });
+                  }}
                 >
                   Désactiver
                 </button>
               )}
             </div>
+          )}
+          {canEdit && targets.error && (
+            <p className="error" role="alert">
+              Liste des programmes indisponible : {targets.error.message}{" "}
+              <button onClick={targets.reload}>Réessayer</button>
+            </p>
           )}
           {error && !editing && (
             <p className="error" role="alert">
@@ -365,6 +504,12 @@ export default function CampaignPage() {
             </div>
           </section>
 
+          {stats.error && (
+            <p className="error" role="alert">
+              Statistiques indisponibles : {stats.error.message}{" "}
+              <button onClick={stats.reload}>Réessayer</button>
+            </p>
+          )}
           {stats.data && (
             <>
               <div className="kpis kpis-wide">
@@ -373,7 +518,9 @@ export default function CampaignPage() {
                   <span className="muted">Prospects</span>
                 </div>
                 <div className="kpi">
-                  <strong>{stats.data.average_score}</strong>
+                  <strong>
+                    {Math.round(stats.data.average_score * 10) / 10}
+                  </strong>
                   <span className="muted">Score moyen</span>
                 </div>
                 <div className="kpi">
@@ -397,6 +544,7 @@ export default function CampaignPage() {
             canEdit={canEdit}
             onChanged={reload}
           />
+          <CampaignProspects campaign={c} />
         </>
       )}
     </>

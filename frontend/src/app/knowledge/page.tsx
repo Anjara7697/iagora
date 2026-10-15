@@ -246,7 +246,7 @@ function DocumentDetail({
   const d = detail.data;
   return (
     <section className="card" aria-label={`Document ${slug}`}>
-      <Loading loading={detail.loading} error={detail.error} />
+      <Loading loading={detail.loading} error={detail.error} onRetry={detail.reload} />
       {d && (
         <>
           <div className="row">
@@ -387,7 +387,7 @@ export default function KnowledgePage() {
         />
       )}
 
-      <Loading loading={docs.loading} error={docs.error} />
+      <Loading loading={docs.loading} error={docs.error} onRetry={docs.reload} />
       {docs.data && (
         <div className="table-wrap">
           <table>

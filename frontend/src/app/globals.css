@@ -1236,6 +1236,25 @@ button.danger {
   color: var(--warn);
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 12px 0 20px;
+}
+a.stat-link:hover .stat,
+a.stat-link:focus-visible .stat {
+  border-color: var(--accent, #2563eb);
+}
+
 /* --- Intégrations --- */
 .kv {
   display: grid;

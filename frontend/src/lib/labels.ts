@@ -200,3 +200,26 @@ export const FUNNEL: { title: string; stages: string[] }[] = [
 export function formatDay(iso: string | null | undefined): string {
   return iso ? new Date(iso).toLocaleDateString("fr-FR") : "-";
 }
+
+/** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
+const PAGE_TITLES: [string, string][] = [
+  ["/campaigns/new", "Nouvelle campagne"],
+  ["/campaigns/", "Campagne"],
+  ["/campaigns", "Campagnes"],
+  ["/prospects/", "Fiche prospect"],
+  ["/prospects", "Prospects"],
+  ["/conversations", "Conversations"],
+  ["/todo", "À traiter"],
+  ["/knowledge", "Base de connaissances"],
+  ["/integrations", "Intégrations"],
+  ["/simulator", "Simulateur"],
+];
+
+export function pageTitle(pathname: string): string {
+  if (pathname === "/") return "Aujourd’hui";
+  return (
+    PAGE_TITLES.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
+    )?.[1] ?? "IAGORA"
+  );
+}

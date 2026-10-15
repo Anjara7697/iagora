@@ -71,7 +71,7 @@ export default function IntegrationsPage() {
           </p>
         </div>
       </div>
-      <Loading loading={status.loading} error={status.error} />
+      <Loading loading={status.loading} error={status.error} onRetry={status.reload} />
       {s && (
         <section className="card" aria-label="Email">
           <h2>Email (IMAP / SMTP)</h2>

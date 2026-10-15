@@ -350,7 +350,7 @@ function Todo() {
               ))}
             </div>
           </div>
-          <Loading loading={list.loading} error={list.error} />
+          <Loading loading={list.loading} error={list.error} onRetry={list.reload} />
           {list.data && items.length === 0 && (
             <p className="muted inbox-empty">Rien à traiter pour le moment.</p>
           )}

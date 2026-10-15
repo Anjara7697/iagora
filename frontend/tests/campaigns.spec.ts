@@ -301,3 +301,94 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
     page.getByText("9 prospect(s) proviennent de cette source"),
   ).toBeVisible();
 });
+
+test("fiche : les prospects de la campagne sont listés sous les sources", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const queries: string[] = [];
+  await page.route("**/api/v1/prospects?**", async (route) => {
+    queries.push(new URL(route.request().url()).search);
+    await route.fulfill({
+      json: {
+        items: [
+          {
+            id: 5,
+            first_name: "Alice",
+            last_name: "Martin",
+            email: "alice@acme-corp.com",
+            phone: null,
+            profile: {},
+            consent_status: "granted",
+            consent_source: null,
+            opted_out_at: null,
+            created_at: "2026-10-01T10:00:00Z",
+            campaigns: [
+              {
+                id: 1,
+                campaign_source_id: 10,
+                conversion_stage: "in_conversation",
+                interest_status: "hot",
+                interest_score: 40,
+                fit_score: 30,
+                total_score: 70,
+                assigned_advisor_id: null,
+              },
+            ],
+          },
+        ],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      },
+    });
+  });
+  await login(page, "/campaigns/1");
+  const section = page.getByRole("region", {
+    name: "Prospects de la campagne",
+  });
+  const row = section.getByRole("row", { name: /Alice Martin/ });
+  await expect(row).toBeVisible();
+  await expect(row.getByText("alice@acme-corp.com")).toBeVisible();
+  await expect(row.getByText("En conversation")).toBeVisible();
+  await section.getByLabel("Étape").selectOption("qualified");
+  await expect
+    .poll(() => queries.some((q) => q.includes("stage=qualified")))
+    .toBe(true);
+  expect(queries[0]).toContain("campaign_id=1");
+  await row.getByRole("link", { name: "Alice Martin" }).click();
+  await expect(page).toHaveURL(/\/prospects\/5$/);
+});
+
+test("désactiver une campagne demande confirmation", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1");
+  await page.getByRole("button", { name: "Activer" }).click();
+  await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.dismiss());
+  await page.getByRole("button", { name: "Désactiver" }).click();
+  expect(
+    calls.requests.filter(
+      (r) => (r.body as { status?: string })?.status === "inactive",
+    ),
+  ).toHaveLength(0);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "Désactiver" }).click();
+  await expect
+    .poll(() =>
+      calls.requests.some(
+        (r) => (r.body as { status?: string })?.status === "inactive",
+      ),
+    )
+    .toBe(true);
+});
+
+test("l'en-tête porte le titre de chaque écran", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/new");
+  await expect(page.locator("header strong")).toHaveText("Nouvelle campagne");
+  await page.goto("/campaigns/1");
+  await expect(page.locator("header strong")).toHaveText("Campagne");
+  await page.goto("/integrations");
+  await expect(page.locator("header strong")).toHaveText("Intégrations");
+});

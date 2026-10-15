@@ -43,7 +43,7 @@ export default function ProspectPage() {
   const conv = conversation.data;
   return (
     <>
-      <Loading loading={prospect.loading} error={prospect.error} />
+      <Loading loading={prospect.loading} error={prospect.error} onRetry={prospect.reload} />
       {p && (
         <>
           <Link href="/prospects" className="profile-back">
@@ -171,7 +171,7 @@ export default function ProspectPage() {
           )}
 
           <h2>Décisions de l&apos;agent</h2>
-          <Loading loading={runs.loading} error={runs.error} />
+          <Loading loading={runs.loading} error={runs.error} onRetry={runs.reload} />
           {runs.data?.length === 0 && (
             <p className="muted">L&apos;agent n&apos;a pas encore traité ce prospect.</p>
           )}
@@ -211,7 +211,7 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
           </ul>
         </details>
       )}
-      <Loading loading={history.loading} error={history.error} />
+      <Loading loading={history.loading} error={history.error} onRetry={history.reload} />
     </>
   );
 }
