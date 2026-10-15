@@ -148,10 +148,20 @@ def to_summary(doc: dict[str, Any]) -> ConversationSummary:
 
 
 async def list_conversations(
-    db: Db, status: ConversationStatus | None, limit: int, offset: int
+    db: Db,
+    status: ConversationStatus | None,
+    limit: int,
+    offset: int,
+    *,
+    channel: str | None = None,
+    prospect_ids: list[int] | None = None,
 ) -> tuple[list[ConversationSummary], int]:
     """Conversations, les plus récemment actives d'abord (sans transférer tout l'historique)."""
     match: dict[str, Any] = {"status": status.value} if status else {}
+    if channel:
+        match["channel"] = channel
+    if prospect_ids is not None:
+        match["prospect_id"] = {"$in": prospect_ids}
     col = db[COLLECTION]
     total = await col.count_documents(match)
     pipeline: list[dict[str, Any]] = [

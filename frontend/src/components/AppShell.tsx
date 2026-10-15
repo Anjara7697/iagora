@@ -3,14 +3,25 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { api, ApiError, getToken, setToken, SIMULATOR_ENABLED } from "@/lib/api";
+import {
+  api,
+  ApiError,
+  getToken,
+  setToken,
+  SIMULATOR_ENABLED,
+} from "@/lib/api";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
 export const useCurrentUser = () => useContext(UserContext);
-const ROLE_LABELS = { ADMIN: "Administrateur", ADVISOR: "Conseiller", VIEWER: "Observateur" };
+const ROLE_LABELS = {
+  ADMIN: "Administrateur",
+  ADVISOR: "Conseiller",
+  VIEWER: "Observateur",
+};
 const LINKS = [
   { href: "/", label: "Aujourd’hui", icon: "◷" },
+  { href: "/conversations", label: "Conversations", icon: "✉", badge: true },
   { href: "/prospects", label: "Prospects", icon: "▦" },
   { href: "/handoffs", label: "Transferts", icon: "⇄" },
 ];
@@ -22,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
+  const [waiting, setWaiting] = useState<number | null>(null);
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -40,12 +52,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!cancelled) setUser(value);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.message : "Connexion impossible");
+        if (!cancelled)
+          setError(
+            err instanceof ApiError ? err.message : "Connexion impossible",
+          );
       });
     return () => {
       cancelled = true;
     };
   }, [isLogin, router, attempt]);
+
+  // Nombre de conversations en attente d'un conseiller (badge du menu).
+  useEffect(() => {
+    if (!user) return;
+    api<{ total: number }>("/conversations?status=handed_off&limit=1")
+      .then((page) => setWaiting(page.total))
+      .catch(() => setWaiting(null));
+  }, [user, pathname]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -64,7 +87,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {error ? (
             <>
               <p className="error">{error}</p>
-              <button onClick={() => setAttempt((v) => v + 1)}>Réessayer</button>
+              <button onClick={() => setAttempt((v) => v + 1)}>
+                Réessayer
+              </button>
             </>
           ) : (
             "Chargement de votre espace…"
@@ -115,6 +140,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 >
                   <span aria-hidden="true">{link.icon}</span>
                   {link.label}
+                  {"badge" in link && link.badge && waiting ? (
+                    <span
+                      className="nav-count"
+                      aria-label={`${waiting} en attente`}
+                    >
+                      {waiting}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

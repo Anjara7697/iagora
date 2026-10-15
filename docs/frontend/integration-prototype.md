@@ -29,6 +29,19 @@ introduites dans les pages connectées. Les autres modules de la console existan
 restent accessibles ; leur intégration détaillée suit dans les prochains lots.
 La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
 
+## Deuxième lot : conversations
+
+- Page **Conversations** (boîte de réception) : liste filtrable (statut, responsable, canal, recherche
+  nom/email) et conversation sélectionnée avec fiche de transfert, fil des messages et sources.
+  Actions : répondre en tant que conseiller, prendre la main, rendre la main à l'agent, relancer l'agent,
+  clôturer. Accès observateur et prospect désinscrit : lecture seule.
+- Pastille du menu : nombre de conversations en attente d'un conseiller.
+- API : `GET /conversations` renvoie le prospect (nom, étape, score) et accepte `status`, `channel`, `q`,
+  `advisor_id`, `unassigned`.
+- Écart assumé avec la maquette : le **mode assisté** (brouillons de l'agent à valider avant envoi, arrêt
+  d'urgence) n'existe pas encore côté API ; il fait l'objet du lot suivant (page « À traiter »). Les messages
+  sont pour l'instant enregistrés dans la conversation sans être expédiés (connecteurs à venir).
+
 ## Validation
 
 Dans `frontend/` :

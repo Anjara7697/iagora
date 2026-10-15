@@ -15,7 +15,7 @@ from app.schemas.conversation import (
     MessageResult,
 )
 from app.services import conversations as service
-from app.services import follow_ups
+from app.services import follow_ups, inbox
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -38,13 +38,22 @@ async def create_conversation(
 
 @router.get("/conversations", response_model=Page[ConversationSummary])
 async def list_conversations(
+    session: DbSession,
     db: MongoDb,
     status_: Annotated[ConversationStatus | None, Query(alias="status")] = None,
+    channel: str | None = None,
+    q: Annotated[str | None, Query(description="Nom ou email du prospect")] = None,
+    advisor_id: Annotated[int | None, Query(description="Conseiller affecté")] = None,
+    unassigned: Annotated[bool, Query(description="Prospects sans conseiller")] = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ConversationSummary]:
-    """Liste des conversations (ex. `?status=handed_off` : file des transferts, F-20)."""
-    items, total = await service.list_conversations(db, status_, limit, offset)
+    """Boîte de réception : conversations enrichies du prospect (nom, étape, score).
+    `?status=handed_off` : file des transferts (F-20)."""
+    items, total = await inbox.list_inbox(
+        session, db, status=status_, channel=channel, q=q, advisor_id=advisor_id,
+        unassigned=unassigned, limit=limit, offset=offset,
+    )  # fmt: skip
     return Page[ConversationSummary](items=items, total=total, limit=limit, offset=offset)
 
 
