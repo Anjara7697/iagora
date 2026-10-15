@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, Response, status
 
-from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession
+from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
 from app.models import Prospect
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
@@ -15,6 +15,7 @@ from app.schemas.prospect import (
     ProspectIngestResult,
     ProspectUpdate,
 )
+from app.services import drafts
 from app.services import interactions as interaction_service
 from app.services import prospects as service
 
@@ -93,9 +94,13 @@ async def update_prospect(
 
 
 @router.post("/{prospect_id}/opt-out", response_model=ProspectDetail, dependencies=[CAN_WRITE])
-async def opt_out(prospect_id: int, payload: OptOutRequest, session: DbSession) -> ProspectDetail:
-    """Enregistre la désinscription : bloque les communications sortantes et annule les relances."""
+async def opt_out(
+    prospect_id: int, payload: OptOutRequest, session: DbSession, db: MongoDb
+) -> ProspectDetail:
+    """Enregistre la désinscription : bloque les communications sortantes, annule les relances
+    et les brouillons de l'agent en attente de validation."""
     prospect = await service.opt_out(session, prospect_id, payload.source, payload.channel)
+    await drafts.cancel_pending_for_prospect(db, prospect_id)
     return await _detail(session, prospect)
 
 

@@ -17,6 +17,8 @@ from app.graph.state import Qualification
 from app.main import app
 from app.models import Appointment, ConsentEvent, FollowUp, Interaction, Prospect
 from app.models.enums import FollowUpStatus, UserRole
+from app.services import agent_settings
+from app.services.agent_settings import AgentMode
 from sqlalchemy import select
 
 from .fakes import FakeCalendar, FakeKnowledge, FakeLLM
@@ -26,8 +28,10 @@ INTRO = "Bonjour Jean, merci pour votre message."
 
 
 @pytest.fixture
-def env(client):
-    """Doublures du modèle, de l'agenda et de la base de connaissances."""
+async def env(client, mongo_db):
+    """Doublures du modèle, de l'agenda et de la base de connaissances. Les scénarios du workflow
+    tournent en mode `auto` (réponses enregistrées directement) ; le mode assisté a ses tests."""
+    await agent_settings.set_mode(mongo_db, AgentMode.AUTO, None)
     e = SimpleNamespace(llm=FakeLLM(reply=INTRO), calendar=FakeCalendar(), kb=FakeKnowledge())
     app.dependency_overrides[get_language_model] = lambda: e.llm
     app.dependency_overrides[get_calendar] = lambda: e.calendar
