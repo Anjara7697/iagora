@@ -226,7 +226,8 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
       )}
       <p className="muted">
         Approuver valide le message : il part ensuite par le canal du prospect
-        dès que l’envoi est activé (voir Intégrations). Son état reste lisible
+        dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
+        en arrêt d’urgence. Son état reste lisible
         dans « Traités ».
       </p>
     </section>

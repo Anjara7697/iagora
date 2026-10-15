@@ -24,12 +24,13 @@ from pymongo import ReturnDocument
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.graph import policy
 from app.integrations.email.base import EmailClient, EmailError, InboundEmail, OutboundEmail
 from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
 from app.services import agent_settings, conversations
-from app.services import inbound as inbound_service
+from app.services.agent_settings import AgentMode
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 
 logger = logging.getLogger(__name__)
@@ -141,15 +142,7 @@ async def _ingest_email(
             report.duplicates += 1
             return None
         report.received += 1
-        stop = await inbound_service.on_prospect_message(
-            session,
-            db,
-            conversation_id=conversation.id,
-            prospect_id=prospect.id,
-            channel=CHANNEL,
-            text=content,
-        )
-        if stop:
+        if policy.is_opt_out(message.content):
             report.notes.append(f"désinscription reçue par email : prospect {prospect.id}")
             return None
         if mail.suspect:
@@ -227,7 +220,10 @@ async def _finish(
     metadata["delivery"] = delivery
     metadata["delivery_info"] = previous | info
     await db[conversations.COLLECTION].update_one(
-        {"_id": conversation_id, "messages.id": message["id"]},
+        {
+            "_id": conversation_id,
+            "messages": {"$elemMatch": {"id": message["id"], "metadata.delivery": "sending"}},
+        },
         {"$set": {"messages.$.metadata": metadata}},
     )
 
@@ -260,6 +256,11 @@ def _with_footer(text: str, settings: Settings) -> str:
     return f"{text.rstrip()}\n\n-- \n{footer}" if footer else text
 
 
+@dataclass
+class _SendAttempt:
+    smtp_started: bool = False
+
+
 async def _deliver_one(
     session_factory: SessionFactory,
     db: Any,
@@ -270,6 +271,40 @@ async def _deliver_one(
     report: SyncReport,
 ) -> None:
     conv_id = doc["_id"]
+    if not await _claim(db, conv_id, message["id"]):
+        return  # pris par un autre processus ou annulé
+    attempt = _SendAttempt()
+    try:
+        await _deliver_claimed(session_factory, db, client, settings, doc, message, report, attempt)
+    except Exception:
+        if not attempt.smtp_started:
+            # Panne pendant les contrôles : aucun risque de renvoyer un email déjà transmis.
+            await db[conversations.COLLECTION].update_one(
+                {
+                    "_id": conv_id,
+                    "messages": {
+                        "$elemMatch": {"id": message["id"], "metadata.delivery": "sending"}
+                    },
+                },
+                {"$set": {"messages.$.metadata.delivery": "not_sent"}},
+            )
+        raise
+
+
+async def _deliver_claimed(
+    session_factory: SessionFactory,
+    db: Any,
+    client: EmailClient,
+    settings: Settings,
+    doc: dict[str, Any],
+    message: dict[str, Any],
+    report: SyncReport,
+    attempt: _SendAttempt,
+) -> None:
+    conv_id = doc["_id"]
+    # Ne pas expédier un instantané lu avant un STOP, une clôture ou un arrêt d'urgence.
+    doc = await conversations.get_doc(db, str(conv_id))
+    message = next(m for m in doc["messages"] if m["id"] == message["id"])
     async with session_factory() as session:
         prospect = await get_prospect(session, doc["prospect_id"])
         recipient = (prospect.email or "").lower()
@@ -291,11 +326,30 @@ async def _deliver_one(
         report.blocked += 1
         return
 
-    if not await _claim(db, conv_id, message["id"]):
-        return  # pris par un autre processus
+    if message["role"] == SenderType.AGENT.value:
+        mode = await agent_settings.get_mode(db)
+        if mode is AgentMode.MANUAL:
+            await _finish(db, conv_id, message, "not_sent")
+            report.skipped += 1
+            report.notes.append("envois de l'agent suspendus (arrêt d'urgence)")
+            return
+        metadata = message.get("metadata") or {}
+        draft = metadata.get("draft")
+        if draft is not None and draft.get("status") != "approved":
+            await _finish(db, conv_id, message, "blocked", reason="brouillon non validé")
+            report.blocked += 1
+            return
+        if mode is AgentMode.ASSISTED and draft is None and metadata.get("mode") != "handoff":
+            # Reprise après le mode auto : aucun ancien message autonome ne contourne la revue.
+            message["metadata"] = {**metadata, "draft": {"status": "pending"}}
+            await _finish(db, conv_id, message, "draft")
+            report.skipped += 1
+            report.notes.append("message automatique remis en brouillon pour validation")
+            return
     subject, in_reply_to, references = _thread_headers(doc, message)
     attempts = int((message.get("metadata") or {}).get("delivery_info", {}).get("attempts", 0)) + 1
     try:
+        attempt.smtp_started = True
         message_id = await client.send(
             OutboundEmail(
                 to_address=recipient,
@@ -347,6 +401,15 @@ async def deliver_outbox(
     )
     async for doc in cursor:
         for message in _outbound_candidates(doc):
+            if (
+                message["role"] == SenderType.AGENT.value
+                and await agent_settings.get_mode(db) is AgentMode.MANUAL
+            ):
+                # Les réponses manuelles restent disponibles, même avec beaucoup d'emails suspendus.
+                report.skipped += 1
+                if "envois de l'agent suspendus (arrêt d'urgence)" not in report.notes:
+                    report.notes.append("envois de l'agent suspendus (arrêt d'urgence)")
+                continue
             if sent_this_cycle >= OUTBOX_BATCH:
                 return report
             sent_this_cycle += 1
