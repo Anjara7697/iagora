@@ -392,3 +392,23 @@ test("l'en-tête porte le titre de chaque écran", async ({ page }) => {
   await page.goto("/integrations");
   await expect(page.locator("header strong")).toHaveText("Intégrations");
 });
+
+test("menu en quatre groupes, écrans à venir grisés et recherche globale", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await login(page, "/campaigns");
+  const nav = page.getByRole("navigation", { name: "Navigation principale" });
+  for (const group of ["Travail", "Pilotage", "Intelligence", "Administration"])
+    await expect(nav.getByText(group, { exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Campagnes" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  const soon = nav.locator(".nav-item.soon", { hasText: "Dashboard" });
+  await expect(soon).toHaveAttribute("aria-disabled", "true");
+  await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
+  await page.getByLabel("Rechercher un prospect").fill("alice");
+  await page.getByLabel("Rechercher un prospect").press("Enter");
+  await expect(page).toHaveURL(/\/prospects\?q=alice$/);
+});

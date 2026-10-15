@@ -150,12 +150,16 @@ test("recherche, filtres transmis à l’API, pagination et état vide", async (
   const next = page.waitForRequest((r) => r.url().includes("offset=25"));
   await page.getByRole("button", { name: "Suivant" }).click();
   await next;
-  await page.getByRole("searchbox").fill("inexistant");
+  await page
+    .getByRole("searchbox", { name: "Rechercher", exact: true })
+    .fill("inexistant");
   await expect(
     page.getByRole("heading", { name: "Aucun prospect ne correspond" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Réinitialiser les filtres" }).click();
-  await expect(page.getByRole("searchbox")).toHaveValue("");
+  await expect(
+    page.getByRole("searchbox", { name: "Rechercher", exact: true }),
+  ).toHaveValue("");
   await expect(page.getByText("Alice Martin").first()).toBeVisible();
 });
 

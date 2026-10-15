@@ -240,3 +240,29 @@ export const PROFILE_FIELDS: Record<string, string> = {
   company: "Entreprise",
   experience: "Expérience",
 };
+
+const PAGE_SUBTITLES: [string, string][] = [
+  ["/campaigns/new", "Segments, sources et statuts"],
+  ["/campaigns", "Segments, sources et statuts"],
+  ["/prospects/", "Parcours, échanges et décisions de l’agent"],
+  ["/prospects", "Pipeline et table"],
+  ["/conversations", "Inbox unifiée"],
+  ["/todo", "Validations, escalades et incidents"],
+  ["/knowledge", "Connaissances de l’agent"],
+  ["/integrations", "Canaux et synchronisation"],
+  ["/simulator", "États de démo — prospects fictifs"],
+];
+
+export function pageSubtitle(pathname: string): string {
+  if (pathname === "/")
+    return new Date().toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  return (
+    PAGE_SUBTITLES.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
+    )?.[1] ?? ""
+  );
+}

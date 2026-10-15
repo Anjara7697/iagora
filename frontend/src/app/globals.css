@@ -1539,3 +1539,105 @@ ul.plain {
 .kpi .muted {
   font-size: 12px;
 }
+
+/* --- Alignement maquette : menu à quatre groupes, barre du haut --- */
+.nav-item {
+  align-items: center;
+}
+.nav-item.soon {
+  color: #8e8781;
+  cursor: default;
+}
+.nav-item.soon:hover {
+  background: transparent;
+  color: #8e8781;
+}
+.nav-soon {
+  margin-left: auto;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px dashed #c4beb8;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.nav-demo {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+.nav-demo-link {
+  display: block;
+  border: 1px dashed #c4beb8;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #45403c;
+  background: #faf9f8;
+}
+.nav-demo-link:hover,
+.nav-demo-link.active {
+  text-decoration: none;
+  background: #e9e6f8;
+  color: #3e34a0;
+}
+.header-subtitle {
+  font-size: 13px;
+}
+.header-search input {
+  width: min(320px, 28vw);
+  padding: 8px 12px;
+  border: 1px solid #cfcac4;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+}
+.todo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cfcac4;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--fg);
+  background: #fff;
+  white-space: nowrap;
+}
+.todo-pill:hover {
+  text-decoration: none;
+  background: #f4f2f0;
+}
+.todo-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1f7a48;
+}
+.todo-pill .dot.warn {
+  background: #8a5200;
+}
+@media (max-width: 1023px) {
+  .header-search {
+    display: none;
+  }
+}
+/* Menu : pas et état actif de la maquette (fond gris, texte encre) */
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sidebar .nav-group {
+  margin: 0;
+  padding: 6px 8px;
+}
+.nav-item {
+  padding: 9px 12px;
+  margin: 1px 0;
+}
+.nav-item.active {
+  background: #e9e6e2;
+  color: #191817;
+  font-weight: 600;
+}

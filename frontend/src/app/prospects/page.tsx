@@ -53,7 +53,7 @@ function Avatar({ prospect }: { prospect: Prospect }) {
 
 function Prospects() {
   const params = useSearchParams();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(params.get("q") ?? "");
   const [stage, setStage] = useState("");
   const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
   const [offset, setOffset] = useState(0);
