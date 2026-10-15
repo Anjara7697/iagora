@@ -1,12 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { Loading } from "@/components/ui";
 import { api, ApiError, SIMULATOR_ENABLED } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import type { AgentRun, Campaign, Conversation, Page, Prospect } from "@/lib/types";
+import type {
+  AgentRun,
+  Campaign,
+  Conversation,
+  Page,
+  Prospect,
+} from "@/lib/types";
 import { ProspectLink } from "@/components/ui";
 
 type Session = { prospectId: number; conversationId: string; name: string };
@@ -14,6 +21,7 @@ type Result = { message: string; run: AgentRun };
 
 export default function SimulatorPage() {
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=100");
+  const mode = useApi<{ mode: string }>("/agent/mode");
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [targetCode, setTargetCode] = useState("");
   const [name, setName] = useState("Camille");
@@ -33,7 +41,9 @@ export default function SimulatorPage() {
     );
   }
 
-  const campaign = campaigns.data?.items.find((c) => c.id === campaignId) ?? campaigns.data?.items[0];
+  const campaign =
+    campaigns.data?.items.find((c) => c.id === campaignId) ??
+    campaigns.data?.items[0];
 
   async function guard(action: () => Promise<void>) {
     setBusy(true);
@@ -71,7 +81,11 @@ export default function SimulatorPage() {
         method: "POST",
         body: { prospect_id: created.prospect.id, channel: "email" },
       });
-      setSession({ prospectId: created.prospect.id, conversationId: conv.conversation.id, name });
+      setSession({
+        prospectId: created.prospect.id,
+        conversationId: conv.conversation.id,
+        name,
+      });
       setMessages([]);
       setRuns([]);
     });
@@ -105,29 +119,50 @@ export default function SimulatorPage() {
     });
 
   const lastRun: Result["run"] | undefined = runs[runs.length - 1];
-  const closed = lastRun !== undefined && ["human_handoff", "close", "opt_out"].includes(lastRun.action);
+  const closed =
+    lastRun !== undefined &&
+    ["human_handoff", "close", "opt_out"].includes(lastRun.action);
 
   return (
     <>
       <h1>Simulateur de prospect</h1>
       <p className="muted">
-        Jouez un prospect <b>fictif</b> (adresse @demo.example.com) et regardez l&apos;agent répondre : mêmes
-        règles, même base de connaissances et même modèle que pour un vrai prospect.
+        Jouez un prospect <b>fictif</b> (adresse @demo.example.com) et regardez
+        l&apos;agent répondre : mêmes règles, même base de connaissances et même
+        modèle que pour un vrai prospect.
       </p>
+
+      {mode.data?.mode === "assisted" && (
+        <p className="muted">
+          Mode assisté : la réponse de l&apos;agent est un <b>brouillon</b> à
+          valider dans <Link href="/todo">À traiter</Link>. Le prospect fictif
+          peut quand même continuer d&apos;écrire.
+        </p>
+      )}
+      {mode.data?.mode === "manual" && (
+        <p className="error">
+          Arrêt d&apos;urgence actif : l&apos;agent ne répondra pas. Reprenez le
+          mode assisté dans le menu.
+        </p>
+      )}
 
       {!session && (
         <div className="card">
           <Loading loading={campaigns.loading} error={campaigns.error} />
           {campaigns.data && campaigns.data.items.length === 0 && (
             <p>
-              Aucune campagne. Lancez <code>python -m app.cli seed-demo</code> ou créez-en une via l&apos;API.
+              Aucune campagne. Lancez <code>python -m app.cli seed-demo</code>{" "}
+              ou créez-en une via l&apos;API.
             </p>
           )}
           {campaign && (
             <div className="form">
               <label>
                 Campagne
-                <select value={campaign.id} onChange={(e) => setCampaignId(Number(e.target.value))}>
+                <select
+                  value={campaign.id}
+                  onChange={(e) => setCampaignId(Number(e.target.value))}
+                >
                   {campaigns.data?.items.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -137,7 +172,10 @@ export default function SimulatorPage() {
               </label>
               <label>
                 Programme visé
-                <select value={targetCode || campaign.targets[0]?.code} onChange={(e) => setTargetCode(e.target.value)}>
+                <select
+                  value={targetCode || campaign.targets[0]?.code}
+                  onChange={(e) => setTargetCode(e.target.value)}
+                >
                   {campaign.targets.map((t) => (
                     <option key={t.code} value={t.code}>
                       {t.name}
@@ -161,7 +199,9 @@ export default function SimulatorPage() {
         <>
           <div className="row">
             <strong>{session.name}</strong>
-            <ProspectLink id={session.prospectId}>fiche complète →</ProspectLink>
+            <ProspectLink id={session.prospectId}>
+              fiche complète →
+            </ProspectLink>
             <span className="spacer" />
             <button
               onClick={() => {
@@ -186,7 +226,8 @@ export default function SimulatorPage() {
           {error && <p className="error">{error}</p>}
           {closed && (
             <p className="muted">
-              Conversation terminée ({lastRun?.action}). Créez un nouveau prospect pour recommencer.
+              Conversation terminée ({lastRun?.action}). Créez un nouveau
+              prospect pour recommencer.
             </p>
           )}
           <div className="composer">
@@ -197,7 +238,11 @@ export default function SimulatorPage() {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
             />
-            <button className="primary" disabled={busy || closed || !text.trim()} onClick={send}>
+            <button
+              className="primary"
+              disabled={busy || closed || !text.trim()}
+              onClick={send}
+            >
               {busy ? "…" : "Envoyer"}
             </button>
             {messages.length === 0 && (
