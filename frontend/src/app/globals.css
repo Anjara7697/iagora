@@ -1295,3 +1295,32 @@ button.danger {
 .kb-sections p {
   margin: 4px 0 12px;
 }
+
+/* --- Simulateur --- */
+.sim {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(260px, 340px);
+  gap: 16px;
+  align-items: start;
+}
+.sim-side .card {
+  margin-top: 0;
+}
+.sim-side .card + .card {
+  margin-top: 12px;
+}
+.sim-main {
+  min-width: 0;
+}
+.sim-facts {
+  grid-template-columns: 1fr;
+  margin-top: 10px;
+}
+.sim-facts dd {
+  margin-bottom: 6px;
+}
+@media (max-width: 1180px) {
+  .sim {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
