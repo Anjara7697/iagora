@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
+import MembershipActions from "@/components/MembershipActions";
+import InteractionHistory from "@/components/InteractionHistory";
 import RunView from "@/components/TraceView";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -38,6 +40,13 @@ export default function ProspectPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+
+  function refreshTracking() {
+    setNotice("Suivi enregistré.");
+    prospect.reload();
+    setRevision((v) => v + 1);
+  }
 
   async function runAgent() {
     if (!conversation.data) return;
@@ -50,6 +59,7 @@ export default function ProspectPage() {
       });
       prospect.reload();
       conversation.reload();
+      setRevision((v) => v + 1);
       runs.reload();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Échec");
@@ -88,6 +98,7 @@ export default function ProspectPage() {
           ? "Désinscription enregistrée."
           : "Consentement enregistré.",
       );
+      setRevision((v) => v + 1);
       prospect.reload();
       conversation.reload();
     } catch (err) {
@@ -246,10 +257,28 @@ export default function ProspectPage() {
                 </div>
               ))}
               {p.campaigns.map((m, index) => (
-                <MembershipHistory key={m.id} id={m.id} index={index + 1} />
+                <div key={m.id} className="card">
+                  <h3>
+                    Suivi du parcours {index + 1} ·{" "}
+                    {m.campaign_name ?? `Rattachement ${m.id}`}
+                    {m.source_name ? ` · ${m.source_name}` : ""}
+                  </h3>
+                  <MembershipActions
+                    key={`${m.id}:${m.assigned_advisor_id}:${m.conversion_stage}`}
+                    membership={m}
+                    onDone={refreshTracking}
+                  />
+                  <MembershipHistory
+                    key={`${m.id}:${revision}`}
+                    id={m.id}
+                    index={index + 1}
+                  />
+                </div>
               ))}
             </div>
           </div>
+
+          <InteractionHistory key={`${p.id}:${revision}`} id={p.id} />
 
           <h2>Conversation</h2>
           <Loading loading={conversation.loading} error={null} />

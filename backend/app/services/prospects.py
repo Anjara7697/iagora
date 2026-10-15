@@ -29,7 +29,7 @@ from app.models.enums import (
     FollowUpStatus,
 )
 from app.schemas.prospect import ProspectIngest, ProspectUpdate
-from app.services import references
+from app.services import commercial_context, references
 from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
@@ -224,8 +224,14 @@ async def ingest_prospect(
             )
         )
         if membership is None:
+            seen_at = _now()
             session.add(
-                CampaignProspect(campaign_source_id=campaign_source.id, prospect_id=prospect.id)
+                CampaignProspect(
+                    campaign_source_id=campaign_source.id,
+                    prospect_id=prospect.id,
+                    first_seen_at=seen_at,
+                    last_seen_at=seen_at,
+                )
             )
         else:
             membership.last_seen_at = _now()
@@ -363,7 +369,12 @@ def _filtered(
         if stage is not None:
             cp = cp.where(CampaignProspect.conversion_stage == stage)
         if advisor_id is not None:
-            cp = cp.where(CampaignProspect.assigned_advisor_id == advisor_id)
+            cp = cp.where(
+                CampaignProspect.assigned_advisor_id == advisor_id,
+                CampaignProspect.id.in_(
+                    commercial_context.latest_ids(per_campaign=campaign_id is not None)
+                ),
+            )
         if level is not None:
             cp = cp.where(CampaignProspect.interest_status == level)
         stmt = stmt.where(Prospect.id.in_(cp))
@@ -497,7 +508,13 @@ async def attach_campaign(
         )
     )
     if membership is None:
-        membership = CampaignProspect(prospect_id=prospect_id, campaign_source_id=link.id)
+        seen_at = _now()
+        membership = CampaignProspect(
+            prospect_id=prospect_id,
+            campaign_source_id=link.id,
+            first_seen_at=seen_at,
+            last_seen_at=seen_at,
+        )
         session.add(membership)
         targets = list(
             await session.scalars(

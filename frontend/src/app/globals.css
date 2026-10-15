@@ -2017,3 +2017,26 @@ a.campaign-row:hover {
 .bubble.draft-pending {
   border-style: dashed;
 }
+.interaction-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.membership-actions form {
+  margin-block: 1rem;
+}
+.membership-actions label {
+  display: block;
+  margin-block: 0.5rem;
+}
+.membership-actions select,
+.membership-actions textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+}
+.membership-actions .row {
+  flex-wrap: wrap;
+}
