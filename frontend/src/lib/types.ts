@@ -16,6 +16,7 @@ export type Membership = {
   campaign_source_id?: number;
   campaign_id?: number | null;
   campaign_name?: string | null;
+  source_name?: string | null;
   conversion_stage: string;
   interest_status: string | null;
   interest_score: number;
@@ -37,6 +38,7 @@ export type Prospect = {
   created_at: string;
   is_demo?: boolean;
   campaigns: Membership[];
+  current_membership_id?: number | null;
 };
 
 export type Target = { id: number; code: string; name: string };
@@ -114,6 +116,10 @@ export type Conversation = {
 };
 
 export type ConversationProspect = {
+  campaign_id?: number | null;
+  campaign_name?: string | null;
+  source_name?: string | null;
+  membership_id?: number | null;
   id: number;
   first_name: string | null;
   last_name: string | null;
@@ -305,7 +311,17 @@ export type TreatedItem = {
   edited: boolean;
   content: string;
   reason: string | null;
-  execution: "approved" | "sending" | "sent" | "failed" | "blocked" | "rejected";
+  execution:
+    | "approved"
+    | "sending"
+    | "sent"
+    | "failed"
+    | "blocked"
+    | "rejected";
   execution_detail: string | null;
 };
-export type TreatedPage = { items: TreatedItem[]; total: number; hours: number };
+export type TreatedPage = {
+  items: TreatedItem[];
+  total: number;
+  hours: number;
+};

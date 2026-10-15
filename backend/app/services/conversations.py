@@ -48,7 +48,7 @@ COLLECTION = "conversations"
 ACTIVE = [ConversationStatus.OPEN.value, ConversationStatus.HANDED_OFF.value]
 OUTBOUND_ROLES = {SenderType.AGENT, SenderType.ADVISOR}
 # Clés de métadonnées gérées par le serveur : jamais acceptées depuis l'extérieur.
-RESERVED_METADATA = {"delivery", "delivery_info", "draft"}
+RESERVED_METADATA = {"delivery", "delivery_info", "draft", "entry_interaction_id"}
 
 Db = Any  # AsyncIOMotorDatabase
 
@@ -310,6 +310,19 @@ async def _ensure_journal(
     channel = await references.get_channel(session, doc["channel"])
     assert channel is not None  # noqa: S101
     external_id = message.get("external_message_id") or f"msg:{message['id']}"
+    entry_id = (message.get("metadata") or {}).get("entry_interaction_id")
+    if entry_id is not None:
+        entry = await session.get(Interaction, entry_id)
+        if (
+            entry is None
+            or entry.prospect_id != doc["prospect_id"]
+            or entry.channel_id != channel.id
+        ):
+            raise ConflictError("L'entrée ne correspond pas à cette conversation")
+        entry.conversation_ref = str(doc["_id"])
+        entry.content = None  # le contenu est désormais conservé uniquement dans MongoDB
+        await session.commit()
+        return
     existing = await session.scalar(
         select(Interaction.id).where(
             Interaction.channel_id == channel.id, Interaction.external_id == external_id

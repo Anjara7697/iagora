@@ -64,6 +64,12 @@ function Avatar({ prospect }: { prospect: Prospect }) {
 function Prospects() {
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
+  const [pendingCampaign, setPendingCampaign] = useState(
+    params.get("pending_campaign") === "true",
+  );
+  const pending = useApi<Page<Prospect>>(
+    "/prospects?pending_campaign=true&limit=1",
+  );
   const [stage, setStage] = useState("");
   const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
   const [offset, setOffset] = useState(0);
@@ -76,13 +82,14 @@ function Prospects() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
   function reset() {
     setQ("");
     setStage("");
+    setPendingCampaign(false);
     setCampaign("");
     setHideDemo(false);
     setTargetCode("");
@@ -120,6 +127,18 @@ function Prospects() {
         </div>
       </div>
       <div className="view-toolbar">
+        <button
+          aria-pressed={pendingCampaign}
+          onClick={() => {
+            setPendingCampaign(!pendingCampaign);
+            setCampaign("");
+            setStage("");
+            setOffset(0);
+          }}
+        >
+          À attribuer{pending.data ? ` (${pending.data.total})` : ""}
+        </button>
+
         <div
           className="view-switch"
           role="group"
@@ -145,7 +164,7 @@ function Prospects() {
               setExportError(null);
               try {
                 await download(
-                  `/prospects/export${qs({ q, stage, campaign_id: campaign, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter })}`,
+                  `/prospects/export${qs({ q, stage, campaign_id: campaign, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter })}`,
                   "prospects.csv",
                 );
               } catch (err) {
@@ -164,6 +183,13 @@ function Prospects() {
             : "Chargement…"}
         </span>
       </div>
+      {pendingCampaign && (
+        <p className="card warnbox">
+          Ces prospects attendent une campagne et une source. Ouvrez une fiche
+          pour les attribuer ; l’agent attend cette attribution avant de
+          répondre automatiquement.
+        </p>
+      )}
       <form className="filters card" onSubmit={(e) => e.preventDefault()}>
         <label>
           Rechercher

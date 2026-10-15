@@ -71,6 +71,11 @@ class ConversationProspect(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     email: str | None = None
+    membership_id: int | None = None
+    campaign_id: int | None = None
+    campaign_name: str | None = None
+    source_name: str | None = None
+    campaign_source_id: int | None = None
     stage: str | None = None
     total_score: int | None = None
     level: str | None = None

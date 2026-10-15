@@ -30,6 +30,8 @@ async def create_interaction(
             )
         )
         if existing:
+            if existing.prospect_id != prospect_id:
+                raise ConflictError("Cet identifiant de réception appartient à un autre prospect")
             return existing, False
 
     interaction = Interaction(

@@ -86,15 +86,11 @@ async def test_the_feature_can_be_switched_off(client, env):  # noqa: F811
 
 
 async def test_a_conversation_opened_with_a_prospect_message_triggers_the_agent(client, auto_reply):
-    created = (
-        await client.post(
-            f"{API}/prospects", json={"email": "paul@example.com", "channel": "email"}
-        )
-    ).json()["prospect"]
+    pid, _, _ = await lead(client, text=None, email="paul@example.com")
     r = await client.post(
         f"{API}/conversations",
         json={
-            "prospect_id": created["id"],
+            "prospect_id": pid,
             "channel": "email",
             "message": {"role": "prospect", "content": "Bonjour"},
         },

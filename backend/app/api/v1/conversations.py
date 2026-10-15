@@ -27,13 +27,13 @@ from app.schemas.conversation import (
     MessageCreate,
     MessageResult,
 )
+from app.services import agent_events, drafts, follow_ups, inbox
 from app.services import conversations as service
-from app.services import drafts, follow_ups, inbox
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
 
-def _trigger_agent(
+async def trigger_agent(
     background: BackgroundTasks,
     settings: SettingsDep,
     conversation_id: str,
@@ -45,6 +45,7 @@ def _trigger_agent(
 ) -> None:
     """Dès qu'un message du prospect est enregistré, l'agent prépare sa réponse (F-06)."""
     if settings.agent_auto_reply:
+        await agent_events.enqueue_reply(db, conversation_id)
         background.add_task(
             auto.reply_to_message,
             conversation_id,
@@ -86,12 +87,12 @@ async def create_conversation(
     conversation, created = await service.create_conversation(session, db, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
-    elif (
+    if (
         payload.message is not None
         and payload.message.role is SenderType.PROSPECT
         and not policy.is_opt_out(payload.message.content)
     ):
-        _trigger_agent(
+        await trigger_agent(
             background, settings, conversation.id, session_factory, db, llm, calendar, knowledge
         )
     return ConversationResult(conversation=conversation, created=created)
@@ -171,10 +172,10 @@ async def add_message(
     message, created = await service.add_message(session, db, conversation_id, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
-    elif payload.role is SenderType.PROSPECT:
+    if message.role is SenderType.PROSPECT:
         if policy.is_opt_out(message.content):
             return MessageResult(conversation_id=conversation_id, message=message, created=created)
-        _trigger_agent(
+        await trigger_agent(
             background, settings, conversation_id, session_factory, db, llm, calendar, knowledge
         )
     return MessageResult(conversation_id=conversation_id, message=message, created=created)

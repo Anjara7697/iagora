@@ -52,7 +52,7 @@ class ProspectIngest(_Identity):
     campaign_id: int | None = None
     source_id: int | None = None
     target_code: str | None = None
-    message: str | None = Field(None, description="Message éventuel du prospect")
+    message: str | None = Field(None, max_length=20_000, description="Message éventuel du prospect")
     external_id: str | None = Field(None, max_length=255, description="Identifiant externe")
     consent_granted: bool | None = None
     consent_source: str | None = Field(None, max_length=100)
@@ -74,6 +74,7 @@ class CampaignMembershipRead(BaseModel):
     campaign_source_id: int
     campaign_id: int | None = None
     campaign_name: str | None = None
+    source_name: str | None = None
     interest_status: InterestLevel | None
     conversion_stage: ConversionStage
     interest_score: int
@@ -114,6 +115,7 @@ class ProspectRead(BaseModel):
 
 
 class ProspectDetail(ProspectRead):
+    current_membership_id: int | None = None
     campaigns: list[CampaignMembershipRead] = []
 
 
@@ -131,3 +133,8 @@ class ConsentRequest(BaseModel):
 class OptOutRequest(BaseModel):
     source: str = Field("prospect_request", max_length=100)
     channel: str | None = None
+
+
+class CampaignAttribution(BaseModel):
+    campaign_id: int = Field(gt=0)
+    source_id: int = Field(gt=0)

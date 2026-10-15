@@ -379,3 +379,102 @@ test("export CSV : un observateur ne voit pas le bouton", async ({ page }) => {
     page.getByRole("button", { name: "Exporter en CSV (Excel)" }),
   ).toHaveCount(0);
 });
+
+test("attribution : choisir explicitement campagne et source, puis quitter la file", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR", { ...prospect, campaigns: [] });
+  let assigned = false;
+  let body: unknown;
+  await page.route("**/api/v1/campaigns?**", (route) =>
+    route.fulfill({
+      json: pageOf([
+        {
+          id: 3,
+          name: "Campagne active",
+          status: "active",
+          targets: [],
+          sources: [{ id: 7, name: "Boîte IONOS" }],
+        },
+      ]),
+    }),
+  );
+  await page.route("**/api/v1/prospects/1/campaigns", async (route) => {
+    body = route.request().postDataJSON();
+    assigned = true;
+    await route.fulfill({
+      json: {
+        ...prospect,
+        campaigns: [
+          {
+            ...member,
+            campaign_id: 3,
+            campaign_name: "Campagne active",
+            source_name: "Boîte IONOS",
+          },
+        ],
+      },
+    });
+  });
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({
+      json: assigned
+        ? {
+            ...prospect,
+            current_membership_id: 11,
+            campaigns: [
+              {
+                ...member,
+                campaign_id: 3,
+                campaign_name: "Campagne active",
+                source_name: "Boîte IONOS",
+              },
+            ],
+          }
+        : { ...prospect, campaigns: [] },
+    }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  const form = page.getByRole("form", { name: "Attribution commerciale" });
+  await expect(
+    form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
+  ).toBeDisabled();
+  await form.getByLabel("Campagne d’attribution").selectOption("3");
+  await expect(
+    form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
+  ).toBeDisabled();
+  await form.getByLabel("Source d’attribution").selectOption("7");
+  await form
+    .getByRole("button", { name: "Attribuer et démarrer le suivi" })
+    .click();
+  await expect(form).toHaveCount(0);
+  expect(body).toEqual({ campaign_id: 3, source_id: 7 });
+  await expect(page.getByText("Source : Boîte IONOS")).toBeVisible();
+  await expect(
+    page.getByText("Contexte de l’agent", { exact: true }),
+  ).toBeVisible();
+});
+
+test("observateur : file À attribuer accessible, attribution interdite", async ({
+  page,
+}) => {
+  await mockApi(page, "VIEWER", { ...prospect, campaigns: [] });
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await login(page);
+  await page.goto("/prospects");
+  await page.getByRole("button", { name: /^À attribuer/ }).click();
+  await expect
+    .poll(() =>
+      requests.some(
+        (u) => u.includes("pending_campaign=true") && u.includes("limit=25"),
+      ),
+    )
+    .toBe(true);
+  await page.goto("/prospects/1");
+  await expect(page.getByText(/À attribuer : choisissez/)).toBeVisible();
+  await expect(
+    page.getByRole("form", { name: "Attribution commerciale" }),
+  ).toHaveCount(0);
+});

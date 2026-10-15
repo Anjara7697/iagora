@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agents.auto import email_loop, follow_up_loop
+from app.agents.auto import email_loop, follow_up_loop, reply_queue_loop
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
@@ -29,6 +29,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logger.exception("Création des index MongoDB impossible au démarrage")
     workers: list[asyncio.Task[None]] = []
     settings = get_settings()
+    if settings.agent_auto_reply:
+        workers.append(asyncio.create_task(reply_queue_loop(settings), name="reply-queue"))
     if settings.follow_up_worker_enabled:
         workers.append(asyncio.create_task(follow_up_loop(settings), name="follow-up-worker"))
     if settings.email_enabled:
