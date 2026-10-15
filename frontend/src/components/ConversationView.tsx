@@ -1,4 +1,10 @@
-import { DELIVERY, DRAFT_STATUS, ROLES, formatDate, label } from "@/lib/labels";
+import {
+  CHANNELS,
+  DELIVERY,
+  DRAFT_STATUS,
+  formatDate,
+  label,
+} from "@/lib/labels";
 import type { Message } from "@/lib/types";
 
 type Draft = { status?: string; reason?: string; edited?: boolean };
@@ -15,10 +21,39 @@ function deliveryLine(
   return detail ? `${base} — ${detail}` : base;
 }
 
+/** Qui parle, et dans quel état : le fil à trois auteurs de la maquette. */
+function authorLine(
+  m: Message,
+  prospectName: string,
+  channel: string | undefined,
+): string {
+  const when = formatDate(m.created_at);
+  if (m.role === "prospect")
+    return [prospectName, channel ? label(CHANNELS, channel) : null, when]
+      .filter(Boolean)
+      .join(" · ");
+  if (m.role === "advisor") return `Conseiller · ${when}`;
+  const draft = m.metadata.draft as Draft | undefined;
+  if (draft?.status === "pending")
+    return `Agent IA · brouillon du ${when}, en attente de validation`;
+  if (draft?.status === "approved")
+    return m.metadata.delivery === "sent"
+      ? `Agent IA · envoyé après validation · ${when}`
+      : `Agent IA · validé par un conseiller · ${when}`;
+  if (draft?.status) return `Agent IA · brouillon du ${when}`;
+  return m.metadata.delivery === "sent"
+    ? `Agent IA · envoyé sans validation · ${when}`
+    : `Agent IA · ${when}`;
+}
+
 export default function ConversationView({
   messages,
+  prospectName = "Prospect",
+  channel,
 }: {
   messages: Message[];
+  prospectName?: string;
+  channel?: string;
 }) {
   if (messages.length === 0) return <p className="muted">Aucun message.</p>;
   return (
@@ -36,9 +71,13 @@ export default function ConversationView({
             className={`bubble ${m.role} ${draft ? `draft draft-${draft.status}` : ""} ${dead ? "dead" : ""}`}
           >
             <div className="bubble-meta">
-              {label(ROLES, m.role)} · {formatDate(m.created_at)}
+              <span
+                className={`author-dot author-${m.role}`}
+                aria-hidden="true"
+              />
+              {authorLine(m, prospectName, channel)}
             </div>
-            {draft?.status && (
+            {draft?.status && draft.status !== "pending" && (
               <div className="bubble-draft">
                 {label(DRAFT_STATUS, draft.status)}
                 {draft.edited ? " (modifié par un conseiller)" : ""}
@@ -46,6 +85,9 @@ export default function ConversationView({
               </div>
             )}
             <div className="bubble-text">{m.content}</div>
+            {m.role === "prospect" && (
+              <div className="bubble-delivery">Reçu</div>
+            )}
             {(() => {
               const line = deliveryLine(
                 m.metadata.delivery,

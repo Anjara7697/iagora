@@ -196,6 +196,8 @@ export type TodoItem = {
     sources: string[];
     confidence: number | null;
     created_at: string;
+    subject?: string | null;
+    footer?: string | null;
   } | null;
   handoff: HandoffSheet | null;
   recommendation: {
@@ -291,3 +293,19 @@ export type DashboardSummary = {
   funnel: Record<string, number>;
   leads: number;
 };
+
+export type TreatedItem = {
+  id: string;
+  conversation_id: string;
+  prospect: ConversationProspect | null;
+  channel: string;
+  decision: "approved" | "rejected";
+  decided_at: string | null;
+  decided_by: number | null;
+  edited: boolean;
+  content: string;
+  reason: string | null;
+  execution: "approved" | "sending" | "sent" | "failed" | "blocked" | "rejected";
+  execution_detail: string | null;
+};
+export type TreatedPage = { items: TreatedItem[]; total: number; hours: number };

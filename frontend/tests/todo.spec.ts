@@ -234,3 +234,116 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
   await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
 });
+
+test("brouillon : objet, pied de message non modifiable et exécution à valider", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/todo?**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("limit") === "100")
+      await route.fulfill({
+        json: {
+          items: [
+            {
+              ...draftItem,
+              draft: {
+                ...draftItem.draft,
+                subject: "Re: Financement du Master",
+                footer: "Répondez STOP pour ne plus recevoir de messages.",
+              },
+            },
+          ],
+          total: 1,
+          limit: 100,
+          offset: 0,
+          counts: { validation: 1 },
+        },
+      });
+    else await route.fallback();
+  });
+  await open(page);
+  await page
+    .getByRole("button", { name: /Marie Dupont/ })
+    .first()
+    .click();
+  const draft = page.getByRole("region", { name: "Brouillon de l'agent" });
+  await expect(
+    draft.getByText("objet : Re: Financement du Master"),
+  ).toBeVisible();
+  await expect(
+    draft.getByText("ajouté automatiquement, non modifiable"),
+  ).toBeVisible();
+  await expect(
+    draft.getByText("Répondez STOP pour ne plus recevoir de messages."),
+  ).toBeVisible();
+  await expect(draft.getByText("pied de message compris")).toBeVisible();
+  await expect(page.getByText("À valider", { exact: true })).toBeVisible();
+});
+
+test("traités : trace de la décision, état d'envoi et nouvelle tentative", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const retries: string[] = [];
+  await page.route("**/api/v1/todo/treated", async (route) =>
+    route.fulfill({
+      json: {
+        hours: 24,
+        total: 2,
+        items: [
+          {
+            id: "draft:c9:m9",
+            conversation_id: "c9",
+            prospect: { ...prospect, first_name: "Karim", last_name: "Sylla" },
+            channel: "email",
+            decision: "approved",
+            decided_at: "2026-10-15T09:00:00Z",
+            decided_by: 1,
+            edited: true,
+            content: "Bonjour Karim, voici les informations.",
+            reason: null,
+            execution: "failed",
+            execution_detail: "SMTP : envoi refusé",
+          },
+          {
+            id: "draft:c8:m8",
+            conversation_id: "c8",
+            prospect: { ...prospect, first_name: "Léa", last_name: "Fontaine" },
+            channel: "email",
+            decision: "rejected",
+            decided_at: "2026-10-15T08:00:00Z",
+            decided_by: 1,
+            edited: false,
+            content: "Brouillon refusé.",
+            reason: "Ton trop familier",
+            execution: "rejected",
+            execution_detail: null,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(
+    "**/api/v1/conversations/c9/messages/m9/retry-delivery",
+    async (route) => {
+      retries.push(route.request().url());
+      await route.fulfill({
+        json: { id: "m9", metadata: { delivery: "not_sent" } },
+      });
+    },
+  );
+  await open(page);
+  await page.getByRole("button", { name: "Traités aujourd’hui (2)" }).click();
+  await page.getByRole("button", { name: /Karim Sylla/ }).click();
+  const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
+  await expect(detail.getByText("Échec d’envoi")).toBeVisible();
+  await expect(detail.getByText("SMTP : envoi refusé")).toBeVisible();
+  await expect(detail.getByText("Validé (modifié)")).toBeVisible();
+  await detail.getByRole("button", { name: "Réessayer l’envoi" }).click();
+  await expect.poll(() => retries.length).toBe(1);
+  await page.getByRole("button", { name: /Léa Fontaine/ }).click();
+  await expect(
+    page.getByText("Motif du refus : Ton trop familier"),
+  ).toBeVisible();
+});

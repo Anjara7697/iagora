@@ -149,7 +149,7 @@ export const DRAFT_STATUS: Record<string, string> = {
 export const DELIVERY: Record<string, string> = {
   not_sent: "Prêt à envoyer",
   sending: "Envoi en cours",
-  sent: "Envoyé",
+  sent: "Distribué",
   failed: "Échec d’envoi",
   blocked: "Envoi bloqué",
 };
@@ -266,3 +266,14 @@ export function pageSubtitle(pathname: string): string {
     )?.[1] ?? ""
   );
 }
+
+/** État d'exécution d'un brouillon décidé : lisible après traitement. */
+export const EXECUTION: Record<string, string> = {
+  pending: "À valider",
+  approved: "Approuvée, prête à envoyer",
+  sending: "Envoi en cours",
+  sent: "Envoyée",
+  failed: "Échec d’envoi",
+  blocked: "Envoi bloqué",
+  rejected: "Refusée",
+};

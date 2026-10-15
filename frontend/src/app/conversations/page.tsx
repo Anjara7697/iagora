@@ -227,11 +227,24 @@ function Detail({
       <div className="inbox-info">
         <div>
           <span className="eyebrow">Dernière interaction</span>
-          <p>{formatDate(summary.last_message_at)}</p>
+          <p>
+            {formatDate(summary.last_message_at)} ·{" "}
+            {label(CHANNELS, summary.channel)}
+          </p>
         </div>
         <div>
-          <span className="eyebrow">Contact</span>
-          <p>{p?.email ?? summary.prospect?.email ?? "-"}</p>
+          <span className="eyebrow">Canal de réponse retenu</span>
+          <p>
+            {label(CHANNELS, summary.channel)} —{" "}
+            {p?.email ?? summary.prospect?.email ?? "-"}
+          </p>
+        </div>
+        <div>
+          <span className="eyebrow">Contraintes</span>
+          <p>
+            Relances : jours ouvrés, 8 h–19 h (heure de Paris), 3 au plus sans
+            réponse · texte seul, pas de pièce jointe
+          </p>
         </div>
         <div>
           <span className="eyebrow">Consentement</span>
@@ -257,7 +270,13 @@ function Detail({
           </p>
         </div>
       )}
-      {conv && <ConversationView messages={conv.messages} />}
+      {conv && (
+        <ConversationView
+          messages={conv.messages}
+          prospectName={name}
+          channel={conv.channel}
+        />
+      )}
 
       {pendingDraft && (
         <p className="warnbox card">

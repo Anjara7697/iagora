@@ -16,6 +16,10 @@ class TodoDraft(BaseModel):
     sources: list[str] = []
     confidence: float | None = None
     created_at: datetime
+    subject: str | None = Field(None, description="Objet de l'email qui partira")
+    footer: str | None = Field(
+        None, description="Pied de message ajouté automatiquement (non modifiable)"
+    )
 
 
 class TodoRecommendation(BaseModel):
@@ -39,6 +43,27 @@ class TodoItem(BaseModel):
     draft: TodoDraft | None = None
     handoff: dict[str, Any] | None = None
     recommendation: TodoRecommendation | None = None
+
+
+class TreatedItem(BaseModel):
+    id: str
+    conversation_id: str
+    prospect: ConversationProspect | None
+    channel: str
+    decision: Literal["approved", "rejected"]
+    decided_at: datetime | None
+    decided_by: int | None = None
+    edited: bool = False
+    content: str
+    reason: str | None = Field(None, description="Motif du refus")
+    execution: Literal["approved", "sending", "sent", "failed", "blocked", "rejected"]
+    execution_detail: str | None = Field(None, description="Cause d'un échec ou d'un blocage")
+
+
+class TreatedPage(BaseModel):
+    items: list[TreatedItem]
+    total: int
+    hours: int
 
 
 class TodoPage(BaseModel):

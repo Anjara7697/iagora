@@ -12,6 +12,7 @@ from app.api.dependencies import (
     KnowledgeDep,
     Llm,
     MongoDb,
+    SettingsDep,
 )
 from app.models.enums import UserRole
 from app.schemas.agent import AgentRunResult
@@ -22,6 +23,7 @@ from app.schemas.todo import (
     DraftApprove,
     DraftReject,
     TodoPage,
+    TreatedPage,
 )
 from app.services import agent_settings, drafts, prospects
 from app.services import conversations as conversation_service
@@ -36,12 +38,25 @@ router = APIRouter(tags=["assisted-mode"], dependencies=[ANY_ROLE])
 async def list_todo(
     session: DbSession,
     db: MongoDb,
+    settings: SettingsDep,
     kind: Annotated[str | None, Query(pattern="^(validation|escalation|kb_gap|incident)$")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> TodoPage:
     """Ce qui attend un conseiller : brouillons à valider, transferts, lacunes, incidents."""
-    return await todo_service.list_todo(session, db, kind=kind, limit=limit, offset=offset)
+    return await todo_service.list_todo(
+        session, db, kind=kind, limit=limit, offset=offset, footer=settings.email_footer
+    )
+
+
+@router.get("/todo/treated", response_model=TreatedPage)
+async def list_treated(
+    session: DbSession,
+    db: MongoDb,
+    hours: Annotated[int, Query(ge=1, le=168)] = 24,
+) -> TreatedPage:
+    """Brouillons déjà validés ou refusés, avec l'état d'envoi (la trace reste lisible)."""
+    return await todo_service.treated(session, db, hours=hours)
 
 
 @router.get("/agent/mode", response_model=AgentModeRead)
@@ -105,6 +120,16 @@ async def reject_draft(
 ) -> MessageRead:
     """Refuse le brouillon, avec un motif : rien ne part et le fil est de nouveau libre."""
     return await drafts.reject(db, conversation_id, message_id, user.id, payload.reason)
+
+
+@router.post(
+    "/conversations/{conversation_id}/messages/{message_id}/retry-delivery",
+    response_model=MessageRead,
+    dependencies=[CAN_WRITE],
+)
+async def retry_delivery(conversation_id: str, message_id: str, db: MongoDb) -> MessageRead:
+    """Relance l'envoi d'un message validé dont l'envoi a échoué ou été bloqué."""
+    return await drafts.retry_delivery(db, conversation_id, message_id)
 
 
 @router.post(

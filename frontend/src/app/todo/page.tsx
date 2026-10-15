@@ -12,13 +12,21 @@ import {
   PRIORITIES,
   RISKS,
   TODO_KINDS,
+  formatDate,
   fullName,
   initials,
   label,
   relativeTime,
+  EXECUTION,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
-import type { TodoItem, TodoKind, TodoPage } from "@/lib/types";
+import type {
+  TodoItem,
+  TodoKind,
+  TodoPage,
+  TreatedItem,
+  TreatedPage,
+} from "@/lib/types";
 
 type KindFilter = "" | TodoKind;
 const KIND_ORDER: TodoKind[] = [
@@ -120,7 +128,10 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
   return (
     <section className="draft-panel" aria-label="Brouillon de l'agent">
       <header>
-        <strong>Brouillon — {label(CHANNELS, item.channel)}</strong>
+        <strong>
+          Brouillon — {label(CHANNELS, item.channel)}
+          {draft.subject ? ` · objet : ${draft.subject}` : ""}
+        </strong>
         <span className="muted">Généré par l&apos;agent</span>
       </header>
       {editing ? (
@@ -132,6 +143,18 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
       ) : (
         <div className="draft-text">{text}</div>
       )}
+      {draft.footer && (
+        <div className="draft-footer">
+          <span className="eyebrow">
+            Pied de message — ajouté automatiquement, non modifiable
+          </span>
+          <p>{draft.footer}</p>
+        </div>
+      )}
+      <p className="muted draft-exact">
+        C’est le texte exact qui partira
+        {draft.footer ? ", pied de message compris" : ""}.
+      </p>
       {error && (
         <p className="error" role="alert">
           {error}
@@ -202,8 +225,9 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
         </div>
       )}
       <p className="muted">
-        Approuver valide le message ; son envoi sur le canal du prospect viendra
-        avec les connecteurs (email, Messenger…).
+        Approuver valide le message : il part ensuite par le canal du prospect
+        dès que l’envoi est activé (voir Intégrations). Son état reste lisible
+        dans « Traités ».
       </p>
     </section>
   );
@@ -282,6 +306,16 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
                   {label(RISKS, rec.risk)}
                 </span>
               </p>
+              {item.draft && (
+                <>
+                  <span className="eyebrow">Exécution</span>
+                  <p>
+                    <span className="badge integ-warn">
+                      {label(EXECUTION, "pending")}
+                    </span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -305,6 +339,96 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
   );
 }
 
+function TreatedDetail({
+  item,
+  onChanged,
+}: {
+  item: TreatedItem;
+  onChanged: () => void;
+}) {
+  const user = useCurrentUser();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messageId = item.id.split(":")[2];
+  const name = item.prospect
+    ? fullName(item.prospect) || item.prospect.email || "Prospect"
+    : "Prospect";
+  const canRetry =
+    (item.execution === "failed" || item.execution === "blocked") &&
+    user?.role !== "VIEWER";
+
+  async function retry() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(
+        `/conversations/${item.conversation_id}/messages/${messageId}/retry-delivery`,
+        {
+          method: "POST",
+        },
+      );
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Échec");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="inbox-detail" aria-label={`Traité : ${name}`}>
+      <header className="inbox-detail-head">
+        <span className="prospect-avatar inbox-avatar" aria-hidden="true">
+          {initials(name)}
+        </span>
+        <div className="inbox-detail-title">
+          <h2>{name}</h2>
+          <DemoBadge email={item.prospect?.email} />
+          <div className="row">
+            <span
+              className={`badge ${item.decision === "approved" ? "integ-ok" : "integ-off"}`}
+            >
+              {item.decision === "approved" ? "Validé" : "Refusé"}
+              {item.edited ? " (modifié)" : ""}
+            </span>
+            <span className="muted">{formatDate(item.decided_at)}</span>
+          </div>
+        </div>
+        <Link
+          className="button-link"
+          href={`/conversations?id=${item.conversation_id}`}
+        >
+          Ouvrir la conversation
+        </Link>
+      </header>
+      <div className="recommendation">
+        <span className="eyebrow">Exécution</span>
+        <h3>{label(EXECUTION, item.execution)}</h3>
+        {item.reason && <p>Motif du refus : {item.reason}</p>}
+        {item.execution_detail && (
+          <p className="error">{item.execution_detail}</p>
+        )}
+        {canRetry && (
+          <button disabled={busy} onClick={retry}>
+            Réessayer l’envoi
+          </button>
+        )}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+      <section className="draft-panel" aria-label="Message traité">
+        <header>
+          <strong>Message — {label(CHANNELS, item.channel)}</strong>
+        </header>
+        <div className="draft-text">{item.content}</div>
+      </section>
+    </section>
+  );
+}
+
 function Todo() {
   const router = useRouter();
   const params = useSearchParams();
@@ -312,6 +436,10 @@ function Todo() {
   const [kind, setKind] = useState<KindFilter>("");
   const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 100 })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
+  const tab = params.get("tab") === "treated" ? "treated" : "todo";
+  const treated = useApi<TreatedPage>("/todo/treated", { keepPrevious: true });
+  const treatedItems = treated.data?.items ?? [];
+  const selectedTreated = treatedItems.find((i) => i.id === selectedId) ?? null;
 
   const items = list.data?.items ?? [];
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -320,6 +448,7 @@ function Todo() {
   const refresh = () => {
     list.reload();
     all.reload();
+    treated.reload();
   };
 
   return (
@@ -335,7 +464,87 @@ function Todo() {
       </div>
       <div className="inbox">
         <aside className="inbox-list" aria-label="Éléments à traiter">
-          <div className="inbox-filters">
+          <div
+            className="view-switch todo-tabs"
+            role="group"
+            aria-label="Affichage"
+          >
+            <button
+              aria-pressed={tab === "todo"}
+              onClick={() => router.replace("/todo", { scroll: false })}
+            >
+              À traiter
+            </button>
+            <button
+              aria-pressed={tab === "treated"}
+              onClick={() =>
+                router.replace("/todo?tab=treated", { scroll: false })
+              }
+            >
+              Traités aujourd’hui ({treated.data?.total ?? 0})
+            </button>
+          </div>
+          {tab === "treated" && (
+            <>
+              <Loading
+                loading={treated.loading && !treated.data}
+                error={treated.error}
+                onRetry={treated.reload}
+              />
+              {treated.data && treatedItems.length === 0 && (
+                <p className="muted inbox-empty">
+                  Rien de traité pour l’instant. Chaque élément traité vient ici
+                  avec sa trace : qui a agi, quand, et ce qui est parti.
+                </p>
+              )}
+              <ul>
+                {treatedItems.map((t) => {
+                  const name = t.prospect
+                    ? fullName(t.prospect) || t.prospect.email || "Prospect"
+                    : "Prospect";
+                  return (
+                    <li key={t.id}>
+                      <button
+                        className={`inbox-row ${t.id === selectedId ? "selected" : ""}`}
+                        aria-current={t.id === selectedId ? "true" : undefined}
+                        onClick={() =>
+                          router.replace(
+                            `/todo?tab=treated&id=${encodeURIComponent(t.id)}`,
+                            {
+                              scroll: false,
+                            },
+                          )
+                        }
+                      >
+                        <span className="prospect-avatar" aria-hidden="true">
+                          {initials(name)}
+                        </span>
+                        <span className="inbox-row-main">
+                          <span className="inbox-row-top">
+                            <strong>{name}</strong>
+                            <span className="mono">
+                              {formatDate(t.decided_at)}
+                            </span>
+                          </span>
+                          <span className="row">
+                            <span
+                              className={`badge ${t.decision === "approved" ? "integ-ok" : "integ-off"}`}
+                            >
+                              {t.decision === "approved" ? "Validé" : "Refusé"}
+                            </span>
+                            <span className="badge">
+                              {label(EXECUTION, t.execution)}
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+          <div className="inbox-filters" hidden={tab === "treated"}>
             <div className="chips" role="group" aria-label="Type">
               <button aria-pressed={kind === ""} onClick={() => setKind("")}>
                 Tout ({total})
@@ -351,11 +560,17 @@ function Todo() {
               ))}
             </div>
           </div>
-          <Loading loading={list.loading} error={list.error} onRetry={list.reload} />
-          {list.data && items.length === 0 && (
+          {tab === "todo" && (
+            <Loading
+              loading={list.loading}
+              error={list.error}
+              onRetry={list.reload}
+            />
+          )}
+          {tab === "todo" && list.data && items.length === 0 && (
             <p className="muted inbox-empty">Rien à traiter pour le moment.</p>
           )}
-          <ul>
+          <ul hidden={tab === "treated"}>
             {items.map((i) => (
               <Row
                 key={i.id}
@@ -370,7 +585,13 @@ function Todo() {
             ))}
           </ul>
         </aside>
-        {selected ? (
+        {tab === "treated" && selectedTreated ? (
+          <TreatedDetail
+            key={selectedTreated.id}
+            item={selectedTreated}
+            onChanged={refresh}
+          />
+        ) : tab === "todo" && selected ? (
           <Detail item={selected} onDone={refresh} />
         ) : (
           <section className="inbox-detail inbox-placeholder">

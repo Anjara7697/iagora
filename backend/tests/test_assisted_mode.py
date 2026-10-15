@@ -169,3 +169,54 @@ async def test_emergency_stop_blocks_the_agent_and_rules_on_who_can_switch(
     assert (await advisor.put(f"{API}/agent/mode", json={"mode": "assisted"})).status_code == 200
     assert (await run(client, cid)).status_code == 201
     assert (await client.put(f"{API}/agent/mode", json={"mode": "auto"})).json()["mode"] == "auto"
+
+
+async def test_treated_drafts_keep_a_readable_trace_with_the_execution_state(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    draft = await draft_of(client, cid)
+    assert (await todo(client))["items"][0]["draft"]["footer"]  # pied de message annoncé
+    base = f"{API}/conversations/{cid}/drafts/{draft['id']}"
+    await client.post(f"{base}/approve", json={"content": "Version relue."})
+    treated = (await client.get(f"{API}/todo/treated")).json()
+    assert treated["total"] == 1
+    item = treated["items"][0]
+    assert item["decision"] == "approved" and item["edited"] is True
+    assert item["execution"] == "approved" and item["content"] == "Version relue."
+    assert item["prospect"]["first_name"] == "Jean"
+    assert (await todo(client))["total"] == 0  # plus dans la file « À traiter »
+
+
+async def test_rejected_drafts_appear_as_treated_with_their_reason(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    draft = await draft_of(client, cid)
+    await client.post(
+        f"{API}/conversations/{cid}/drafts/{draft['id']}/reject",
+        json={"reason": "Ton trop familier"},
+    )
+    item = (await client.get(f"{API}/todo/treated")).json()["items"][0]
+    assert item["decision"] == "rejected" and item["execution"] == "rejected"
+    assert item["reason"] == "Ton trop familier"
+
+
+async def test_a_failed_delivery_can_be_retried_but_only_then(client, assisted, mongo_db):
+    from app.services import conversations
+
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    draft = await draft_of(client, cid)
+    await client.post(f"{API}/conversations/{cid}/drafts/{draft['id']}/approve", json={})
+    url = f"{API}/conversations/{cid}/messages/{draft['id']}/retry-delivery"
+    assert (await client.post(url)).status_code == 409  # pas en échec
+    doc = await conversations.get_doc(mongo_db, cid)
+    meta = next(m for m in doc["messages"] if m["id"] == draft["id"])["metadata"]
+    meta |= {"delivery": "failed", "delivery_info": {"attempts": 3, "error": "SMTP refusé"}}
+    await mongo_db[conversations.COLLECTION].update_one(
+        {"_id": doc["_id"], "messages.id": draft["id"]}, {"$set": {"messages.$.metadata": meta}}
+    )
+    item = (await client.get(f"{API}/todo/treated")).json()["items"][0]
+    assert item["execution"] == "failed" and item["execution_detail"] == "SMTP refusé"
+    r = await client.post(url)
+    assert r.status_code == 200 and r.json()["metadata"]["delivery"] == "not_sent"
+    assert r.json()["metadata"]["delivery_info"]["attempts"] == 0
