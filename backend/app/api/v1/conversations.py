@@ -1,9 +1,20 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Query, Response, status
 
-from app.api.dependencies import ANY_ROLE, CAN_WRITE, DbSession, MongoDb
-from app.models.enums import ConversationStatus
+from app.agents import auto
+from app.api.dependencies import (
+    ANY_ROLE,
+    CAN_WRITE,
+    CalendarDep,
+    DbSession,
+    KnowledgeDep,
+    Llm,
+    MongoDb,
+    SessionFactoryDep,
+    SettingsDep,
+)
+from app.models.enums import ConversationStatus, SenderType
 from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
@@ -20,6 +31,29 @@ from app.services import follow_ups, inbox
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
 
+def _trigger_agent(
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    conversation_id: str,
+    session_factory: SessionFactoryDep,
+    db: MongoDb,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
+) -> None:
+    """Dès qu'un message du prospect est enregistré, l'agent prépare sa réponse (F-06)."""
+    if settings.agent_auto_reply:
+        background.add_task(
+            auto.reply_to_message,
+            conversation_id,
+            session_factory=session_factory,
+            db=db,
+            llm=llm,
+            calendar=calendar,
+            knowledge=knowledge,
+        )
+
+
 @router.post(
     "/conversations",
     response_model=ConversationResult,
@@ -27,12 +61,26 @@ router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
     dependencies=[CAN_WRITE],
 )
 async def create_conversation(
-    payload: ConversationCreate, session: DbSession, db: MongoDb, response: Response
+    payload: ConversationCreate,
+    session: DbSession,
+    db: MongoDb,
+    response: Response,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    session_factory: SessionFactoryDep,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
 ) -> ConversationResult:
-    """Ouvre une conversation (201), ou renvoie la conversation active existante (200)."""
+    """Ouvre une conversation (201), ou renvoie la conversation active existante (200).
+    Si elle s'ouvre sur un message du prospect, l'agent prépare sa réponse."""
     conversation, created = await service.create_conversation(session, db, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
+    elif payload.message is not None and payload.message.role is SenderType.PROSPECT:
+        _trigger_agent(
+            background, settings, conversation.id, session_factory, db, llm, calendar, knowledge
+        )
     return ConversationResult(conversation=conversation, created=created)
 
 
@@ -89,11 +137,22 @@ async def add_message(
     session: DbSession,
     db: MongoDb,
     response: Response,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    session_factory: SessionFactoryDep,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
 ) -> MessageResult:
-    """Ajoute un message. Rejeu avec le même `external_message_id` : 200, sans doublon."""
+    """Ajoute un message. Rejeu avec le même `external_message_id` : 200, sans doublon.
+    Un message du prospect déclenche la réponse de l'agent (en tâche de fond, F-06)."""
     message, created = await service.add_message(session, db, conversation_id, payload)
     if not created:
         response.status_code = status.HTTP_200_OK
+    elif payload.role is SenderType.PROSPECT:
+        _trigger_agent(
+            background, settings, conversation_id, session_factory, db, llm, calendar, knowledge
+        )
     return MessageResult(conversation_id=conversation_id, message=message, created=created)
 
 

@@ -1,5 +1,6 @@
 """Exécution du workflow : prépare le contexte, lance le graphe, journalise la décision (NF-04)."""
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -55,7 +56,26 @@ async def _resolve_conversation(
     return await conversations.get_doc(db, read.id)
 
 
+_locks: dict[str, asyncio.Lock] = {}
+
+
 async def run_agent(
+    session: AsyncSession,
+    db: Any,
+    *,
+    conversation_id: str | None = None,
+    **kwargs: Any,
+) -> AgentRunResult:
+    """Exécute l'agent. Les exécutions d'une même conversation sont sérialisées : un déclenchement
+    automatique et un déclenchement manuel simultanés ne produisent jamais deux réponses (la seconde
+    exécution voit que l'agent a déjà répondu et s'arrête avec un conflit)."""
+    if conversation_id is None:
+        return await _run_agent(session, db, **kwargs)
+    async with _locks.setdefault(conversation_id, asyncio.Lock()):
+        return await _run_agent(session, db, conversation_id=conversation_id, **kwargs)
+
+
+async def _run_agent(
     session: AsyncSession,
     db: Any,
     *,
@@ -66,8 +86,10 @@ async def run_agent(
     prospect_id: int | None = None,
     channel: str | None = None,
     mode: AgentMode | None = None,
+    follow_up: bool = False,
 ) -> AgentRunResult:
-    """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests)."""
+    """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests).
+    `follow_up` : relance d'un prospect resté silencieux (dernier message : celui de l'agent)."""
     started_at = datetime.now(UTC)
     doc = await _resolve_conversation(session, db, conversation_id, prospect_id, channel)
     conv_id = str(doc["_id"])
@@ -81,7 +103,13 @@ async def run_agent(
     if doc["status"] == ConversationStatus.HANDED_OFF.value:
         raise ConflictError("Conversation transférée à un conseiller : l'agent n'intervient plus")
     messages = drafts.live_messages(doc.get("messages", []))
-    if not messages:
+    if follow_up:
+        if not messages or drafts.is_pending(messages[-1]):
+            raise ConflictError("Relance impossible : conversation vide ou brouillon en attente")
+        if messages[-1]["role"] == SenderType.PROSPECT.value:
+            raise ConflictError("Le prospect a répondu : plus de relance à faire")
+        trigger, inbound_text = "follow_up", ""
+    elif not messages:
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
         trigger, inbound_text = "inbound_message", messages[-1]["content"]

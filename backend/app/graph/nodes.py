@@ -101,7 +101,12 @@ class WorkflowNodes:
                 "qualification": None,
                 "risk_alerts": [],
                 "llm_failed": False,
-                "trace": _t("qualify_prospect", "premier contact : rien à qualifier"),
+                "trace": _t(
+                    "qualify_prospect",
+                    "relance programmée : rien à qualifier"
+                    if state["trigger"] == "follow_up"
+                    else "premier contact : rien à qualifier",
+                ),
             }
 
         alerts = policy.sensitive_alerts(text)

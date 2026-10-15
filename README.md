@@ -238,4 +238,5 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
 Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence), console web (prospects, conversations, transferts, simulateur).
+Fait aussi : déclenchement automatique de l'agent à chaque message du prospect et exécution des relances (fenêtre d'envoi, plafond, mode assisté).
 Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
