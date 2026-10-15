@@ -316,3 +316,66 @@ test("fiche : un observateur ne voit aucune action de consentement", async ({
     page.getByRole("button", { name: /désinscription/ }),
   ).toHaveCount(0);
 });
+
+test("filtres programme, intérêt, canal et consentement transmis à l'API", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const queries: string[] = [];
+  await page.route("**/api/v1/prospects?**", async (route) => {
+    queries.push(new URL(route.request().url()).search);
+    await route.fallback();
+  });
+  await login(page);
+  await page.getByLabel("Programme").selectOption("ebihar_students");
+  await page.getByLabel("Intérêt").selectOption("very_hot");
+  await page.getByLabel("Canal", { exact: true }).selectOption("email");
+  await page.getByLabel("Consentement").selectOption("granted");
+  await expect
+    .poll(() =>
+      queries.some(
+        (q) =>
+          q.includes("target_code=ebihar_students") &&
+          q.includes("level=very_hot") &&
+          q.includes("channel=email") &&
+          q.includes("consent_status=granted"),
+      ),
+    )
+    .toBe(true);
+  await page.getByRole("button", { name: "Réinitialiser" }).click();
+  await expect(page.getByLabel("Programme")).toHaveValue("");
+});
+
+test("export CSV : téléchargement avec les filtres, absent pour un observateur", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let exportUrl = "";
+  await page.route("**/api/v1/prospects/export**", async (route) => {
+    exportUrl = route.request().url();
+    await route.fulfill({
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": 'attachment; filename="prospects.csv"',
+      },
+      body: "﻿id;prénom\r\n1;Alice\r\n",
+    });
+  });
+  await login(page);
+  await page.getByLabel("Programme").selectOption("ebihar_students");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("prospects.csv");
+  expect(exportUrl).toContain("target_code=ebihar_students");
+});
+
+test("export CSV : un observateur ne voit pas le bouton", async ({ page }) => {
+  await mockApi(page, "VIEWER");
+  await login(page);
+  await expect(
+    page.getByRole("button", { name: "Exporter en CSV (Excel)" }),
+  ).toHaveCount(0);
+});

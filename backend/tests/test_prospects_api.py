@@ -190,3 +190,45 @@ async def test_list_carries_each_prospect_memberships(client):
     by_email = {i["email"]: i for i in items}
     assert by_email["a@example.com"]["campaigns"][0]["conversion_stage"] == "new"
     assert by_email["b@example.com"]["campaigns"] == []
+
+
+async def _make(client, email, name, **extra):
+    r = await client.post(
+        "/api/v1/prospects",
+        json={"first_name": name, "email": email, "channel": "email", **extra},
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["prospect"]["id"]
+
+
+async def test_list_filters_by_programme_and_origin_channel(client):
+    a = await _make(client, "a@acme-corp.com", "Alice", target_code="ebihar_students")
+    await _make(client, "b@acme-corp.com", "Bob", target_code="compagnons_pros")
+    listed = (
+        await client.get("/api/v1/prospects", params={"target_code": "ebihar_students"})
+    ).json()
+    assert [p["id"] for p in listed["items"]] == [a]
+    both = (await client.get("/api/v1/prospects", params={"channel": "email"})).json()
+    assert both["total"] == 2
+    none = (await client.get("/api/v1/prospects", params={"channel": "facebook"})).json()
+    assert none["total"] == 0
+
+
+async def test_csv_export_is_excel_friendly_and_safe(client, make_client):
+    await _make(client, "a@acme-corp.com", '=HYPERLINK("http://x")')
+    await _make(client, "sim.z@demo.example.com", "Fictif")
+    r = await client.get("/api/v1/prospects/export")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    text = r.content.decode("utf-8")
+    assert text.startswith("﻿")  # BOM : Excel lit bien les accents
+    lines = text.lstrip("﻿").split("\r\n")
+    assert lines[0].startswith("id;prénom;nom;email")
+    assert "'=HYPERLINK" in text  # formule neutralisée
+    assert "demo.example.com" not in text  # fictifs exclus par défaut
+    with_demo = (await client.get("/api/v1/prospects/export", params={"demo": "all"})).text
+    assert "demo.example.com" in with_demo
+    from app.models.enums import UserRole
+
+    viewer = await make_client(UserRole.VIEWER)
+    assert (await viewer.get("/api/v1/prospects/export")).status_code == 403
