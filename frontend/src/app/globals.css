@@ -1226,3 +1226,72 @@ button.danger {
   font-size: 12px;
   color: var(--warn);
 }
+
+/* --- Base de connaissances --- */
+.kb-search {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.kb-search input {
+  flex: 1;
+  min-width: 240px;
+}
+.kb-results {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.kb-results li {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.kb-results li.retained {
+  border-color: #b7dfc4;
+  background: #f4fbf6;
+}
+.kb-results li.dropped {
+  opacity: 0.7;
+}
+.kb-results p {
+  margin: 6px 0 0;
+}
+.score-bar {
+  position: relative;
+  height: 8px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #e8e5e1;
+}
+.score-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.score-bar span {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--err);
+}
+.kb-editor {
+  width: 100%;
+  min-height: 280px;
+  margin: 12px 0 8px;
+  padding: 0.7rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+.kb-sections {
+  padding-left: 20px;
+}
+.kb-sections p {
+  margin: 4px 0 12px;
+}

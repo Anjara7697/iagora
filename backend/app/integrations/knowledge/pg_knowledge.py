@@ -74,7 +74,22 @@ class PgKnowledgeBase:
             logger.warning("Recherche impossible, embeddings indisponibles : %s", exc)
             return []
         async with self._session_factory() as session:
-            scored = await self._scored(session, vector, target_code, limit)
+            return await self._search_in(session, vector, target_code, limit)
+
+    async def search_all_in(
+        self, session: AsyncSession, query: str, target_code: str | None, limit: int = 4
+    ) -> list[Passage]:
+        """Comme `search_all`, avec la session de l'appelant ; une panne des embeddings est
+        remontée (`EmbeddingError`) au lieu d'être masquée : l'administrateur doit la voir."""
+        if not query.strip():
+            return []
+        vector = await self._embeddings.embed_query(query)
+        return await self._search_in(session, vector, target_code, limit)
+
+    async def _search_in(
+        self, session: AsyncSession, vector: list[float], target_code: str | None, limit: int
+    ) -> list[Passage]:
+        scored = await self._scored(session, vector, target_code, limit)
         return [
             Passage(
                 source=f"{doc.title} / {chunk.heading or 'général'}", text=chunk.text, score=score
