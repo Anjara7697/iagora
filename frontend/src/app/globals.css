@@ -1801,3 +1801,178 @@ a.today-row:hover {
 .nav-item {
   padding: 8px 12px;
 }
+
+/* --- Campagnes : bandeau de chiffres et tableau (maquette) --- */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 0 18px;
+}
+.kpi-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--line);
+}
+.kpi-strip > div:last-child {
+  border-right: none;
+}
+.kpi-strip strong {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.campaign-table {
+  padding: 0;
+  overflow: hidden;
+}
+.campaign-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) 110px minmax(150px, 1.3fr) minmax(220px, 2fr) 16px;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg);
+}
+a.campaign-row:hover {
+  text-decoration: none;
+  background: #faf8f7;
+}
+.campaign-row:last-child {
+  border-bottom: none;
+}
+.campaign-row.head {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #faf8f7;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.campaign-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.campaign-row > span.row {
+  flex-direction: row;
+  align-items: center;
+}
+.campaign-sub {
+  font-size: 12px;
+}
+.source-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #191817;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -6px;
+  border: 2px solid #fff;
+}
+.funnel-bar {
+  display: block;
+  height: 6px;
+  background: #efece8;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.funnel-bar .fb-leads {
+  display: block;
+  height: 100%;
+  background: #c9d6f7;
+}
+.funnel-bar .fb-qualified {
+  display: block;
+  height: 100%;
+  background: #6b8be8;
+}
+.funnel-bar .fb-converted {
+  display: block;
+  height: 100%;
+  background: #1f4fd8;
+}
+@media (max-width: 900px) {
+  .campaign-row {
+    grid-template-columns: 1fr auto;
+  }
+  .campaign-row.head,
+  .campaign-row > span:nth-child(3),
+  .campaign-row > span:nth-child(5) {
+    display: none;
+  }
+  .campaign-row > span.campaign-bar {
+    grid-column: 1 / -1;
+  }
+}
+
+/* --- Intégrations : une carte par canal (maquette) --- */
+.integ-card {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.integ-main {
+  flex: 1;
+  min-width: 0;
+}
+.integ-main h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.integ-main p {
+  margin: 6px 0;
+}
+.integ-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.badge.integ-ok {
+  background: #e4f3ea;
+  color: #1f7a48;
+  border: 1px solid #c9e3d4;
+}
+.badge.integ-warn {
+  background: #fdf2e0;
+  color: #8a5200;
+  border: 1px solid #f3e0bd;
+}
+.badge.integ-off {
+  background: #f0eeeb;
+  color: #57524d;
+  border: 1px dashed #c4beb8;
+}
+@media (max-width: 800px) {
+  .integ-card {
+    flex-direction: column;
+  }
+}
+
+.kb-gap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fdf2e0;
+  border-color: #f3e0bd;
+  margin-bottom: 14px;
+}
+.kb-gap p {
+  margin: 4px 0 0;
+}

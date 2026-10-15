@@ -84,7 +84,14 @@ async function mockApi(
       body = campaign({ id: 7, name: "Nouvelle" });
     } else if (path === "/campaigns/overview")
       body = [
-        { campaign_id: 1, prospects: 12, hot: 3, meetings: 2, converted: 1 },
+        {
+          campaign_id: 1,
+          prospects: 12,
+          hot: 3,
+          meetings: 2,
+          qualified: 5,
+          converted: 1,
+        },
       ];
     else if (path === "/campaigns/1/stats") body = stats;
     else if (path === "/campaigns/1" && method === "GET") body = current;
@@ -143,7 +150,10 @@ test("liste des campagnes avec chiffres clés, programmes et statut", async ({
   await expect(card.getByText("Brouillon")).toBeVisible();
   await expect(card.getByText("eBIHAR — étudiants")).toBeVisible();
   await expect(card.getByText("2 sources")).toBeVisible();
-  await expect(card.getByText("12", { exact: true })).toBeVisible();
+  await expect(card.getByText("12 · 5 · 1")).toBeVisible();
+  const strip = page.getByRole("region", { name: "Chiffres clés" });
+  await expect(strip.getByText("0 / 1")).toBeVisible();
+  await expect(strip.getByText("42 %")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Nouvelle campagne" }),
   ).toBeVisible();

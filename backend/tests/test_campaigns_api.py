@@ -147,6 +147,7 @@ async def test_overview_lists_every_campaign_even_without_prospects(client):
         "prospects": 0,
         "hot": 0,
         "meetings": 0,
+        "qualified": 0,
         "converted": 0,
     }
 

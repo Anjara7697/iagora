@@ -216,3 +216,43 @@ test("documents à recalculer : bannière et recalcul", async ({ page }) => {
     true,
   );
 });
+
+test("bannière de lacune, filtre par programme et statut de chaque document", async ({
+  page,
+}) => {
+  await mockApi(page, {
+    docs: [
+      doc(),
+      doc({
+        slug: "master",
+        title: "Master eBIHAR",
+        target_code: "master_candidates",
+        needs_reindex: true,
+      }),
+    ],
+  });
+  await page.route("**/api/v1/todo**", (route) =>
+    route.fulfill({
+      json: { items: [], total: 2, limit: 1, offset: 0, counts: { kb_gap: 1 } },
+    }),
+  );
+  await open(page);
+  await expect(
+    page.getByText("1 lacune bloque une réponse en cours"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Traiter la demande" }),
+  ).toHaveAttribute("href", "/todo");
+  await expect(page.getByText("À recalculer").first()).toBeVisible();
+  await expect(page.getByText("À jour").first()).toBeVisible();
+  const filter = page.getByRole("group", { name: "Programme" });
+  await filter
+    .getByRole("button", { name: "Master eBIHAR — candidats" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Programme eBIHAR" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Master eBIHAR" }),
+  ).toBeVisible();
+});

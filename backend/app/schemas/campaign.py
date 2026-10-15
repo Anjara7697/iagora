@@ -97,4 +97,7 @@ class CampaignOverview(BaseModel):
     prospects: int
     hot: int = Field(description="Prospects chauds ou très chauds")
     meetings: int
+    qualified: int = Field(
+        0, description="Prospects qualifiés ou plus avancés (rendez-vous, candidature, inscrits)"
+    )
     converted: int
