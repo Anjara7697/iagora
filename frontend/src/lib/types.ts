@@ -175,3 +175,34 @@ export type TodoItem = {
 export type TodoPage = Page<TodoItem> & {
   counts: Partial<Record<TodoKind, number>>;
 };
+
+export type KnowledgeStatus = {
+  configured: boolean;
+  embedding_model: string | null;
+  min_score: number;
+  top_k: number;
+};
+
+export type KnowledgeDocument = {
+  slug: string;
+  title: string;
+  target_code: string | null;
+  chunks: number;
+  embedding_model: string;
+  is_demo: boolean;
+  updated_at: string | null;
+  needs_reindex: boolean;
+};
+
+export type KnowledgeDocumentDetail = KnowledgeDocument & {
+  source_text: string | null;
+  sections: { heading: string | null; text: string }[];
+};
+
+export type SearchHit = {
+  source: string;
+  text: string;
+  score: number;
+  retained: boolean;
+};
+export type SearchResult = { threshold: number; results: SearchHit[] };

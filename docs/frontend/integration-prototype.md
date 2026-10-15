@@ -55,6 +55,13 @@ La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
   connecteurs), pas de pied de message automatique, pas de raccourcis clavier, pas de doublons ni d'incidents
   d'intégration (aucune donnée côté API), pas de vue « Traités aujourd'hui ».
 
+## Quatrième lot : base de connaissances
+
+- Page **Base de connaissances** (menu « Intelligence ») : documents, détail par section, ajout et modification
+  (administrateur), test d'une question avec scores et seuil, recalcul des vecteurs, avertissements (embeddings non
+  configurés, modèle changé). Voir `docs/rag.md`.
+- Migration 0007 : `kb_documents.source_text` conserve le texte source.
+
 ## Validation
 
 Dans `frontend/` :

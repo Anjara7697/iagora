@@ -20,6 +20,9 @@ const ROLE_LABELS = {
   ADVISOR: "Conseiller",
   VIEWER: "Observateur",
 };
+const INTELLIGENCE_LINKS = [
+  { href: "/knowledge", label: "Base de connaissances", icon: "❖" },
+];
 const LINKS = [
   { href: "/", label: "Aujourd’hui", icon: "◷" },
   { href: "/todo", label: "À traiter", icon: "✓", badge: true },
@@ -102,6 +105,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const links = SIMULATOR_ENABLED
     ? [...LINKS, { href: "/simulator", label: "Simulateur", icon: "◇" }]
     : LINKS;
+  const groups = [
+    { name: "Travail", items: links },
+    { name: "Intelligence", items: INTELLIGENCE_LINKS },
+  ];
   const title = pathname.startsWith("/prospects/")
     ? "Fiche prospect"
     : (links.find((l) => l.href === pathname)?.label ?? "IAGORA");
@@ -126,32 +133,36 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             IAGORA<span className="version">2.0</span>
           </Link>
           <nav aria-label="Navigation principale">
-            <p className="nav-group">Travail</p>
-            {links.map((link) => {
-              const active =
-                pathname === link.href ||
-                (link.href !== "/" && pathname.startsWith(`${link.href}/`));
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`nav-item ${active ? "active" : ""}`}
-                  onClick={() => setNavOpen(false)}
-                >
-                  <span aria-hidden="true">{link.icon}</span>
-                  {link.label}
-                  {"badge" in link && link.badge && waiting ? (
-                    <span
-                      className="nav-count"
-                      aria-label={`${waiting} en attente`}
+            {groups.map((group) => (
+              <div key={group.name}>
+                <p className="nav-group">{group.name}</p>
+                {group.items.map((link) => {
+                  const active =
+                    pathname === link.href ||
+                    (link.href !== "/" && pathname.startsWith(`${link.href}/`));
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      aria-current={active ? "page" : undefined}
+                      className={`nav-item ${active ? "active" : ""}`}
+                      onClick={() => setNavOpen(false)}
                     >
-                      {waiting}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
+                      <span aria-hidden="true">{link.icon}</span>
+                      {link.label}
+                      {"badge" in link && link.badge && waiting ? (
+                        <span
+                          className="nav-count"
+                          aria-label={`${waiting} en attente`}
+                        >
+                          {waiting}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
           <div className="sidebar-footer">
             <span className="eyebrow">DATUM Academy</span>

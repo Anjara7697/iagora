@@ -145,3 +145,10 @@ export const DRAFT_STATUS: Record<string, string> = {
   superseded: "Remplacé par une nouvelle version",
   cancelled: "Annulé (désinscription)",
 };
+
+export const TARGETS: Record<string, string> = {
+  ebihar_students: "eBIHAR — étudiants",
+  compagnons_pros: "Les Compagnons — professionnels",
+  master_candidates: "Master eBIHAR — candidats",
+  master_companies: "Master eBIHAR — entreprises",
+};
