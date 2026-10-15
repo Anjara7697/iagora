@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { CONSENT, HANDOFF_REASONS, STAGES, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
@@ -61,6 +61,7 @@ export default function ProspectPage() {
             <div>
               <span className="eyebrow">Fiche prospect · #{p.id}</span>
               <h1>{fullName(p)}</h1>
+              <DemoBadge email={p.email} />
               <div className="row">
                 <span className={`badge consent-${p.consent_status}`}>
                   {label(CONSENT, p.consent_status)}

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
 
@@ -56,13 +56,17 @@ async def list_prospects(
     campaign_id: int | None = None,
     stage: str | None = None,
     advisor_id: int | None = None,
+    demo: Annotated[
+        Literal["all", "exclude", "only"],
+        Query(description="Prospects fictifs : tous, exclus, ou seuls"),
+    ] = "all",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ProspectDetail]:
     """Liste paginée ; chaque prospect porte ses rattachements (étape, scores)."""
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
-        limit=limit, offset=offset,
+        limit=limit, offset=offset, demo=demo,
     )  # fmt: skip
     memberships = await service.get_memberships_for(session, [p.id for p in items])
     return Page[ProspectDetail](

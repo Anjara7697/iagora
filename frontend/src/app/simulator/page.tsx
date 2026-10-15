@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { Loading, ProspectLink, ScoreBadge, StageBadge } from "@/components/ui";
@@ -66,6 +67,12 @@ function pendingDraft(messages: Message[]): Message | undefined {
 export default function SimulatorPage() {
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=100");
   const mode = useApi<{ mode: string }>("/agent/mode");
+  const user = useCurrentUser();
+  const isAdmin = user?.role === "ADMIN";
+  const demoData = useApi<{ prospects: number; conversations: number }>(
+    isAdmin ? "/demo" : null,
+  );
+  const [purgeNotice, setPurgeNotice] = useState<string | null>(null);
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [targetCode, setTargetCode] = useState("");
   const [name, setName] = useState("Camille");
@@ -78,11 +85,15 @@ export default function SimulatorPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!SIMULATOR_ENABLED) {
+  if (!SIMULATOR_ENABLED || user?.role === "VIEWER") {
     return (
       <>
         <h1>Simulateur</h1>
-        <p>Le simulateur est désactivé sur cet environnement.</p>
+        <p>
+          {user?.role === "VIEWER"
+            ? "Le simulateur est réservé aux conseillers et aux administrateurs."
+            : "Le simulateur est désactivé sur cet environnement."}
+        </p>
       </>
     );
   }
@@ -218,6 +229,12 @@ export default function SimulatorPage() {
 
   return (
     <>
+      <div className="demo-banner" role="note">
+        <strong>MODE DÉMO</strong> — prospects fictifs (adresses
+        @demo.example.com) : aucun message n&apos;est envoyé à l&apos;extérieur.
+        Ces données sont à part des vraies et peuvent être supprimées à tout
+        moment.
+      </div>
       <div className="page-heading">
         <div>
           <span className="eyebrow">Intelligence · Banc d&apos;essai</span>
@@ -243,12 +260,62 @@ export default function SimulatorPage() {
         </p>
       )}
 
+      {isAdmin && (
+        <section className="card" aria-label="Données fictives">
+          <div className="row">
+            <span>
+              Données fictives en base :{" "}
+              <b>
+                {demoData.data
+                  ? `${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`
+                  : demoData.error
+                    ? "indisponible"
+                    : "…"}
+              </b>
+            </span>
+            <span className="spacer" />
+            <button
+              className="danger"
+              disabled={busy || !demoData.data || demoData.data.prospects === 0}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    "Supprimer tous les prospects fictifs (@demo.example.com) et leurs conversations ? Les vraies données ne sont pas touchées.",
+                  )
+                )
+                  return;
+                void guard(async () => {
+                  const r = await api<{
+                    prospects: number;
+                    conversations: number;
+                  }>("/demo/data", { method: "DELETE" });
+                  setSession(null);
+                  setMessages([]);
+                  setRuns([]);
+                  setPurgeNotice(
+                    `${r.prospects} prospect(s) fictif(s) et ${r.conversations} conversation(s) supprimés.`,
+                  );
+                  demoData.reload();
+                });
+              }}
+            >
+              Supprimer les données fictives
+            </button>
+          </div>
+          {purgeNotice && <p role="status">{purgeNotice}</p>}
+        </section>
+      )}
+
       <div className="sim">
         <aside className="sim-side" aria-label="Prospect simulé">
           {!session ? (
             <div className="card">
               <h2>Nouveau prospect fictif</h2>
-              <Loading loading={campaigns.loading} error={campaigns.error} onRetry={campaigns.reload} />
+              <Loading
+                loading={campaigns.loading}
+                error={campaigns.error}
+                onRetry={campaigns.reload}
+              />
               {campaigns.data && campaigns.data.items.length === 0 && (
                 <p>
                   Aucune campagne. Lancez{" "}
@@ -261,7 +328,10 @@ export default function SimulatorPage() {
                     Campagne
                     <select
                       value={campaign.id}
-                      onChange={(e) => setCampaignId(Number(e.target.value))}
+                      onChange={(e) => {
+                        setCampaignId(Number(e.target.value));
+                        setTargetCode(""); // le programme dépend de la campagne choisie
+                      }}
                     >
                       {campaigns.data?.items.map((c) => (
                         <option key={c.id} value={c.id}>

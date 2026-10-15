@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ApiError } from "@/lib/api";
-import { LEVELS, STAGES, label } from "@/lib/labels";
+import { LEVELS, STAGES, isDemoEmail, label } from "@/lib/labels";
 
 export function Loading({
   loading,
@@ -30,6 +30,14 @@ export function Loading({
       </div>
     );
   return null;
+}
+
+export function DemoBadge({ email }: { email: string | null | undefined }) {
+  return isDemoEmail(email) ? (
+    <span className="badge demo-badge" title="Prospect fictif : aucun message réel ne lui est envoyé">
+      Fictif
+    </span>
+  ) : null;
 }
 
 export function StageBadge({ stage }: { stage: string }) {

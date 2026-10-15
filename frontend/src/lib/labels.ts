@@ -223,3 +223,7 @@ export function pageTitle(pathname: string): string {
     )?.[1] ?? "IAGORA"
   );
 }
+
+/** Prospect fictif (simulateur, démonstration) : adresse réservée, jamais contactée pour de vrai. */
+export const isDemoEmail = (email: string | null | undefined): boolean =>
+  !!email && email.trim().toLowerCase().endsWith("@demo.example.com");

@@ -33,6 +33,7 @@ export type Prospect = {
   consent_source: string | null;
   opted_out_at: string | null;
   created_at: string;
+  is_demo?: boolean;
   campaigns: Membership[];
 };
 

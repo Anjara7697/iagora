@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
 import { useCurrentUser } from "@/components/AppShell";
-import { Loading, Pager, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import {
   CAMPAIGN_STATUS,
@@ -307,7 +307,8 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
                     <td>
                       <Link href={`/prospects/${p.id}`}>
                         {fullName(p) || p.email || `#${p.id}`}
-                      </Link>
+                      </Link>{" "}
+                      <DemoBadge email={p.email} />
                       {p.email && <div className="muted">{p.email}</div>}
                     </td>
                     <td>
