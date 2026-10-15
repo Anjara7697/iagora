@@ -36,13 +36,43 @@ export type Prospect = {
 };
 
 export type Target = { id: number; code: string; name: string };
-export type Source = { id: number; name: string };
+export type Source = {
+  id: number;
+  name: string;
+  type?: string;
+  platform?: string;
+  external_id?: string | null;
+};
 export type Campaign = {
   id: number;
   name: string;
   status: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
   targets: Target[];
   sources: Source[];
+};
+export type CampaignStats = {
+  prospects: number;
+  average_score: number;
+  by_stage: Record<string, number>;
+  by_level: Record<string, number>;
+  by_source: {
+    source_id: number;
+    name: string;
+    platform: string;
+    prospects: number;
+  }[];
+  meetings: number;
+  converted: number;
+};
+export type CampaignOverview = {
+  campaign_id: number;
+  prospects: number;
+  hot: number;
+  meetings: number;
+  converted: number;
 };
 
 export type Message = {

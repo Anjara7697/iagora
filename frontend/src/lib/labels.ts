@@ -152,3 +152,43 @@ export const TARGETS: Record<string, string> = {
   master_candidates: "Master eBIHAR — candidats",
   master_companies: "Master eBIHAR — entreprises",
 };
+
+export const CAMPAIGN_STATUS: Record<string, string> = {
+  draft: "Brouillon",
+  active: "Active",
+  inactive: "Inactive",
+};
+
+export const SOURCE_TYPES: Record<string, string> = {
+  ads: "Publicité",
+  form: "Formulaire",
+  landing_page: "Page d'atterrissage",
+  webinar: "Webinaire",
+  import: "Import",
+};
+
+export const PLATFORMS: Record<string, string> = {
+  linkedin: "LinkedIn",
+  meta: "Meta",
+  web: "Site web",
+  email: "Email",
+};
+
+/** Étapes regroupées pour l'entonnoir d'une campagne. */
+export const FUNNEL: { title: string; stages: string[] }[] = [
+  { title: "À qualifier", stages: ["new", "to_qualify"] },
+  { title: "En échange", stages: ["contacted", "in_conversation"] },
+  { title: "Qualifiés", stages: ["qualified"] },
+  {
+    title: "Rendez-vous",
+    stages: ["meeting_proposed", "meeting_scheduled", "meeting_done"],
+  },
+  { title: "Candidature", stages: ["applied"] },
+  { title: "Convertis", stages: ["converted"] },
+  { title: "À relancer", stages: ["to_follow_up"] },
+  { title: "Perdus", stages: ["lost"] },
+];
+
+export function formatDay(iso: string | null | undefined): string {
+  return iso ? new Date(iso).toLocaleDateString("fr-FR") : "-";
+}

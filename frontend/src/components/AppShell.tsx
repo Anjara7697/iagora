@@ -28,6 +28,7 @@ const LINKS = [
   { href: "/todo", label: "À traiter", icon: "✓", badge: true },
   { href: "/conversations", label: "Conversations", icon: "✉" },
   { href: "/prospects", label: "Prospects", icon: "▦" },
+  { href: "/campaigns", label: "Campagnes", icon: "◎" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
