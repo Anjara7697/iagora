@@ -14,6 +14,11 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
 | 4 | `fix/review-lot456-consolidation` | Fiche prospect : désinscription/consentement, campagne liée, lien conversation, libellés | ✅ (interactions et conseiller affecté : voir « Reste ») |
 | 5 | `fix/review-lot456-consolidation` | Index Mongo/PG, filtres prospects, statistiques sans fictifs, `latest_for_prospect` | ✅ partiel |
 | 6 | `fix/review-lot456-consolidation` | Garde-fous de production, limitation de débit login, erreurs génériques, CORS, bail des tâches de fond | ✅ |
+| 2 | `fix/review-lot2-navigation` | Fiche campagne + prospects, titres, tableau de bord, états (chargement/vide/erreur/réessayer), confirmations | ⏳ |
+| 3 | `feat/review-lot3-demo-mode` | Mode démo : drapeau `is_demo`, badges, bandeau, filtre, purge, simulateur abouti | ⏳ |
+| 4 | `fix/review-lot4-prospect-actions` | Fiche prospect : désinscription/consentement, interactions, conseiller affecté, campagne liée | ⏳ |
+| 5 | `fix/review-lot5-backend-perf` | Index Mongo/PG, `/todo`, N+1 campagnes, filtres prospects, endpoint synthèse | ⏳ |
+| 6 | `fix/review-lot6-prod-hardening` | Environnement explicite, limitation de débit login, erreurs génériques, CORS, worker unique | ⏳ |
 
 ## Lot 1 — garde-fous backend (✅)
 
