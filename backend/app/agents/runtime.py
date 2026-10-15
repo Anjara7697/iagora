@@ -30,6 +30,7 @@ RUNS = "agent_runs"
 
 async def ensure_run_indexes(db: Any) -> None:
     await db[RUNS].create_index([("prospect_id", 1), ("started_at", DESCENDING)])
+    await db[RUNS].create_index([("conversation_id", 1), ("started_at", DESCENDING)])
 
 
 async def _resolve_conversation(

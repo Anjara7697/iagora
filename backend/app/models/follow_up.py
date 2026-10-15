@@ -15,7 +15,9 @@ class FollowUp(CreatedAtMixin, Base):
     __table_args__ = (Index("ix_follow_ups_status_scheduled", "status", "scheduled_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    prospect_id: Mapped[int] = mapped_column(ForeignKey("prospects.id", ondelete="CASCADE"))
+    prospect_id: Mapped[int] = mapped_column(
+        ForeignKey("prospects.id", ondelete="CASCADE"), index=True
+    )
     campaign_prospect_id: Mapped[int | None] = mapped_column(
         ForeignKey("campaign_prospects.id", ondelete="CASCADE")
     )

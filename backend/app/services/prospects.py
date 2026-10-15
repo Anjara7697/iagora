@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
+    Campaign,
     CampaignProspect,
     CampaignSource,
     ConsentEvent,
@@ -230,6 +231,20 @@ async def get_memberships(session: AsyncSession, prospect_id: int) -> list[Campa
     return list(result)
 
 
+async def campaign_labels(
+    session: AsyncSession, source_ids: list[int]
+) -> dict[int, tuple[int, str]]:
+    """Campagne (id, nom) de chaque rattachement, en une requête."""
+    if not source_ids:
+        return {}
+    rows = await session.execute(
+        select(CampaignSource.id, Campaign.id, Campaign.name)
+        .join(Campaign, Campaign.id == CampaignSource.campaign_id)
+        .where(CampaignSource.id.in_(set(source_ids)))
+    )
+    return {source_id: (cid, name) for source_id, cid, name in rows}
+
+
 async def get_memberships_for(
     session: AsyncSession, prospect_ids: list[int]
 ) -> dict[int, list[CampaignProspect]]:
@@ -256,6 +271,8 @@ async def list_prospects(
     limit: int,
     offset: int,
     demo: str = "all",
+    level: str | None = None,
+    consent_status: str | None = None,
 ) -> tuple[list[Prospect], int]:
     stmt = select(Prospect)
     if demo == "exclude":
@@ -271,7 +288,9 @@ async def list_prospects(
                 func.lower(func.coalesce(Prospect.email, "")).like(like),
             )
         )
-    if campaign_id is not None or stage is not None or advisor_id is not None:
+    if consent_status is not None:
+        stmt = stmt.where(Prospect.consent_status == consent_status)
+    if campaign_id is not None or stage is not None or advisor_id is not None or level is not None:
         cp = select(CampaignProspect.prospect_id).join(
             CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id
         )
@@ -281,6 +300,8 @@ async def list_prospects(
             cp = cp.where(CampaignProspect.conversion_stage == stage)
         if advisor_id is not None:
             cp = cp.where(CampaignProspect.assigned_advisor_id == advisor_id)
+        if level is not None:
+            cp = cp.where(CampaignProspect.interest_status == level)
         stmt = stmt.where(Prospect.id.in_(cp))
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))

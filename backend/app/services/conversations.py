@@ -53,6 +53,10 @@ Db = Any  # AsyncIOMotorDatabase
 async def ensure_indexes(db: Db) -> None:
     col = db[COLLECTION]
     await col.create_index([("prospect_id", ASCENDING), ("last_message_at", DESCENDING)])
+    # Boîte de réception (filtre par statut), file « À traiter » et file d'envoi email.
+    await col.create_index([("status", ASCENDING), ("last_message_at", DESCENDING)])
+    await col.create_index([("messages.metadata.draft.status", ASCENDING)], sparse=True)
+    await col.create_index([("channel", ASCENDING), ("messages.metadata.delivery", ASCENDING)])
     # Une seule conversation active (ouverte ou transférée) par prospect et par canal.
     await col.create_index(
         [("prospect_id", ASCENDING), ("channel", ASCENDING)],
@@ -191,7 +195,8 @@ async def latest_for_prospect(
         found = await references.get_channel(session, channel)
         assert found is not None  # noqa: S101 - get_channel lève si inconnu
         query["channel"] = found.name
-    docs = await db[COLLECTION].find(query).sort("started_at", DESCENDING).to_list(None)
+    # Seules les dernières conversations sont lues (pas tout l'historique du prospect).
+    docs = await db[COLLECTION].find(query).sort("started_at", DESCENDING).to_list(20)
     if not docs:
         raise NotFoundError("Aucune conversation pour ce prospect")
     docs.sort(key=lambda d: d.get("last_message_at") or d["started_at"], reverse=True)

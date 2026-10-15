@@ -3,7 +3,15 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Campaign, CampaignProspect, CampaignSource, CampaignTarget, Source, Target
+from app.models import (
+    Campaign,
+    CampaignProspect,
+    CampaignSource,
+    CampaignTarget,
+    Prospect,
+    Source,
+    Target,
+)
 from app.models.enums import CampaignStatus, ConversionStage, InterestLevel
 from app.schemas.campaign import (
     CampaignCreate,
@@ -17,6 +25,7 @@ from app.schemas.campaign import (
     TargetRead,
 )
 from app.services import references
+from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError
 
 
@@ -181,7 +190,8 @@ async def stats(session: AsyncSession, campaign_id: int) -> CampaignStats:
             CampaignSource.source_id,
         )
         .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
-        .where(CampaignSource.campaign_id == campaign_id)
+        .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
+        .where(CampaignSource.campaign_id == campaign_id, ~demo_filter())  # sans les fictifs
     )
     by_stage: dict[str, int] = {}
     by_level: dict[str, int] = {}
@@ -225,7 +235,10 @@ async def overview(session: AsyncSession) -> list[CampaignOverview]:
             CampaignSource.campaign_id,
             CampaignProspect.conversion_stage,
             CampaignProspect.interest_status,
-        ).join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+        )
+        .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+        .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
+        .where(~demo_filter())  # les prospects fictifs ne faussent pas les chiffres
     )
     totals: dict[int, CampaignOverview] = {}
     for campaign_id, stage, level in rows:
