@@ -85,7 +85,55 @@ async function mockApi(
         limit: 100,
         offset: 0,
       };
-    else if (path === "/prospects" && request.method() === "POST") {
+    else if (path === "/simulation/sessions") {
+      posts.push({ path, body: request.postDataJSON() });
+      body = {
+        prospect_id: 5,
+        conversation_id: "c1",
+        guide: [
+          "Comment se déroule le programme ?",
+          "Je voudrais un rendez-vous.",
+        ],
+      };
+    } else if (path === "/simulation/c1/messages") {
+      const payload = request.postDataJSON() as { content: string };
+      posts.push({ path, body: payload });
+      messages.push({
+        id: `m${messages.length}`,
+        role: "prospect",
+        content: payload.content,
+        created_at: "2026-10-01T10:00:00Z",
+        metadata: {},
+      });
+      runs += 1;
+      lastRun = run({ run_id: `r${runs}` });
+      messages.push({
+        id: `a${runs}`,
+        role: "agent",
+        content: String(lastRun.reply),
+        created_at: "2026-10-01T10:00:01Z",
+        metadata: { delivery: "draft", draft: { status: "pending" } },
+      });
+      body = {};
+    } else if (path === "/simulation/c1/report") {
+      body = {
+        guide: [],
+        exchange: {
+          messages: messages.filter(
+            (m) => m.role === "prospect" || m.metadata.delivery === "simulated",
+          ),
+        },
+        appointments: [],
+        limits: ["Pas de transport email réel"],
+        model_validation: "Qualité commerciale à confirmer",
+      };
+    } else if (path.startsWith("/simulation/c1/drafts/")) {
+      posts.push({ path, body: {} });
+      const m = messages[messages.length - 1];
+      (m.metadata.draft as { status: string }).status = "approved";
+      m.metadata.delivery = "simulated";
+      body = {};
+    } else if (path === "/prospects" && request.method() === "POST") {
       posts.push({ path, body: request.postDataJSON() });
       code = 201;
       body = { prospect: { id: 5 } };
@@ -296,4 +344,64 @@ test("mode démo : bandeau permanent et purge des données fictives avec confirm
   await expect(
     page.getByText("3 prospect(s) fictif(s) et 2 conversation(s) supprimés."),
   ).toBeVisible();
+});
+
+test("parcours guidé : le prospect ne voit la réponse qu’après validation", async ({
+  page,
+}, testInfo) => {
+  const posts = await mockApi(page);
+  await start(page);
+  await page.getByRole("button", { name: "Ouvrir le parcours guidé" }).click();
+  await page
+    .getByRole("button", { name: "Démarrer le parcours guidé" })
+    .click();
+  await page.getByRole("button", { name: /Étape 1/ }).click();
+  await page.getByRole("button", { name: "Envoyer au vrai agent" }).click();
+  const operator = page.getByRole("region", { name: "Échange opérateur" });
+  const mailbox = page.getByRole("region", { name: "Boîte du prospect" });
+  await expect(
+    operator.getByText("Le programme dure 18 mois.", { exact: true }),
+  ).toBeVisible();
+  await expect(mailbox.getByText(/Le programme dure 18 mois/)).toHaveCount(0);
+  await operator
+    .getByRole("button", { name: "Valider et livrer dans la boîte fictive" })
+    .click();
+  await expect(mailbox.getByText(/Le programme dure 18 mois/)).toBeVisible();
+  await expect(
+    operator.getByText("Reçu dans la boîte fictive", { exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("guided-simulation.png"),
+    fullPage: true,
+  });
+  expect(posts.some((p) => p.path === "/simulation/c1/messages")).toBeTruthy();
+  expect(posts.some((p) => p.path === "/agent/runs")).toBeFalsy();
+});
+
+test("parcours guidé : erreur de création visible et nouvelle tentative possible", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await start(page);
+  await page.getByRole("button", { name: "Ouvrir le parcours guidé" }).click();
+  await page.route("**/api/v1/simulation/sessions", (route) =>
+    route.fulfill({
+      status: 503,
+      json: { detail: "Service temporairement indisponible" },
+    }),
+  );
+  await page
+    .getByRole("button", { name: "Démarrer le parcours guidé" })
+    .click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Service temporairement indisponible",
+  );
+  await expect(
+    page.getByRole("button", { name: "Démarrer le parcours guidé" }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
 });

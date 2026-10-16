@@ -12,6 +12,7 @@ from app.api.v1 import (
     integrations,
     knowledge,
     prospects,
+    simulation,
     todo,
     users,
 )
@@ -31,5 +32,6 @@ api_router.include_router(todo.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(integrations.router)
 api_router.include_router(demo.router)
+api_router.include_router(simulation.router)
 api_router.include_router(dashboard.router)
 # Restent à ajouter (CdC 9.6) : webhooks, rendez-vous.
