@@ -1,0 +1,142 @@
+# Pile de production / préproduction IAGORA.
+#
+#   cp deploy/.env.production.example deploy/.env      # puis renseigner TOUTES les valeurs
+#   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d --build
+#
+# Principes :
+# - aucun port publié sur la machine : le reverse proxy joint les conteneurs `<projet>-api` (port
+#   8000) et `<projet>-web` (port 3000) par le réseau Docker ${PROXY_NETWORK} (déjà existant s'il
+#   sert Lingora/Inventory, sinon : docker network create proxy). Noms uniques : pas de conflit
+#   avec les autres projets du serveur ;
+# - les bases ne sont joignables que depuis le réseau interne, avec mot de passe ;
+# - les migrations tournent dans un service dédié avant le démarrage de l'API ;
+# - UN SEUL processus backend : les boucles de fond (relances, email) ne tournent qu'une fois.
+
+# Nom de projet : un par environnement sur le même serveur (iagora-dev, iagora-prod).
+name: ${IAGORA_PROJECT:-iagora}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iagora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
+      POSTGRES_DB: ${POSTGRES_DB:-iagora}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iagora} -d ${POSTGRES_DB:-iagora}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    logging: *logging
+    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-iagora}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD requis}
+    # Avec ces variables, l'authentification est activée dès le premier démarrage.
+    command: ["mongod", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - -u
+        - ${MONGO_USER:-iagora}
+        - -p
+        - ${MONGO_PASSWORD}
+        - --authenticationDatabase
+        - admin
+        - --eval
+        - db.adminCommand('ping')
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    logging: *logging
+    mem_limit: ${MONGO_MEM_LIMIT:-512m}
+
+  migrate:
+    build: ../backend
+    image: ${IAGORA_PROJECT:-iagora}-backend:${IAGORA_TAG:-latest}
+    restart: "no"
+    env_file: [.env]
+    environment: &app-env
+      POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER:-iagora}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-iagora}
+      MONGO_URI: mongodb://${MONGO_USER:-iagora}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      REDIS_URL: ""
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    logging: *logging
+
+  iagora-api:
+    container_name: ${IAGORA_PROJECT:-iagora}-api
+    image: ${IAGORA_PROJECT:-iagora}-backend:${IAGORA_TAG:-latest}
+    restart: unless-stopped
+    env_file: [.env]
+    environment: *app-env
+    # --proxy-headers : l'adresse réelle du client (limitation des connexions) vient du proxy.
+    # L'API n'est atteignable que depuis le réseau Docker : faire confiance à ce proxy est sûr.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mongo:
+        condition: service_healthy
+    networks:
+      internal:
+      proxy:
+    logging: *logging
+    mem_limit: ${BACKEND_MEM_LIMIT:-768m}
+
+  iagora-web:
+    container_name: ${IAGORA_PROJECT:-iagora}-web
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL requis}
+        NEXT_PUBLIC_ENABLE_SIMULATOR: ${NEXT_PUBLIC_ENABLE_SIMULATOR:-false}
+    image: ${IAGORA_PROJECT:-iagora}-frontend:${IAGORA_TAG:-latest}
+    restart: unless-stopped
+    networks: [proxy]
+    logging: *logging
+    mem_limit: ${FRONTEND_MEM_LIMIT:-256m}
+
+networks:
+  internal:
+    internal: true
+  proxy:
+    name: ${PROXY_NETWORK:-proxy}
+    external: true
+
+volumes:
+  postgres_data:
+  mongo_data:
