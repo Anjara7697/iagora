@@ -4,10 +4,9 @@
 #   docker compose -f deploy/compose.prod.yml --env-file deploy/.env up -d --build
 #
 # Principes :
-# - aucun port publié sur la machine : le reverse proxy joint les conteneurs `<projet>-api` (port
-#   8000) et `<projet>-web` (port 3000) par le réseau Docker ${PROXY_NETWORK} (déjà existant s'il
-#   sert Lingora/Inventory, sinon : docker network create proxy). Noms uniques : pas de conflit
-#   avec les autres projets du serveur ;
+# - l'API et le web sont publiés UNIQUEMENT sur 127.0.0.1 (ports
+#   IAGORA_API_PORT / IAGORA_WEB_PORT, à choisir libres sur le serveur) ; le reverse proxy de
+#   l'hôte (HTTPS) les joint par là. Rien n'est exposé sur Internet sans le proxy ;
 # - les bases ne sont joignables que depuis le réseau interne, avec mot de passe ;
 # - les migrations tournent dans un service dédié avant le démarrage de l'API ;
 # - UN SEUL processus backend : les boucles de fond (relances, email) ne tournent qu'une fois.
@@ -111,9 +110,12 @@ services:
         condition: service_completed_successfully
       mongo:
         condition: service_healthy
+    # `default` (non interne) : requis pour publier le port et joindre Gemini / IONOS en sortie.
+    ports:
+      - "127.0.0.1:${IAGORA_API_PORT:?IAGORA_API_PORT requis}:8000"
     networks:
       internal:
-      proxy:
+      default:
     logging: *logging
     mem_limit: ${BACKEND_MEM_LIMIT:-768m}
 
@@ -126,16 +128,16 @@ services:
         NEXT_PUBLIC_ENABLE_SIMULATOR: ${NEXT_PUBLIC_ENABLE_SIMULATOR:-false}
     image: ${IAGORA_PROJECT:-iagora}-frontend:${IAGORA_TAG:-latest}
     restart: unless-stopped
-    networks: [proxy]
+    ports:
+      - "127.0.0.1:${IAGORA_WEB_PORT:?IAGORA_WEB_PORT requis}:3000"
+    networks: [default]
     logging: *logging
     mem_limit: ${FRONTEND_MEM_LIMIT:-256m}
 
 networks:
   internal:
     internal: true
-  proxy:
-    name: ${PROXY_NETWORK:-proxy}
-    external: true
+  default: {}
 
 volumes:
   postgres_data:
