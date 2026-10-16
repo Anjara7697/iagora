@@ -75,6 +75,7 @@ class CampaignMembershipRead(BaseModel):
     campaign_id: int | None = None
     campaign_name: str | None = None
     source_name: str | None = None
+    source_id: int | None = None
     interest_status: InterestLevel | None
     conversion_stage: ConversionStage
     interest_score: int

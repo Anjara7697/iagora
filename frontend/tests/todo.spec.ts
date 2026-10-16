@@ -163,6 +163,30 @@ async function open(page: Page) {
   await page.goto("/todo");
 }
 
+test("mobile : traitement lisible et retour explicite à la file", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(
+    page.getByRole("region", { name: "Brouillon de l'agent" }),
+  ).toBeVisible();
+  await expect(list).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "← Liste des éléments", exact: true })
+    .click();
+  await expect(list).toBeVisible();
+  expect(calls.posts).toHaveLength(0);
+});
+
 test("file triée, filtres par type, recommandation et brouillon", async ({
   page,
 }) => {
@@ -255,7 +279,7 @@ test("observateur : consultation seule", async ({ page }) => {
 test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
   let asked = "";
   page.once("dialog", (dialog) => {
     asked = dialog.message();
@@ -280,7 +304,7 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
     void dialog.accept();
   });
   await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
 });
 
 test("l'arrêt d'urgence est également disponible en mode automatique", async ({
@@ -400,7 +424,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("button", { name: "Traités aujourd’hui (2)" }).click();
+  await page.getByRole("button", { name: "Traités (24 h) (2)" }).click();
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();

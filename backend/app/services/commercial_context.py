@@ -53,6 +53,13 @@ async def source_names(session: AsyncSession, ids: list[int]) -> dict[int, str]:
     return {row[0]: row[1] for row in rows}
 
 
+async def source_ids(session: AsyncSession, ids: list[int]) -> dict[int, int]:
+    rows = await session.execute(
+        select(CampaignSource.id, CampaignSource.source_id).where(CampaignSource.id.in_(ids))
+    )
+    return {row[0]: row[1] for row in rows}
+
+
 async def is_active(session: AsyncSession, membership: CampaignProspect) -> bool:
     value = await session.scalar(
         select(Campaign.id)

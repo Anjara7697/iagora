@@ -274,7 +274,10 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
 
       {rec && (
         <div className="recommendation">
-          <span className="eyebrow">Prochaine action recommandée</span>
+          <div className="recommendation-heading">
+            <span className="dot tone-ai" aria-hidden="true" />
+            Prochaine action recommandée
+          </div>
           <h3>{rec.action}</h3>
           <div className="recommendation-grid">
             {rec.reason && (
@@ -433,7 +436,14 @@ function Todo() {
   const router = useRouter();
   const params = useSearchParams();
   const selectedId = params.get("id");
-  const [kind, setKind] = useState<KindFilter>("");
+  const kind: KindFilter = KIND_ORDER.includes(params.get("kind") as TodoKind)
+    ? (params.get("kind") as TodoKind)
+    : "";
+  function setKind(value: KindFilter) {
+    router.replace(`/todo${qs({ kind: value, id: selectedId })}`, {
+      scroll: false,
+    });
+  }
   const [offset, setOffset] = useState(0);
   const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
@@ -462,7 +472,7 @@ function Todo() {
 
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading sr-only">
         <div>
           <span className="eyebrow">Travail · File de validation</span>
           <h1>À traiter</h1>
@@ -471,7 +481,21 @@ function Todo() {
           </p>
         </div>
       </div>
-      <div className="inbox">
+      {selectedId && (
+        <div className="inbox-mobile-nav">
+          <button
+            onClick={() =>
+              router.replace(
+                `/todo${qs({ kind, tab: tab === "treated" ? "treated" : undefined })}`,
+                { scroll: false },
+              )
+            }
+          >
+            ← Liste des éléments
+          </button>
+        </div>
+      )}
+      <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Éléments à traiter">
           <div
             className="view-switch todo-tabs"
@@ -490,7 +514,7 @@ function Todo() {
                 router.replace("/todo?tab=treated", { scroll: false })
               }
             >
-              Traités aujourd’hui ({treated.data?.total ?? 0})
+              Traités (24 h) ({treated.data?.total ?? 0})
             </button>
           </div>
           {tab === "treated" && (
@@ -595,7 +619,7 @@ function Todo() {
                 item={i}
                 selected={i.id === selectedId}
                 onSelect={() =>
-                  router.replace(`/todo?id=${encodeURIComponent(i.id)}`, {
+                  router.replace(`/todo${qs({ kind, id: i.id })}`, {
                     scroll: false,
                   })
                 }

@@ -19,6 +19,7 @@ export type Membership = {
   campaign_id?: number | null;
   campaign_name?: string | null;
   source_name?: string | null;
+  source_id?: number | null;
   conversion_stage: string;
   interest_status: string | null;
   interest_score: number;

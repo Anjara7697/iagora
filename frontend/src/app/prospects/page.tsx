@@ -24,7 +24,7 @@ import {
 import { ApiError, download, qs } from "@/lib/api";
 import { useCurrentUser } from "@/components/AppShell";
 import { useApi } from "@/lib/useApi";
-import type { Campaign, Page, Prospect } from "@/lib/types";
+import type { Campaign, Membership, Page, Prospect } from "@/lib/types";
 
 const LIMIT = 25;
 const PIPELINE_COLUMNS = [
@@ -79,11 +79,12 @@ function Prospects() {
   const [channelFilter, setChannelFilter] = useState("");
   const [consentFilter, setConsentFilter] = useState("");
   const [mine, setMine] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("");
   const user = useCurrentUser();
   const [exportError, setExportError] = useState<string | null>(null);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
@@ -98,7 +99,18 @@ function Prospects() {
     setChannelFilter("");
     setConsentFilter("");
     setMine(false);
+    setSourceFilter("");
     setOffset(0);
+  }
+  function membershipsOf(p: Prospect): Membership[] {
+    return p.campaigns.filter(
+      (m) =>
+        (!campaign || m.campaign_id === Number(campaign)) &&
+        (!sourceFilter || m.source_id === Number(sourceFilter)) &&
+        (!stage || m.conversion_stage === stage) &&
+        (!levelFilter || m.interest_status === levelFilter) &&
+        (!mine || m.assigned_advisor_id === user?.id),
+    );
   }
   const columns = PIPELINE_COLUMNS.filter(
     (column) =>
@@ -110,11 +122,13 @@ function Prospects() {
     if (column.key === "exit")
       return (
         p.consent_status === "opted_out" ||
-        p.campaigns.some((m) => m.conversion_stage === "lost")
+        membershipsOf(p).some((m) => m.conversion_stage === "lost")
       );
     if (p.consent_status === "opted_out") return false;
     if (column.key === "unassigned") return p.campaigns.length === 0;
-    return p.campaigns.some((m) => column.stages.includes(m.conversion_stage));
+    return membershipsOf(p).some((m) =>
+      column.stages.includes(m.conversion_stage),
+    );
   }
   return (
     <>
@@ -145,6 +159,7 @@ function Prospects() {
           onClick={() => {
             setPendingCampaign(!pendingCampaign);
             setCampaign("");
+            setSourceFilter("");
             setStage("");
             setOffset(0);
           }}
@@ -177,7 +192,7 @@ function Prospects() {
               setExportError(null);
               try {
                 await download(
-                  `/prospects/export${qs({ q, stage, campaign_id: campaign, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, demo: hideDemo ? "exclude" : "all" })}`,
+                  `/prospects/export${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, demo: hideDemo ? "exclude" : "all" })}`,
                   "prospects.csv",
                 );
               } catch (err) {
@@ -242,6 +257,7 @@ function Prospects() {
             disabled={campaigns.loading || !!campaigns.error}
             onChange={(e) => {
               setCampaign(e.target.value);
+              setSourceFilter("");
               setOffset(0);
             }}
           >
@@ -251,6 +267,29 @@ function Prospects() {
                 {c.name}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="filter-field">
+          <label htmlFor="source-filter">Source</label>
+          <select
+            id="source-filter"
+            value={sourceFilter}
+            disabled={!campaign || campaigns.loading || !!campaigns.error}
+            onChange={(e) => {
+              setSourceFilter(e.target.value);
+              setOffset(0);
+            }}
+          >
+            <option value="">
+              {campaign ? "Toutes les sources" : "Choisir d’abord une campagne"}
+            </option>
+            {campaigns.data?.items
+              .find((c) => c.id === Number(campaign))
+              ?.sources?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
           </select>
         </div>
         {[
@@ -395,7 +434,7 @@ function Prospects() {
                                   "Coordonnées non renseignées"}
                               </span>
                               <div className="row">
-                                {p.campaigns
+                                {membershipsOf(p)
                                   .filter((m) =>
                                     column.stages.includes(m.conversion_stage),
                                   )
@@ -461,8 +500,8 @@ function Prospects() {
                             </div>
                           </td>
                           <td>
-                            {p.campaigns.length ? (
-                              p.campaigns.map((m) => (
+                            {membershipsOf(p).length ? (
+                              membershipsOf(p).map((m) => (
                                 <div key={m.id} className="row">
                                   <StageBadge stage={m.conversion_stage} />
                                   <ScoreBadge

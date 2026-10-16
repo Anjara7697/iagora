@@ -101,6 +101,30 @@ async function open(page: Page) {
   await page.goto("/");
 }
 
+test("accueil : une famille ouvre la file sur son filtre réel", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const request = page.waitForRequest(
+    (r) =>
+      new URL(r.url()).pathname.endsWith("/todo") &&
+      new URL(r.url()).searchParams.get("kind") === "validation",
+  );
+  await page.getByRole("link", { name: /^Validations/ }).click();
+  await request;
+  await expect(page).toHaveURL(/\/todo\?kind=validation$/);
+  await expect(
+    page.getByRole("button", { name: "Validation requise (2)", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Tout (5)", exact: true }).click();
+  await expect(page).toHaveURL(/\/todo$/);
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Tout (5)", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
 test("accueil : salutation, familles à traiter, signaux forts, activité, relances et entonnoir", async ({
   page,
 }) => {

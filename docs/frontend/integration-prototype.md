@@ -1,6 +1,10 @@
-# Intégration progressive de la maquette IAGORA
+# Historique de l’intégration de la maquette IAGORA
 
-Référence : `Anjara7697/iagora-prototype`, commit
+État courant et écarts restant à traiter : [conformité à la maquette](prototype-conformity.md).
+Les lots ci-dessous décrivent les étapes historiques ; leurs limites initiales
+ne doivent pas être interprétées comme l’état actuel de l’application.
+
+Référence historique : `Anjara7697/iagora-prototype`, commit
 `92bac023d5d75286e1bf6d4d2540cb221c26b265` (export HTML autonome).
 Implémentation : Next.js dans `frontend/`, depuis la branche `dev`.
 
@@ -71,8 +75,7 @@ La maquette n'est pas injectée comme HTML ni exécutée dans une iframe.
 
 ## Sixième lot : campagnes
 
-La maquette n'avait pas d'écran pour les campagnes (seulement un filtre) : elles ont maintenant leur place dédiée,
-dans le menu « Travail ».
+Les campagnes ont leur place dédiée, dans le menu « Pilotage ».
 
 - **Liste** : cartes par campagne (statut, programmes visés, sources, dates) avec chiffres clés (prospects, chauds,
   rendez-vous, convertis), filtre par statut.
@@ -111,16 +114,7 @@ Pour un essai réel, démarrer les services et l'API selon le README, puis
 la valeur par défaut est `http://localhost:8000/api/v1`.
 Le backend autorise par défaut l'origine `http://localhost:3000`.
 
-## Prochains lots
+## Suite du développement
 
-1. Campagnes : écrans de consultation et gestion, rattachements et filtres plus détaillés.
-2. Conversations et transferts : reprise des vues et actions de la maquette,
-   avec validation des droits et du consentement côté serveur.
-3. Base de connaissances et suivi des décisions de l'agent.
-4. Pilotage, équipe et intégrations : comparer chaque action de la maquette
-   au contrat API avant de rendre une commande disponible.
-
-Restent hors de ce lot : modification des étapes par glisser-déposer,
-assignation, import/export CSV, statistiques globales du pipeline et filtres
-sur des dimensions que l'API ne fournit pas encore. Les groupes de navigation
-correspondants seront ajoutés avec leurs pages fonctionnelles.
+Consulter le [bilan courant de conformité](prototype-conformity.md) : écarts traités,
+modules fonctionnels restants, contradictions entre sources et priorités de continuation.

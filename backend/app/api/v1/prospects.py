@@ -60,8 +60,10 @@ async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     )
     selected = (await commercial_context.memberships(session, [prospect.id])).get(prospect.id)
     reads = _memberships(memberships, labels)
+    sources = await commercial_context.source_ids(session, list(labels))
     for read in reads:
         read.source_name = names.get(read.campaign_source_id)
+        read.source_id = sources.get(read.campaign_source_id)
     return ProspectDetail.model_validate(prospect).model_copy(
         update={"campaigns": reads, "current_membership_id": selected.id if selected else None}
     )
@@ -144,9 +146,11 @@ async def list_prospects(
     selected = await commercial_context.memberships(session, [p.id for p in items])
     names = await commercial_context.source_names(session, list(labels))
     reads = {pid: _memberships(ms, labels) for pid, ms in memberships.items()}
+    sources = await commercial_context.source_ids(session, list(labels))
     for group in reads.values():
         for read in group:
             read.source_name = names.get(read.campaign_source_id)
+            read.source_id = sources.get(read.campaign_source_id)
     return Page[ProspectDetail](
         items=[
             ProspectDetail.model_validate(p).model_copy(
@@ -198,6 +202,7 @@ async def export_prospects(
         session, [m.campaign_source_id for ms in memberships.values() for m in ms]
     )
     buffer = io.StringIO()
+    sources = await commercial_context.source_ids(session, list(labels))
     writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
     writer.writerow(
         ["id", "prénom", "nom", "email", "téléphone", "consentement", "créé le",
@@ -206,6 +211,17 @@ async def export_prospects(
     for p in items:
         rows: list[CampaignProspect | None] = [*memberships[p.id]] or [None]
         for m in rows:
+            if m is not None and (
+                (
+                    campaign_id is not None
+                    and labels.get(m.campaign_source_id, (0, ""))[0] != campaign_id
+                )
+                or (source_id is not None and sources.get(m.campaign_source_id) != source_id)
+                or (stage is not None and m.conversion_stage.value != stage)
+                or (advisor_id is not None and m.assigned_advisor_id != advisor_id)
+                or (level is not None and m.interest_status != level)
+            ):
+                continue
             campaign = labels.get(m.campaign_source_id, (0, ""))[1] if m else ""
             writer.writerow(
                 [_csv_cell(v) for v in (
