@@ -200,6 +200,23 @@ function Detail({
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
+          <p>
+            Conseiller responsable :{" "}
+            {summary.prospect?.assigned_advisor_name ??
+              (summary.prospect?.assigned_advisor_id
+                ? `Conseiller #${summary.prospect.assigned_advisor_id}`
+                : "Non affecté")}
+          </p>
+          {summary.prospect?.campaign_name ? (
+            <p>
+              Contexte de l’agent : {summary.prospect.campaign_name}
+              {summary.prospect.source_name
+                ? ` · ${summary.prospect.source_name}`
+                : ""}
+            </p>
+          ) : (
+            <p>À attribuer à une campagne depuis la fiche prospect.</p>
+          )}
           <div className="row">
             {summary.prospect?.stage && (
               <StageBadge stage={summary.prospect.stage} />
@@ -326,7 +343,7 @@ function Detail({
           <div className="row">
             <button
               className="primary"
-              disabled={busy || optedOut || !text.trim()}
+              disabled={busy || !p || optedOut || !text.trim()}
               onClick={send}
             >
               Envoyer en tant que {user?.username}
@@ -363,8 +380,9 @@ function Detail({
             </button>
           </div>
           <p className="muted">
-            Le message est enregistré dans la conversation. Son envoi sur le
-            canal du prospect viendra avec les connecteurs (email, Messenger…).
+            {summary.channel === "email"
+              ? "Le message est enregistré puis placé dans la file d’envoi email. La livraison dépend de la configuration du connecteur ; consultez son état dans l’échange."
+              : "Le message est enregistré. La livraison sur ce canal reste à confirmer avec son connecteur."}
           </p>
         </div>
       )}
@@ -401,7 +419,14 @@ function Inbox() {
   );
 
   const items = list.data?.items ?? [];
-  const selected = items.find((c) => c.id === selectedId) ?? null;
+  const inPage = items.find((c) => c.id === selectedId) ?? null;
+  const direct = useApi<ConversationSummary>(
+    selectedId && !inPage
+      ? `/conversations/${encodeURIComponent(selectedId)}/summary`
+      : null,
+  );
+  const selected =
+    inPage ?? (direct.data?.id === selectedId ? direct.data : null);
   const select = (id: string) =>
     router.replace(`/conversations?id=${id}`, { scroll: false });
   const reset = (apply: () => void) => {
@@ -411,7 +436,7 @@ function Inbox() {
 
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading sr-only">
         <div>
           <span className="eyebrow">Travail · Boîte de réception</span>
           <h1>Conversations</h1>
@@ -420,7 +445,16 @@ function Inbox() {
           </p>
         </div>
       </div>
-      <div className="inbox">
+      {selectedId && (
+        <div className="inbox-mobile-nav">
+          <button
+            onClick={() => router.replace("/conversations", { scroll: false })}
+          >
+            ← Liste des conversations
+          </button>
+        </div>
+      )}
+      <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Liste des conversations">
           <div className="inbox-filters">
             <input
@@ -499,8 +533,19 @@ function Inbox() {
           <Detail
             key={selected.id}
             summary={selected}
-            onChanged={list.reload}
+            onChanged={() => {
+              list.reload();
+              direct.reload();
+            }}
           />
+        ) : selectedId ? (
+          <section className="inbox-detail inbox-placeholder">
+            <Loading
+              loading={direct.loading}
+              error={direct.error}
+              onRetry={direct.reload}
+            />
+          </section>
         ) : (
           <section className="inbox-detail inbox-placeholder">
             <p className="muted">

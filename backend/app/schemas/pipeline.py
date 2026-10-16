@@ -13,9 +13,12 @@ class MembershipUpdate(BaseModel):
     conversion_stage: ConversionStage | None = None
     reason: str | None = Field(None, max_length=2000)
     assigned_advisor_id: int | None = Field(None, description="null : retire l'affectation")
+    inherit_campaign_advisor: bool = False
 
     @model_validator(mode="after")
     def _stage_change_needs_reason(self) -> Self:
+        if self.inherit_campaign_advisor and "assigned_advisor_id" in self.model_fields_set:
+            raise ValueError("Choisir une exception ou l'héritage de la campagne, pas les deux")
         if self.conversion_stage is not None and not (self.reason and self.reason.strip()):
             raise ValueError("Un changement d'étape doit être justifié (champ reason)")
         return self

@@ -19,7 +19,7 @@ from app.models import Channel
 from app.models.enums import ConversationStatus, SenderType
 from app.schemas.agent import AgentRunResult, TraceRead
 from app.schemas.conversation import ConversationCreate
-from app.services import agent_settings, conversations, drafts
+from app.services import agent_settings, commercial_context, conversations, drafts, lease
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
@@ -31,6 +31,8 @@ RUNS = "agent_runs"
 async def ensure_run_indexes(db: Any) -> None:
     await db[RUNS].create_index([("prospect_id", 1), ("started_at", DESCENDING)])
     await db[RUNS].create_index([("conversation_id", 1), ("started_at", DESCENDING)])
+    await db[RUNS].create_index("event_id", sparse=True)
+    await db["agent_events"].create_index([("completed", 1), ("next_attempt_at", 1)])
 
 
 async def _resolve_conversation(
@@ -71,8 +73,18 @@ async def run_agent(
     automatique et un déclenchement manuel simultanés ne produisent jamais deux réponses (la seconde
     exécution voit que l'agent a déjà répondu et s'arrête avec un conflit)."""
     if conversation_id is None:
-        return await _run_agent(session, db, **kwargs)
-    async with _locks.setdefault(conversation_id, asyncio.Lock()):
+        doc = await _resolve_conversation(
+            session,
+            db,
+            None,
+            kwargs.get("prospect_id"),
+            kwargs.get("channel"),
+        )
+        conversation_id = str(doc["_id"])
+    async with (
+        _locks.setdefault(conversation_id, asyncio.Lock()),
+        lease.conversation_lock(db, conversation_id),
+    ):
         return await _run_agent(session, db, conversation_id=conversation_id, **kwargs)
 
 
@@ -88,6 +100,8 @@ async def _run_agent(
     channel: str | None = None,
     mode: AgentMode | None = None,
     follow_up: bool = False,
+    simulation: bool = False,
+    event_id: str | None = None,
 ) -> AgentRunResult:
     """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests).
     `follow_up` : relance d'un prospect resté silencieux (dernier message : celui de l'agent)."""
@@ -95,7 +109,22 @@ async def _run_agent(
     doc = await _resolve_conversation(session, db, conversation_id, prospect_id, channel)
     conv_id = str(doc["_id"])
     pid = int(doc["prospect_id"])
+    if doc.get("simulation") and not simulation:
+        raise ConflictError("Utiliser le parcours guidé pour cette conversation simulée")
 
+    inputs = [m for m in doc.get("messages", []) if m["role"] == "prospect"]
+    input_key = f"{conv_id}:{inputs[-1]['id'] if inputs else 'first'}"
+    if event_id is not None:
+        if event_id != input_key:
+            raise ConflictError("Un nouveau message attend son propre traitement")
+        previous = await db[RUNS].find_one(
+            {
+                "$or": [{"event_id": event_id}, {"input_event_id": event_id}],
+                "status": "completed",
+            }
+        )
+        if previous:
+            return to_result(previous, str(previous["_id"]))
     mode = mode or await agent_settings.get_mode(db)
     if mode is AgentMode.MANUAL:
         raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucune réponse automatique")
@@ -103,6 +132,8 @@ async def _run_agent(
         raise ConflictError("La conversation est clôturée")
     if doc["status"] == ConversationStatus.HANDED_OFF.value:
         raise ConflictError("Conversation transférée à un conseiller : l'agent n'intervient plus")
+    if not await commercial_context.memberships(session, [pid]):
+        raise ConflictError("Attribuer une campagne et une source avant de lancer l'agent")
     messages = drafts.live_messages(doc.get("messages", []))
     if follow_up:
         if not messages or drafts.is_pending(messages[-1]):
@@ -110,6 +141,10 @@ async def _run_agent(
         if messages[-1]["role"] == SenderType.PROSPECT.value:
             raise ConflictError("Le prospect a répondu : plus de relance à faire")
         trigger, inbound_text = "follow_up", ""
+    elif event_id is not None and inputs:
+        # Un message peut arriver pendant une autre réponse : son événement reste distinct.
+        await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
+        trigger, inbound_text = "inbound_message", inputs[-1]["content"]
     elif not messages:
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
@@ -137,6 +172,8 @@ async def _run_agent(
     run_doc: dict[str, Any] = {
         "prospect_id": pid,
         "conversation_id": conv_id,
+        "event_id": event_id,
+        "input_event_id": input_key,
         "trigger": trigger,
         "started_at": started_at,
         "llm": {"provider": llm.provider, "model": llm.model},

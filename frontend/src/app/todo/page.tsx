@@ -227,8 +227,7 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
       <p className="muted">
         Approuver valide le message : il part ensuite par le canal du prospect
         dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
-        en arrêt d’urgence. Son état reste lisible
-        dans « Traités ».
+        en arrêt d’urgence. Son état reste lisible dans « Traités ».
       </p>
     </section>
   );
@@ -275,7 +274,10 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
 
       {rec && (
         <div className="recommendation">
-          <span className="eyebrow">Prochaine action recommandée</span>
+          <div className="recommendation-heading">
+            <span className="dot tone-ai" aria-hidden="true" />
+            Prochaine action recommandée
+          </div>
           <h3>{rec.action}</h3>
           <div className="recommendation-grid">
             {rec.reason && (
@@ -434,8 +436,16 @@ function Todo() {
   const router = useRouter();
   const params = useSearchParams();
   const selectedId = params.get("id");
-  const [kind, setKind] = useState<KindFilter>("");
-  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 100 })}`);
+  const kind: KindFilter = KIND_ORDER.includes(params.get("kind") as TodoKind)
+    ? (params.get("kind") as TodoKind)
+    : "";
+  function setKind(value: KindFilter) {
+    router.replace(`/todo${qs({ kind: value, id: selectedId })}`, {
+      scroll: false,
+    });
+  }
+  const [offset, setOffset] = useState(0);
+  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
   const treated = useApi<TreatedPage>("/todo/treated", { keepPrevious: true });
@@ -443,18 +453,26 @@ function Todo() {
   const selectedTreated = treatedItems.find((i) => i.id === selectedId) ?? null;
 
   const items = list.data?.items ?? [];
-  const selected = items.find((i) => i.id === selectedId) ?? null;
+  const inPage = items.find((i) => i.id === selectedId) ?? null;
+  const direct = useApi<TodoItem>(
+    tab === "todo" && selectedId && !inPage
+      ? `/todo/item${qs({ id: selectedId })}`
+      : null,
+  );
+  const selected =
+    inPage ?? (direct.data?.id === selectedId ? direct.data : null);
   const counts = all.data?.counts ?? {};
   const total = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
   const refresh = () => {
     list.reload();
     all.reload();
     treated.reload();
+    direct.reload();
   };
 
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading sr-only">
         <div>
           <span className="eyebrow">Travail · File de validation</span>
           <h1>À traiter</h1>
@@ -463,7 +481,21 @@ function Todo() {
           </p>
         </div>
       </div>
-      <div className="inbox">
+      {selectedId && (
+        <div className="inbox-mobile-nav">
+          <button
+            onClick={() =>
+              router.replace(
+                `/todo${qs({ kind, tab: tab === "treated" ? "treated" : undefined })}`,
+                { scroll: false },
+              )
+            }
+          >
+            ← Liste des éléments
+          </button>
+        </div>
+      )}
+      <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Éléments à traiter">
           <div
             className="view-switch todo-tabs"
@@ -482,7 +514,7 @@ function Todo() {
                 router.replace("/todo?tab=treated", { scroll: false })
               }
             >
-              Traités aujourd’hui ({treated.data?.total ?? 0})
+              Traités (24 h) ({treated.data?.total ?? 0})
             </button>
           </div>
           {tab === "treated" && (
@@ -547,14 +579,23 @@ function Todo() {
           )}
           <div className="inbox-filters" hidden={tab === "treated"}>
             <div className="chips" role="group" aria-label="Type">
-              <button aria-pressed={kind === ""} onClick={() => setKind("")}>
+              <button
+                aria-pressed={kind === ""}
+                onClick={() => {
+                  setKind("");
+                  setOffset(0);
+                }}
+              >
                 Tout ({total})
               </button>
               {KIND_ORDER.map((k) => (
                 <button
                   key={k}
                   aria-pressed={kind === k}
-                  onClick={() => setKind(k)}
+                  onClick={() => {
+                    setKind(k);
+                    setOffset(0);
+                  }}
                 >
                   {label(TODO_KINDS, k)} ({counts[k] ?? 0})
                 </button>
@@ -578,13 +619,35 @@ function Todo() {
                 item={i}
                 selected={i.id === selectedId}
                 onSelect={() =>
-                  router.replace(`/todo?id=${encodeURIComponent(i.id)}`, {
+                  router.replace(`/todo${qs({ kind, id: i.id })}`, {
                     scroll: false,
                   })
                 }
               />
             ))}
           </ul>
+          {tab === "todo" &&
+            list.data &&
+            (list.data.total > 50 || offset > 0) && (
+              <div className="pager">
+                <button
+                  disabled={offset === 0 || list.loading}
+                  onClick={() => setOffset(Math.max(0, offset - 50))}
+                >
+                  Éléments précédents
+                </button>
+                <span>
+                  {offset + 1}–{Math.min(offset + 50, list.data.total)} /{" "}
+                  {list.data.total}
+                </span>
+                <button
+                  disabled={offset + 50 >= list.data.total || list.loading}
+                  onClick={() => setOffset(offset + 50)}
+                >
+                  Éléments suivants
+                </button>
+              </div>
+            )}
         </aside>
         {tab === "treated" && selectedTreated ? (
           <TreatedDetail
@@ -594,6 +657,17 @@ function Todo() {
           />
         ) : tab === "todo" && selected ? (
           <Detail item={selected} onDone={refresh} />
+        ) : tab === "todo" && selectedId ? (
+          <section className="inbox-detail inbox-placeholder">
+            <Loading
+              loading={direct.loading}
+              error={direct.error}
+              onRetry={direct.reload}
+            />
+            {direct.error?.status === 404 && (
+              <Link href="/conversations">Consulter les conversations</Link>
+            )}
+          </section>
         ) : (
           <section className="inbox-detail inbox-placeholder">
             <p className="muted">Sélectionnez un élément pour le traiter.</p>

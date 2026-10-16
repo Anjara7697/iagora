@@ -29,7 +29,7 @@ from app.integrations.email.base import EmailClient, EmailError, InboundEmail, O
 from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import agent_settings, conversations
+from app.services import agent_events, agent_settings, conversations
 from app.services.agent_settings import AgentMode
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 
@@ -138,6 +138,12 @@ async def _ingest_email(
                 },
             ),
         )
+        if (
+            settings.agent_auto_reply
+            and not mail.suspect
+            and not policy.is_opt_out(message.content)
+        ):
+            await agent_events.enqueue_reply(db, conversation.id)
         if not is_new:
             report.duplicates += 1
             return None
@@ -397,7 +403,11 @@ async def deliver_outbox(
         return report
     sent_this_cycle = 0
     cursor = db[conversations.COLLECTION].find(
-        {"channel": CHANNEL, "messages.metadata.delivery": "not_sent"}
+        {
+            "channel": CHANNEL,
+            "simulation": {"$exists": False},
+            "messages.metadata.delivery": "not_sent",
+        }
     )
     async for doc in cursor:
         for message in _outbound_candidates(doc):

@@ -66,9 +66,9 @@ export default function ConversationView({
           draft?.status === "superseded" ||
           draft?.status === "cancelled";
         return (
-          <div
+          <article
             key={m.id}
-            className={`bubble ${m.role} ${draft ? `draft draft-${draft.status}` : ""} ${dead ? "dead" : ""}`}
+            className={`message message-${m.role} ${dead ? "dead" : ""}`}
           >
             <div className="bubble-meta">
               <span
@@ -77,14 +77,23 @@ export default function ConversationView({
               />
               {authorLine(m, prospectName, channel)}
             </div>
-            {draft?.status && draft.status !== "pending" && (
-              <div className="bubble-draft">
-                {label(DRAFT_STATUS, draft.status)}
-                {draft.edited ? " (modifié par un conseiller)" : ""}
-                {draft.reason ? ` — motif : ${draft.reason}` : ""}
-              </div>
-            )}
-            <div className="bubble-text">{m.content}</div>
+            <div
+              className={`bubble ${m.role} ${draft ? `draft draft-${draft.status}` : ""}`}
+            >
+              {draft?.status && draft.status !== "pending" && (
+                <div className="bubble-draft">
+                  {label(DRAFT_STATUS, draft.status)}
+                  {draft.edited ? " (modifié par un conseiller)" : ""}
+                  {draft.reason ? ` — motif : ${draft.reason}` : ""}
+                </div>
+              )}
+              <div className="bubble-text">{m.content}</div>
+              {Array.isArray(sources) && sources.length > 0 && (
+                <div className="bubble-sources">
+                  Sources : {sources.join(" ; ")}
+                </div>
+              )}
+            </div>
             {m.role === "prospect" && (
               <div className="bubble-delivery">Reçu</div>
             )}
@@ -101,10 +110,7 @@ export default function ConversationView({
                 </div>
               ) : null;
             })()}
-            {Array.isArray(sources) && sources.length > 0 && (
-              <div className="bubble-meta">Sources : {sources.join(" ; ")}</div>
-            )}
-          </div>
+          </article>
         );
       })}
     </div>

@@ -64,7 +64,17 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
   },
 ];
 
-const initialsOf = (name: string) => name.slice(0, 2).toUpperCase();
+const initialsOf = (name: string) => {
+  const parts = name.split(/[.\s_-]+/).filter(Boolean);
+  return (
+    parts.length > 1
+      ? parts
+          .slice(0, 2)
+          .map((p) => p[0])
+          .join("")
+      : name.slice(0, 2)
+  ).toUpperCase();
+};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -290,7 +300,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               Déconnexion
             </button>
           </header>
-          <main id="main-content" className="page-content">
+          <main
+            id="main-content"
+            className={`page-content ${["/conversations", "/todo"].includes(pathname) ? "workspace-page" : ""}`}
+          >
             {children}
           </main>
         </div>

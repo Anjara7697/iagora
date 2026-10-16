@@ -7,7 +7,7 @@ import type { AgentMode } from "@/lib/types";
 
 const COPY: Record<AgentMode, { title: string; text: string }> = {
   assisted: {
-    title: "Agent — Mode assisté",
+    title: "Agent — Validation requise",
     text: "L'agent prépare des brouillons ; rien n'est validé sans vous.",
   },
   manual: {

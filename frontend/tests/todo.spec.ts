@@ -69,6 +69,40 @@ const gapItem = {
   },
 };
 
+test("pagination et lien direct vers une tâche hors de la page courante", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/todo?**", (route) => {
+    const offset = Number(
+      new URL(route.request().url()).searchParams.get("offset"),
+    );
+    return route.fulfill({
+      json: {
+        items: offset ? [gapItem] : [draftItem],
+        total: 51,
+        limit: 50,
+        offset,
+        counts: { validation: 50, kb_gap: 1 },
+      },
+    });
+  });
+  await page.route("**/api/v1/todo/item?**", (route) =>
+    route.fulfill({
+      json: { ...gapItem, id: "handoff:old", conversation_id: "old" },
+    }),
+  );
+  await open(page);
+  await page.getByRole("button", { name: "Éléments suivants" }).click();
+  await expect(
+    page.getByRole("button", { name: /Ahmed Belkacem/ }),
+  ).toBeVisible();
+  await page.goto("/todo?id=handoff%3Aold");
+  await expect(
+    page.getByText("Question sans extrait validé.").first(),
+  ).toBeVisible();
+});
+
 type Calls = { posts: { path: string; method: string; body: unknown }[] };
 
 async function mockApi(
@@ -129,6 +163,30 @@ async function open(page: Page) {
   await page.goto("/todo");
 }
 
+test("mobile : traitement lisible et retour explicite à la file", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(
+    page.getByRole("region", { name: "Brouillon de l'agent" }),
+  ).toBeVisible();
+  await expect(list).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "← Liste des éléments", exact: true })
+    .click();
+  await expect(list).toBeVisible();
+  expect(calls.posts).toHaveLength(0);
+});
+
 test("file triée, filtres par type, recommandation et brouillon", async ({
   page,
 }) => {
@@ -168,11 +226,13 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
     .getByRole("button", { name: "Approuver la version modifiée" })
     .click();
   await expect(page.getByText("Nouveau")).toHaveCount(0);
-  expect(calls.posts).toContainEqual({
-    path: "/conversations/c1/drafts/m1/approve",
-    method: "POST",
-    body: { content: "Bonjour Marie, version relue." },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/conversations/c1/drafts/m1/approve",
+      method: "POST",
+      body: { content: "Bonjour Marie, version relue." },
+    });
   await expect(page.getByRole("button", { name: /Marie Dupont/ })).toHaveCount(
     0,
   );
@@ -192,11 +252,13 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
   await expect(confirm).toBeDisabled();
   await page.getByLabel("Motif du refus").fill("Ton trop familier");
   await confirm.click();
-  expect(calls.posts).toContainEqual({
-    path: "/conversations/c1/drafts/m1/reject",
-    method: "POST",
-    body: { reason: "Ton trop familier" },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/conversations/c1/drafts/m1/reject",
+      method: "POST",
+      body: { reason: "Ton trop familier" },
+    });
 });
 
 test("observateur : consultation seule", async ({ page }) => {
@@ -217,7 +279,7 @@ test("observateur : consultation seule", async ({ page }) => {
 test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
   let asked = "";
   page.once("dialog", (dialog) => {
     asked = dialog.message();
@@ -226,11 +288,13 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
   expect(asked).toContain("y compris les messages déjà validés");
-  expect(calls.posts).toContainEqual({
-    path: "/agent/mode",
-    method: "PUT",
-    body: { mode: "manual" },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/agent/mode",
+      method: "PUT",
+      body: { mode: "manual" },
+    });
   page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
@@ -240,19 +304,25 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
     void dialog.accept();
   });
   await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Mode assisté")).toBeVisible();
+  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
 });
 
-test("l'arrêt d'urgence est également disponible en mode automatique", async ({ page }) => {
+test("l'arrêt d'urgence est également disponible en mode automatique", async ({
+  page,
+}) => {
   const calls = await mockApi(page, { role: "ADMIN", mode: "auto" });
   await open(page);
   await expect(page.getByText("Agent — Mode automatique")).toBeVisible();
   page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
   await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
-  expect(calls.posts).toContainEqual({
-    path: "/agent/mode", method: "PUT", body: { mode: "manual" },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/agent/mode",
+      method: "PUT",
+      body: { mode: "manual" },
+    });
 });
 
 test("brouillon : objet, pied de message non modifiable et exécution à valider", async ({
@@ -261,7 +331,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
   await mockApi(page);
   await page.route("**/api/v1/todo?**", async (route) => {
     const url = new URL(route.request().url());
-    if (url.searchParams.get("limit") === "100")
+    if (url.searchParams.get("limit") === "50")
       await route.fulfill({
         json: {
           items: [
@@ -275,7 +345,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
             },
           ],
           total: 1,
-          limit: 100,
+          limit: 50,
           offset: 0,
           counts: { validation: 1 },
         },
@@ -354,7 +424,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("button", { name: "Traités aujourd’hui (2)" }).click();
+  await page.getByRole("button", { name: "Traités (24 h) (2)" }).click();
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();

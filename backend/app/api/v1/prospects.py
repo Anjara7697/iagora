@@ -2,15 +2,28 @@ import csv
 import io
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 
-from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession, MongoDb
+from app.api.dependencies import (
+    ANY_ROLE,
+    CAN_WRITE,
+    CalendarDep,
+    CurrentUser,
+    DbSession,
+    KnowledgeDep,
+    Llm,
+    MongoDb,
+    SessionFactoryDep,
+    SettingsDep,
+)
+from app.api.v1.conversations import trigger_agent
 from app.models import CampaignProspect, Prospect
 from app.models.enums import ConsentStatus, Direction, InterestLevel, UserRole
 from app.schemas.common import Page
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
+    CampaignAttribution,
     CampaignMembershipRead,
     ConsentRequest,
     OptOutRequest,
@@ -19,7 +32,7 @@ from app.schemas.prospect import (
     ProspectIngestResult,
     ProspectUpdate,
 )
-from app.services import drafts
+from app.services import commercial_context, drafts, intake
 from app.services import inbound as inbound_service
 from app.services import interactions as interaction_service
 from app.services import prospects as service
@@ -42,8 +55,17 @@ def _memberships(
 async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     memberships = await service.get_memberships(session, prospect.id)
     labels = await service.campaign_labels(session, [m.campaign_source_id for m in memberships])
+    names = await commercial_context.source_names(
+        session, [m.campaign_source_id for m in memberships]
+    )
+    selected = (await commercial_context.memberships(session, [prospect.id])).get(prospect.id)
+    reads = _memberships(memberships, labels)
+    sources = await commercial_context.source_ids(session, list(labels))
+    for read in reads:
+        read.source_name = names.get(read.campaign_source_id)
+        read.source_id = sources.get(read.campaign_source_id)
     return ProspectDetail.model_validate(prospect).model_copy(
-        update={"campaigns": _memberships(memberships, labels)}
+        update={"campaigns": reads, "current_membership_id": selected.id if selected else None}
     )
 
 
@@ -54,7 +76,16 @@ async def _detail(session: DbSession, prospect: Prospect) -> ProspectDetail:
     dependencies=[CAN_WRITE],
 )
 async def ingest_prospect(
-    payload: ProspectIngest, session: DbSession, response: Response, db: MongoDb
+    payload: ProspectIngest,
+    session: DbSession,
+    response: Response,
+    db: MongoDb,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    session_factory: SessionFactoryDep,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
 ) -> ProspectIngestResult:
     """Reçoit un prospect : déduplication, rattachement à la campagne, interaction d'entrée.
     201 si créé, 200 si un prospect existant a été reconnu."""
@@ -67,6 +98,12 @@ async def ingest_prospect(
             channel=payload.channel,
             text=interaction.content,
         )
+    if interaction.content or (settings.agent_auto_reply and payload.channel):
+        cid = await intake.route_entry(session, db, interaction)
+        if cid and prospect.consent_status is not ConsentStatus.OPTED_OUT:
+            await trigger_agent(
+                background, settings, cid, session_factory, db, llm, calendar, knowledge
+            )
     if not created:
         response.status_code = status.HTTP_200_OK
     return ProspectIngestResult(
@@ -77,6 +114,7 @@ async def ingest_prospect(
 @router.get("", response_model=Page[ProspectDetail])
 async def list_prospects(
     session: DbSession,
+    pending_campaign: bool = False,
     q: str | None = None,
     campaign_id: int | None = None,
     stage: str | None = None,
@@ -96,7 +134,7 @@ async def list_prospects(
     """Liste paginée ; chaque prospect porte ses rattachements (étape, scores)."""
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
-        limit=limit, offset=offset, demo=demo,
+        limit=limit, offset=offset, demo=demo, pending_campaign=pending_campaign,
         target_code=target_code, source_id=source_id, channel=channel,
         level=level.value if level else None,
         consent_status=consent_status.value if consent_status else None,
@@ -105,10 +143,21 @@ async def list_prospects(
     labels = await service.campaign_labels(
         session, [m.campaign_source_id for ms in memberships.values() for m in ms]
     )
+    selected = await commercial_context.memberships(session, [p.id for p in items])
+    names = await commercial_context.source_names(session, list(labels))
+    reads = {pid: _memberships(ms, labels) for pid, ms in memberships.items()}
+    sources = await commercial_context.source_ids(session, list(labels))
+    for group in reads.values():
+        for read in group:
+            read.source_name = names.get(read.campaign_source_id)
+            read.source_id = sources.get(read.campaign_source_id)
     return Page[ProspectDetail](
         items=[
             ProspectDetail.model_validate(p).model_copy(
-                update={"campaigns": _memberships(memberships[p.id], labels)}
+                update={
+                    "campaigns": reads[p.id],
+                    "current_membership_id": selected[p.id].id if p.id in selected else None,
+                }
             )
             for p in items
         ],
@@ -127,6 +176,7 @@ def _csv_cell(value: object) -> str:
 @router.get("/export", dependencies=[CAN_WRITE])
 async def export_prospects(
     session: DbSession,
+    pending_campaign: bool = False,
     q: str | None = None,
     campaign_id: int | None = None,
     stage: str | None = None,
@@ -145,12 +195,14 @@ async def export_prospects(
         level=level.value if level else None,
         consent_status=consent_status.value if consent_status else None,
         target_code=target_code, source_id=source_id, channel=channel, demo=demo,
+        pending_campaign=pending_campaign,
     )  # fmt: skip
     memberships = await service.get_memberships_for(session, [p.id for p in items])
     labels = await service.campaign_labels(
         session, [m.campaign_source_id for ms in memberships.values() for m in ms]
     )
     buffer = io.StringIO()
+    sources = await commercial_context.source_ids(session, list(labels))
     writer = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
     writer.writerow(
         ["id", "prénom", "nom", "email", "téléphone", "consentement", "créé le",
@@ -159,6 +211,17 @@ async def export_prospects(
     for p in items:
         rows: list[CampaignProspect | None] = [*memberships[p.id]] or [None]
         for m in rows:
+            if m is not None and (
+                (
+                    campaign_id is not None
+                    and labels.get(m.campaign_source_id, (0, ""))[0] != campaign_id
+                )
+                or (source_id is not None and sources.get(m.campaign_source_id) != source_id)
+                or (stage is not None and m.conversion_stage.value != stage)
+                or (advisor_id is not None and m.assigned_advisor_id != advisor_id)
+                or (level is not None and m.interest_status != level)
+            ):
+                continue
             campaign = labels.get(m.campaign_source_id, (0, ""))[1] if m else ""
             writer.writerow(
                 [_csv_cell(v) for v in (
@@ -228,6 +291,12 @@ async def create_interaction(
     session: DbSession,
     response: Response,
     db: MongoDb,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    session_factory: SessionFactoryDep,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
 ) -> InteractionRead:
     interaction, created = await interaction_service.create_interaction(
         session, prospect_id, payload
@@ -241,6 +310,14 @@ async def create_interaction(
             text=interaction.content,
             is_new=created,
         )
+    if interaction.direction is Direction.INBOUND and (
+        interaction.content or (settings.agent_auto_reply and interaction.channel_id)
+    ):
+        cid = await intake.route_entry(session, db, interaction)
+        if cid:
+            await trigger_agent(
+                background, settings, cid, session_factory, db, llm, calendar, knowledge
+            )
     if not created:
         response.status_code = status.HTTP_200_OK
     return InteractionRead.model_validate(interaction)
@@ -260,3 +337,31 @@ async def list_interactions(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post("/{prospect_id}/campaigns", response_model=ProspectDetail, dependencies=[CAN_WRITE])
+async def attribute_campaign(
+    prospect_id: int,
+    payload: CampaignAttribution,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+    session_factory: SessionFactoryDep,
+    llm: Llm,
+    calendar: CalendarDep,
+    knowledge: KnowledgeDep,
+) -> ProspectDetail:
+    await service.attach_campaign(
+        session, prospect_id, payload.campaign_id, payload.source_id, user.id
+    )
+    # Le contenu déjà reçu reste dans sa conversation ; aucune fausse réception n'est créée.
+    docs = (
+        await db["conversations"].find({"prospect_id": prospect_id, "status": "open"}).to_list(None)
+    )
+    for doc in docs:
+        await trigger_agent(
+            background, settings, str(doc["_id"]), session_factory, db, llm, calendar, knowledge
+        )
+    return await _detail(session, await service.get_prospect(session, prospect_id))

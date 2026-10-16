@@ -15,7 +15,7 @@ from app.schemas.dashboard import (
     HotProspect,
     ScheduledFollowUp,
 )
-from app.services import agent_settings, conversations
+from app.services import agent_settings, commercial_context, conversations
 from app.services.demo import demo_filter
 
 _DONE = (ConversionStage.LOST, ConversionStage.CONVERTED)
@@ -146,7 +146,11 @@ async def funnel(session: AsyncSession, days: int = 30) -> tuple[dict[str, int],
     rows = await session.execute(
         select(CampaignProspect.conversion_stage, func.count())
         .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
-        .where(CampaignProspect.first_seen_at >= since, ~demo_filter())
+        .where(
+            CampaignProspect.first_seen_at >= since,
+            ~demo_filter(),
+            CampaignProspect.id.in_(commercial_context.latest_ids()),
+        )
         .group_by(CampaignProspect.conversion_stage)
     )
     by_stage = {stage.value: int(n) for stage, n in rows}

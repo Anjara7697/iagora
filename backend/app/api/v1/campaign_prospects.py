@@ -28,7 +28,9 @@ async def update_membership(
     membership_id: int, payload: MembershipUpdate, session: DbSession, user: CurrentUser
 ) -> CampaignMembershipRead:
     """Change l'étape (avec justification, historisée) et/ou le conseiller affecté (ADMIN)."""
-    if "assigned_advisor_id" in payload.model_fields_set and user.role is not UserRole.ADMIN:
+    if (
+        "assigned_advisor_id" in payload.model_fields_set or payload.inherit_campaign_advisor
+    ) and user.role is not UserRole.ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Affectation réservée aux ADMIN")
     membership = await pipeline.update_membership(session, membership_id, payload, actor=user)
     return CampaignMembershipRead.model_validate(membership)

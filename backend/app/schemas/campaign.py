@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -60,6 +61,9 @@ class CampaignRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    responsible_advisor_id: int | None = None
+    responsible_advisor_name: str | None = None
+    responsible_advisor_active: bool | None = None
     name: str
     description: str | None
     status: CampaignStatus
@@ -69,6 +73,11 @@ class CampaignRead(BaseModel):
     updated_at: datetime
     targets: list[TargetRead] = []
     sources: list[SourceRead] = []
+
+
+class CampaignOwnershipUpdate(BaseModel):
+    advisor_id: int | None = Field(ge=1)
+    existing_prospects: Literal["transfer_inherited", "keep"]
 
 
 class SourceCount(BaseModel):

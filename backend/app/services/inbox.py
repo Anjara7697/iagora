@@ -5,10 +5,11 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CampaignProspect, Prospect
+from app.models import CampaignProspect, Prospect, User
 from app.models.enums import ConversationStatus
 from app.schemas.conversation import ConversationProspect, ConversationSummary
-from app.services import conversations, scoring
+from app.services import commercial_context, conversations, scoring
+from app.services.prospects import campaign_labels
 
 
 async def _matching_prospect_ids(
@@ -31,7 +32,8 @@ async def _matching_prospect_ids(
         stmt = stmt.where(
             Prospect.id.in_(
                 select(CampaignProspect.prospect_id).where(
-                    CampaignProspect.assigned_advisor_id == advisor_id
+                    CampaignProspect.id.in_(commercial_context.latest_ids()),
+                    CampaignProspect.assigned_advisor_id == advisor_id,
                 )
             )
         )
@@ -39,7 +41,8 @@ async def _matching_prospect_ids(
         stmt = stmt.where(
             ~Prospect.id.in_(
                 select(CampaignProspect.prospect_id).where(
-                    CampaignProspect.assigned_advisor_id.is_not(None)
+                    CampaignProspect.id.in_(commercial_context.latest_ids()),
+                    CampaignProspect.assigned_advisor_id.is_not(None),
                 )
             )
         )
@@ -56,14 +59,25 @@ async def prospect_cards(
     prospects = {
         p.id: p for p in await session.scalars(select(Prospect).where(Prospect.id.in_(ids)))
     }
-    best: dict[int, CampaignProspect] = {}
-    memberships = await session.scalars(
-        select(CampaignProspect)
-        .where(CampaignProspect.prospect_id.in_(ids))
-        .order_by(CampaignProspect.id)
+    best = await commercial_context.memberships(session, ids)
+    advisors = {
+        u.id: u.username
+        for u in await session.scalars(
+            select(User).where(
+                User.id.in_(
+                    [
+                        m.assigned_advisor_id
+                        for m in best.values()
+                        if m.assigned_advisor_id is not None
+                    ]
+                )
+            )
+        )
+    }
+    labels = await campaign_labels(session, [m.campaign_source_id for m in best.values()])
+    names = await commercial_context.source_names(
+        session, [m.campaign_source_id for m in best.values()]
     )
-    for m in memberships:
-        best[m.prospect_id] = m  # le rattachement le plus récent l'emporte
     cards: dict[int, ConversationProspect] = {}
     for pid, p in prospects.items():
         card: dict[str, Any] = {
@@ -75,10 +89,18 @@ async def prospect_cards(
         membership = best.get(pid)
         if membership is not None:
             card |= {
+                "membership_id": membership.id,
+                "campaign_id": labels.get(membership.campaign_source_id, (None, ""))[0],
+                "campaign_name": labels.get(membership.campaign_source_id, (None, ""))[1],
+                "campaign_source_id": membership.campaign_source_id,
+                "source_name": names.get(membership.campaign_source_id),
                 "stage": membership.conversion_stage.value,
                 "total_score": membership.total_score,
                 "level": scoring.level_for(membership.total_score).value,
                 "assigned_advisor_id": membership.assigned_advisor_id,
+                "assigned_advisor_name": advisors.get(membership.assigned_advisor_id)
+                if membership.assigned_advisor_id
+                else None,
             }
         cards[pid] = ConversationProspect(**card)
     return cards

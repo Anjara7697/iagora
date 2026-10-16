@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 const member: Record<string, unknown> = {
   id: 11,
+  campaign_id: 3,
+  source_id: 7,
   conversion_stage: "qualified",
   total_score: 80,
   interest_score: 80,
@@ -88,6 +90,296 @@ async function login(page: Page) {
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page).toHaveURL(/\/prospects$/);
 }
+
+test("campagne et source : seuls les parcours filtrés apparaissent, export identique", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR", {
+    ...prospect,
+    campaigns: [
+      { ...member, id: 99, campaign_id: 99, conversion_stage: "converted" },
+      member,
+      { ...member, id: 12, source_id: 8, conversion_stage: "contacted" },
+    ],
+  });
+  await page.route("**/api/v1/campaigns?**", (route) =>
+    route.fulfill({
+      json: pageOf([
+        {
+          id: 3,
+          name: "Campagne choisie",
+          sources: [
+            { id: 7, name: "Formulaire" },
+            { id: 8, name: "Webinaire" },
+          ],
+        },
+      ]),
+    }),
+  );
+  let exportUrl = "";
+  await page.route("**/api/v1/prospects/export**", (route) => {
+    exportUrl = route.request().url();
+    return route.fulfill({
+      body: "id;nom\n1;Alice",
+      headers: { "content-type": "text/csv" },
+    });
+  });
+  await login(page);
+  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
+  await page.getByLabel("Source", { exact: true }).selectOption("7");
+  const board = page.getByRole("region", { name: /Pipeline des prospects/ });
+  await expect(board.getByText("Alice Martin", { exact: true })).toHaveCount(1);
+  await page.getByRole("button", { name: "Table", exact: true }).click();
+  const row = page.getByRole("row", { name: /Alice Martin/ });
+  await expect(row.getByText("Qualifié", { exact: true })).toBeVisible();
+  await expect(row.getByText("Contacté", { exact: true })).toHaveCount(0);
+  await expect(row.getByText("Converti", { exact: true })).toHaveCount(0);
+  await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click(),
+  ]);
+  expect(exportUrl).toContain("source_id=7");
+  expect(exportUrl).toContain("campaign_id=3");
+  await page
+    .getByRole("button", { name: "Réinitialiser", exact: true })
+    .click();
+  await expect(page.getByLabel("Source", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Source", { exact: true })).toBeDisabled();
+});
+
+test("suivi : affectation administrative, étape justifiée et historique actualisé", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  let current = { ...member };
+  const changes: unknown[] = [];
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([{ id: 8, username: "Nadia" }]) }),
+  );
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({ json: { ...prospect, campaigns: [current] } }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) => {
+    const body = route.request().postDataJSON();
+    changes.push(body);
+    current = { ...current, ...body };
+    return route.fulfill({ json: current });
+  });
+  await page.route("**/api/v1/campaign-prospects/11/history", (route) =>
+    route.fulfill({
+      json: {
+        score_events: [],
+        stage_events:
+          current.conversion_stage === "converted"
+            ? [
+                {
+                  id: 1,
+                  from_stage: "qualified",
+                  to_stage: "converted",
+                  reason: "Inscription confirmée",
+                  created_at: "2026-10-15T12:00:00Z",
+                },
+              ]
+            : [],
+      },
+    }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  await page
+    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .click();
+  const follow = page.getByRole("region", {
+    name: "Suivi du parcours 11",
+    exact: true,
+  });
+  await follow.getByLabel("Conseiller responsable").selectOption("8");
+  await follow
+    .getByRole("button", { name: "Enregistrer l’affectation" })
+    .click();
+  await expect(
+    follow.getByText("Nadia", { exact: true }).first(),
+  ).toBeVisible();
+  const stage = follow.getByRole("form", { name: "Étape du parcours 11" });
+  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  await expect(
+    stage.getByRole("button", { name: "Enregistrer l’étape" }),
+  ).toBeDisabled();
+  await stage.getByLabel("Motif du changement").fill("Inscription confirmée");
+  await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
+  await expect(
+    page.getByText("Converti", { exact: true }).first(),
+  ).toBeVisible();
+  await page.getByText("Historique du parcours 1", { exact: true }).click();
+  await expect(page.getByText(/\(Inscription confirmée\)/)).toBeVisible();
+  expect(changes).toEqual([
+    { assigned_advisor_id: 8 },
+    { conversion_stage: "converted", reason: "Inscription confirmée" },
+  ]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("suivi : conseiller sans droit d’affectation, échec visible sans faux succès", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR");
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) =>
+    route.fulfill({ status: 409, json: { detail: "Modification refusée" } }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
+  await page
+    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .click();
+  const stage = page.getByRole("form", {
+    name: "Étape du parcours 11",
+    exact: true,
+  });
+  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  await stage.getByLabel("Motif du changement").fill("Justification conservée");
+  await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Modification refusée" }),
+  ).toBeVisible();
+  await expect(stage.getByLabel("Motif du changement")).toHaveValue(
+    "Justification conservée",
+  );
+  await expect(page.getByText("Suivi enregistré.")).toHaveCount(0);
+});
+
+test("interactions : pagination, contenu canonique lié et lecture seule", async ({
+  page,
+}) => {
+  await mockApi(page, "VIEWER");
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([]) }),
+  );
+  await page.route("**/api/v1/prospects/1/interactions?**", (route) => {
+    const offset = Number(
+      new URL(route.request().url()).searchParams.get("offset"),
+    );
+    return route.fulfill({
+      json: pageOf(
+        [
+          {
+            id: offset + 1,
+            type: "message",
+            direction: "inbound",
+            content: offset ? "Ancien formulaire" : null,
+            conversation_ref: offset ? null : "older-conversation",
+            created_at: "2026-10-01T10:00:00Z",
+          },
+        ],
+        21,
+        offset,
+      ),
+    });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  const history = page.getByRole("region", {
+    name: "Historique des interactions",
+  });
+  await expect(
+    history.getByRole("link", { name: "Consulter l’échange" }),
+  ).toHaveAttribute("href", "/conversations?id=older-conversation");
+  await history.getByRole("button", { name: "Interactions suivantes" }).click();
+  await expect(history.getByText("Ancien formulaire")).toBeVisible();
+  await expect(page.getByLabel("Nouvelle étape")).toHaveCount(0);
+  await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
+});
+
+test("Mes prospects : filtre appliqué à la liste et à l’export", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR");
+  let exportUrl = "";
+  await page.route("**/api/v1/prospects/export**", (route) => {
+    exportUrl = route.request().url();
+    return route.fulfill({
+      body: "id;nom\n1;Alice",
+      headers: { "content-type": "text/csv" },
+    });
+  });
+  await login(page);
+  const mine = page.waitForRequest(
+    (r) => r.url().includes("/prospects?") && r.url().includes("advisor_id=1"),
+  );
+  await page
+    .getByRole("button", { name: "Mes prospects", exact: true })
+    .click();
+  await mine;
+  await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click(),
+  ]);
+  expect(exportUrl).toContain("advisor_id=1");
+  expect(exportUrl).toContain("demo=all");
+});
+
+test("exception individuelle : retour au responsable de la campagne", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let override = true;
+  let payload: unknown;
+  await page.route("**/api/v1/advisors?**", (route) =>
+    route.fulfill({ json: pageOf([{ id: 8, username: "Nadia" }]) }),
+  );
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({
+      json: {
+        ...prospect,
+        campaigns: [
+          {
+            ...member,
+            assigned_advisor_id: 8,
+            assignment_is_override: override,
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/v1/campaign-prospects/11", (route) => {
+    payload = route.request().postDataJSON();
+    override = false;
+    return route.fulfill({
+      json: {
+        ...member,
+        assigned_advisor_id: 8,
+        assignment_is_override: false,
+      },
+    });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  await page
+    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .click();
+  const follow = page.getByRole("region", {
+    name: "Suivi du parcours 11",
+    exact: true,
+  });
+  await expect(
+    follow.getByText("Exception individuelle à la règle de campagne."),
+  ).toBeVisible();
+  await follow
+    .getByRole("button", { name: "Suivre le responsable de campagne" })
+    .click();
+  await expect(
+    follow.getByText("Affectation selon la règle de campagne."),
+  ).toBeVisible();
+  expect(payload).toEqual({ inherit_campaign_advisor: true });
+});
 
 test("connexion, pipeline multirattachement, table, fiche et déconnexion", async ({
   page,
@@ -377,5 +669,104 @@ test("export CSV : un observateur ne voit pas le bouton", async ({ page }) => {
   await login(page);
   await expect(
     page.getByRole("button", { name: "Exporter en CSV (Excel)" }),
+  ).toHaveCount(0);
+});
+
+test("attribution : choisir explicitement campagne et source, puis quitter la file", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR", { ...prospect, campaigns: [] });
+  let assigned = false;
+  let body: unknown;
+  await page.route("**/api/v1/campaigns?**", (route) =>
+    route.fulfill({
+      json: pageOf([
+        {
+          id: 3,
+          name: "Campagne active",
+          status: "active",
+          targets: [],
+          sources: [{ id: 7, name: "Boîte IONOS" }],
+        },
+      ]),
+    }),
+  );
+  await page.route("**/api/v1/prospects/1/campaigns", async (route) => {
+    body = route.request().postDataJSON();
+    assigned = true;
+    await route.fulfill({
+      json: {
+        ...prospect,
+        campaigns: [
+          {
+            ...member,
+            campaign_id: 3,
+            campaign_name: "Campagne active",
+            source_name: "Boîte IONOS",
+          },
+        ],
+      },
+    });
+  });
+  await page.route("**/api/v1/prospects/1", (route) =>
+    route.fulfill({
+      json: assigned
+        ? {
+            ...prospect,
+            current_membership_id: 11,
+            campaigns: [
+              {
+                ...member,
+                campaign_id: 3,
+                campaign_name: "Campagne active",
+                source_name: "Boîte IONOS",
+              },
+            ],
+          }
+        : { ...prospect, campaigns: [] },
+    }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  const form = page.getByRole("form", { name: "Attribution commerciale" });
+  await expect(
+    form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
+  ).toBeDisabled();
+  await form.getByLabel("Campagne d’attribution").selectOption("3");
+  await expect(
+    form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
+  ).toBeDisabled();
+  await form.getByLabel("Source d’attribution").selectOption("7");
+  await form
+    .getByRole("button", { name: "Attribuer et démarrer le suivi" })
+    .click();
+  await expect(form).toHaveCount(0);
+  expect(body).toEqual({ campaign_id: 3, source_id: 7 });
+  await expect(page.getByText("Source : Boîte IONOS")).toBeVisible();
+  await expect(
+    page.getByText("Contexte de l’agent", { exact: true }),
+  ).toBeVisible();
+});
+
+test("observateur : file À attribuer accessible, attribution interdite", async ({
+  page,
+}) => {
+  await mockApi(page, "VIEWER", { ...prospect, campaigns: [] });
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await login(page);
+  await page.goto("/prospects");
+  await page.getByRole("button", { name: /^À attribuer/ }).click();
+  await expect
+    .poll(() =>
+      requests.some(
+        (u) => u.includes("pending_campaign=true") && u.includes("limit=25"),
+      ),
+    )
+    .toBe(true);
+  await page.goto("/prospects/1");
+  await expect(page.getByText(/À attribuer : choisissez/)).toBeVisible();
+  await expect(
+    page.getByRole("form", { name: "Attribution commerciale" }),
   ).toHaveCount(0);
 });

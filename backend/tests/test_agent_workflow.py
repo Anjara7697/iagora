@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 from app.agents.defaults import RecordingMessenger, UnconfiguredCalendar
 from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
+from app.config import get_settings
 from app.graph.builder import build_workflow
 from app.graph.ports import Deps, LLMConfigError, LLMUnavailableError, Passage
 from app.graph.state import Qualification
@@ -61,7 +62,18 @@ async def lead(client, text="Bonjour", profile=None, **prospect):
         "source_id": camp["sources"][0]["id"],
         "profile": profile or {},
     } | prospect
-    created = (await client.post(f"{API}/prospects", json=payload)).json()["prospect"]
+    previous_settings = app.dependency_overrides.get(get_settings)
+    setup_settings = previous_settings() if previous_settings else get_settings()
+    app.dependency_overrides[get_settings] = lambda: setup_settings.model_copy(
+        update={"agent_auto_reply": False}
+    )
+    try:
+        created = (await client.post(f"{API}/prospects", json=payload)).json()["prospect"]
+    finally:
+        if previous_settings:
+            app.dependency_overrides[get_settings] = previous_settings
+        else:
+            app.dependency_overrides.pop(get_settings, None)
     pid, mid = created["id"], created["campaigns"][0]["id"]
     conv = (
         await client.post(f"{API}/conversations", json={"prospect_id": pid, "channel": "email"})

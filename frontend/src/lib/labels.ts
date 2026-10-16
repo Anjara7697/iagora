@@ -147,6 +147,7 @@ export const DRAFT_STATUS: Record<string, string> = {
 };
 
 export const DELIVERY: Record<string, string> = {
+  simulated: "Reçu dans la boîte fictive",
   not_sent: "Prêt à envoyer",
   sending: "Envoi en cours",
   sent: "Distribué",
@@ -230,6 +231,8 @@ export const isDemoEmail = (email: string | null | undefined): boolean =>
 
 /** Champs du profil collectés par l'agent (F-09), en français. */
 export const PROFILE_FIELDS: Record<string, string> = {
+  education_level: "Niveau d’études",
+  objective: "Objectif",
   study_level: "Niveau d’études",
   field_of_study: "Domaine d’études",
   goal: "Projet",

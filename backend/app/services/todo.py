@@ -25,7 +25,7 @@ from app.schemas.todo import (
     TreatedItem,
     TreatedPage,
 )
-from app.services import drafts, inbox
+from app.services import conversations, drafts, inbox
 
 MAX_SCANNED = 500
 INCIDENT_REASONS = {
@@ -92,13 +92,17 @@ async def list_todo(
     limit: int,
     offset: int,
     footer: str | None = None,
+    conversation_id: str | None = None,
 ) -> TodoPage:
-    match = {
+    match: dict[str, Any] = {
         "$or": [
             {"status": "handed_off"},
             {"status": "open", "messages.metadata.draft.status": drafts.PENDING},
         ]
     }
+    if conversation_id is not None:
+        doc = await conversations.get_doc(db, conversation_id)
+        match["_id"] = doc["_id"]
     docs = [
         d
         async for d in db["conversations"]

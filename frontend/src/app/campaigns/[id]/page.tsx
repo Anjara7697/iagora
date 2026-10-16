@@ -4,8 +4,15 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
+import CampaignOwnership from "@/components/CampaignOwnership";
 import { useCurrentUser } from "@/components/AppShell";
-import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge } from "@/components/ui";
+import {
+  DemoBadge,
+  Loading,
+  Pager,
+  ScoreBadge,
+  StageBadge,
+} from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import {
   CAMPAIGN_STATUS,
@@ -245,7 +252,6 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
     `/prospects${qs({ campaign_id: campaign.id, stage, limit: PROSPECTS_LIMIT, offset })}`,
     { keepPrevious: true },
   );
-  const sourceIds = new Set(campaign.sources.map((s) => s.id));
   const items = list.data?.items ?? [];
   return (
     <section className="card" aria-label="Prospects de la campagne">
@@ -296,12 +302,13 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
             </thead>
             <tbody>
               {items.map((p) => {
-                const m =
-                  p.campaigns.find(
-                    (c) =>
-                      c.campaign_source_id !== undefined &&
-                      sourceIds.has(c.campaign_source_id),
-                  ) ?? p.campaigns[0];
+                const m = p.campaigns
+                  .filter((c) => c.campaign_id === campaign.id)
+                  .sort(
+                    (a, b) =>
+                      new Date(b.last_seen_at ?? 0).getTime() -
+                        new Date(a.last_seen_at ?? 0).getTime() || b.id - a.id,
+                  )[0];
                 return (
                   <tr key={p.id}>
                     <td>
@@ -421,6 +428,11 @@ export default function CampaignPage() {
             </Link>
           </div>
 
+          <CampaignOwnership
+            key={`${c.id}:${c.responsible_advisor_id}`}
+            campaign={c}
+            onDone={campaign.reload}
+          />
           {canEdit && !editing && (
             <div className="row">
               <button

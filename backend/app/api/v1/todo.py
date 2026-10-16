@@ -22,6 +22,7 @@ from app.schemas.todo import (
     AgentModeUpdate,
     DraftApprove,
     DraftReject,
+    TodoItem,
     TodoPage,
     TreatedPage,
 )
@@ -29,7 +30,7 @@ from app.services import agent_settings, drafts, prospects
 from app.services import conversations as conversation_service
 from app.services import todo as todo_service
 from app.services.agent_settings import AgentMode
-from app.services.errors import ConflictError
+from app.services.errors import ConflictError, NotFoundError
 
 router = APIRouter(tags=["assisted-mode"], dependencies=[ANY_ROLE])
 
@@ -57,6 +58,33 @@ async def list_treated(
 ) -> TreatedPage:
     """Brouillons déjà validés ou refusés, avec l'état d'envoi (la trace reste lisible)."""
     return await todo_service.treated(session, db, hours=hours)
+
+
+@router.get("/todo/item", response_model=TodoItem)
+async def get_todo_item(
+    session: DbSession,
+    db: MongoDb,
+    settings: SettingsDep,
+    id: Annotated[str, Query(min_length=1, max_length=200)],
+) -> TodoItem:
+    parts = id.split(":")
+    if not (
+        (len(parts) == 3 and parts[0] == "draft") or (len(parts) == 2 and parts[0] == "handoff")
+    ):
+        raise NotFoundError("Élément à traiter introuvable")
+    result = await todo_service.list_todo(
+        session,
+        db,
+        kind=None,
+        limit=200,
+        offset=0,
+        footer=settings.email_footer,
+        conversation_id=parts[1],
+    )
+    for item in result.items:
+        if item.id == id:
+            return item
+    raise NotFoundError("Cet élément n’est plus à traiter ; consultez la conversation")
 
 
 @router.get("/agent/mode", response_model=AgentModeRead)

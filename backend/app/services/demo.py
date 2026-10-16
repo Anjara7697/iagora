@@ -43,6 +43,7 @@ async def purge(session: AsyncSession, db: Any) -> dict[str, int]:
         return {"prospects": 0, "conversations": 0}
     deleted = await db["conversations"].delete_many({"prospect_id": {"$in": ids}})
     await db["agent_runs"].delete_many({"prospect_id": {"$in": ids}})
+    await db["agent_events"].delete_many({"prospect_id": {"$in": ids}})
     await session.execute(delete(Prospect).where(Prospect.id.in_(ids)))
     await session.commit()
     return {"prospects": len(ids), "conversations": deleted.deleted_count}

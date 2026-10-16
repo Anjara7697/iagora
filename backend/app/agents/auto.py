@@ -13,11 +13,11 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.runtime import run_agent
@@ -25,9 +25,17 @@ from app.config import Settings
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
-from app.models import FollowUp
+from app.models import FollowUp, Prospect
 from app.models.enums import FollowUpStatus
-from app.services import agent_settings, drafts, email_sync, lease
+from app.services import (
+    agent_settings,
+    commercial_context,
+    conversations,
+    drafts,
+    email_sync,
+    lease,
+)
+from app.services.agent_events import enqueue_reply
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
@@ -47,10 +55,53 @@ async def reply_to_message(
     llm: LanguageModel,
     calendar: Calendar,
     knowledge: KnowledgeBase,
+    event_id: str | None = None,
 ) -> None:
     """Prépare la réponse de l'agent au dernier message du prospect (tâche de fond)."""
+    current_id = await enqueue_reply(db, conversation_id)
+    if event_id is not None and event_id != current_id:
+        await db["agent_events"].update_one(
+            {"_id": event_id},
+            {
+                "$set": {
+                    "completed": True,
+                    "superseded": True,
+                }
+            },
+        )
+        return
+    event_id = current_id
+    if await db["agent_events"].find_one({"_id": event_id, "completed": True}):
+        return
+    # Une panne ou un contexte manquant garde la demande rejouable, sans boucle serrée.
+    await db["agent_events"].update_one(
+        {"_id": event_id},
+        {
+            "$set": {
+                "next_attempt_at": datetime.now(UTC) + timedelta(seconds=60),
+            }
+        },
+    )
     try:
         async with session_factory() as session:
+            doc = await conversations.get_doc(db, conversation_id)
+            prospect = await get_prospect(session, doc["prospect_id"])
+            if doc["status"] != "open" or prospect.consent_status.value == "opted_out":
+                await db["agent_events"].update_one(
+                    {"_id": event_id},
+                    {
+                        "$set": {
+                            "completed": True,
+                            "cancelled": True,
+                        }
+                    },
+                )
+                return
+            selected = (await commercial_context.memberships(session, [doc["prospect_id"]])).get(
+                doc["prospect_id"]
+            )
+            if selected is None or not await commercial_context.is_active(session, selected):
+                return  # file À attribuer : pas de scoring ni de message sans campagne
             await run_agent(
                 session,
                 db,
@@ -58,6 +109,12 @@ async def reply_to_message(
                 calendar=calendar,
                 knowledge=knowledge,
                 conversation_id=conversation_id,
+                event_id=event_id,
+            )
+            await db["agent_events"].update_one(
+                {"_id": event_id},
+                {"$set": {"completed": True, "at": datetime.now(UTC)}},
+                upsert=True,
             )
     except (ConflictError, NotFoundError) as exc:
         logger.info("Réponse automatique ignorée (%s) : %s", conversation_id, exc)
@@ -157,6 +214,8 @@ async def run_due_follow_ups(
         due = list(
             await session.scalars(
                 select(FollowUp.id)
+                .join(Prospect, Prospect.id == FollowUp.prospect_id)
+                .where(or_(Prospect.email.is_(None), ~Prospect.email.ilike("%@demo.example.com")))
                 .where(FollowUp.status == FollowUpStatus.SCHEDULED, FollowUp.scheduled_at <= now)
                 .order_by(FollowUp.scheduled_at)
                 .limit(BATCH)
@@ -180,6 +239,9 @@ async def run_due_follow_ups(
                 await _cancel(session, follow_up_id, "aucune conversation ouverte")
                 summary.cancelled += 1
                 continue
+            if doc.get("simulation"):
+                await _release(session, follow_up_id)
+                continue  # horloge du parcours guidé : pas de relance par le worker réel
             conv_id = str(doc["_id"])
             stamps = [
                 stamp
@@ -306,3 +368,68 @@ __all__ = [
     "reply_to_message",
     "run_due_follow_ups",
 ]
+
+
+async def reply_queue_loop(settings: Settings) -> None:
+    """Reprend les entrées enregistrées avant un redémarrage ou une panne temporaire."""
+    from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
+    from app.database.clients import get_mongo_db
+    from app.database.session import get_sessionmaker
+
+    db = get_mongo_db()
+    while True:
+        try:
+            await run_pending_replies(
+                db=db,
+                session_factory=get_sessionmaker(),
+                llm=get_language_model(settings),
+                calendar=get_calendar(),
+                knowledge=get_knowledge_base(settings),
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("File de traitement des entrées indisponible")
+        await asyncio.sleep(10)
+
+
+async def run_pending_replies(
+    *,
+    db: Any,
+    session_factory: SessionFactory,
+    llm: LanguageModel,
+    calendar: Calendar,
+    knowledge: KnowledgeBase,
+) -> None:
+    cursor = (
+        db["agent_events"]
+        .find(
+            {
+                "completed": False,
+                "next_attempt_at": {"$lte": datetime.now(UTC)},
+            }
+        )
+        .sort("next_attempt_at", 1)
+        .limit(50)
+    )
+    async for event in cursor:
+        try:
+            await reply_to_message(
+                event["conversation_id"],
+                session_factory=session_factory,
+                db=db,
+                llm=llm,
+                calendar=calendar,
+                knowledge=knowledge,
+                event_id=event["_id"],
+            )
+        except NotFoundError:
+            await db["agent_events"].update_one(
+                {"_id": event["_id"]}, {"$set": {"completed": True, "cancelled": True}}
+            )
+        except Exception:
+            await db["agent_events"].update_one(
+                {"_id": event["_id"]},
+                {"$set": {"next_attempt_at": datetime.now(UTC) + timedelta(seconds=60)}},
+            )
+            logger.exception("Traitement d'une entrée en erreur")

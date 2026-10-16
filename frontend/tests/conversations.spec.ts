@@ -135,6 +135,57 @@ async function open(page: Page) {
   await page.goto("/conversations");
 }
 
+test("mobile : lire le détail puis revenir à la liste sans débordement", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", {
+    name: "Liste des conversations",
+  });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toBeVisible();
+  await expect(list).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "← Liste des conversations", exact: true })
+    .click();
+  await expect(list).toBeVisible();
+  expect(calls.posts).toHaveLength(0);
+});
+
+test("lien direct : ouvrir une conversation hors de la page puis afficher une erreur explicite", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/conversations/older/summary", (route) =>
+    route.fulfill({ json: summary("older", "handed_off") }),
+  );
+  await page.route("**/api/v1/conversations/older", (route) =>
+    route.fulfill({ json: { ...conversation("handed_off"), id: "older" } }),
+  );
+  await open(page);
+  await page.goto("/conversations?id=older");
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toBeVisible();
+  await expect(page.getByText("Fiche de transfert")).toBeVisible();
+  await page.goto("/conversations?id=missing");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Introuvable" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toHaveCount(0);
+});
+
 test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
   page,
 }) => {
@@ -166,13 +217,15 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
     .getByRole("button", { name: "Envoyer en tant que conseiller" })
     .click();
   await expect(detail.getByLabel("Votre réponse")).toHaveValue("");
-  expect(calls.posts).toContainEqual({
-    path: "/conversations/c1/messages",
-    body: {
-      role: "advisor",
-      content: "Bonjour Marie, oui le CPF est possible.",
-    },
-  });
+  await expect
+    .poll(() => calls.posts)
+    .toContainEqual({
+      path: "/conversations/c1/messages",
+      body: {
+        role: "advisor",
+        content: "Bonjour Marie, oui le CPF est possible.",
+      },
+    });
 
   await detail
     .getByRole("button", { name: "Rendre la main à l'agent" })

@@ -13,9 +13,13 @@ export type User = { id: number; username: string; email: string; role: Role };
 
 export type Membership = {
   id: number;
+  assignment_is_override?: boolean;
+  last_seen_at?: string;
   campaign_source_id?: number;
   campaign_id?: number | null;
   campaign_name?: string | null;
+  source_name?: string | null;
+  source_id?: number | null;
   conversion_stage: string;
   interest_status: string | null;
   interest_score: number;
@@ -37,6 +41,7 @@ export type Prospect = {
   created_at: string;
   is_demo?: boolean;
   campaigns: Membership[];
+  current_membership_id?: number | null;
 };
 
 export type Target = { id: number; code: string; name: string };
@@ -49,6 +54,9 @@ export type Source = {
 };
 export type Campaign = {
   id: number;
+  responsible_advisor_id?: number | null;
+  responsible_advisor_name?: string | null;
+  responsible_advisor_active?: boolean | null;
   name: string;
   status: string;
   description?: string | null;
@@ -114,6 +122,11 @@ export type Conversation = {
 };
 
 export type ConversationProspect = {
+  assigned_advisor_name?: string | null;
+  campaign_id?: number | null;
+  campaign_name?: string | null;
+  source_name?: string | null;
+  membership_id?: number | null;
   id: number;
   first_name: string | null;
   last_name: string | null;
@@ -305,7 +318,17 @@ export type TreatedItem = {
   edited: boolean;
   content: string;
   reason: string | null;
-  execution: "approved" | "sending" | "sent" | "failed" | "blocked" | "rejected";
+  execution:
+    | "approved"
+    | "sending"
+    | "sent"
+    | "failed"
+    | "blocked"
+    | "rejected";
   execution_detail: string | null;
 };
-export type TreatedPage = { items: TreatedItem[]; total: number; hours: number };
+export type TreatedPage = {
+  items: TreatedItem[];
+  total: number;
+  hours: number;
+};

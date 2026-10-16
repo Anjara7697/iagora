@@ -35,7 +35,10 @@ async def test_ingest_creates_prospect_and_interaction(client, campaign):
     pid = body["prospect"]["id"]
     history = (await client.get(f"{API}/prospects/{pid}/interactions")).json()
     assert history["total"] == 1  # F-06
-    assert history["items"][0]["content"] == "Bonjour"
+    assert history["items"][0]["content"] is None
+    assert history["items"][0]["conversation_ref"]
+    conv = (await client.get(f"{API}/prospects/{pid}/conversation")).json()
+    assert conv["messages"][0]["content"] == "Bonjour"
 
 
 async def test_duplicate_is_recognised_by_any_identifier(client):

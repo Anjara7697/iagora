@@ -177,6 +177,10 @@ Connexion avec le compte créé par `create-admin`. Pages : **Accueil** (compteu
 score), **fiche prospect** (identité, profil collecté, conversation, fiche de transfert, historique des scores et
 étapes, décisions de l'agent avec leur trace), **Transferts** (conversations remises à un conseiller) et
 **Simulateur** (jouer un prospect fictif en `@demo.example.com` et voir la réponse et la trace de l'agent).
+Parcours guidé (qualification, objection, rendez-vous fictif) et contrat de préparation n8n :
+[guide du simulateur](docs/simulator-journey.md). Workflow prospect Gemini importable
+et étapes de recette : [guide n8n](docs/n8n/README.md).
+
 Le simulateur se désactive avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false` (déploiement réel).
 Le jeton de connexion est conservé dans le navigateur (`localStorage`) : suffisant pour un outil interne, à durcir
 (cookie `HttpOnly`) avant une exposition publique.
@@ -240,3 +244,22 @@ Fait : initialisation, modèles et migrations, endpoints prospects / campagnes /
 Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence), console web (prospects, conversations, transferts, simulateur).
 Fait aussi : déclenchement automatique de l'agent à chaque message du prospect et exécution des relances (fenêtre d'envoi, plafond, mode assisté).
 Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
+
+### Réception et attribution commerciale
+
+Voir [docs/intake.md](docs/intake.md) : file « À attribuer », rattachement explicite campagne/source,
+réception REST connectée aux conversations, contexte partagé et reprise des traitements après redémarrage.
+
+### Suivi par les conseillers
+
+Voir [docs/advisor-workflow.md](docs/advisor-workflow.md) : affectation administrative, changements
+d'étape justifiés, interactions paginées, liens directs, filtre « Mes prospects » et convention des
+indicateurs pour les prospects présents dans plusieurs sources.
+
+Voir aussi [l'affectation par campagne](docs/campaign-ownership.md) : un responsable par campagne,
+héritage des nouveaux prospects, choix explicite pour les prospects existants et exceptions individuelles.
+
+### Conformité à la maquette
+
+Le [bilan de conformité](docs/frontend/prototype-conformity.md) distingue les corrections
+d'interface, les fonctionnalités encore absentes et les contradictions entre maquette et règles serveur.
