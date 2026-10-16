@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.runtime import run_agent
@@ -25,7 +25,7 @@ from app.config import Settings
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
-from app.models import FollowUp
+from app.models import FollowUp, Prospect
 from app.models.enums import FollowUpStatus
 from app.services import (
     agent_settings,
@@ -214,6 +214,8 @@ async def run_due_follow_ups(
         due = list(
             await session.scalars(
                 select(FollowUp.id)
+                .join(Prospect, Prospect.id == FollowUp.prospect_id)
+                .where(or_(Prospect.email.is_(None), ~Prospect.email.ilike("%@demo.example.com")))
                 .where(FollowUp.status == FollowUpStatus.SCHEDULED, FollowUp.scheduled_at <= now)
                 .order_by(FollowUp.scheduled_at)
                 .limit(BATCH)
@@ -237,6 +239,9 @@ async def run_due_follow_ups(
                 await _cancel(session, follow_up_id, "aucune conversation ouverte")
                 summary.cancelled += 1
                 continue
+            if doc.get("simulation"):
+                await _release(session, follow_up_id)
+                continue  # horloge du parcours guidé : pas de relance par le worker réel
             conv_id = str(doc["_id"])
             stamps = [
                 stamp

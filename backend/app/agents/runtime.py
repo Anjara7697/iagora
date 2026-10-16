@@ -100,6 +100,7 @@ async def _run_agent(
     channel: str | None = None,
     mode: AgentMode | None = None,
     follow_up: bool = False,
+    simulation: bool = False,
     event_id: str | None = None,
 ) -> AgentRunResult:
     """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests).
@@ -108,6 +109,8 @@ async def _run_agent(
     doc = await _resolve_conversation(session, db, conversation_id, prospect_id, channel)
     conv_id = str(doc["_id"])
     pid = int(doc["prospect_id"])
+    if doc.get("simulation") and not simulation:
+        raise ConflictError("Utiliser le parcours guidé pour cette conversation simulée")
 
     inputs = [m for m in doc.get("messages", []) if m["role"] == "prospect"]
     input_key = f"{conv_id}:{inputs[-1]['id'] if inputs else 'first'}"

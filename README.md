@@ -177,6 +177,9 @@ Connexion avec le compte créé par `create-admin`. Pages : **Accueil** (compteu
 score), **fiche prospect** (identité, profil collecté, conversation, fiche de transfert, historique des scores et
 étapes, décisions de l'agent avec leur trace), **Transferts** (conversations remises à un conseiller) et
 **Simulateur** (jouer un prospect fictif en `@demo.example.com` et voir la réponse et la trace de l'agent).
+Parcours guidé (qualification, objection, rendez-vous fictif) et contrat de préparation n8n :
+[guide du simulateur](docs/simulator-journey.md).
+
 Le simulateur se désactive avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false` (déploiement réel).
 Le jeton de connexion est conservé dans le navigateur (`localStorage`) : suffisant pour un outil interne, à durcir
 (cookie `HttpOnly`) avant une exposition publique.

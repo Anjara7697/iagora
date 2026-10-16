@@ -147,6 +147,7 @@ export const DRAFT_STATUS: Record<string, string> = {
 };
 
 export const DELIVERY: Record<string, string> = {
+  simulated: "Reçu dans la boîte fictive",
   not_sent: "Prêt à envoyer",
   sending: "Envoi en cours",
   sent: "Distribué",

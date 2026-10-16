@@ -2418,3 +2418,27 @@ dl.profile-fields {
     padding-inline: 16px;
   }
 }
+
+/* Parcours guidé : composition confortable et faits lisibles sur bureau/mobile. */
+.guided-simulator .guided-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+.guided-simulator .guided-composer textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  font: inherit;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.guided-simulator li button {
+  text-align: left;
+  margin-bottom: 8px;
+}
+.guided-simulator .page-heading {
+  flex-wrap: wrap;
+}

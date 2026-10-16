@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { Loading, ProspectLink, ScoreBadge, StageBadge } from "@/components/ui";
@@ -73,6 +74,7 @@ export default function SimulatorPage() {
     isAdmin ? "/demo" : null,
   );
   const [purgeNotice, setPurgeNotice] = useState<string | null>(null);
+  const [guided, setGuided] = useState(false);
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [targetCode, setTargetCode] = useState("");
   const [name, setName] = useState("Camille");
@@ -97,6 +99,8 @@ export default function SimulatorPage() {
       </>
     );
   }
+
+  if (guided) return <GuidedSimulation onBack={() => setGuided(false)} />;
 
   const campaign =
     campaigns.data?.items.find((c) => c.id === campaignId) ??
@@ -246,6 +250,17 @@ export default function SimulatorPage() {
           </p>
         </div>
       </div>
+
+      <section className="card">
+        <h2>Tester un parcours complet</h2>
+        <p>
+          Qualification, objection et réservation dans un calendrier fictif,
+          avec le vrai agent.
+        </p>
+        <button onClick={() => setGuided(true)}>
+          Ouvrir le parcours guidé
+        </button>
+      </section>
 
       {mode.data?.mode === "assisted" && (
         <p className="muted">
