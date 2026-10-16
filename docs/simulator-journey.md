@@ -84,7 +84,10 @@ compte technique avec droits restreints au seul scénario.
 5. `GET /{conversation_id}/report` est réservé à l’orchestrateur/évaluateur :
    guide, échanges visibles, rendez-vous et limites. Les décisions complètes
    restent disponibles via les API des exécutions et la fiche du prospect.
-6. `POST /{conversation_id}/run` reprend un traitement après incident ou arrêt
+6. `POST /{conversation_id}/dispatch` livre uniquement les messages déjà autorisés
+   dans la boîte fictive, sans appel LLM ni approbation automatique. À appeler
+   après une validation effectuée dans « À traiter » avant de relire `/exchange`.
+7. `POST /{conversation_id}/run` reprend un traitement après incident ou arrêt
    manuel levé ; après un refus de brouillon, permet une nouvelle génération.
    Ce point d’entrée peut aussi déclencher le premier contact.
 
@@ -139,3 +142,6 @@ conversion signalé dans le rapport de conformité reste un lot métier distinct
 4. **Catalogue et évaluation** : profils hésitant, hors cible, demande inconnue,
    désinscription ; contrôles déterministes des invariants et évaluation séparée
    de la qualité commerciale. Comparer plusieurs exécutions et versions du modèle.
+
+Préparation du workflow importable, recette locale et configuration du VPS :
+[guide n8n](n8n/README.md). L’exécution réelle reste à confirmer.

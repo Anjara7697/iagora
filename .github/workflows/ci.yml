@@ -66,6 +66,9 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Contrat du workflow n8n (hors ligne)
+        working-directory: .
+        run: node tools/n8n/build.mjs --check && node --test tools/n8n/prospect.test.mjs
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
