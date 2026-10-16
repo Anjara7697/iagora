@@ -68,7 +68,9 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
       "pending",
   );
   const stopped =
-    conversation?.status === "closed" || conversation?.status === "handed_off";
+    prospect?.consent_status === "opted_out" ||
+    conversation?.status === "closed" ||
+    conversation?.status === "handed_off";
 
   async function send() {
     if (!session || !text.trim()) return;
@@ -222,10 +224,12 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             )}
             {stopped && (
               <p role="status">
-                Parcours arrêté : conversation{" "}
-                {conversation?.status === "handed_off"
-                  ? "transférée au conseiller"
-                  : "clôturée"}
+                Parcours arrêté :{" "}
+                {prospect?.consent_status === "opted_out"
+                  ? "prospect désinscrit"
+                  : conversation?.status === "handed_off"
+                    ? "conversation transférée au conseiller"
+                    : "conversation clôturée"}
                 .
               </p>
             )}

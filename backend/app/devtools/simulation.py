@@ -150,6 +150,13 @@ async def receive(
     previous = next(
         (m for m in doc["messages"] if m.get("external_message_id") == external_id), None
     )
+    prospect = await get_prospect(session, doc["prospect_id"])
+    if (
+        previous is None
+        and prospect.consent_status.value == "opted_out"
+        and not policy.is_opt_out(content)
+    ):
+        raise ConflictError("Le prospect simulé est désinscrit : parcours arrêté")
     if previous is not None and previous["content"] != content:
         raise ConflictError("Cet identifiant appartient déjà à un autre message")
     if (
@@ -170,8 +177,11 @@ async def receive(
 async def exchange(session: AsyncSession, db: Any, cid: str) -> dict[str, Any]:
     """Vue du prospect/n8n : aucun brouillon, score, raisonnement ou métadonnée interne."""
     doc = await require(session, db, cid)
+    prospect = await get_prospect(session, doc["prospect_id"])
     return {
         "conversation_id": cid,
+        "status": doc["status"],
+        "can_continue": doc["status"] == "open" and prospect.consent_status.value != "opted_out",
         "messages": [
             {
                 "id": m["id"],

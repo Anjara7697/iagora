@@ -108,6 +108,9 @@ async def test_pending_draft_stop_and_replay(client, model):
     assert (await send(client, cid, "STOP, ne m’écrivez plus", "stop")).status_code == 200
     view = (await client.get(f"/api/v1/simulation/{cid}/exchange")).json()
     assert all(m["role"] == "prospect" for m in view["messages"])
+    assert view["status"] == "open"  # la désinscription ne falsifie pas le statut métier
+    assert view["can_continue"] is False
+    assert (await send(client, cid, "Encore une question", "after-stop")).status_code == 409
     p = (await client.get(f"/api/v1/prospects/{s['prospect_id']}")).json()
     assert p["consent_status"] == "opted_out"
     assert (await client.post(f"/api/v1/simulation/{cid}/run")).status_code == 200

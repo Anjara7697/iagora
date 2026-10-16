@@ -69,8 +69,8 @@ compte technique avec droits restreints au seul scénario.
 1. `POST /sessions` avec `{"first_name":"Camille"}` retourne
    `prospect_id`, `conversation_id`, `scenario`, `guide`. Chaque appel crée une
    nouvelle session ; conserver les identifiants pour reprendre la même.
-2. `GET /{conversation_id}/exchange` retourne uniquement `conversation_id` et
-   `messages: [{id, role, content, created_at}]`. **Seule cette vue doit alimenter
+2. `GET /{conversation_id}/exchange` retourne uniquement `conversation_id`, le statut
+   `status` (`open`, `handed_off`, `closed`), `can_continue` et `messages: [{id, role, content, created_at}]`. **Seule cette vue doit alimenter
    le contexte du modèle qui joue le prospect.**
 3. `POST /{conversation_id}/messages` avec
    `{"content":"…","external_message_id":"run-123-tour-1"}` enregistre l’entrée,
@@ -97,7 +97,8 @@ Après une erreur technique, l’entrée peut déjà avoir été enregistrée.
 
 Le futur workflow n8n doit conserver le curseur du dernier message vu, ne générer
 qu’une réponse par nouveau message reçu, limiter les tours et la durée, et arrêter
-sur transfert/STOP/clôture. Le rôle prospect reçoit son profil privé ; l’agent
+quand `can_continue=false` (transfert/STOP/clôture). Une désinscription peut
+laisser le statut de conversation `open` : ce statut seul ne suffit pas. Le rôle prospect reçoit son profil privé ; l’agent
 IAGORA n’y accède que par les messages. Le juge éventuel reste séparé de ce rôle.
 Aucun webhook public ni instance n8n n’a été créé par ce lot.
 

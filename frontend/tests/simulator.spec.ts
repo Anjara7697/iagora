@@ -43,6 +43,7 @@ async function mockApi(
 ) {
   const messages: Msg[] = [];
   const posts: { path: string; body: unknown }[] = [];
+  let consent = "unknown";
   let runs = 0;
   let lastRun: Record<string, unknown> | null = null;
   const agentReply = (result: Record<string, unknown>) =>
@@ -105,6 +106,15 @@ async function mockApi(
         created_at: "2026-10-01T10:00:00Z",
         metadata: {},
       });
+      if (payload.content.startsWith("STOP")) {
+        consent = "opted_out";
+        for (const m of messages) {
+          const draft = m.metadata.draft as { status?: string } | undefined;
+          if (draft?.status === "pending") draft.status = "cancelled";
+        }
+        await route.fulfill({ json: {} });
+        return;
+      }
       runs += 1;
       lastRun = run({ run_id: `r${runs}` });
       messages.push({
@@ -141,7 +151,7 @@ async function mockApi(
       body = {
         id: 5,
         first_name: "Camille",
-        consent_status: "unknown",
+        consent_status: consent,
         profile: {},
         campaigns: [
           { id: 1, conversion_stage: "in_conversation", total_score: 8 },
@@ -404,4 +414,31 @@ test("parcours guidé : erreur de création visible et nouvelle tentative possib
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
+});
+
+test("parcours guidé : STOP arrête la saisie même si la conversation reste ouverte", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await start(page);
+  await page.getByRole("button", { name: "Ouvrir le parcours guidé" }).click();
+  await page
+    .getByRole("button", { name: "Démarrer le parcours guidé" })
+    .click();
+  await page.getByRole("button", { name: /Étape 1/ }).click();
+  await page.getByRole("button", { name: "Envoyer au vrai agent" }).click();
+  await expect(
+    page.getByText("Brouillon invisible pour le prospect", { exact: false }),
+  ).toBeVisible();
+  await page.getByLabel("Message du prospect").fill("STOP, ne m’écrivez plus");
+  await page.getByRole("button", { name: "Envoyer au vrai agent" }).click();
+  await expect(
+    page.getByText("Parcours arrêté : prospect désinscrit"),
+  ).toBeVisible();
+  await expect(page.getByLabel("Message du prospect")).toBeDisabled();
+  await expect(
+    page
+      .getByRole("region", { name: "Boîte du prospect" })
+      .getByText(/Le programme dure 18 mois/),
+  ).toHaveCount(0);
 });
