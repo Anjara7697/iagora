@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Image de production minimale (voir frontend/Dockerfile) : serveur Node autonome.
+  output: "standalone",
 };
 
 export default nextConfig;

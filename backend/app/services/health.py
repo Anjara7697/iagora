@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 
 from sqlalchemy import text
 
+from app.config import get_settings
 from app.database.clients import get_mongo_client, get_redis
 from app.database.session import get_engine
 
@@ -25,8 +26,10 @@ async def check_dependencies() -> dict[str, bool]:
     checks: dict[str, Callable[[], Awaitable[None]]] = {
         "postgres": _ping_postgres,
         "mongo": _ping_mongo,
-        "redis": _ping_redis,
     }
+    # Redis n'est utilisé que pour ce contrôle : sans REDIS_URL (déploiement léger), il est ignoré.
+    if get_settings().redis_url:
+        checks["redis"] = _ping_redis
     result: dict[str, bool] = {}
     for name, ping in checks.items():
         try:
