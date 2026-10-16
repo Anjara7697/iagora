@@ -254,3 +254,8 @@ indicateurs pour les prospects présents dans plusieurs sources.
 
 Voir aussi [l'affectation par campagne](docs/campaign-ownership.md) : un responsable par campagne,
 héritage des nouveaux prospects, choix explicite pour les prospects existants et exceptions individuelles.
+
+### Conformité à la maquette
+
+Le [bilan de conformité](docs/frontend/prototype-conformity.md) distingue les corrections
+d'interface, les fonctionnalités encore absentes et les contradictions entre maquette et règles serveur.

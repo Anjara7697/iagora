@@ -548,7 +548,7 @@ th {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  min-height: 68px;
+  min-height: 60px;
   border-bottom: 1px solid var(--line);
   background: rgba(250, 249, 248, 0.95);
   position: sticky;
@@ -872,6 +872,14 @@ td {
   .app-header {
     padding: 10px 16px;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+  .app-header > strong {
+    flex: 1 1 calc(100% - 50px);
+    min-width: 0;
+  }
+  .app-header > .spacer {
+    display: none;
   }
   .user-avatar,
   .user-name {
@@ -1367,7 +1375,10 @@ ul.plain {
 /* --- Simulateur --- */
 .sim {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(260px, 340px);
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(
+      260px,
+      340px
+    );
   gap: 16px;
   align-items: start;
 }
@@ -1833,7 +1844,9 @@ a.today-row:hover {
 }
 .campaign-row {
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) 110px minmax(150px, 1.3fr) minmax(220px, 2fr) 16px;
+  grid-template-columns:
+    minmax(180px, 2fr) 110px minmax(150px, 1.3fr) minmax(220px, 2fr)
+    16px;
   gap: 16px;
   align-items: center;
   padding: 14px 18px;
@@ -2039,4 +2052,369 @@ a.campaign-row:hover {
 }
 .membership-actions .row {
   flex-wrap: wrap;
+}
+
+/* Alignement de l'export IA GORA : panneaux continus et fiche en deux colonnes. */
+.chat {
+  gap: 20px;
+}
+.message {
+  align-self: flex-start;
+  min-width: 0;
+  max-width: 90%;
+}
+.message-agent,
+.message-advisor {
+  align-self: flex-end;
+}
+.message .bubble {
+  max-width: none;
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 5px;
+  line-height: 1.65;
+}
+.message-prospect .bubble {
+  background: #f4f2f0;
+}
+.message-agent .bubble {
+  background: #f8f7ff;
+  border-color: #ddd8f8;
+}
+.message-advisor .bubble {
+  background: #f0f8f3;
+  border-color: #c9e3d4;
+}
+.message-agent > .bubble-meta {
+  color: #5142a8;
+  text-align: right;
+}
+.message-advisor > .bubble-meta {
+  color: #1f7a48;
+  text-align: right;
+}
+.message > .bubble-delivery {
+  margin-top: 6px;
+}
+.message-agent > .bubble-delivery,
+.message-advisor > .bubble-delivery {
+  text-align: right;
+}
+.message.dead {
+  opacity: 0.6;
+}
+.bubble-text {
+  overflow-wrap: anywhere;
+}
+.bubble-sources {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #5142a8;
+}
+.chips button {
+  border-radius: 5px;
+  min-height: 28px;
+}
+.agent-mode {
+  margin: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.agent-mode-manual {
+  background: #fdecea;
+}
+.agent-mode strong::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #8a5200;
+}
+.agent-mode-manual strong::before {
+  background: var(--err);
+}
+.agent-mode-auto strong::before {
+  background: #1f7a48;
+}
+.nav-count {
+  border-radius: 4px;
+}
+.today-line {
+  margin-bottom: 24px;
+}
+.bucket-grid {
+  margin-bottom: 24px;
+}
+.today-grid {
+  row-gap: 16px;
+}
+main.page-content.workspace-page {
+  padding: 0;
+}
+.workspace-page .inbox {
+  gap: 0;
+  grid-template-columns: minmax(300px, 32%) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: calc(100dvh - 60px);
+}
+.workspace-page .inbox-list {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+}
+.workspace-page .inbox-detail {
+  border: 0;
+  border-radius: 0;
+  padding: 20px 24px;
+}
+.workspace-page .inbox-detail-head {
+  margin: -20px -24px 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.workspace-page .inbox-detail-title p {
+  margin: 5px 0;
+  font-size: 12.5px;
+}
+.workspace-page .inbox-info {
+  margin: 0 -24px 16px;
+  padding: 16px 24px;
+  border-top: 0;
+  background: var(--bg);
+}
+.workspace-page .inbox-filters {
+  padding: 14px 16px;
+}
+.workspace-page .inbox-row {
+  padding: 16px;
+}
+.workspace-page .inbox-row.selected {
+  background: #f7f8fd;
+}
+.workspace-page .inbox-preview {
+  color: #45403c;
+}
+.workspace-page .chat {
+  padding: 16px 0;
+}
+.inbox-mobile-nav {
+  display: none;
+}
+.recommendation {
+  background: #fff;
+  border-color: #ddd8f8;
+}
+.recommendation-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 18px;
+  margin: -14px -14px 18px;
+  border-bottom: 1px solid #ddd8f8;
+  background: #f2f0fd;
+  border-radius: 7px 7px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #3e34a0;
+}
+.confidence-bar div {
+  background: #6153d4;
+}
+.draft-panel {
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.draft-panel > header {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.draft-panel .draft-text {
+  padding: 20px 18px;
+  background: #fff;
+  line-height: 1.7;
+}
+.draft-panel > textarea {
+  border: 0;
+  border-radius: 0;
+  min-height: 200px;
+  padding: 18px;
+}
+.draft-panel > .row,
+.draft-panel > .draft-reject,
+.draft-panel > p,
+.draft-panel > .error {
+  padding: 12px 18px;
+  margin: 0;
+}
+.draft-panel .draft-footer {
+  margin: 0;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+.draft-panel .draft-footer p {
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+.profile-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+.profile-column {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.profile-column > .card,
+.profile-column > .recommendation {
+  margin: 0;
+}
+.profile-card > h2,
+.profile-card > .row h2,
+.profile-column .card > h2 {
+  margin: 0 0 16px;
+  font-size: 15px;
+}
+.profile-heading-main {
+  flex: 1;
+  min-width: 0;
+}
+.profile-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.profile-recommendation {
+  padding: 0;
+  overflow: hidden;
+}
+.profile-recommendation .recommendation-heading {
+  margin: 0;
+}
+.recommendation-body {
+  padding: 18px;
+}
+.recommendation-body h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.recommendation-body p {
+  margin: 0;
+  line-height: 1.6;
+}
+dl.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+.profile-fields > div {
+  display: block;
+  min-width: 0;
+}
+.profile-fields dt {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.profile-fields dd {
+  overflow-wrap: anywhere;
+}
+.profile-consent {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.profile-consent p {
+  margin: 8px 0 12px;
+}
+.profile-membership {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+.profile-membership h3 {
+  margin-top: 0;
+}
+.profile-membership > p {
+  margin: 8px 0;
+}
+.score-components {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+.profile-edit {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.profile-edit summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.profile-run + .profile-run {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.profile-handoff {
+  padding: 12px 14px;
+  margin: 14px 0;
+  background: #fdf2e0;
+  border: 1px solid #f3e0bd;
+  border-radius: 8px;
+}
+.profile-handoff p:last-child {
+  margin-bottom: 0;
+}
+.profile-card .chat {
+  max-height: 480px;
+  overflow-y: auto;
+}
+.profile-column .pager {
+  flex-wrap: wrap;
+}
+@media (max-width: 1100px) {
+  .profile-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1023px) {
+  .workspace-page .inbox {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-page .inbox[data-selected="true"] .inbox-list {
+    display: none;
+  }
+  .inbox-mobile-nav {
+    display: block;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #fff;
+  }
+  .workspace-page .inbox-detail {
+    padding: 18px 16px;
+  }
+  .workspace-page .inbox-detail-head {
+    margin: -18px -16px 0;
+    padding: 18px 16px;
+  }
+  .workspace-page .inbox-info {
+    margin-inline: -16px;
+    padding-inline: 16px;
+  }
 }

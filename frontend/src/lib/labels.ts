@@ -230,6 +230,8 @@ export const isDemoEmail = (email: string | null | undefined): boolean =>
 
 /** Champs du profil collectés par l'agent (F-09), en français. */
 export const PROFILE_FIELDS: Record<string, string> = {
+  education_level: "Niveau d’études",
+  objective: "Objectif",
   study_level: "Niveau d’études",
   field_of_study: "Domaine d’études",
   goal: "Projet",

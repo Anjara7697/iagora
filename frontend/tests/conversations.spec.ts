@@ -135,6 +135,32 @@ async function open(page: Page) {
   await page.goto("/conversations");
 }
 
+test("mobile : lire le détail puis revenir à la liste sans débordement", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", {
+    name: "Liste des conversations",
+  });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(
+    page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
+  ).toBeVisible();
+  await expect(list).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "← Liste des conversations", exact: true })
+    .click();
+  await expect(list).toBeVisible();
+  expect(calls.posts).toHaveLength(0);
+});
+
 test("lien direct : ouvrir une conversation hors de la page puis afficher une erreur explicite", async ({
   page,
 }) => {

@@ -436,7 +436,7 @@ function Inbox() {
 
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading sr-only">
         <div>
           <span className="eyebrow">Travail · Boîte de réception</span>
           <h1>Conversations</h1>
@@ -445,7 +445,16 @@ function Inbox() {
           </p>
         </div>
       </div>
-      <div className="inbox">
+      {selectedId && (
+        <div className="inbox-mobile-nav">
+          <button
+            onClick={() => router.replace("/conversations", { scroll: false })}
+          >
+            ← Liste des conversations
+          </button>
+        </div>
+      )}
+      <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Liste des conversations">
           <div className="inbox-filters">
             <input

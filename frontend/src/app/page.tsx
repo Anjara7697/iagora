@@ -112,7 +112,11 @@ export default function Home() {
 
       <div className="bucket-grid">
         {BUCKETS.map((b) => (
-          <Link key={b.kind} href="/todo" className="card bucket">
+          <Link
+            key={b.kind}
+            href={`/todo?kind=${b.kind}`}
+            className="card bucket"
+          >
             <span className="bucket-title">
               <span className={`dot tone-${b.tone}`} aria-hidden="true" />
               {b.title}
@@ -238,6 +242,8 @@ export default function Home() {
             <>
               <p className="today-note">
                 <strong>{s.leads}</strong> prospects arrivés sur la période.
+                <br />
+                Répartition par étape actuelle.
               </p>
               {(() => {
                 const rows = FUNNEL.map((step) => ({

@@ -11,6 +11,7 @@ import RunView from "@/components/TraceView";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import {
+  ACTIONS,
   CHANNELS,
   CONSENT,
   CONVERSATION_STATUS,
@@ -41,6 +42,12 @@ export default function ProspectPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [editingMembership, setEditingMembership] = useState<number | null>(
+    null,
+  );
+  const advisors = useApi<Page<{ id: number; username: string }>>(
+    "/advisors?limit=50&offset=0",
+  );
 
   function refreshTracking() {
     setNotice("Suivi enregistré.");
@@ -112,6 +119,13 @@ export default function ProspectPage() {
   const conv = conversation.data;
   const canWrite = user?.role === "ADMIN" || user?.role === "ADVISOR";
   const canGrant = p?.consent_status !== "opted_out" || user?.role === "ADMIN";
+  const current =
+    p?.campaigns.find((m) => m.id === p.current_membership_id) ??
+    p?.campaigns[0];
+  const lastRun = runs.data?.[0];
+  const recommendation =
+    conv?.handoff?.recommended_action ||
+    (lastRun?.action ? label(ACTIONS, lastRun.action) : null);
   return (
     <>
       <Link href="/prospects" className="profile-back">
@@ -133,43 +147,54 @@ export default function ProspectPage() {
                 .slice(0, 2)
                 .toUpperCase() || "?"}
             </span>
-            <div>
+            <div className="profile-heading-main">
               <span className="eyebrow">Fiche prospect · #{p.id}</span>
               <h1>{fullName(p)}</h1>
-              <DemoBadge email={p.email} />
               <div className="row">
+                <DemoBadge email={p.email} />
                 <span className={`badge consent-${p.consent_status}`}>
                   {label(CONSENT, p.consent_status)}
                 </span>
-                <span className="muted">
-                  {p.email || p.phone || "Coordonnées non renseignées"}
-                </span>
+                {current && (
+                  <>
+                    <StageBadge stage={current.conversion_stage} />
+                    <ScoreBadge
+                      total={current.total_score}
+                      level={current.interest_status}
+                    />
+                  </>
+                )}
+                {current?.campaign_name && (
+                  <span className="badge">{current.campaign_name}</span>
+                )}
+                {current?.source_name && (
+                  <span className="badge">{current.source_name}</span>
+                )}
               </div>
             </div>
-          </header>
-          {canWrite && (
-            <div className="row">
-              {p.consent_status !== "opted_out" && (
-                <button
-                  className="danger"
-                  disabled={busy}
-                  onClick={() => consentAction("opt-out")}
+            <div className="profile-actions">
+              {conv && (
+                <Link
+                  className="button-link"
+                  href={`/conversations?id=${encodeURIComponent(conv.id)}`}
                 >
-                  Enregistrer une désinscription
-                </button>
+                  Ouvrir dans Conversations
+                </Link>
               )}
-              {p.consent_status !== "granted" && canGrant && (
-                <button
-                  disabled={busy}
-                  onClick={() => consentAction("consent")}
+              {conv?.messages.some(
+                (m) =>
+                  (m.metadata.draft as { status?: string } | undefined)
+                    ?.status === "pending",
+              ) && (
+                <Link
+                  className="button-link"
+                  href={`/todo?id=${encodeURIComponent(`draft:${conv.id}:${conv.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
                 >
-                  {p.consent_status === "opted_out"
-                    ? "Lever la désinscription (administrateur)"
-                    : "Enregistrer un consentement"}
-                </button>
+                  Voir dans la file
+                </Link>
               )}
             </div>
-          )}
+          </header>
           {notice && <p role="status">{notice}</p>}
           {actionError && (
             <p className="error" role="alert">
@@ -182,185 +207,330 @@ export default function ProspectPage() {
               bloquées.
             </div>
           )}
-          <div className="grid2">
-            <div className="card">
-              <h3>Identité</h3>
-              <dl>
-                <dt>Email</dt>
-                <dd>{p.email ?? "-"}</dd>
-                <dt>Téléphone</dt>
-                <dd>{p.phone ?? "-"}</dd>
-                <dt>Consentement</dt>
-                <dd>
-                  {label(CONSENT, p.consent_status)}
-                  {p.consent_source ? ` (${p.consent_source})` : ""}
-                </dd>
-                <dt>Créé le</dt>
-                <dd>{formatDate(p.created_at)}</dd>
-              </dl>
-              <h3>Profil collecté</h3>
-              {Object.keys(p.profile).length === 0 ? (
-                <p className="muted">Rien de collecté pour l&apos;instant.</p>
-              ) : (
-                <dl>
-                  {Object.entries(p.profile).map(([k, v]) => (
-                    <div key={k}>
-                      <dt>{PROFILE_FIELDS[k] ?? k}</dt>
-                      <dd>{String(v)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-            <div className="card">
-              <h3>Pipeline</h3>
-              {p.campaigns.length === 0 && (
-                <p className="warnbox">
-                  À attribuer : choisissez une campagne et une source pour
-                  démarrer le traitement automatique.
-                </p>
-              )}
-              {canWrite && p.campaigns.length === 0 && (
-                <CampaignAttribution
-                  id={p.id}
-                  onDone={() => {
-                    prospect.reload();
-                    conversation.reload();
-                    runs.reload();
-                  }}
+          <div className="profile-columns">
+            <div className="profile-column">
+              <section
+                className="recommendation profile-recommendation"
+                aria-label="Prochaine action recommandée"
+              >
+                <div className="recommendation-heading">
+                  <span className="dot tone-ai" aria-hidden="true" />
+                  Prochaine action recommandée
+                </div>
+                <div className="recommendation-body">
+                  {p.consent_status === "opted_out" ? (
+                    <>
+                      <h2>Respecter la désinscription</h2>
+                      <p>Aucun message ne peut être envoyé à ce prospect.</p>
+                    </>
+                  ) : (
+                    <>
+                      <h2>
+                        {recommendation ??
+                          (p.campaigns.length === 0
+                            ? "Attribuer une campagne et une source"
+                            : "Consulter le parcours du prospect")}
+                      </h2>
+                      {conv?.handoff?.summary ? (
+                        <p>{conv.handoff.summary}</p>
+                      ) : lastRun?.reason ? (
+                        <p>{lastRun.reason}</p>
+                      ) : (
+                        <p className="muted">
+                          Aucune recommandation de l’agent enregistrée pour
+                          l’instant.
+                        </p>
+                      )}
+                      {lastRun && !conv?.handoff && (
+                        <p className="muted">
+                          Dernière décision enregistrée le{" "}
+                          {formatDate(lastRun.started_at)}.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <Loading
+                    loading={runs.loading || conversation.loading}
+                    error={runs.error}
+                    onRetry={runs.reload}
+                  />
+                </div>
+              </section>
+              <section
+                className="card profile-card"
+                aria-label="Profil collecté"
+              >
+                <h2>Profil collecté</h2>
+                {Object.keys(p.profile).length === 0 ? (
+                  <p className="muted">Rien de collecté pour l&apos;instant.</p>
+                ) : (
+                  <dl className="profile-fields">
+                    {Object.entries(p.profile).map(([k, v]) => (
+                      <div key={k}>
+                        <dt>{PROFILE_FIELDS[k] ?? k}</dt>
+                        <dd>
+                          {typeof v === "object" && v !== null
+                            ? JSON.stringify(v)
+                            : String(v)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </section>
+              <section
+                className="card profile-card"
+                aria-label="Conversation du prospect"
+              >
+                <div className="row">
+                  <h2>Conversation</h2>
+                  <span className="spacer" />
+                  {conv && (
+                    <span className="badge">
+                      {label(CHANNELS, conv.channel)}
+                    </span>
+                  )}
+                </div>
+                <Loading
+                  loading={conversation.loading}
+                  error={
+                    conversation.error?.status === 404
+                      ? null
+                      : conversation.error
+                  }
+                  onRetry={conversation.reload}
                 />
-              )}
-              {p.current_membership_id && (
-                <p className="muted">
-                  Contexte de l’agent : rattachement le plus récemment actif.
-                  Les scores de chaque source restent distincts.
-                </p>
-              )}
-              {p.campaigns.map((m) => (
-                <div key={m.id} className="row">
-                  {m.campaign_id && (
-                    <Link href={`/campaigns/${m.campaign_id}`}>
+                {conversation.error?.status === 404 && (
+                  <p className="muted">Aucune conversation.</p>
+                )}
+                {conv && (
+                  <>
+                    <div className="row">
+                      <span className={`badge conv-${conv.status}`}>
+                        {label(CONVERSATION_STATUS, conv.status)}
+                      </span>
+                      <span className="spacer" />
+                      <button
+                        className="primary"
+                        disabled={
+                          busy ||
+                          p.campaigns.length === 0 ||
+                          conv.status !== "open" ||
+                          p.consent_status === "opted_out" ||
+                          !canWrite
+                        }
+                        onClick={runAgent}
+                      >
+                        {busy ? "L'agent réfléchit…" : "Lancer l'agent"}
+                      </button>
+                    </div>
+                    {user?.role === "VIEWER" && (
+                      <p className="muted">
+                        Votre accès observateur permet de consulter les échanges
+                        et les décisions.
+                      </p>
+                    )}
+                    {conv.handoff && (
+                      <div className="profile-handoff">
+                        <strong>Fiche de transfert</strong> —{" "}
+                        {label(HANDOFF_REASONS, conv.handoff.reason)}
+                        {conv.handoff.pending_question && (
+                          <p>Question : « {conv.handoff.pending_question} »</p>
+                        )}
+                        <p>
+                          <b>Action recommandée :</b>{" "}
+                          {conv.handoff.recommended_action}
+                        </p>
+                      </div>
+                    )}
+                    <ConversationView
+                      messages={conv.messages}
+                      prospectName={fullName(p)}
+                      channel={conv.channel}
+                    />
+                  </>
+                )}
+              </section>
+              <InteractionHistory key={`${p.id}:${revision}`} id={p.id} />
+            </div>
+            <div className="profile-column">
+              <section
+                className="card profile-card"
+                aria-label="Identité et consentement"
+              >
+                <h2>Identité et origine</h2>
+                <dl className="profile-fields">
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{p.email ?? "Non renseigné"}</dd>
+                  </div>
+                  <div>
+                    <dt>Téléphone</dt>
+                    <dd>{p.phone ?? "Non renseigné"}</dd>
+                  </div>
+                  <div>
+                    <dt>Créé le</dt>
+                    <dd>{formatDate(p.created_at)}</dd>
+                  </div>
+                  <div>
+                    <dt>Canal de l’échange</dt>
+                    <dd>
+                      {conv ? label(CHANNELS, conv.channel) : "Non renseigné"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="profile-consent">
+                  <span className="eyebrow">Consentement</span>
+                  <p>
+                    {label(CONSENT, p.consent_status)}
+                    {p.consent_source ? ` · ${p.consent_source}` : ""}
+                  </p>
+                  {canWrite && (
+                    <div className="row">
+                      {p.consent_status !== "opted_out" && (
+                        <button
+                          className="danger"
+                          disabled={busy}
+                          onClick={() => consentAction("opt-out")}
+                        >
+                          Enregistrer une désinscription
+                        </button>
+                      )}
+                      {p.consent_status !== "granted" && canGrant && (
+                        <button
+                          disabled={busy}
+                          onClick={() => consentAction("consent")}
+                        >
+                          {p.consent_status === "opted_out"
+                            ? "Lever la désinscription (administrateur)"
+                            : "Enregistrer un consentement"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+              <section
+                className="card profile-card"
+                aria-label="Parcours commercial"
+              >
+                <h2>Parcours commercial</h2>
+                {p.campaigns.length === 0 && (
+                  <p className="warnbox">
+                    À attribuer : choisissez une campagne et une source pour
+                    démarrer le traitement automatique.
+                  </p>
+                )}
+                {canWrite && p.campaigns.length === 0 && (
+                  <CampaignAttribution
+                    id={p.id}
+                    onDone={() => {
+                      refreshTracking();
+                      conversation.reload();
+                      runs.reload();
+                    }}
+                  />
+                )}
+                {p.current_membership_id && (
+                  <p className="muted">
+                    Contexte de l’agent : rattachement le plus récemment actif.
+                    Les scores de chaque source restent distincts.
+                  </p>
+                )}
+                {p.campaigns.map((m, index) => (
+                  <div key={m.id} className="profile-membership">
+                    <h3>
+                      {m.campaign_id ? (
+                        <Link href={`/campaigns/${m.campaign_id}`}>
+                          {m.campaign_name ?? `Campagne ${m.campaign_id}`}
+                        </Link>
+                      ) : (
+                        `Parcours ${index + 1}`
+                      )}
+                    </h3>
+                    {m.source_name && (
+                      <p className="muted">Source : {m.source_name}</p>
+                    )}
+                    <div className="row">
+                      {m.id === p.current_membership_id && (
+                        <span className="badge">Contexte de l’agent</span>
+                      )}
+                      <StageBadge stage={m.conversion_stage} />
+                      <ScoreBadge
+                        total={m.total_score}
+                        level={m.interest_status}
+                      />
+                    </div>
+                    <p className="score-components">
+                      Intérêt {m.interest_score} · Adéquation {m.fit_score}
+                    </p>
+                    <p>
+                      Conseiller responsable :{" "}
                       <strong>
-                        {m.campaign_name ?? `Campagne ${m.campaign_id}`}
+                        {advisors.data?.items.find(
+                          (a) => a.id === m.assigned_advisor_id,
+                        )?.username ??
+                          (m.assigned_advisor_id
+                            ? `Conseiller #${m.assigned_advisor_id}`
+                            : "Non affecté")}
                       </strong>
-                    </Link>
-                  )}
-                  {m.source_name && <span>Source : {m.source_name}</span>}
-                  {m.id === p.current_membership_id && (
-                    <span className="badge">Contexte de l’agent</span>
-                  )}
-                  <StageBadge stage={m.conversion_stage} />
-                  <ScoreBadge total={m.total_score} level={m.interest_status} />
-                  <span className="muted">
-                    intérêt {m.interest_score} · adéquation {m.fit_score}
-                  </span>
-                </div>
-              ))}
-              {p.campaigns.map((m, index) => (
-                <div key={m.id} className="card">
-                  <h3>
-                    Suivi du parcours {index + 1} ·{" "}
-                    {m.campaign_name ?? `Rattachement ${m.id}`}
-                    {m.source_name ? ` · ${m.source_name}` : ""}
-                  </h3>
-                  <MembershipActions
-                    key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
-                    membership={m}
-                    onDone={refreshTracking}
-                  />
-                  <MembershipHistory
-                    key={`${m.id}:${revision}`}
-                    id={m.id}
-                    index={index + 1}
-                  />
-                </div>
-              ))}
+                    </p>
+                    <details
+                      className="profile-edit"
+                      open={editingMembership === m.id}
+                      onToggle={(e) => {
+                        if (e.currentTarget.open) setEditingMembership(m.id);
+                        else
+                          setEditingMembership((old) =>
+                            old === m.id ? null : old,
+                          );
+                      }}
+                    >
+                      <summary>
+                        Suivi du parcours {m.id} · Affectation et étape
+                      </summary>
+                      <MembershipActions
+                        key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
+                        membership={m}
+                        onDone={refreshTracking}
+                      />
+                    </details>
+                    <MembershipHistory
+                      key={`${m.id}:${revision}`}
+                      id={m.id}
+                      index={index + 1}
+                    />
+                  </div>
+                ))}
+                <p className="muted">
+                  Le score sert à prioriser le suivi du prospect.
+                </p>
+              </section>
+              <section
+                className="card profile-card"
+                aria-label="Décisions de l’agent"
+              >
+                <h2>Décisions de l&apos;agent</h2>
+                <Loading
+                  loading={runs.loading}
+                  error={runs.error}
+                  onRetry={runs.reload}
+                />
+                {runs.data?.length === 0 && (
+                  <p className="muted">
+                    L&apos;agent n&apos;a pas encore traité ce prospect.
+                  </p>
+                )}
+                {runs.data?.map((r) => (
+                  <div key={r.run_id} className="profile-run">
+                    <div className="muted mono">{formatDate(r.started_at)}</div>
+                    <RunView run={r} />
+                    {r.reply && <blockquote>{r.reply}</blockquote>}
+                  </div>
+                ))}
+              </section>
             </div>
           </div>
-
-          <InteractionHistory key={`${p.id}:${revision}`} id={p.id} />
-
-          <h2>Conversation</h2>
-          <Loading loading={conversation.loading} error={null} />
-          {conversation.error?.status === 404 && (
-            <p className="muted">Aucune conversation.</p>
-          )}
-          {conversation.error && conversation.error.status !== 404 && (
-            <p className="error">{conversation.error.message}</p>
-          )}
-          {conv && (
-            <>
-              <div className="row">
-                <span className={`badge conv-${conv.status}`}>
-                  {label(CONVERSATION_STATUS, conv.status)}
-                </span>
-                <span className="muted">
-                  canal {label(CHANNELS, conv.channel)}
-                </span>
-                <Link href={`/conversations?id=${conv.id}`}>
-                  Ouvrir dans Conversations
-                </Link>
-                <span className="spacer" />
-                <button
-                  className="primary"
-                  disabled={
-                    busy ||
-                    p.campaigns.length === 0 ||
-                    conv.status !== "open" ||
-                    p.consent_status === "opted_out" ||
-                    user?.role === "VIEWER"
-                  }
-                  onClick={runAgent}
-                >
-                  {busy ? "L'agent réfléchit…" : "Lancer l'agent"}
-                </button>
-              </div>
-              {user?.role === "VIEWER" && (
-                <p className="muted">
-                  Votre accès observateur permet de consulter les échanges et
-                  les décisions.
-                </p>
-              )}
-              {conv.handoff && (
-                <div className="card warnbox">
-                  <strong>Fiche de transfert</strong> —{" "}
-                  {label(HANDOFF_REASONS, conv.handoff.reason)}
-                  {conv.handoff.pending_question && (
-                    <p>Question : « {conv.handoff.pending_question} »</p>
-                  )}
-                  <p>{conv.handoff.summary}</p>
-                  <p>
-                    <b>Action recommandée :</b>{" "}
-                    {conv.handoff.recommended_action}
-                  </p>
-                </div>
-              )}
-              <ConversationView
-                messages={conv.messages}
-                prospectName={fullName(p)}
-                channel={conv.channel}
-              />
-            </>
-          )}
-
-          <h2>Décisions de l&apos;agent</h2>
-          <Loading
-            loading={runs.loading}
-            error={runs.error}
-            onRetry={runs.reload}
-          />
-          {runs.data?.length === 0 && (
-            <p className="muted">
-              L&apos;agent n&apos;a pas encore traité ce prospect.
-            </p>
-          )}
-          {runs.data?.map((r) => (
-            <div key={r.run_id} className="card">
-              <div className="muted">{formatDate(r.started_at)}</div>
-              <RunView run={r} />
-              {r.reply && <blockquote>{r.reply}</blockquote>}
-            </div>
-          ))}
         </>
       )}
     </>
