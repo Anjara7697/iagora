@@ -113,7 +113,9 @@ visible dans les prospects et dans « À traiter » ; la retrouver via son ident
 
 1. Crée une session guidée, ou utilise la session configurée.
 2. Livre dans la boîte fictive les messages **déjà autorisés** via `/dispatch`.
-   Ce raccord n’appelle pas le LLM et n’approuve aucun brouillon. Il permet à la
+   Le worker SMTP ordinaire exclut ces sessions pour ne pas réclamer ou bloquer
+   leurs messages en attente de livraison fictive. Ce raccord n’appelle pas le LLM
+   et n’approuve aucun brouillon. Il permet à la
    validation faite dans « À traiter » de devenir visible au prospect n8n.
 3. Lit `/exchange`. Le modèle prospect ne reçoit que `id`, `role` et `content`
    des messages de cette vue, avec sa propre fiche privée.

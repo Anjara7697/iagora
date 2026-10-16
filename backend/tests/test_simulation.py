@@ -245,7 +245,12 @@ async def test_simulated_delivery_is_never_selected_by_smtp(
     assert report.sent == 0 and mailbox.sent == []
 
 
-async def test_dispatch_after_todo_approval_does_not_generate_or_approve(client, model, mongo_db):
+async def test_dispatch_after_todo_approval_does_not_generate_or_approve(
+    client, model, mongo_db, session_factory
+):
+    from app.devtools.fakes import FakeEmailClient
+    from app.services.email_sync import deliver_outbox
+
     s = await start(client)
     cid = s["conversation_id"]
     await send(client, cid, s["guide"][0], "one")
@@ -257,6 +262,15 @@ async def test_dispatch_after_todo_approval_does_not_generate_or_approve(client,
     # Validation depuis la file ordinaire, comme un conseiller qui utilise À traiter.
     approved = await client.post(f"/api/v1/conversations/{cid}/drafts/{mid}/approve", json={})
     assert approved.status_code == 200
+    # Le worker SMTP réel ne doit pas réclamer/bloquer ce message avant le polling n8n.
+    mailbox = FakeEmailClient()
+    await deliver_outbox(
+        session_factory,
+        mongo_db,
+        mailbox,
+        get_settings().model_copy(update={"email_send_enabled": True}),
+    )
+    assert mailbox.sent == []
     after = await client.post(f"/api/v1/simulation/{cid}/dispatch")
     assert after.status_code == 200 and len(after.json()["messages"]) == 2
     assert len(model.extract_calls) == calls

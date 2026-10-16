@@ -403,7 +403,11 @@ async def deliver_outbox(
         return report
     sent_this_cycle = 0
     cursor = db[conversations.COLLECTION].find(
-        {"channel": CHANNEL, "messages.metadata.delivery": "not_sent"}
+        {
+            "channel": CHANNEL,
+            "simulation": {"$exists": False},
+            "messages.metadata.delivery": "not_sent",
+        }
     )
     async for doc in cursor:
         for message in _outbound_candidates(doc):
