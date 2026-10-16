@@ -66,3 +66,10 @@ async def exchange(cid: str, session: DbSession, db: MongoDb) -> dict[str, Any]:
 @router.get("/{cid}/report")
 async def report(cid: str, session: DbSession, db: MongoDb) -> dict[str, Any]:
     return await simulation.report(session, db, cid)
+
+
+@router.post("/{cid}/dispatch")
+async def dispatch(cid: str, session: DbSession, db: MongoDb) -> dict[str, Any]:
+    """Livre seulement les messages déjà autorisés, sans appel LLM ni validation implicite."""
+    await simulation.dispatch(session, db, cid)
+    return await simulation.exchange(session, db, cid)
