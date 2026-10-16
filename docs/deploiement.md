@@ -55,18 +55,43 @@ deploy/deploy.sh dev          # branche à déployer (dev pour l'environnement d
 Le script : récupère le code (fast-forward uniquement), sauvegarde, construit les images, applique les
 migrations (service `migrate`), démarre, puis attend `/api/v1/health/ready`.
 
-## 4. Reverse proxy
+## 4. Reverse proxy (Caddy)
 
-Le proxy doit router, pour le domaine de l'environnement :
+Ajouter un **nouveau** bloc de site (ne modifier aucun site existant), par exemple dans un fichier
+importé par le Caddyfile :
 
-| Chemin | Cible |
+```caddyfile
+dev.iagora.neosolve.info {
+	encode gzip
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8120   # IAGORA_API_PORT
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3130   # IAGORA_WEB_PORT
+	}
+}
+```
+
+Caddy obtient le certificat HTTPS tout seul (le DNS doit déjà pointer vers le serveur) et transmet
+`X-Forwarded-For`/`X-Forwarded-Proto`, que l'API lit pour la limitation des connexions. Valider puis
+recharger sans coupure : `caddy validate --config <Caddyfile>` puis `caddy reload --config <Caddyfile>`.
+**Vérifier que `/api/...` atteint bien FastAPI et non la page Next.js** (voir aussi `docs/n8n/README.md`).
+
+## 4 bis. Déploiement automatique (GitHub Actions)
+
+`.github/workflows/deploy-dev.yml` : après une CI verte sur `dev`, le workflow se connecte en SSH et
+lance `deploy/deploy.sh dev`. Environnement GitHub `dev` avec les secrets :
+
+| Secret | Contenu |
 |---|---|
-| `/api/*` | `127.0.0.1:$IAGORA_API_PORT` (garder le préfixe `/api/v1`) |
-| tout le reste | `127.0.0.1:$IAGORA_WEB_PORT` |
+| `DEPLOY_HOST` | adresse du serveur |
+| `DEPLOY_USER` | utilisateur SSH de déploiement |
+| `DEPLOY_PATH` | dossier du dépôt sur le serveur (ex. `/srv/iagora-dev`) |
+| `DEPLOY_SSH_KEY` | clé privée dédiée (ed25519), créée uniquement pour IAGORA |
+| `DEPLOY_KNOWN_HOSTS` | sortie de `ssh-keyscan -t ed25519 <hôte>` (vérifiée une fois à la main) |
 
-et envoyer `X-Forwarded-For` / `X-Forwarded-Proto` (l'API les lit pour la limitation des connexions).
-Le certificat HTTPS est géré par le proxy. **Vérifier que `/api/...` atteint bien FastAPI et non la
-page Next.js** (voir aussi `docs/n8n/README.md`).
+La clé publique correspondante est ajoutée à `~/.ssh/authorized_keys` de l'utilisateur de déploiement.
+Le déploiement de production restera manuel.
 
 ## 5. Première mise en service
 
