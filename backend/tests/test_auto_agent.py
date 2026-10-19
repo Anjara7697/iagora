@@ -7,15 +7,18 @@ import pytest
 from app.agents import auto
 from app.config import Settings, get_settings
 from app.main import app
-from app.models import FollowUp, Prospect
-from app.models.enums import ConsentStatus, FollowUpStatus
-from app.services import agent_settings, follow_ups
+from app.models import Campaign, CampaignProspect, CampaignSource, FollowUp, Prospect
+from app.models.enums import ConsentStatus, ConversionStage, FollowUpStatus
+from app.services import agent_settings, drafts, email_sync, follow_ups, pipeline
 from app.services.agent_settings import AgentMode
+from app.services.errors import ConflictError
+from bson import ObjectId
 from sqlalchemy import delete, select
 
 from .fakes import FakeCalendar, FakeKnowledge
 from .test_agent_workflow import conversation, lead, run, say
 from .test_agent_workflow import env as env  # noqa: F401  (fixture)
+from .test_email import FakeEmailClient
 
 API = "/api/v1"
 # Mercredi 3 mars 2027, 10 h à Paris : dans la fenêtre d'envoi des relances.
@@ -295,3 +298,138 @@ async def test_weekend_window_can_be_opened_for_trials():
         follow_up_window_start_hour=0, follow_up_window_end_hour=24, follow_up_weekdays_only=False
     )
     assert auto.in_send_window(SUNDAY, open_all)
+
+
+@pytest.mark.parametrize("stage", ["converted", "lost"])
+@pytest.mark.parametrize("via_api", [True, False])
+async def test_terminal_stage_cancels_pending_reminders_atomically(
+    client, env, session_factory, mongo_db, stage, via_api
+):
+    pid, mid, cid = await silent_prospect(client, session_factory)
+    if via_api:
+        response = await client.patch(
+            f"{API}/campaign-prospects/{mid}",
+            json={"conversion_stage": stage, "reason": "Fin du parcours"},
+        )
+        assert response.status_code == 200, response.text
+    else:
+        async with session_factory() as s:
+            await pipeline.change_stage(s, mid, ConversionStage(stage), "Fin du parcours")
+    assert await statuses(session_factory, pid) == ["cancelled"]
+    assert (await execute(session_factory, mongo_db, env)).executed == 0
+    assert len(await agent_messages(client, cid)) == 1
+    async with session_factory() as s:
+        with pytest.raises(ConflictError, match="converti ou perdu"):
+            await follow_ups.schedule_follow_up(s, pid, mid, "email", timedelta(days=1), "Suite")
+
+
+@pytest.mark.parametrize("stage", [ConversionStage.CONVERTED, ConversionStage.LOST])
+@pytest.mark.parametrize("unbound", [True, False])
+async def test_worker_rejects_legacy_reminders_for_terminal_context(
+    client, env, session_factory, mongo_db, stage, unbound
+):
+    pid, mid, cid = await silent_prospect(client, session_factory)
+    async with session_factory() as s:
+        membership = await s.get(CampaignProspect, mid)
+        membership.conversion_stage = stage  # ancien état, sans passer par le service
+        reminder = await s.scalar(select(FollowUp).where(FollowUp.prospect_id == pid))
+        if unbound:
+            reminder.campaign_prospect_id = None
+        await s.commit()
+    summary = await execute(session_factory, mongo_db, env)
+    assert summary.executed == 0 and summary.cancelled == 1
+    assert "parcours converti ou perdu" in summary.notes[0]
+    assert await statuses(session_factory, pid) == ["cancelled"]
+    assert len(await agent_messages(client, cid)) == 1
+
+
+async def add_other_membership(session_factory, pid, mid):
+    async with session_factory() as s:
+        old = await s.get(CampaignProspect, mid)
+        source = await s.get(CampaignSource, old.campaign_source_id)
+        campaign = Campaign(name="Autre campagne")
+        s.add(campaign)
+        await s.flush()
+        link = CampaignSource(campaign_id=campaign.id, source_id=source.source_id)
+        s.add(link)
+        await s.flush()
+        other = CampaignProspect(
+            prospect_id=pid,
+            campaign_source_id=link.id,
+            last_seen_at=datetime.now(UTC) + timedelta(minutes=1),
+        )
+        s.add(other)
+        await s.commit()
+        return other.id
+
+
+async def test_converting_one_membership_preserves_another_campaigns_reminder(
+    client, env, session_factory, mongo_db
+):
+    pid, mid, cid = await silent_prospect(client, session_factory)
+    other_id = await add_other_membership(session_factory, pid, mid)
+    async with session_factory() as s:
+        await follow_ups.schedule_follow_up(s, pid, other_id, "email", timedelta(days=-1), "Autre")
+        await pipeline.change_stage(s, mid, ConversionStage.CONVERTED, "Inscription")
+    assert await statuses(session_factory, pid) == ["cancelled", "scheduled"]
+    assert (await execute(session_factory, mongo_db, env)).executed == 1
+
+
+async def test_old_reminder_cannot_run_in_a_different_campaign(
+    client, env, session_factory, mongo_db
+):
+    pid, mid, cid = await silent_prospect(client, session_factory)
+    await add_other_membership(session_factory, pid, mid)
+    summary = await execute(session_factory, mongo_db, env)
+    assert summary.executed == 0 and summary.cancelled == 1
+    assert "contexte commercial a changé" in summary.notes[0]
+    assert len(await agent_messages(client, cid)) == 1
+
+
+async def test_inbound_message_after_conversion_does_not_schedule_a_new_reminder(
+    client, env, session_factory
+):
+    pid, mid, cid = await lead(client, "Bonjour")
+    async with session_factory() as s:
+        await pipeline.change_stage(s, mid, ConversionStage.CONVERTED, "Inscription")
+    response = await run(client, cid)
+    assert response.status_code == 201, response.text
+    assert await statuses(session_factory, pid) == []
+    assert (await client.get(f"{API}/campaign-prospects/{mid}")).json()[
+        "conversion_stage"
+    ] == "converted"
+
+
+@pytest.mark.parametrize("assisted", [False, True])
+async def test_prepared_reminder_is_blocked_before_smtp_after_conversion(
+    client, env, session_factory, mongo_db, assisted
+):
+    pid, mid, cid = await silent_prospect(client, session_factory)
+    async with session_factory() as s:
+        prospect = await s.get(Prospect, pid)
+        prospect.email = "jean@acme-corp.com"
+        await s.commit()
+    if assisted:
+        await agent_settings.set_mode(mongo_db, AgentMode.ASSISTED, None)
+    assert (await execute(session_factory, mongo_db, env)).executed == 1
+    reminder = (await agent_messages(client, cid))[-1]
+    if assisted:
+        await drafts.approve(mongo_db, cid, reminder["id"], 1, None)
+        reminder = (await agent_messages(client, cid))[-1]
+    assert reminder["metadata"]["follow_up"]["membership_id"] == mid
+    async with session_factory() as s:
+        await pipeline.change_stage(s, mid, ConversionStage.CONVERTED, "Inscription")
+    # Isoler la relance du premier message commercial déjà écrit.
+    await mongo_db["conversations"].update_one(
+        {"_id": ObjectId(cid)},
+        {"$set": {"messages": [reminder]}},
+    )
+    transport = FakeEmailClient()
+    report = await email_sync.deliver_outbox(
+        session_factory,
+        mongo_db,
+        transport,
+        Settings(_env_file=None, email_enabled=True, email_send_enabled=True),
+    )
+    assert report.blocked == 1 and report.sent == 0
+    assert transport.sent == []

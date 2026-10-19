@@ -84,3 +84,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build ./backend
+      - name: Image de la console
+        run: |
+          docker build ./frontend \
+            --build-arg NEXT_PUBLIC_API_URL=https://example.invalid/api/v1 \
+            --build-arg NEXT_PUBLIC_ENABLE_SIMULATOR=false
+      - name: Pile de production (validation de la configuration)
+        run: |
+          cp deploy/.env.production.example deploy/.env
+          sed -i 's/^POSTGRES_PASSWORD=$/POSTGRES_PASSWORD=ci/; s/^MONGO_PASSWORD=$/MONGO_PASSWORD=ci/' deploy/.env
+          docker compose -f deploy/compose.prod.yml --env-file deploy/.env config --quiet
