@@ -29,8 +29,9 @@ from app.integrations.email.base import EmailClient, EmailError, InboundEmail, O
 from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import agent_events, agent_settings, conversations
+from app.services import agent_events, agent_settings, conversations, follow_ups
 from app.services.agent_settings import AgentMode
+from app.services.errors import ConflictError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 
 logger = logging.getLogger(__name__)
@@ -315,6 +316,15 @@ async def _deliver_claimed(
         prospect = await get_prospect(session, doc["prospect_id"])
         recipient = (prospect.email or "").lower()
         opted_out = prospect.consent_status is ConsentStatus.OPTED_OUT
+        follow_up_block = None
+        reminder = (message.get("metadata") or {}).get("follow_up")
+        if message["role"] == SenderType.AGENT.value and isinstance(reminder, dict):
+            try:
+                await follow_ups.eligible_membership(
+                    session, prospect.id, reminder.get("membership_id")
+                )
+            except ConflictError as exc:
+                follow_up_block = exc.message
 
     block: str | None = None
     if doc.get("status") == "closed":
@@ -323,6 +333,8 @@ async def _deliver_claimed(
         block = "adresse fictive (démo) : jamais d'envoi réel"
     elif opted_out:
         block = "prospect désinscrit (S-03)"
+    elif follow_up_block is not None:
+        block = follow_up_block
     elif not recipient:
         block = "le prospect n'a pas d'adresse email"
     elif settings.email_sandbox_list and recipient not in settings.email_sandbox_list:

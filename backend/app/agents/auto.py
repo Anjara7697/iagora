@@ -265,6 +265,7 @@ async def run_due_follow_ups(
                     knowledge=knowledge,
                     conversation_id=conv_id,
                     follow_up=True,
+                    follow_up_membership_id=follow_up.campaign_prospect_id,
                 )
             except ConflictError as exc:
                 await _cancel(session, follow_up_id, exc.message)

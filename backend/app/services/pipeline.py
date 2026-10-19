@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import CampaignProspect, CampaignSource, ScoreEvent, StageEvent, User
 from app.models.enums import ConversionStage
 from app.schemas.pipeline import HistoryRead, MembershipUpdate, ScoreEventRead, StageEventRead
-from app.services import campaign_ownership
+from app.services import campaign_ownership, follow_ups
 from app.services.errors import NotFoundError, ValidationFailure
 
 logger = logging.getLogger(__name__)
@@ -77,6 +77,8 @@ async def update_membership(
     if data.conversion_stage is not None:
         _apply_stage(session, membership, data.conversion_stage, data.reason or "", actor.id)
 
+    if membership.conversion_stage in follow_ups.TERMINAL_STAGES:
+        await follow_ups.cancel_for_membership(session, membership.id)
     await session.commit()
     return membership
 
@@ -120,6 +122,8 @@ async def change_stage(
     if membership is None:
         raise NotFoundError(f"Rattachement {membership_id} introuvable")
     _apply_stage(session, membership, stage, reason, actor_user_id)
+    if membership.conversion_stage in follow_ups.TERMINAL_STAGES:
+        await follow_ups.cancel_for_membership(session, membership.id)
     await session.commit()
     return membership
 

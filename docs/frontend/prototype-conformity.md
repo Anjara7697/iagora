@@ -45,7 +45,7 @@ créé pour reproduire les chiffres d'exemple de la maquette.
 | Rendez-vous | Port calendrier non configuré ; parcours Calendar/Zoom réel absent | Accès de test, adaptateurs, réservation, confirmation, rappel et recette de bout en bout. |
 | Agent / Paramètres / équipe / audit / RGPD | Quelques commandes API existent, pas de module complet équivalent à la maquette | Délimiter chaque écran selon les API réelles ; traiter notamment gestion des comptes et effacement/conservation. |
 | SLA, priorité commerciale, intention et confiance par dimension | Certaines priorités de tâches et confiances de brouillon existent ; pas les six dimensions complètes de la maquette | Modéliser et tracer les données avant d'ajouter les filtres/badges correspondants. |
-| Relances arrêtées après conversion | Pas d'annulation explicite dans le changement manuel d'étape ni de garde sur l'étape terminale dans l'exécuteur de relances | Vérifier et corriger ce parcours avec une régression avant la recette SMTP réelle ; ne pas annoncer l'annulation dans l'interface actuelle. |
+| Relances arrêtées après conversion | Annulation des relances programmées du rattachement converti/perdu ; garde à l’exécution et contrôle SMTP des nouveaux messages de relance | Voir [les règles et limites](../follow-ups.md), notamment les anciens brouillons à vérifier avant la recette IONOS. |
 | Email et autres canaux | Code email disponible ; recette IONOS réelle en attente ; autres connecteurs non validés | Accès IONOS, destinataire autorisé et documents métier ; recette réelle puis second canal. |
 
 ## Contradictions entre sources
@@ -68,7 +68,7 @@ créé pour reproduire les chiffres d'exemple de la maquette.
 
 1. Valider les écrans de cette PR avec les rôles ADMIN/ADVISOR/VIEWER et appliquer
    les vérifications bureau/mobile avant fusion.
-2. Traiter les garde-fous de relance après conversion, puis reprendre le lot 3
+2. Recetter les garde-fous de relance après conversion, puis reprendre le lot 3
    IONOS dès réception des accès et documents validés. Cela conditionne une
    démonstration réelle du parcours commercial.
 3. Développer le pilotage sur des indicateurs définis et des données persistées,

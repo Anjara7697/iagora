@@ -245,6 +245,10 @@ Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence
 Fait aussi : déclenchement automatique de l'agent à chaque message du prospect et exécution des relances (fenêtre d'envoi, plafond, mode assisté).
 Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
 
+Les [règles des relances](docs/follow-ups.md) précisent leur arrêt après conversion,
+leur périmètre par rattachement et les contrôles avant envoi email.
+Pour la suite : [recette locale Gemini et IONOS](docs/recette-locale.md).
+
 ### Réception et attribution commerciale
 
 Voir [docs/intake.md](docs/intake.md) : file « À attribuer », rattachement explicite campagne/source,
