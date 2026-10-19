@@ -18,6 +18,7 @@ from app.graph.ports import (
     Passage,
 )
 from app.graph.state import Action, Decision, Qualification, SalesAgentState, TraceEntry
+from app.models.enums import ConversionStage
 
 logger = logging.getLogger(__name__)
 
@@ -280,8 +281,11 @@ class WorkflowNodes:
         text = state.get("reply_text")
         if not text:
             return {"trace": _t("send_message", "aucun message à envoyer")}
+        metadata = dict(state.get("reply_metadata", {}))
+        if state["trigger"] == "follow_up":
+            metadata["follow_up"] = {"membership_id": ctx.membership_id}
         try:
-            await self.deps.messenger.send(ctx, text, state.get("reply_metadata", {}))
+            await self.deps.messenger.send(ctx, text, metadata)
         except MessageBlockedError as exc:
             return {
                 "reply_text": None,
@@ -294,6 +298,8 @@ class WorkflowNodes:
         ctx = state["ctx"]
         if state.get("outcome") == "blocked":
             return {"trace": _t("schedule_followup", "pas de relance : envoi refusé")}
+        if ctx.stage in {ConversionStage.CONVERTED, ConversionStage.LOST}:
+            return {"trace": _t("schedule_followup", "pas de relance : parcours terminé")}
         q = state.get("qualification")
         declined = q is not None and q.intent == "meeting_declined"
         delay = policy.follow_up_delay(state.get("interest_level"), declined=declined)

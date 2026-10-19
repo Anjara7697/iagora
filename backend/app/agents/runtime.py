@@ -19,7 +19,14 @@ from app.models import Channel
 from app.models.enums import ConversationStatus, SenderType
 from app.schemas.agent import AgentRunResult, TraceRead
 from app.schemas.conversation import ConversationCreate
-from app.services import agent_settings, commercial_context, conversations, drafts, lease
+from app.services import (
+    agent_settings,
+    commercial_context,
+    conversations,
+    drafts,
+    follow_ups,
+    lease,
+)
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
@@ -100,6 +107,7 @@ async def _run_agent(
     channel: str | None = None,
     mode: AgentMode | None = None,
     follow_up: bool = False,
+    follow_up_membership_id: int | None = None,
     simulation: bool = False,
     event_id: str | None = None,
 ) -> AgentRunResult:
@@ -136,6 +144,7 @@ async def _run_agent(
         raise ConflictError("Attribuer une campagne et une source avant de lancer l'agent")
     messages = drafts.live_messages(doc.get("messages", []))
     if follow_up:
+        await follow_ups.eligible_membership(session, pid, follow_up_membership_id)
         if not messages or drafts.is_pending(messages[-1]):
             raise ConflictError("Relance impossible : conversation vide ou brouillon en attente")
         if messages[-1]["role"] == SenderType.PROSPECT.value:
