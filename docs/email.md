@@ -29,6 +29,10 @@ ni renvoyé par l'API. Utilisez une **boîte de test dédiée**, pas une boîte 
 
 `python -m app.cli email-sync` exécute un passage (réception puis envoi) à la demande.
 
+**Dossier à surveiller.** `EMAIL_IMAP_FOLDER` (défaut `INBOX`) accepte un sous-dossier, par exemple
+`INBOX/Test`, y compris avec des espaces. Le nom doit être exactement celui renvoyé par le serveur
+(`LIST`) ; un dossier inconnu donne une erreur visible dans le diagnostic. Éviter les accents.
+
 ## Fonctionnement
 
 **Réception.** Chaque email non lu devient un message du prospect (créé s'il est inconnu, avec un
