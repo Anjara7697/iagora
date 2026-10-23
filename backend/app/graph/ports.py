@@ -218,7 +218,7 @@ class Calendar(Protocol):
     """Agenda du conseiller (`advisor_email`) ; à défaut, l'agenda commun configuré."""
 
     async def get_available_slots(
-        self, count: int, *, advisor_email: str | None = None
+        self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
     ) -> list[Slot]: ...
 
     async def book(
@@ -227,6 +227,7 @@ class Calendar(Protocol):
         prospect_name: str | None,
         *,
         advisor_email: str | None = None,
+        advisor_id: int | None = None,
         prospect_email: str | None = None,
     ) -> BookedMeeting: ...
 

@@ -14,11 +14,6 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
 | 4 | `fix/review-lot456-consolidation` | Fiche prospect : désinscription/consentement, campagne liée, lien conversation, libellés | ✅ (interactions et conseiller affecté : voir « Reste ») |
 | 5 | `fix/review-lot456-consolidation` | Index Mongo/PG, filtres prospects, statistiques sans fictifs, `latest_for_prospect` | ✅ partiel |
 | 6 | `fix/review-lot456-consolidation` | Garde-fous de production, limitation de débit login, erreurs génériques, CORS, bail des tâches de fond | ✅ |
-| 2 | `fix/review-lot2-navigation` | Fiche campagne + prospects, titres, tableau de bord, états (chargement/vide/erreur/réessayer), confirmations | ⏳ |
-| 3 | `feat/review-lot3-demo-mode` | Mode démo : drapeau `is_demo`, badges, bandeau, filtre, purge, simulateur abouti | ⏳ |
-| 4 | `fix/review-lot4-prospect-actions` | Fiche prospect : désinscription/consentement, interactions, conseiller affecté, campagne liée | ⏳ |
-| 5 | `fix/review-lot5-backend-perf` | Index Mongo/PG, `/todo`, N+1 campagnes, filtres prospects, endpoint synthèse | ⏳ |
-| 6 | `fix/review-lot6-prod-hardening` | Environnement explicite, limitation de débit login, erreurs génériques, CORS, worker unique | ⏳ |
 
 ## Lot 1 — garde-fous backend (✅)
 
@@ -36,7 +31,7 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
 - **I** Relance : une panne technique la remet à « programmée » au lieu de la perdre.
 - **I** Lever une désinscription (`/consent`) est réservé à un administrateur.
 
-## Lot 2 — navigation et états (⏳)
+## Lot 2 — navigation et états (✅)
 
 - **B** Fiche campagne : ajouter la liste paginée de ses prospects sous les sources ; entonnoir cliquable.
 - **B** Titre d'en-tête et titre de page corrects sur toutes les routes (Connaissances, Intégrations,
@@ -49,7 +44,7 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
   recherche avec délai ; filtres dans l'URL ; liens entre écrans (conversation ↔ fiche ↔ campagne).
 - **I** Boutons non permis masqués selon le rôle (Intégrations, simulateur).
 
-## Lot 3 — mode démo et simulateur (⏳)
+## Lot 3 — mode démo et simulateur (✅)
 
 - **B** Prospects fictifs mélangés aux vrais (listes, KPI, à traiter) : champ `is_demo`, badge « Fictif »,
   filtre, purge (hors production).
@@ -58,7 +53,7 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
 - **B** Programme conservé en changeant de campagne dans le simulateur.
 - **I** Observateur ne peut pas lancer de simulation ; session reprise au rechargement.
 
-## Lots 4 à 6 (⏳)
+## Lots 4 à 6 — plan initial
 
 - **4** Désinscription/consentement/interactions depuis la fiche prospect, conseiller affecté, campagne
   nommée et liée, libellés français, seuils de niveau venant du backend.

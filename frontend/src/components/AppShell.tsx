@@ -58,6 +58,7 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
   {
     name: "Administration",
     items: [
+      { href: "/team", label: "Équipe", adminOnly: true },
       { href: "/integrations", label: "Intégrations", adminOnly: true },
       { label: "Paramètres", soon: true },
     ],
@@ -115,11 +116,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.must_change_password) return;
     api<{ total: number }>("/todo?limit=1")
       .then((page) => setWaiting(page.total))
       .catch(() => setWaiting(null));
   }, [user, pathname]);
+
+  // Mot de passe temporaire : seul « Mon compte » est accessible tant qu'il n'est pas changé.
+  const mustChange = !!user?.must_change_password;
+  useEffect(() => {
+    if (mustChange && pathname !== "/account") router.replace("/account");
+  }, [mustChange, pathname, router]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -231,10 +238,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
           )}
-          <AgentModeCard
-            readOnly={user.role === "VIEWER"}
-            refreshKey={pathname}
-          />
+          {!mustChange && (
+            <AgentModeCard
+              readOnly={user.role === "VIEWER"}
+              refreshKey={pathname}
+            />
+          )}
         </aside>
         <div className="workspace">
           <header className="app-header">
@@ -281,13 +290,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
               </Link>
             )}
-            <span
+            <Link
+              href="/account"
               className="user-avatar"
-              title={`${user.username} · ${ROLE_LABELS[user.role]}`}
-              aria-hidden="true"
+              title={`${user.username} · ${ROLE_LABELS[user.role]} · Mon compte`}
+              aria-label="Mon compte"
             >
               {initialsOf(user.username)}
-            </span>
+            </Link>
             <span className="badge">{ROLE_LABELS[user.role]}</span>
             <button
               onClick={() => {

@@ -6,13 +6,12 @@ from fastapi import Depends, HTTPException, params, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.defaults import EmptyKnowledgeBase, UnconfiguredCalendar
+from app.agents.defaults import EmptyKnowledgeBase
 from app.config import Settings, get_settings
-from app.core.security import decode_access_token
+from app.core.security import decode_access_claims, password_stamp
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
-from app.integrations.calendar.factory import create_calendar
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
 from app.integrations.embeddings.base import EmbeddingError, EmbeddingModel
@@ -40,11 +39,14 @@ async def get_current_user(
 ) -> User:
     """Utilisateur du jeton. Le rôle est relu en base à chaque requête : une désactivation
     ou un changement de rôle prend effet immédiatement."""
-    user_id = decode_access_token(token, settings)
-    if user_id is None:
+    claims = decode_access_claims(token, settings)
+    if claims is None:
         raise _UNAUTHORIZED
-    user = await session.get(User, user_id)
+    user = await session.get(User, claims[0])
     if user is None or not user.is_active:
+        raise _UNAUTHORIZED
+    # Jeton émis avant un changement de mot de passe : session révoquée.
+    if claims[1] != password_stamp(user.password_changed_at):
         raise _UNAUTHORIZED
     return user
 
@@ -56,6 +58,11 @@ def require_roles(*roles: UserRole) -> params.Depends:
     allowed = frozenset(roles)
 
     async def _check(user: CurrentUser) -> User:
+        if user.must_change_password:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail="Choisissez votre mot de passe (Mon compte) avant de continuer",
+            )
         if user.role not in allowed:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Droits insuffisants")
         return user
@@ -94,14 +101,16 @@ def get_session_factory() -> Callable[[], AsyncSession]:
 
 
 @lru_cache
-def _calendar(settings_key: tuple[str, ...]) -> Calendar:
-    return create_calendar(get_settings()) or UnconfiguredCalendar()
+def _calendar() -> Calendar:
+    from app.services.agenda import ConsoleCalendar
+
+    return ConsoleCalendar(get_settings())
 
 
 def get_calendar() -> Calendar:
-    """Agenda configuré (Google Calendar / Zoom ou démo), sinon « non configuré » : transfert."""
-    s = get_settings()
-    return _calendar((s.calendar_provider, s.calendar_timezone, s.google_calendar_default_id))
+    """Agenda de l'agent : réglé dans la console (à défaut le `.env`), relu à chaque demande.
+    Non branché : la demande de rendez-vous est transférée au conseiller."""
+    return _calendar()
 
 
 async def get_email_client(settings: SettingsDep, db: MongoDb) -> EmailClient | None:

@@ -56,6 +56,28 @@ async function mockApi(
         email: "a@example.com",
       };
     else if (path === "/integrations/email") body = opts.status ?? status();
+    else if (path === "/integrations/calendar") {
+      if (request.method() === "PUT") {
+        opts.saved?.push({ calendar: request.postDataJSON() });
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      body = {
+        provider: "none",
+        source: "console",
+        google_client_id: "",
+        client_secret_set: false,
+        default_user_id: null,
+        redirect_uri: "http://localhost:8000/api/v1/calendar/google/callback",
+        connections: [],
+      };
+    } else if (path === "/advisors")
+      body = {
+        items: [{ id: 2, username: "paul" }],
+        total: 1,
+        limit: 200,
+        offset: 0,
+      };
     else if (path === "/integrations/email/config") {
       if (request.method() === "PUT") {
         const sent = request.postDataJSON();
@@ -119,13 +141,10 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(card.getByText("Prêt à envoyer :")).toBeVisible();
   await expect(card.getByText("Connecté", { exact: true })).toBeVisible();
   // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
-  for (const name of [
-    "Agenda",
-    "Zoom",
-    "Meta Business",
-    "LinkedIn",
-    "Formulaire",
-  ])
+  await expect(
+    page.getByRole("region", { name: "Agenda" }).getByText("Non branché"),
+  ).toBeVisible();
+  for (const name of ["Zoom", "Meta Business", "LinkedIn", "Formulaire"])
     await expect(
       page.getByRole("region", { name }).getByText("À venir"),
     ).toBeVisible();
@@ -228,5 +247,35 @@ test("configurer une boîte depuis la console : détection, test, dossier, enreg
     imap_host: "ssl0.ovh.net",
     imap_folder: "Programm&AOk-",
     sandbox_recipients: ["moi@example.com"],
+  });
+});
+
+test("brancher Google Agenda : mode, application OAuth et agenda par défaut", async ({
+  page,
+}) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const card = page.getByRole("region", { name: "Agenda" });
+  await card.getByLabel("Mode").selectOption("google");
+  await expect(
+    card.getByText("/api/v1/calendar/google/callback"),
+  ).toBeVisible();
+  await card
+    .getByLabel("Identifiant client OAuth Google")
+    .fill("cid.apps.googleusercontent.com");
+  await card.getByLabel("Code secret du client").fill("secret-123");
+  await card
+    .getByLabel("Agenda par défaut (prospect sans conseiller)")
+    .selectOption({ label: "paul" });
+  await card.getByRole("button", { name: "Enregistrer l’agenda" }).click();
+  await expect(card.getByText(/Agenda enregistré/)).toBeVisible();
+  expect(saved).toContainEqual({
+    calendar: {
+      provider: "google",
+      google_client_id: "cid.apps.googleusercontent.com",
+      google_client_secret: "secret-123",
+      default_user_id: 2,
+    },
   });
 });

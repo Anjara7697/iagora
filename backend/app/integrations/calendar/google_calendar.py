@@ -1,7 +1,9 @@
-"""Client Google Calendar (API officielle, compte de service). Aucun secret n'est journalisé."""
+"""Client Google Calendar (API officielle). Authentification par compte de service ou par le
+jeton OAuth d'un conseiller (`token_provider`). Aucun secret n'est journalisé."""
 
 import json
 import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,9 +28,15 @@ def _parse(value: str) -> datetime:
 
 
 class GoogleCalendarClient:
-    def __init__(self, settings: Settings, http: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        http: httpx.AsyncClient | None = None,
+        token_provider: Callable[[], Awaitable[str]] | None = None,
+    ) -> None:
         self._settings = settings
         self._http = http or httpx.AsyncClient(timeout=TIMEOUT)
+        self._token_provider = token_provider
         self._token: str | None = None
         self._token_expiry = 0.0
 
@@ -48,6 +56,8 @@ class GoogleCalendarClient:
             raise CalendarError("Google Calendar : clé du compte de service illisible") from exc
 
     async def _access_token(self) -> str:
+        if self._token_provider is not None:
+            return await self._token_provider()
         if self._token and time.time() < self._token_expiry - 60:
             return self._token
         cred = self._credentials()

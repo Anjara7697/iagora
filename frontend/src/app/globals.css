@@ -2442,3 +2442,7 @@ dl.profile-fields {
 .guided-simulator .page-heading {
   flex-wrap: wrap;
 }
+
+a.user-avatar {
+  text-decoration: none;
+}
