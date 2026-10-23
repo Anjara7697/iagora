@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCurrentUser } from "@/components/AppShell";
+import { firstNameOf, useCurrentUser } from "@/components/AppShell";
 import { Loading } from "@/components/ui";
 import { SIMULATOR_ENABLED } from "@/lib/api";
 import { FUNNEL, LEVELS, STAGES, formatDate, label } from "@/lib/labels";
@@ -69,7 +69,7 @@ export default function Home() {
   const waiting = todo.data?.total;
   const s = summary.data;
   const incident = incidents.data?.items[0];
-  const firstName = user?.username ? user.username.split(/[.\s_-]/)[0] : "";
+  const firstName = user?.username ? firstNameOf(user.username) : "";
   const retry = () => {
     summary.reload();
     todo.reload();
@@ -130,43 +130,79 @@ export default function Home() {
       </div>
 
       <div className="today-grid">
-        <Card
-          label="Prospects à fort signal"
-          title="Prospects à fort signal"
-          action={
-            <Link className="button-link" href="/prospects">
-              Tous les prospects
-            </Link>
-          }
-        >
-          {s && s.hot_prospects.length === 0 && (
-            <p className="muted today-empty">
-              Aucun prospect qualifié pour l’instant.
-            </p>
-          )}
-          {s?.hot_prospects.map((p) => (
-            <Link key={p.id} href={`/prospects/${p.id}`} className="today-row">
-              <span className="prospect-avatar" aria-hidden="true">
-                {p.name.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="today-row-main">
-                <span className="row">
-                  <strong>{p.name}</strong>
-                  {p.level && (
-                    <span className={`badge level-${p.level}`}>
-                      {label(LEVELS, p.level)}
-                    </span>
+        <div className="today-col">
+          <Card
+            label="Prospects à fort signal"
+            title="Prospects à fort signal"
+            action={
+              <Link className="button-link" href="/prospects">
+                Tous les prospects
+              </Link>
+            }
+          >
+            {s && s.hot_prospects.length === 0 && (
+              <p className="muted today-empty">
+                Aucun prospect qualifié pour l’instant.
+              </p>
+            )}
+            {s?.hot_prospects.map((p) => (
+              <Link
+                key={p.id}
+                href={`/prospects/${p.id}`}
+                className="today-row"
+              >
+                <span className="prospect-avatar" aria-hidden="true">
+                  {p.name.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="today-row-main">
+                  <span className="row">
+                    <strong>{p.name}</strong>
+                    {p.level && (
+                      <span className={`badge level-${p.level}`}>
+                        {label(LEVELS, p.level)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="muted today-row-meta">
+                    {label(STAGES, p.stage)} · score {p.total_score}
+                    {p.campaign_name ? ` · ${p.campaign_name}` : ""}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </Card>
+          <Card label="Relances programmées" title="Relances programmées">
+            {s && s.follow_ups.length === 0 && (
+              <p className="muted today-empty">Aucune relance programmée.</p>
+            )}
+            {s?.follow_ups.map((f) => (
+              <div key={f.id} className="today-row followup">
+                <span className="today-row-main">
+                  <span className="row">
+                    <Link href={`/prospects/${f.prospect_id}`}>
+                      <strong>{f.prospect_name}</strong>
+                    </Link>
+                    <span className="spacer" />
+                    <span className="mono">{formatDate(f.scheduled_at)}</span>
+                  </span>
+                  {f.reason && (
+                    <span className="muted today-row-meta">{f.reason}</span>
                   )}
+                  <span className="muted today-row-meta">
+                    Annulée si le prospect répond, se désinscrit ou est
+                    transféré.
+                  </span>
                 </span>
-                <span className="muted today-row-meta">
-                  {label(STAGES, p.stage)} · score {p.total_score}
-                  {p.campaign_name ? ` · ${p.campaign_name}` : ""}
-                </span>
-              </span>
-            </Link>
-          ))}
-        </Card>
-
+              </div>
+            ))}
+            {s && s.follow_ups_total > s.follow_ups.length && (
+              <p className="muted today-note">
+                + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s)
+                programmée(s).
+              </p>
+            )}
+          </Card>
+        </div>
         <Card
           label="Activité de l'agent"
           title={`Activité de l’agent — dernières ${s?.activity.hours ?? 24} h`}
@@ -197,37 +233,6 @@ export default function Home() {
                   : `${s.activity.sent_without_validation} message(s) envoyé(s) sans validation (mode automatique).`}
               </p>
             </>
-          )}
-        </Card>
-
-        <Card label="Relances programmées" title="Relances programmées">
-          {s && s.follow_ups.length === 0 && (
-            <p className="muted today-empty">Aucune relance programmée.</p>
-          )}
-          {s?.follow_ups.map((f) => (
-            <div key={f.id} className="today-row followup">
-              <span className="today-row-main">
-                <span className="row">
-                  <Link href={`/prospects/${f.prospect_id}`}>
-                    <strong>{f.prospect_name}</strong>
-                  </Link>
-                  <span className="spacer" />
-                  <span className="mono">{formatDate(f.scheduled_at)}</span>
-                </span>
-                {f.reason && (
-                  <span className="muted today-row-meta">{f.reason}</span>
-                )}
-                <span className="muted today-row-meta">
-                  Annulée si le prospect répond, se désinscrit ou est transféré.
-                </span>
-              </span>
-            </div>
-          ))}
-          {s && s.follow_ups_total > s.follow_ups.length && (
-            <p className="muted today-note">
-              + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s)
-              programmée(s).
-            </p>
           )}
         </Card>
 

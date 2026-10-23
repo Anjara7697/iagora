@@ -179,7 +179,7 @@ test("lien direct : ouvrir une conversation hors de la page puis afficher une er
   await expect(page.getByText("Fiche de transfert")).toBeVisible();
   await page.goto("/conversations?id=missing");
   await expect(
-    page.getByRole("alert").filter({ hasText: "Introuvable" }),
+    page.getByRole("alert").filter({ hasText: "Élément introuvable" }),
   ).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Conversation avec Marie Dupont" }),
@@ -238,7 +238,7 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
 test("les filtres sont transmis à l'API", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await page.getByRole("button", { name: "En attente de vous" }).click();
+  await page.getByRole("button", { name: "En attente", exact: true }).click();
   await page.getByRole("button", { name: "Moi", exact: true }).click();
   await page.getByLabel("Canal").selectOption("facebook");
   await page.getByLabel("Rechercher une conversation").fill("marie");
