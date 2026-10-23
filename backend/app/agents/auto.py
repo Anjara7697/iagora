@@ -290,6 +290,7 @@ async def follow_up_loop(settings: Settings) -> None:
     from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
     from app.database.clients import get_mongo_db
     from app.database.session import get_sessionmaker
+    from app.services import runtime_settings
 
     while True:
         try:
@@ -298,13 +299,15 @@ async def follow_up_loop(settings: Settings) -> None:
             ):
                 await asyncio.sleep(settings.follow_up_interval_seconds)
                 continue  # une autre instance exécute les relances
+            # Réglages de la console relus à chaque passage (fenêtre, modèle, clé…).
+            current = await runtime_settings.effective(get_mongo_db(), settings)
             await run_due_follow_ups(
                 lambda: get_sessionmaker()(),
                 get_mongo_db(),
-                llm=get_language_model(settings),
+                llm=get_language_model(current),
                 calendar=get_calendar(),
-                knowledge=get_knowledge_base(settings),
-                settings=settings,
+                knowledge=get_knowledge_base(current),
+                settings=current,
             )
         except asyncio.CancelledError:
             raise
@@ -339,13 +342,15 @@ async def email_loop(settings: Settings) -> None:
     passage : activer, désactiver ou changer de boîte ne demande pas de redémarrage."""
     from app.database.clients import get_mongo_db
     from app.database.session import get_sessionmaker
-    from app.services import email_config
+    from app.services import email_config, runtime_settings
 
     while True:
         poll = settings.email_poll_seconds
         try:
             db = get_mongo_db()
-            effective = await email_config.effective_settings(db, settings)
+            effective = await email_config.effective_settings(
+                db, await runtime_settings.effective(db, settings)
+            )
             poll = effective.email_poll_seconds
             client = create_email_client(effective)
             if client is not None and await lease.acquire(db, "email-worker", poll * 3):
@@ -375,16 +380,18 @@ async def reply_queue_loop(settings: Settings) -> None:
     from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
     from app.database.clients import get_mongo_db
     from app.database.session import get_sessionmaker
+    from app.services import runtime_settings
 
     db = get_mongo_db()
     while True:
         try:
+            current = await runtime_settings.effective(db, settings)
             await run_pending_replies(
                 db=db,
                 session_factory=get_sessionmaker(),
-                llm=get_language_model(settings),
+                llm=get_language_model(current),
                 calendar=get_calendar(),
-                knowledge=get_knowledge_base(settings),
+                knowledge=get_knowledge_base(current),
             )
         except asyncio.CancelledError:
             raise

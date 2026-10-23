@@ -22,7 +22,7 @@ from app.integrations.calendar import google_oauth, zoom_oauth
 from app.integrations.calendar.agenda import DemoCalendar, GoogleZoomCalendar
 from app.integrations.calendar.google_calendar import GoogleCalendarClient
 from app.integrations.calendar.zoom import ZoomClient
-from app.services import calendar_config, zoom_config
+from app.services import calendar_config, runtime_settings, zoom_config
 
 TIMEOUT = 15.0
 
@@ -108,16 +108,18 @@ class ConsoleCalendar:
 
     async def _resolve(self, advisor_id: int | None) -> Calendar:
         db = self._db()
-        cfg = await calendar_config.setup(db, self._s)
+        # Disponibilités (horaires, durée, fuseau) réglées dans Paramètres, relues à chaque demande.
+        settings = await runtime_settings.effective(db, self._s)
+        cfg = await calendar_config.setup(db, settings)
         if cfg.provider == "demo":
             if self._s.environment == "production":
                 raise CalendarNotConfiguredError("Agenda de démonstration interdit en production")
-            return DemoCalendar(self._s)
+            return DemoCalendar(settings)
         if cfg.provider != "google":
             raise CalendarNotConfiguredError(NOT_CONFIGURED)
         zoom = await self._zoom_for(db, advisor_id)
         if cfg.source == "env":  # compte de service du .env
-            return GoogleZoomCalendar(self._s, GoogleCalendarClient(self._s, self._http), zoom)
+            return GoogleZoomCalendar(settings, GoogleCalendarClient(settings, self._http), zoom)
         if not (cfg.client_id and cfg.client_secret):
             raise CalendarNotConfiguredError(
                 "Application Google non renseignée (Intégrations > Agenda)"
@@ -128,7 +130,9 @@ class ConsoleCalendar:
             connection = await calendar_config.get_connection(db, user_id)
             token = calendar_config.refresh_token(self._s, connection) if connection else None
             if token:
-                return self._google_for(db, user_id, token, cfg.client_id, cfg.client_secret, zoom)
+                return self._google_for(
+                    db, settings, user_id, token, cfg.client_id, cfg.client_secret, zoom
+                )
         raise CalendarNotConfiguredError(
             "Le conseiller n'a pas connecté son agenda Google (Mon compte)"
         )
@@ -136,6 +140,7 @@ class ConsoleCalendar:
     def _google_for(
         self,
         db: Any,
+        settings: Settings,
         user_id: int,
         refresh: str,
         client_id: str,
@@ -160,8 +165,8 @@ class ConsoleCalendar:
             self._tokens[key] = (token, time.time() + expires)
             return token
 
-        client = GoogleCalendarClient(self._s, self._http, token_provider=access_token)
-        return GoogleZoomCalendar(self._s, client, zoom, calendar_id="primary")
+        client = GoogleCalendarClient(settings, self._http, token_provider=access_token)
+        return GoogleZoomCalendar(settings, client, zoom, calendar_id="primary")
 
     async def get_available_slots(
         self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
