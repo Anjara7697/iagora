@@ -141,6 +141,11 @@ function Prospects() {
             prospect.
           </p>
         </div>
+        {user && user.role !== "VIEWER" && (
+          <Link href="/prospects/import" className="primary-link">
+            Importer un CSV
+          </Link>
+        )}
       </div>
       <div className="view-toolbar">
         {user && user.role !== "VIEWER" && (

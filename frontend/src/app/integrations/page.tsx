@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CalendarSettings } from "@/components/CalendarSettings";
 import { EmailSettings } from "@/components/EmailSettings";
+import { LeadSources } from "@/components/LeadSources";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -261,18 +262,7 @@ export default function IntegrationsPage() {
           externe.
         </p>
       </Card>
-      <Card
-        region="Formulaire"
-        title="Formulaire du site et import CSV"
-        kind="Source de leads"
-        status={SOON}
-      >
-        <p>
-          L’API de réception des leads existe déjà (<code>POST /prospects</code>
-          ), mais elle exige un compte utilisateur : un jeton de service pour le
-          formulaire reste à ajouter. L’import CSV est prévu.
-        </p>
-      </Card>
+      <LeadSources />
     </>
   );
 }

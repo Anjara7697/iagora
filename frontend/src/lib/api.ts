@@ -37,6 +37,8 @@ type Options = {
   method?: string;
   body?: unknown;
   form?: Record<string, string>;
+  /** Envoi de fichier (multipart) : le navigateur fixe lui-même l'en-tête Content-Type. */
+  multipart?: FormData;
 };
 
 function detailOf(payload: unknown, fallback: string): string {
@@ -54,7 +56,9 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   let body: BodyInit | undefined;
-  if (options.form) {
+  if (options.multipart) {
+    body = options.multipart;
+  } else if (options.form) {
     body = new URLSearchParams(options.form);
   } else if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";

@@ -10,8 +10,10 @@ from app.api.v1 import (
     dashboard,
     demo,
     health,
+    imports,
     integrations,
     knowledge,
+    leads,
     prospects,
     settings,
     simulation,
@@ -26,6 +28,7 @@ api_router.include_router(agent.router)
 api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(users.advisors_router)
+api_router.include_router(imports.router)
 api_router.include_router(prospects.router)
 api_router.include_router(campaigns.router)
 api_router.include_router(campaigns.targets_router)
@@ -41,6 +44,8 @@ api_router.include_router(zoom.admin_router)
 api_router.include_router(zoom.router)
 api_router.include_router(zoom.callback_router)
 api_router.include_router(settings.router)
+api_router.include_router(leads.admin_router)
+api_router.include_router(leads.router)
 api_router.include_router(demo.router)
 api_router.include_router(simulation.router)
 api_router.include_router(dashboard.router)
