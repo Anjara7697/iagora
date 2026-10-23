@@ -24,7 +24,7 @@ async def test_login_by_email_or_username_and_me(make_client):
         token = r.json()["access_token"]
         me = await anon.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert me.json()["role"] == "ADVISOR"
-        assert "password" not in me.text and "hashed" not in me.text
+        assert PASSWORD not in me.text and "hashed" not in me.text
 
 
 async def test_login_failures_are_uniform(make_client):
@@ -92,7 +92,8 @@ async def test_admin_creates_user_who_can_login(make_client):
     r = await admin.post(f"{API}/users", json=body)
     assert r.status_code == 201
     assert r.json()["email"] == "marie@example.com" and r.json()["role"] == "ADVISOR"
-    assert "password" not in r.text
+    assert "a-long-password-1" not in r.text and r.json()["temporary_password"] is None
+    assert r.json()["must_change_password"] is True
     assert (await _login(anon, "marie@example.com", "a-long-password-1")).status_code == 200
     dup = await admin.post(f"{API}/users", json={**body, "username": "marie2"})
     assert dup.status_code == 409
@@ -123,12 +124,23 @@ async def test_admin_can_reset_password_and_change_role(make_client):
     r = await admin.patch(
         f"{API}/users/{uid}", json={"password": "brand-new-password-1", "role": "ADVISOR"}
     )
-    assert r.json()["role"] == "ADVISOR"
+    assert r.json()["role"] == "ADVISOR" and r.json()["must_change_password"] is True
     assert (await _login(anon, "viewer@example.com")).status_code == 401  # ancien mot de passe
-    assert (await _login(anon, "viewer@example.com", "brand-new-password-1")).status_code == 200
-    assert (
-        await viewer.post(f"{API}/prospects", json={"email": "z@example.com"})
-    ).status_code == 201
+    # Les sessions ouvertes avant la réinitialisation sont fermées.
+    assert (await viewer.get(f"{API}/auth/me")).status_code == 401
+    login = await _login(anon, "viewer@example.com", "brand-new-password-1")
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    # Mot de passe temporaire : rien d'autre n'est accessible avant de le changer.
+    lead = {"email": "z@example.com"}
+    assert (await anon.post(f"{API}/prospects", json=lead, headers=headers)).status_code == 403
+    changed = await anon.post(
+        f"{API}/auth/password",
+        json={"current_password": "brand-new-password-1", "new_password": "my-own-password-9"},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    headers = {"Authorization": f"Bearer {changed.json()['access_token']}"}
+    assert (await anon.post(f"{API}/prospects", json=lead, headers=headers)).status_code == 201
 
 
 def test_token_rejects_tampering_expiry_and_wrong_secret():

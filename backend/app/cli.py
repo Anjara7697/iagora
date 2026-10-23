@@ -24,7 +24,7 @@ async def _create_admin(username: str, email: str, password: str) -> None:
         sys.exit(f"Données invalides : {exc.errors()[0]['msg']}")
     try:
         async with get_sessionmaker()() as session:
-            user = await users.create_user(session, data, actor="cli")
+            user, _ = await users.create_user(session, data, actor="cli")
     except ConflictError as exc:
         sys.exit(exc.message)
     finally:

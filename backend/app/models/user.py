@@ -1,4 +1,6 @@
-from sqlalchemy import String, true
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, false, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -18,3 +20,7 @@ class User(TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(str_enum(UserRole, "user_role"))
     is_active: Mapped[bool] = mapped_column(server_default=true())
+    # Mot de passe temporaire (création, réinitialisation) : à changer à la première connexion.
+    must_change_password: Mapped[bool] = mapped_column(server_default=false())
+    # Les jetons émis avant cette date sont refusés (changement de mot de passe, réinitialisation).
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

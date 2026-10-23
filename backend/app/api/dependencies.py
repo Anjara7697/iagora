@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import EmptyKnowledgeBase, UnconfiguredCalendar
 from app.config import Settings, get_settings
-from app.core.security import decode_access_token
+from app.core.security import decode_access_claims, password_stamp
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
@@ -40,11 +40,14 @@ async def get_current_user(
 ) -> User:
     """Utilisateur du jeton. Le rôle est relu en base à chaque requête : une désactivation
     ou un changement de rôle prend effet immédiatement."""
-    user_id = decode_access_token(token, settings)
-    if user_id is None:
+    claims = decode_access_claims(token, settings)
+    if claims is None:
         raise _UNAUTHORIZED
-    user = await session.get(User, user_id)
+    user = await session.get(User, claims[0])
     if user is None or not user.is_active:
+        raise _UNAUTHORIZED
+    # Jeton émis avant un changement de mot de passe : session révoquée.
+    if claims[1] != password_stamp(user.password_changed_at):
         raise _UNAUTHORIZED
     return user
 
@@ -56,6 +59,11 @@ def require_roles(*roles: UserRole) -> params.Depends:
     allowed = frozenset(roles)
 
     async def _check(user: CurrentUser) -> User:
+        if user.must_change_password:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail="Choisissez votre mot de passe (Mon compte) avant de continuer",
+            )
         if user.role not in allowed:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Droits insuffisants")
         return user

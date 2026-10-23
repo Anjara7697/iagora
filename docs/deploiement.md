@@ -101,6 +101,12 @@ docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api
   python -m app.cli create-admin --username admin --email vous@exemple.fr   # saisie du mot de passe
 ```
 
+C'est la **seule** commande de compte à lancer sur le serveur. Ensuite, tout se fait dans la console :
+**Équipe** (administrateur) pour ajouter les conseillers (mot de passe temporaire affiché une fois, à
+changer à la première connexion), changer les rôles, désactiver un compte ou réinitialiser un mot de
+passe ; **Mon compte** (clic sur l'avatar) pour changer le sien. Un changement ou une réinitialisation de
+mot de passe ferme les sessions ouvertes.
+
 Les données de référence (canaux, programmes) sont créées par les migrations. La base de connaissances
 est à alimenter avec les **vrais** documents DATUM (`python -m app.cli kb-ingest …`, voir `docs/rag.md`).
 

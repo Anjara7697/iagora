@@ -214,6 +214,8 @@ const PAGE_TITLES: [string, string][] = [
   ["/todo", "À traiter"],
   ["/knowledge", "Base de connaissances"],
   ["/integrations", "Intégrations"],
+  ["/team", "Équipe"],
+  ["/account", "Mon compte"],
   ["/simulator", "Simulateur"],
 ];
 
@@ -254,6 +256,8 @@ const PAGE_SUBTITLES: [string, string][] = [
   ["/todo", "Validations, escalades et incidents"],
   ["/knowledge", "Connaissances de l’agent"],
   ["/integrations", "Canaux et synchronisation"],
+  ["/team", "Membres, rôles et accès"],
+  ["/account", "Profil et mot de passe"],
   ["/simulator", "États de démo — prospects fictifs"],
 ];
 
