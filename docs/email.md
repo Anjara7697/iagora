@@ -51,6 +51,19 @@ est réclamé de façon atomique avant l'envoi : jamais deux envois. Jamais vers
 Cycle de vie : `not_sent → sending → sent | failed | blocked`. Un refus du serveur est retenté
 (3 essais), puis le message passe à `failed` et reste visible dans la console.
 
+## Refaire un essai sans tout effacer
+
+`python -m app.cli reset-prospect <adresse> [--unread]` supprime **un seul** prospect de test avec ses
+conversations, décisions de l'agent, rendez-vous, relances et consentements ; l'adresse peut ensuite refaire
+tout le parcours. `--unread` remet en « non lu » ses emails dans le dossier surveillé, pour qu'ils soient
+relus. Garde-fous : **refusé en production**, et uniquement pour une adresse fictive (`@demo.example.com`)
+ou listée dans `EMAIL_SANDBOX_RECIPIENTS` (adresses de test). Le reste de la base n'est pas touché.
+
+```powershell
+docker compose exec backend python -m app.cli reset-prospect moi@exemple.com --unread
+docker compose exec backend python -m app.cli email-sync
+```
+
 ## Arrêt d'urgence et désinscription (lot 1)
 
 - Le mode **Manuel** suspend la génération, les relances et les emails de l'agent en attente,

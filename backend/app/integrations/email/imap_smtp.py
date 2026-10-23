@@ -81,6 +81,27 @@ class ImapSmtpClient:
         finally:
             _quiet_logout(conn)
 
+    def _mark_unseen_from(self, address: str) -> int:
+        """Remet « non lus » les messages d'un expéditeur dans le dossier surveillé (essais)."""
+        conn = self._imap()
+        try:
+            self._select(conn)
+            safe = address.replace("\\", "").replace('"', "")
+            status, data = conn.uid("SEARCH", "FROM", f'"{safe}"')
+            if status != "OK" or not data or not data[0]:
+                return 0
+            uids = data[0].split()
+            for uid in uids:
+                conn.uid("STORE", uid, "-FLAGS", "(\\Seen)")
+            return len(uids)
+        except imaplib.IMAP4.error as exc:
+            raise EmailError(f"IMAP : marquage impossible ({type(exc).__name__})") from exc
+        finally:
+            _quiet_logout(conn)
+
+    async def mark_unseen_from(self, address: str) -> int:
+        return await asyncio.to_thread(self._mark_unseen_from, address)
+
     async def fetch_unseen(self, limit: int = 50) -> list[InboundEmail]:
         return await asyncio.to_thread(self._fetch_unseen, limit)
 

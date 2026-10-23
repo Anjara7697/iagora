@@ -47,3 +47,24 @@ async def purge(session: AsyncSession, db: Any) -> dict[str, int]:
     await session.execute(delete(Prospect).where(Prospect.id.in_(ids)))
     await session.commit()
     return {"prospects": len(ids), "conversations": deleted.deleted_count}
+
+
+async def purge_prospect(session: AsyncSession, db: Any, email: str) -> dict[str, int]:
+    """Supprime UN prospect de test (par email) avec toutes ses données : conversations (donc les
+    marqueurs d'idempotence des emails reçus), décisions de l'agent, rendez-vous, relances,
+    consentements. Le même email peut ensuite refaire le parcours depuis zéro."""
+    ids = list(
+        await session.scalars(
+            select(Prospect.id).where(
+                func.lower(func.coalesce(Prospect.email, "")) == email.lower()
+            )
+        )
+    )
+    if not ids:
+        return {"prospects": 0, "conversations": 0}
+    deleted = await db["conversations"].delete_many({"prospect_id": {"$in": ids}})
+    await db["agent_runs"].delete_many({"prospect_id": {"$in": ids}})
+    await db["agent_events"].delete_many({"prospect_id": {"$in": ids}})
+    await session.execute(delete(Prospect).where(Prospect.id.in_(ids)))
+    await session.commit()
+    return {"prospects": len(ids), "conversations": deleted.deleted_count}

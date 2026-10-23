@@ -457,3 +457,23 @@ def test_unknown_imap_folder_is_an_explicit_error(monkeypatch):
     client, _ = _imap_client(monkeypatch, "IAGORA_TEST", "INBOX")
     with pytest.raises(EmailError, match="IAGORA_TEST"):
         asyncio.run(client.fetch_unseen())
+
+
+def test_mark_unseen_from_clears_the_seen_flag_of_that_sender(monkeypatch):
+    class Imap(_FakeImap):
+        def __init__(self):
+            super().__init__("INBOX")
+            self.stored: list[tuple] = []
+
+        def uid(self, command, *args):
+            if command == "SEARCH":
+                return ("OK", [b"4 7"])
+            self.stored.append(args)
+            return ("OK", [])
+
+    client, _ = _imap_client(monkeypatch, "INBOX", "INBOX")
+    fake = Imap()
+    monkeypatch.setattr(client, "_imap", lambda: fake)
+    assert asyncio.run(client.mark_unseen_from("moi@gmail.com")) == 2
+    assert [a[0] for a in fake.stored] == [b"4", b"7"]
+    assert all(a[1:] == ("-FLAGS", "(\\Seen)") for a in fake.stored)
