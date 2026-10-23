@@ -3,7 +3,7 @@
 Elles ne simulent rien : l'agenda signale qu'il n'est pas configuré (le workflow transfère alors
 au conseiller au lieu d'inventer une disponibilité, NF-10), et la base de connaissances est vide
 (une question factuelle est donc transférée, jamais devinée). Les vrais connecteurs viendront
-avec Google Calendar / Zoom et le RAG.
+avec l'agenda (`app/integrations/calendar`) et le RAG.
 """
 
 from typing import Any
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.ports import (
     BookedMeeting,
-    CalendarError,
+    CalendarNotConfiguredError,
     MessageBlockedError,
     Passage,
     ProspectContext,
@@ -24,13 +24,28 @@ from app.services import conversations
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 
+NOT_CONFIGURED = "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+
 
 class UnconfiguredCalendar:
-    async def get_available_slots(self, count: int) -> list[Slot]:
-        raise CalendarError("Agenda non configuré (Google Calendar / Zoom à brancher)")
+    async def get_available_slots(
+        self, count: int, *, advisor_email: str | None = None
+    ) -> list[Slot]:
+        raise CalendarNotConfiguredError(
+            "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+        )
 
-    async def book(self, slot: Slot, prospect_name: str | None) -> BookedMeeting:
-        raise CalendarError("Agenda non configuré (Google Calendar / Zoom à brancher)")
+    async def book(
+        self,
+        slot: Slot,
+        prospect_name: str | None,
+        *,
+        advisor_email: str | None = None,
+        prospect_email: str | None = None,
+    ) -> BookedMeeting:
+        raise CalendarNotConfiguredError(
+            "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+        )
 
 
 class EmptyKnowledgeBase:

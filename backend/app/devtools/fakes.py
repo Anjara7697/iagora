@@ -78,14 +78,25 @@ class FakeCalendar:
         self.slots = make_slots() if slots is None else slots
         self.fail_booking = fail_booking
         self.booked: list[Slot] = []
+        self.advisor_emails: list[str | None] = []
         # Identifiants uniques par instance : plusieurs recettes sur la même base ne se heurtent pas
         # (contrainte d'unicité sur l'identifiant d'événement).
         self._run_id = uuid4().hex[:8]
 
-    async def get_available_slots(self, count: int) -> list[Slot]:
+    async def get_available_slots(
+        self, count: int, *, advisor_email: str | None = None
+    ) -> list[Slot]:
+        self.advisor_emails.append(advisor_email)
         return self.slots[:count]
 
-    async def book(self, slot: Slot, prospect_name: str | None) -> BookedMeeting:
+    async def book(
+        self,
+        slot: Slot,
+        prospect_name: str | None,
+        *,
+        advisor_email: str | None = None,
+        prospect_email: str | None = None,
+    ) -> BookedMeeting:
         if self.fail_booking:
             raise CalendarError("créneau pris entre-temps")
         self.booked.append(slot)

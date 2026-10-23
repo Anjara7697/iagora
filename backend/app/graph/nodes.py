@@ -10,6 +10,7 @@ from typing import Any
 from app.graph import policy, prompts
 from app.graph.ports import (
     CalendarError,
+    CalendarNotConfiguredError,
     ChatMessage,
     Deps,
     HandoffSheet,
@@ -31,6 +32,7 @@ RECOMMENDED_ACTIONS = {
     "situation_sensible": "Reprendre la conversation avec prudence : situation sensible détectée",
     "incertitude": "Relire le dernier message et clarifier la demande du prospect",
     "llm_indisponible": "Répondre au dernier message : l'assistant n'a pas pu le traiter",
+    "agenda_non_configure": "Proposer un rendez-vous manuellement : aucun agenda n'est branché",
     "agenda_indisponible": "Proposer un rendez-vous manuellement : l'agenda est indisponible",
     "aucun_creneau": "Proposer un rendez-vous manuellement : aucun créneau disponible",
     "reservation_impossible": "Confirmer le rendez-vous manuellement : la réservation a échoué",
@@ -316,12 +318,20 @@ class WorkflowNodes:
 
     async def get_calendar_slots(self, state: SalesAgentState) -> Update:
         try:
-            slots = await self.deps.calendar.get_available_slots(NUMBER_OF_SLOTS)
+            slots = await self.deps.calendar.get_available_slots(
+                NUMBER_OF_SLOTS, advisor_email=state["ctx"].advisor_email
+            )
         except CalendarError as exc:
+            # Pas d'agenda branché = transfert normal ; agenda en panne = incident.
+            reason = (
+                "agenda_non_configure"
+                if isinstance(exc, CalendarNotConfiguredError)
+                else "agenda_indisponible"
+            )
             return {
                 "slots": [],
                 "needs_human": True,
-                "handoff_reason": "agenda_indisponible",
+                "handoff_reason": reason,
                 "trace": _t("get_calendar_slots", f"agenda indisponible : {exc}"),
             }
         if not slots:
@@ -365,7 +375,12 @@ class WorkflowNodes:
         assert q is not None and q.chosen_slot is not None  # noqa: S101 - garanti par decide()
         slot = ctx.pending_slots[q.chosen_slot - 1]
         try:
-            meeting = await self.deps.calendar.book(slot, ctx.first_name)
+            meeting = await self.deps.calendar.book(
+                slot,
+                ctx.first_name,
+                advisor_email=ctx.advisor_email,
+                prospect_email=ctx.email,
+            )
         except CalendarError as exc:
             return {
                 "needs_human": True,
