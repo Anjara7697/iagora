@@ -401,3 +401,57 @@ export type MyCalendar = {
   connected_at: string | null;
   last_error: string | null;
 };
+
+export type ZoomMode = "none" | "account" | "advisor";
+
+export type ZoomSettings = {
+  mode: ZoomMode;
+  source: "console" | "env";
+  account_id: string;
+  client_id: string;
+  client_secret_set: boolean;
+  host_user: string;
+  redirect_uri: string;
+  connections: {
+    user_id: number;
+    username: string | null;
+    account_email: string | null;
+    connected_at: string | null;
+    last_error: string | null;
+  }[];
+};
+
+export type MyZoom = {
+  mode: ZoomMode;
+  connected: boolean;
+  account_email: string | null;
+  connected_at: string | null;
+  last_error: string | null;
+};
+
+export type RuntimeSettings = {
+  llm_provider: "gemini" | "openai";
+  llm_model: string;
+  llm_fallback_model: string;
+  llm_temperature: number;
+  agent_auto_reply: boolean;
+  follow_up_window_start_hour: number;
+  follow_up_window_end_hour: number;
+  follow_up_weekdays_only: boolean;
+  follow_up_max_per_silence: number;
+  email_footer: string;
+  email_create_unknown_senders: boolean;
+  email_poll_seconds: number;
+  calendar_timezone: string;
+  calendar_work_days: string;
+  calendar_work_start_hour: number;
+  calendar_work_end_hour: number;
+  calendar_slot_minutes: number;
+  calendar_min_notice_hours: number;
+  calendar_horizon_days: number;
+  calendar_buffer_minutes: number;
+  source?: "console" | "env";
+  gemini_api_key_set?: boolean;
+  openai_api_key_set?: boolean;
+  embedding_model?: string;
+};

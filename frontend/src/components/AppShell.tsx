@@ -60,7 +60,7 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
     items: [
       { href: "/team", label: "Équipe", adminOnly: true },
       { href: "/integrations", label: "Intégrations", adminOnly: true },
-      { label: "Paramètres", soon: true },
+      { href: "/settings", label: "Paramètres", adminOnly: true },
     ],
   },
 ];

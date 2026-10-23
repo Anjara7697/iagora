@@ -35,6 +35,21 @@ Sans agenda connecté pour le conseiller du prospect (ni agenda par défaut), la
 conseiller : escalade normale, pas un incident. Diagnostic : `python -m app.cli calendar-check --advisor
 <email du conseiller>` (ne réserve rien).
 
+## Brancher Zoom depuis la console (sans `.env`)
+
+**Intégrations → Zoom**, trois modes (effet au prochain rendez-vous, sans redémarrage) :
+
+| Mode | À créer sur marketplace.zoom.us | Effet |
+|---|---|---|
+| Aucun | — | Rendez-vous réservé sans lien de visioconférence. |
+| Compte Zoom de l'école | Application **Server-to-Server OAuth** (Account ID, Client ID, Client secret ; droits : créer des réunions pour les utilisateurs du compte, ex. `meeting:write:meeting:admin`) | Réunion créée au nom du conseiller s'il a un compte Zoom dans l'école, sinon de l'**hôte par défaut**. |
+| Compte de chaque conseiller | Application **General** (gérée par l'utilisateur) : Client ID, Client secret, **URL de redirection** affichée dans IAGORA ; droits : `meeting:write:meeting`, `user:read:user` | Chaque conseiller clique **Connecter mon compte Zoom** dans *Mon compte* ; réunion à son nom. Sans compte connecté : rendez-vous sans lien. |
+
+Les secrets sont chiffrés en base et jamais réaffichés. Zoom remplace le jeton de renouvellement à chaque
+usage : IAGORA conserve automatiquement le nouveau. Une autorisation révoquée s'affiche « à reconnecter »
+et la réservation concernée est transférée au conseiller. Zoom peut exiger une URL de redirection en
+HTTPS : utiliser alors l'environnement `dev` publié plutôt que `localhost`.
+
 ## Choisir le mode (`CALENDAR_PROVIDER`, ancien réglage par le `.env`)
 
 Ce réglage ne sert que tant qu'aucun agenda n'est enregistré dans la console.

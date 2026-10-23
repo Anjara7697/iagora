@@ -4,6 +4,7 @@ async function mockApi(
   page: Page,
   calendar: Record<string, unknown>,
   calls: string[] = [],
+  zoom: Record<string, unknown> = { mode: "none", connected: false },
 ) {
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -24,7 +25,11 @@ async function mockApi(
       await route.fulfill({ status: 204, body: "" });
       return;
     } else if (path === "/calendar/me") body = calendar;
-    else if (path === "/calendar/google/connect") {
+    else if (path === "/zoom/me") body = zoom;
+    else if (path === "/zoom/connect") {
+      calls.push("zoom-connect");
+      body = { url: "https://zoom.us/oauth/authorize?x=1" };
+    } else if (path === "/calendar/google/connect") {
       calls.push(`connect:${request.postDataJSON().return_to}`);
       body = { url: "https://accounts.google.com/o/oauth2/v2/auth?x=1" };
     } else if (path === "/todo")
@@ -33,6 +38,13 @@ async function mockApi(
     else code = 404;
     await route.fulfill({ status: code, json: body });
   });
+  await page.route("https://zoom.us/**", (route) =>
+    route.fulfill({
+      status: 200,
+      body: "<h1>Zoom</h1>",
+      contentType: "text/html",
+    }),
+  );
   await page.route("https://accounts.google.com/**", (route) =>
     route.fulfill({
       status: 200,
@@ -96,4 +108,33 @@ test("agenda pas encore branché par l'administrateur", async ({ page }) => {
   await expect(
     page.getByText(/pas encore branché par l’administrateur/),
   ).toBeVisible();
+});
+
+test("mode Zoom par conseiller : connecter son compte Zoom", async ({
+  page,
+}) => {
+  const calls: string[] = [];
+  await mockApi(page, { available: false, connected: false }, calls, {
+    mode: "advisor",
+    connected: false,
+  });
+  await login(page);
+  await page.goto("/account");
+  const section = page.getByRole("region", { name: "Mon Zoom" });
+  await section
+    .getByRole("button", { name: "Connecter mon compte Zoom" })
+    .click();
+  await expect(page).toHaveURL(/zoom\.us/);
+  expect(calls).toContain("zoom-connect");
+});
+
+test("compte Zoom de l'école : pas de section Mon Zoom", async ({ page }) => {
+  await mockApi(page, { available: false, connected: false }, [], {
+    mode: "account",
+    connected: false,
+  });
+  await login(page);
+  await page.goto("/account");
+  await expect(page.getByRole("region", { name: "Mon agenda" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Mon Zoom" })).toHaveCount(0);
 });
