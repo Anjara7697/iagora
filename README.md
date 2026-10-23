@@ -3,6 +3,9 @@
 Prospection, qualification et conversion assistées par IA pour DATUM Academy
 (eBIHAR, Les Compagnons, Master eBIHAR). Projet de stage M2 - voir le cahier des charges v1.0.
 
+**Documentation :** sommaire complet dans [docs/README.md](docs/README.md) — architecture, agent, connecteurs,
+déploiement, passation, conformité.
+
 ## Stack
 
 | Couche | Technologies |
@@ -24,7 +27,7 @@ backend/
     models/         modèles SQLAlchemy
     schemas/        schémas Pydantic
     services/       logique métier
-    integrations/   connecteurs externes (IONOS, Meta, LinkedIn, Calendar, Zoom)
+    integrations/   adaptateurs externes (LLM, embeddings, email, Google Calendar / Zoom, base de connaissances)
     database/       base SQLAlchemy, sessions, clients MongoDB / Redis
     core/           journalisation et utilitaires transverses
     config.py       configuration via variables d'environnement
@@ -240,10 +243,17 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 ## État d'avancement
 
-Fait : initialisation, modèles et migrations, endpoints prospects / campagnes / interactions, authentification et rôles, conversations (MongoDB), étapes, scoring et affectation, workflow LangGraph.
-Fait aussi : RAG (base de connaissances pgvector, ingestion, seuil de pertinence), console web (prospects, conversations, transferts, simulateur).
-Fait aussi : déclenchement automatique de l'agent à chaque message du prospect et exécution des relances (fenêtre d'envoi, plafond, mode assisté).
-Prochaines étapes : connecteurs (email, Meta/LinkedIn), Google Calendar / Zoom, tableau de bord complet.
+État détaillé, ce qui est simulé et ce qui reste : **[docs/passation.md](docs/passation.md)**.
+
+- **Fait et testé** : réception et déduplication, workflow LangGraph, mode assisté et arrêt d'urgence, STOP sur
+  toutes les entrées, RAG, relances, campagnes et affectation, comptes et rôles, console (Aujourd'hui, À traiter,
+  Conversations, Prospects, Campagnes, Base de connaissances, Intégrations, Simulateur), CI.
+- **Codé, à valider en conditions réelles** : connecteur email IMAP/SMTP (boîte IONOS), Google Calendar + Zoom,
+  déploiement sur le serveur.
+- **À faire** : documents officiels pour la base de connaissances, mention IA dans chaque email, effacement RGPD,
+  écrans Rendez-vous / Dashboard / Analytics, connecteurs LinkedIn et Meta (accès API en attente).
+
+Limites connues : [docs/limites-et-dette.md](docs/limites-et-dette.md).
 
 Les [règles des relances](docs/follow-ups.md) précisent leur arrêt après conversion,
 leur périmètre par rattachement et les contrôles avant envoi email.
