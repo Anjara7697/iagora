@@ -147,7 +147,7 @@ la livraison (email IONOS, Meta, LinkedIn) viendra avec les connecteurs.
 | Port | Implémentation actuelle | Suite prévue |
 |---|---|---|
 | `KnowledgeBase` | RAG pgvector si une clé d'embeddings est configurée (voir `docs/rag.md`), sinon vide : toute question factuelle est transférée | Documents officiels de DATUM Academy |
-| `Calendar` | « Non configuré » : toute demande de rendez-vous est transférée | Google Calendar et Zoom |
+| `Calendar` | Google Calendar (agenda du conseiller) + Zoom, ou agenda de démo ; « non configuré » par défaut : toute demande de rendez-vous est transférée. Voir `docs/calendar.md` | — |
 | `Messenger` | Enregistre sans envoyer | Connecteurs email / Meta / LinkedIn |
 | Déclenchement | Automatique à chaque message du prospect enregistré (`AGENT_AUTO_REPLY`) ; manuel possible (`POST /agent/runs`) | Webhooks et boîte email des connecteurs |
 | Relances | Programmées et exécutées par un exécuteur de fond (brouillon en mode assisté) | Envoi réel via les connecteurs |

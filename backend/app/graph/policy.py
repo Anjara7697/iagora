@@ -173,7 +173,8 @@ def decide(state: SalesAgentState) -> Decision:
 
     # 3. Une demande de rendez-vous passe avant la demande générique d'un conseiller : l'agent
     #    organise le rendez-vous lui-même (créneaux réels). Sans agenda, le transfert a lieu
-    #    juste après (motif « agenda_indisponible »), donc le prospect n'est jamais bloqué.
+    #    juste après (motif « agenda_non_configure » ou « agenda_indisponible »), donc le prospect
+    #    n'est jamais bloqué.
     asks_human = q is not None and (q.needs_human or q.intent == "needs_advisor")
     wants_meeting = q is not None and (
         q.intent == "meeting_request"

@@ -41,6 +41,10 @@ class CalendarError(Exception):
     """Agenda indisponible ou réservation impossible."""
 
 
+class CalendarNotConfiguredError(CalendarError):
+    """Aucun agenda branché : ce n'est pas une panne, la demande de rendez-vous est transférée."""
+
+
 # --- Modèle de langage ---
 
 
@@ -129,6 +133,7 @@ class ProspectContext:
     pending_slots: list[Slot]
     email: str | None = None
     phone: str | None = None
+    advisor_email: str | None = None  # agenda du conseiller attribué (rendez-vous)
 
 
 @dataclass(frozen=True)
@@ -210,9 +215,20 @@ class Messenger(Protocol):
 
 
 class Calendar(Protocol):
-    async def get_available_slots(self, count: int) -> list[Slot]: ...
+    """Agenda du conseiller (`advisor_email`) ; à défaut, l'agenda commun configuré."""
 
-    async def book(self, slot: Slot, prospect_name: str | None) -> BookedMeeting: ...
+    async def get_available_slots(
+        self, count: int, *, advisor_email: str | None = None
+    ) -> list[Slot]: ...
+
+    async def book(
+        self,
+        slot: Slot,
+        prospect_name: str | None,
+        *,
+        advisor_email: str | None = None,
+        prospect_email: str | None = None,
+    ) -> BookedMeeting: ...
 
 
 class KnowledgeBase(Protocol):

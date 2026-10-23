@@ -12,6 +12,7 @@ from app.core.security import decode_access_token
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
+from app.integrations.calendar.factory import create_calendar
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
 from app.integrations.embeddings.base import EmbeddingError, EmbeddingModel
@@ -92,8 +93,15 @@ def get_session_factory() -> Callable[[], AsyncSession]:
     return get_sessionmaker()
 
 
+@lru_cache
+def _calendar(settings_key: tuple[str, ...]) -> Calendar:
+    return create_calendar(get_settings()) or UnconfiguredCalendar()
+
+
 def get_calendar() -> Calendar:
-    return UnconfiguredCalendar()
+    """Agenda configuré (Google Calendar / Zoom ou démo), sinon « non configuré » : transfert."""
+    s = get_settings()
+    return _calendar((s.calendar_provider, s.calendar_timezone, s.google_calendar_default_id))
 
 
 def get_email_client(settings: SettingsDep) -> EmailClient | None:

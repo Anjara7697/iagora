@@ -86,9 +86,36 @@ class Settings(BaseSettings):
         "Pour ne plus recevoir de messages de notre part, répondez simplement STOP à cet email."
     )
 
+    # Rendez-vous : `none` (l'agent transfère les demandes au conseiller), `google` (Google Calendar
+    # du conseiller + visioconférence Zoom) ou `demo` (créneaux fictifs, hors production).
+    calendar_provider: Literal["none", "google", "demo"] = "none"
+    calendar_timezone: str = "Europe/Paris"
+    calendar_slot_minutes: int = Field(30, ge=15, le=240)
+    calendar_work_days: str = "1,2,3,4,5"  # jours ISO : 1 = lundi … 7 = dimanche
+    calendar_work_start_hour: int = Field(9, ge=0, le=23)
+    calendar_work_end_hour: int = Field(18, ge=1, le=24)
+    calendar_min_notice_hours: int = Field(4, ge=0, le=240)
+    calendar_horizon_days: int = Field(14, ge=1, le=60)
+    calendar_buffer_minutes: int = Field(0, ge=0, le=120)
+    # Google Calendar : compte de service (clé JSON, par fichier ou en ligne). Chaque conseiller
+    # partage son agenda avec ce compte. L'identifiant d'agenda d'un conseiller est son email.
+    google_service_account_file: str = ""
+    google_service_account_json: SecretStr | None = None
+    google_calendar_default_id: str = ""  # agenda commun si le prospect n'a pas de conseiller
+    # Zoom : application « Server-to-Server OAuth ». Sans identifiants, le rendez-vous est
+    # enregistré dans l'agenda sans lien de visioconférence.
+    zoom_account_id: str = ""
+    zoom_client_id: str = ""
+    zoom_client_secret: SecretStr | None = None
+    zoom_host_user: str = "me"  # hôte par défaut si le conseiller n'a pas de compte Zoom
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None
+
+    @property
+    def calendar_work_weekdays(self) -> set[int]:
+        return {int(d) for d in self.calendar_work_days.split(",") if d.strip().isdigit()}
 
     @property
     def email_sandbox_list(self) -> list[str]:
@@ -107,6 +134,10 @@ class Settings(BaseSettings):
             raise ValueError(
                 "JWT_SECRET_KEY doit être défini (32 caractères minimum) en production"
             )
+        if self.environment == "production" and self.calendar_provider == "demo":
+            raise ValueError("CALENDAR_PROVIDER=demo (créneaux fictifs) est interdit en production")
+        if self.calendar_work_end_hour <= self.calendar_work_start_hour:
+            raise ValueError("CALENDAR_WORK_END_HOUR doit être après CALENDAR_WORK_START_HOUR")
         if self.environment == "production":
             if self.debug:
                 raise ValueError("DEBUG doit être désactivé en production")
