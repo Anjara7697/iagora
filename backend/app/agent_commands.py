@@ -69,3 +69,25 @@ async def cmd_email(*, sync: bool) -> int:
     finally:
         await dispose_engine()
         await close_clients()
+
+
+async def cmd_calendar_check(advisor_email: str | None) -> int:
+    """`calendar-check` : disponibilités et Zoom, sans rien réserver."""
+    from app.integrations.calendar.agenda import GoogleZoomCalendar
+    from app.integrations.calendar.factory import create_calendar
+
+    settings = get_settings()
+    calendar = create_calendar(settings)
+    if calendar is None:
+        print("Agenda non configuré : CALENDAR_PROVIDER=google (ou demo en développement).")
+        return 1
+    if isinstance(calendar, GoogleZoomCalendar):
+        result = await calendar.check(advisor_email)
+        for name, status in result.items():
+            print(f"{name.upper()} : {status}")
+        return 0 if result["google"].startswith("ok") else 1
+    slots = await calendar.get_available_slots(3, advisor_email=advisor_email)
+    print(f"Agenda de démonstration (FICTIF) : {len(slots)} créneau(x) proposé(s)")
+    for slot in slots:
+        print(f"  {slot.start.isoformat()}")
+    return 0

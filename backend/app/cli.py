@@ -74,6 +74,10 @@ def main() -> None:
     )
     sub.add_parser("email-check", help="Tester la connexion IMAP/SMTP (rien n'est lu ni envoyé)")
     sub.add_parser("email-sync", help="Un passage : lire les nouveaux emails, envoyer les validés")
+    cal = sub.add_parser(
+        "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
+    )
+    cal.add_argument("--advisor", help="Email du conseiller dont on teste l'agenda")
     sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
     args = parser.parse_args()
 
@@ -103,6 +107,8 @@ def main() -> None:
         asyncio.run(agent_commands.cmd_run_follow_ups(anytime=args.anytime))
     elif args.command in ("email-check", "email-sync"):
         sys.exit(asyncio.run(agent_commands.cmd_email(sync=args.command == "email-sync")))
+    elif args.command == "calendar-check":
+        sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
         sys.exit(asyncio.run(commands.cmd_kb_eval()))
     elif args.command == "create-admin":
