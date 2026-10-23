@@ -7,7 +7,38 @@ conseiller** avec une fiche de transfert (motif « agenda non branché »).
 
 Code : `app/integrations/calendar/` derrière le port `Calendar` ; le graphe de l'agent n'en dépend pas.
 
-## Choisir le mode (`CALENDAR_PROVIDER`)
+## Brancher l'agenda depuis la console (recommandé, sans `.env`)
+
+**Une fois, par l'administrateur — Google Cloud** (console.cloud.google.com) :
+
+1. Créer (ou choisir) un projet, activer **Google Calendar API**.
+2. *Écran de consentement OAuth* : type **Interne** si les conseillers ont des comptes Google Workspace de
+   l'école (aucune validation Google), sinon **Externe** : en mode « Test », ajouter chaque conseiller comme
+   *utilisateur test* (limite : 100 ; Google peut alors faire expirer l'autorisation au bout de 7 jours —
+   publier l'application pour un usage durable). Champs d'application : `calendar.events`,
+   `calendar.freebusy`, `openid`, `email`.
+3. *Identifiants* → **Créer un ID client OAuth** → type **Application Web** → *URI de redirection
+   autorisés* : l'adresse affichée dans IAGORA (**Intégrations → Agenda**), par exemple
+   `https://dev.iagora.neosolve.info/api/v1/calendar/google/callback` (en local :
+   `http://localhost:8000/api/v1/calendar/google/callback`).
+
+**Dans IAGORA — Intégrations → Agenda** : mode « Google Agenda de chaque conseiller », identifiant et code
+secret du client (chiffré, jamais réaffiché), agenda par défaut pour les prospects sans conseiller,
+**Enregistrer**. Effet immédiat, sans redémarrage. La carte liste les agendas connectés.
+
+**Chaque conseiller — Mon compte → Mon agenda** : **Connecter mon agenda Google**, autoriser chez Google,
+retour automatique dans la console. L'agent utilise alors l'agenda **principal** de ce compte : créneaux
+libres (freeBusy) et réservation. « Déconnecter » révoque l'accès chez Google. Si l'accès est révoqué
+côté Google, la console l'indique (« à reconnecter ») et les demandes de rendez-vous sont transférées.
+
+Sans agenda connecté pour le conseiller du prospect (ni agenda par défaut), la demande est transférée au
+conseiller : escalade normale, pas un incident. Diagnostic : `python -m app.cli calendar-check --advisor
+<email du conseiller>` (ne réserve rien).
+
+## Choisir le mode (`CALENDAR_PROVIDER`, ancien réglage par le `.env`)
+
+Ce réglage ne sert que tant qu'aucun agenda n'est enregistré dans la console.
+
 
 | Valeur | Effet |
 |---|---|
@@ -24,7 +55,7 @@ vendredi), `CALENDAR_WORK_START_HOUR` / `CALENDAR_WORK_END_HOUR` (9 / 18), `CALE
 L'agent propose jusqu'à 3 créneaux, sur des jours différents quand c'est possible. Au moment de réserver,
 la disponibilité est **revérifiée** : si le créneau a été pris entre-temps, la demande est transférée.
 
-## Google Calendar
+## Google Calendar par compte de service (`.env`, alternative)
 
 L'agenda utilisé est celui du conseiller attribué au prospect (son **email de compte IAGORA** = identifiant
 d'agenda). À défaut, l'agenda commun `GOOGLE_CALENDAR_DEFAULT_ID`.

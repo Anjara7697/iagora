@@ -377,3 +377,27 @@ export type EmailTestResult = {
   smtp: string;
   folders: { name: string; label: string }[];
 };
+
+export type CalendarSettings = {
+  provider: "none" | "demo" | "google";
+  source: "console" | "env";
+  google_client_id: string;
+  client_secret_set: boolean;
+  default_user_id: number | null;
+  redirect_uri: string;
+  connections: {
+    user_id: number;
+    username: string | null;
+    account_email: string | null;
+    connected_at: string | null;
+    last_error: string | null;
+  }[];
+};
+
+export type MyCalendar = {
+  available: boolean;
+  connected: boolean;
+  account_email: string | null;
+  connected_at: string | null;
+  last_error: string | null;
+};

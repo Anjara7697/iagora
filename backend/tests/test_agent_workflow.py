@@ -191,7 +191,7 @@ async def test_unrecognised_slot_choice_proposes_again(client, env):
 
 
 class BrokenCalendar(FakeCalendar):
-    async def get_available_slots(self, count, *, advisor_email=None):
+    async def get_available_slots(self, count, *, advisor_email=None, advisor_id=None):
         raise CalendarError("Google Calendar : erreur 503")
 
 

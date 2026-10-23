@@ -6,13 +6,12 @@ from fastapi import Depends, HTTPException, params, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.defaults import EmptyKnowledgeBase, UnconfiguredCalendar
+from app.agents.defaults import EmptyKnowledgeBase
 from app.config import Settings, get_settings
 from app.core.security import decode_access_claims, password_stamp
 from app.database.clients import get_mongo_db
 from app.database.session import get_session, get_sessionmaker
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
-from app.integrations.calendar.factory import create_calendar
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
 from app.integrations.embeddings.base import EmbeddingError, EmbeddingModel
@@ -102,14 +101,16 @@ def get_session_factory() -> Callable[[], AsyncSession]:
 
 
 @lru_cache
-def _calendar(settings_key: tuple[str, ...]) -> Calendar:
-    return create_calendar(get_settings()) or UnconfiguredCalendar()
+def _calendar() -> Calendar:
+    from app.services.agenda import ConsoleCalendar
+
+    return ConsoleCalendar(get_settings())
 
 
 def get_calendar() -> Calendar:
-    """Agenda configuré (Google Calendar / Zoom ou démo), sinon « non configuré » : transfert."""
-    s = get_settings()
-    return _calendar((s.calendar_provider, s.calendar_timezone, s.google_calendar_default_id))
+    """Agenda de l'agent : réglé dans la console (à défaut le `.env`), relu à chaque demande.
+    Non branché : la demande de rendez-vous est transférée au conseiller."""
+    return _calendar()
 
 
 async def get_email_client(settings: SettingsDep, db: MongoDb) -> EmailClient | None:

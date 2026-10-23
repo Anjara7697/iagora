@@ -31,12 +31,24 @@ def _availability_args(s: Settings) -> dict[str, object]:
 
 
 class GoogleZoomCalendar:
-    def __init__(self, settings: Settings, google: GoogleCalendarClient, zoom: ZoomClient) -> None:
+    """`calendar_id` fixé (« primary ») : agenda du compte Google connecté par OAuth. Sinon
+    (compte de service), l'agenda du conseiller est désigné par son email."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        google: GoogleCalendarClient,
+        zoom: ZoomClient,
+        calendar_id: str | None = None,
+    ) -> None:
         self._s = settings
         self._google = google
         self._zoom = zoom
+        self._fixed_calendar = calendar_id
 
     def _calendar_id(self, advisor_email: str | None) -> str:
+        if self._fixed_calendar:
+            return self._fixed_calendar
         calendar_id = (advisor_email or self._s.google_calendar_default_id).strip()
         if not calendar_id:
             raise CalendarError(
@@ -45,7 +57,7 @@ class GoogleZoomCalendar:
         return calendar_id
 
     async def get_available_slots(
-        self, count: int, *, advisor_email: str | None = None
+        self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
     ) -> list[Slot]:
         calendar_id = self._calendar_id(advisor_email)
         now = datetime.now(UTC)
@@ -59,6 +71,7 @@ class GoogleZoomCalendar:
         prospect_name: str | None,
         *,
         advisor_email: str | None = None,
+        advisor_id: int | None = None,
         prospect_email: str | None = None,
     ) -> BookedMeeting:
         calendar_id = self._calendar_id(advisor_email)
@@ -117,7 +130,7 @@ class DemoCalendar:
         self._s = settings
 
     async def get_available_slots(
-        self, count: int, *, advisor_email: str | None = None
+        self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
     ) -> list[Slot]:
         return compute_slots([], now=datetime.now(UTC), count=count, **_availability_args(self._s))  # type: ignore[arg-type]
 
@@ -127,6 +140,7 @@ class DemoCalendar:
         prospect_name: str | None,
         *,
         advisor_email: str | None = None,
+        advisor_id: int | None = None,
         prospect_email: str | None = None,
     ) -> BookedMeeting:
         token = uuid4().hex[:10]
