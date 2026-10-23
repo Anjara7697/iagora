@@ -418,3 +418,62 @@ async def test_an_unexpected_error_while_sending_does_not_leave_the_message_stuc
     await env.deliver(Broken())
     reply = (await env.messages("agent"))[0]
     assert reply["metadata"]["delivery"] == "not_sent"  # sera retenté, pas bloqué en `sending`
+
+
+class _FakeImap:
+    def __init__(self, known: str):
+        self.known = known
+        self.selected: list[str] = []
+
+    def select(self, name: str):
+        self.selected.append(name)
+        return ("OK", [b"0"]) if name == f'"{self.known}"' else ("NO", [b"inexistant"])
+
+    def uid(self, command: str, *args):
+        return ("OK", [b""])
+
+    def logout(self):
+        return ("BYE", [])
+
+
+def _imap_client(monkeypatch, folder: str, known: str):
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+
+    client = ImapSmtpClient(settings(email_imap_folder=folder))
+    fake = _FakeImap(known)
+    monkeypatch.setattr(client, "_imap", lambda: fake)
+    return client, fake
+
+
+def test_imap_folder_with_space_is_quoted(monkeypatch):
+    client, fake = _imap_client(monkeypatch, "INBOX/IA GORA_TEST", "INBOX/IA GORA_TEST")
+    assert asyncio.run(client.fetch_unseen()) == []
+    assert fake.selected == ['"INBOX/IA GORA_TEST"']
+
+
+def test_unknown_imap_folder_is_an_explicit_error(monkeypatch):
+    from app.integrations.email.base import EmailError
+
+    client, _ = _imap_client(monkeypatch, "IAGORA_TEST", "INBOX")
+    with pytest.raises(EmailError, match="IAGORA_TEST"):
+        asyncio.run(client.fetch_unseen())
+
+
+def test_mark_unseen_from_clears_the_seen_flag_of_that_sender(monkeypatch):
+    class Imap(_FakeImap):
+        def __init__(self):
+            super().__init__("INBOX")
+            self.stored: list[tuple] = []
+
+        def uid(self, command, *args):
+            if command == "SEARCH":
+                return ("OK", [b"4 7"])
+            self.stored.append(args)
+            return ("OK", [])
+
+    client, _ = _imap_client(monkeypatch, "INBOX", "INBOX")
+    fake = Imap()
+    monkeypatch.setattr(client, "_imap", lambda: fake)
+    assert asyncio.run(client.mark_unseen_from("moi@gmail.com")) == 2
+    assert [a[0] for a in fake.stored] == [b"4", b"7"]
+    assert all(a[1:] == ("-FLAGS", "(\\Seen)") for a in fake.stored)

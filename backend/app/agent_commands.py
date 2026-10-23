@@ -91,3 +91,44 @@ async def cmd_calendar_check(advisor_email: str | None) -> int:
     for slot in slots:
         print(f"  {slot.start.isoformat()}")
     return 0
+
+
+async def cmd_reset_prospect(email: str, *, unread: bool) -> int:
+    """`reset-prospect` : repartir de zéro pour UNE adresse de test, sans toucher au reste.
+
+    Outil de recette : jamais en production, et uniquement pour une adresse fictive
+    (@demo.example.com) ou déclarée dans EMAIL_SANDBOX_RECIPIENTS (adresses de test)."""
+    from app.integrations.email.factory import create_email_client
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+    from app.services import demo
+
+    settings = get_settings()
+    address = email.strip().lower()
+    if settings.environment == "production":
+        print("Refusé : outil de recette, interdit en production.")
+        return 1
+    if not (demo.is_demo_email(address) or address in settings.email_sandbox_list):
+        print(
+            f"Refusé : {address} n'est ni une adresse fictive (@{demo.DEMO_DOMAIN}) ni dans "
+            "EMAIL_SANDBOX_RECIPIENTS. Seules les adresses de test peuvent être effacées."
+        )
+        return 1
+    try:
+        async with get_sessionmaker()() as session:
+            result = await demo.purge_prospect(session, get_mongo_db(), address)
+        print(
+            f"{result['prospects']} prospect(s) et {result['conversations']} "
+            "conversation(s) supprimé(s)."
+        )
+        if unread:
+            client = create_email_client(settings, require_enabled=False)
+            if not isinstance(client, ImapSmtpClient):
+                print("Boîte email non configurée : emails non remis en non lu.")
+                return 1
+            count = await client.mark_unseen_from(address)
+            print(
+                f"{count} email(s) de {address} remis en non lu dans {settings.email_imap_folder}."
+            )
+    finally:
+        await dispose_engine()
+    return 0

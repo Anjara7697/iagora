@@ -74,6 +74,16 @@ def main() -> None:
     )
     sub.add_parser("email-check", help="Tester la connexion IMAP/SMTP (rien n'est lu ni envoyé)")
     sub.add_parser("email-sync", help="Un passage : lire les nouveaux emails, envoyer les validés")
+    reset = sub.add_parser(
+        "reset-prospect",
+        help="(essais) Effacer UN prospect de test et ses données (--unread : emails non lus)",
+    )
+    reset.add_argument(
+        "email", help="Adresse du prospect de test (liste du bac à sable ou fictive)"
+    )
+    reset.add_argument(
+        "--unread", action="store_true", help="Remettre ses emails non lus dans la boîte surveillée"
+    )
     cal = sub.add_parser(
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
@@ -107,6 +117,8 @@ def main() -> None:
         asyncio.run(agent_commands.cmd_run_follow_ups(anytime=args.anytime))
     elif args.command in ("email-check", "email-sync"):
         sys.exit(asyncio.run(agent_commands.cmd_email(sync=args.command == "email-sync")))
+    elif args.command == "reset-prospect":
+        sys.exit(asyncio.run(agent_commands.cmd_reset_prospect(args.email, unread=args.unread)))
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
