@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { MyCalendar } from "@/components/MyCalendar";
+import { MyZoom } from "@/components/MyZoom";
 import { api, ApiError, setToken } from "@/lib/api";
 
 const ROLE_LABELS = {
@@ -112,6 +113,7 @@ export default function AccountPage() {
         )}
       </section>
       {!user.must_change_password && user.role !== "VIEWER" && <MyCalendar />}
+      {!user.must_change_password && user.role !== "VIEWER" && <MyZoom />}
     </>
   );
 }

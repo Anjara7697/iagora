@@ -121,11 +121,13 @@ def refresh_token(settings: Settings, connection: dict[str, Any]) -> str | None:
 # --- État signé du parcours OAuth ---------------------------------------------------------------
 
 
-def make_state(settings: Settings, user_id: int, return_to: str) -> str:
+def make_state(
+    settings: Settings, user_id: int, return_to: str, purpose: str = STATE_PURPOSE
+) -> str:
     now = datetime.now(UTC)
     claims = {
         "sub": str(user_id),
-        "purpose": STATE_PURPOSE,
+        "purpose": purpose,
         "ret": return_to,
         "iat": now,
         "exp": now + timedelta(minutes=10),
@@ -133,11 +135,13 @@ def make_state(settings: Settings, user_id: int, return_to: str) -> str:
     return jwt.encode(claims, settings.jwt_secret_key.get_secret_value(), algorithm="HS256")
 
 
-def read_state(settings: Settings, state: str) -> tuple[int, str] | None:
+def read_state(
+    settings: Settings, state: str, purpose: str = STATE_PURPOSE
+) -> tuple[int, str] | None:
     try:
         claims = jwt.decode(state, settings.jwt_secret_key.get_secret_value(), algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
-    if claims.get("purpose") != STATE_PURPOSE:
+    if claims.get("purpose") != purpose:
         return None
     return int(claims["sub"]), str(claims.get("ret") or "")

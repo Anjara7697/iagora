@@ -401,3 +401,30 @@ export type MyCalendar = {
   connected_at: string | null;
   last_error: string | null;
 };
+
+export type ZoomMode = "none" | "account" | "advisor";
+
+export type ZoomSettings = {
+  mode: ZoomMode;
+  source: "console" | "env";
+  account_id: string;
+  client_id: string;
+  client_secret_set: boolean;
+  host_user: string;
+  redirect_uri: string;
+  connections: {
+    user_id: number;
+    username: string | null;
+    account_email: string | null;
+    connected_at: string | null;
+    last_error: string | null;
+  }[];
+};
+
+export type MyZoom = {
+  mode: ZoomMode;
+  connected: boolean;
+  account_email: string | null;
+  connected_at: string | null;
+  last_error: string | null;
+};
