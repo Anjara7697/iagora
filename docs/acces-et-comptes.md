@@ -59,9 +59,12 @@ la remplacer et retirer l'ancienne de `~/.ssh/authorized_keys`.
 
 - Aucun compte n'est créé automatiquement. Le premier administrateur se crée en ligne de commande :
   `python -m app.cli create-admin --username … --email …` (mot de passe demandé ou `ADMIN_PASSWORD`).
-- Les autres comptes se créent par l'API `/users` (administrateur). L'écran de gestion de l'équipe est sur
-  la branche `feat/team-management`, non fusionnée.
-- Pour Google Calendar, l'email du compte conseiller dans IAGORA sert d'identifiant d'agenda.
+- Les autres comptes se créent dans **Équipe** (administrateur) : mot de passe temporaire affiché une fois,
+  à changer à la première connexion. Chacun change son mot de passe dans **Mon compte**.
+- Les identifiants des connecteurs (boîte email, Google, Zoom, clé du modèle) se saisissent dans la console :
+  chiffrés en base avec `CONNECTORS_SECRET_KEY` (à défaut dérivée de `JWT_SECRET_KEY`). Changer cette clé
+  rend ces identifiants illisibles : il faut alors les ressaisir.
+- Chaque conseiller connecte son agenda Google et, si besoin, son compte Zoom dans **Mon compte**.
 
 ## Remplacer un secret (procédure)
 

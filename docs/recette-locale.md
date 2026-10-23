@@ -109,6 +109,6 @@ secrets et les données personnelles dans les captures ou rapports partagés.
 | Rendez-vous fictif | | | Non exécuté |
 | STOP | | | Non exécuté |
 | Question inconnue | | | Non exécuté |
-| Réception IONOS | | | Non exécuté |
-| Envoi IONOS | | | Non exécuté |
+| Réception email (boîte de test) | | Message relevé, brouillon préparé | Réussi |
+| Envoi email après validation (boîte de test) | | Réponse reçue dans la boîte du destinataire | Réussi |
 | STOP par email | | | Non exécuté |

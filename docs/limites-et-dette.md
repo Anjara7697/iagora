@@ -10,17 +10,16 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Base de connaissances fictive : les documents officiels de DATUM manquent | [rag.md](rag.md) |
 | P1 | Pas de mention IA systématique dans les emails | [conformite-rgpd.md](conformite-rgpd.md) §3.1 |
 | P1 | Pas d'effacement / anonymisation d'un prospect réel, pas de durée de conservation | [conformite-rgpd.md](conformite-rgpd.md) §3.2 |
-| P1 | Email : jamais testé sur la vraie boîte IONOS | [recette-locale.md](recette-locale.md) |
-| P1 | Rendez-vous Google + Zoom : jamais testé avec de vrais comptes | [calendar.md](calendar.md) |
+| P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
+| P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
-| P2 | LinkedIn et Meta non branchés (accès API non obtenus) | [decisions.md](decisions.md) D-11 |
+| P2 | LinkedIn et Meta non branchés (accès API non obtenus) ; en attendant : formulaire externe, jeton de service ou import CSV | [sources-leads.md](sources-leads.md) |
 | P2 | Le RAG cherche avec le dernier message seul : une question courte (« et le prix ? ») manque de contexte | [rag.md](rag.md) |
 | P2 | Plusieurs emails rapprochés du même prospect reçoivent chacun une réponse | [email.md](email.md) |
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |
-| P3 | Écrans Rendez-vous, Dashboard, Analytics, Paramètres absents ; relances et rendez-vous peu visibles dans la console | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
-| P3 | Gestion de l'équipe et du compte : sur la branche `feat/team-management`, non fusionnée | — |
+| P3 | Écrans Rendez-vous, Dashboard, Analytics absents ; relances et rendez-vous peu visibles dans la console | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
-| P3 | Email en texte brut, pas de pièces jointes ; Microsoft 365 en OAuth non géré | [email.md](email.md) |
+| P3 | Email en texte brut, pas de pièces jointes ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
 
 ## Technique
 
@@ -36,8 +35,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P2 | Jeton de connexion dans `localStorage` au lieu d'un cookie `HttpOnly` | [architecture.md](architecture.md) |
 | P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production | [architecture.md](architecture.md) |
 | P3 | Messages embarqués dans le document de conversation (16 Mo maximum) | [database/README.md](database/README.md) |
-| P3 | Identifiants sensibles à la casse ; pas de changement de mot de passe par l'utilisateur | [revue-qualite.md](revue-qualite.md) |
-| P3 | Pas de jetons de service pour de futurs webhooks | [revue-qualite.md](revue-qualite.md) |
+| P3 | Identifiants sensibles à la casse | [revue-qualite.md](revue-qualite.md) |
 
 ## Tests et recette
 
