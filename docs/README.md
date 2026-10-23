@@ -49,6 +49,8 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 |---|---|
 | [email.md](email.md) | Connecteur IMAP/SMTP : réglage depuis la console, sécurité par défaut, limites |
 | [calendar.md](calendar.md) | Google Calendar et Zoom : réglage, règles de disponibilité, cas d'échec |
+| [sources-leads.md](sources-leads.md) | Jetons de service (formulaire du site, n8n…) et import CSV de prospects |
+| [parametres.md](parametres.md) | Réglages de l'agent depuis la console : IA, relances, emails, disponibilités |
 | [n8n/README.md](n8n/README.md) | Workflow n8n qui joue un prospect fictif |
 
 ## Exploitation et qualité
