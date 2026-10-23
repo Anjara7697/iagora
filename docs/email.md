@@ -29,6 +29,10 @@ ni renvoyé par l'API. Utilisez une **boîte de test dédiée**, pas une boîte 
 
 `python -m app.cli email-sync` exécute un passage (réception puis envoi) à la demande.
 
+**Dossier à surveiller.** `EMAIL_IMAP_FOLDER` (défaut `INBOX`) accepte un sous-dossier, par exemple
+`INBOX/Test`, y compris avec des espaces. Le nom doit être exactement celui renvoyé par le serveur
+(`LIST`) ; un dossier inconnu donne une erreur visible dans le diagnostic. Éviter les accents.
+
 ## Fonctionnement
 
 **Réception.** Chaque email non lu devient un message du prospect (créé s'il est inconnu, avec un
@@ -46,6 +50,19 @@ est réclamé de façon atomique avant l'envoi : jamais deux envois. Jamais vers
 
 Cycle de vie : `not_sent → sending → sent | failed | blocked`. Un refus du serveur est retenté
 (3 essais), puis le message passe à `failed` et reste visible dans la console.
+
+## Refaire un essai sans tout effacer
+
+`python -m app.cli reset-prospect <adresse> [--unread]` supprime **un seul** prospect de test avec ses
+conversations, décisions de l'agent, rendez-vous, relances et consentements ; l'adresse peut ensuite refaire
+tout le parcours. `--unread` remet en « non lu » ses emails dans le dossier surveillé, pour qu'ils soient
+relus. Garde-fous : **refusé en production**, et uniquement pour une adresse fictive (`@demo.example.com`)
+ou listée dans `EMAIL_SANDBOX_RECIPIENTS` (adresses de test). Le reste de la base n'est pas touché.
+
+```powershell
+docker compose exec backend python -m app.cli reset-prospect moi@exemple.com --unread
+docker compose exec backend python -m app.cli email-sync
+```
 
 ## Arrêt d'urgence et désinscription (lot 1)
 

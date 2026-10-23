@@ -42,10 +42,19 @@ class ImapSmtpClient:
         except (imaplib.IMAP4.error, OSError) as exc:
             raise EmailError(f"IMAP : connexion impossible ({type(exc).__name__})") from exc
 
+    def _select(self, conn: imaplib.IMAP4_SSL) -> None:
+        """Ouvre le dossier configuré. Le nom est mis entre guillemets (espaces, « / ») et un
+        dossier introuvable est une erreur explicite, jamais une boîte « vide »."""
+        folder = self._s.email_imap_folder
+        quoted = '"' + folder.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        status, _ = conn.select(quoted)
+        if status != "OK":
+            raise EmailError(f"IMAP : dossier « {folder} » introuvable ou inaccessible")
+
     def _fetch_unseen(self, limit: int) -> list[InboundEmail]:
         conn = self._imap()
         try:
-            conn.select(self._s.email_imap_folder)
+            self._select(conn)
             status, data = conn.uid("SEARCH", "UNSEEN")
             if status != "OK" or not data or not data[0]:
                 return []
@@ -65,12 +74,33 @@ class ImapSmtpClient:
     def _mark_seen(self, uid: str) -> None:
         conn = self._imap()
         try:
-            conn.select(self._s.email_imap_folder)
+            self._select(conn)
             conn.uid("STORE", uid, "+FLAGS", "(\\Seen)")
         except imaplib.IMAP4.error as exc:
             raise EmailError(f"IMAP : marquage impossible ({type(exc).__name__})") from exc
         finally:
             _quiet_logout(conn)
+
+    def _mark_unseen_from(self, address: str) -> int:
+        """Remet « non lus » les messages d'un expéditeur dans le dossier surveillé (essais)."""
+        conn = self._imap()
+        try:
+            self._select(conn)
+            safe = address.replace("\\", "").replace('"', "")
+            status, data = conn.uid("SEARCH", "FROM", f'"{safe}"')
+            if status != "OK" or not data or not data[0]:
+                return 0
+            uids = data[0].split()
+            for uid in uids:
+                conn.uid("STORE", uid, "-FLAGS", "(\\Seen)")
+            return len(uids)
+        except imaplib.IMAP4.error as exc:
+            raise EmailError(f"IMAP : marquage impossible ({type(exc).__name__})") from exc
+        finally:
+            _quiet_logout(conn)
+
+    async def mark_unseen_from(self, address: str) -> int:
+        return await asyncio.to_thread(self._mark_unseen_from, address)
 
     async def fetch_unseen(self, limit: int = 50) -> list[InboundEmail]:
         return await asyncio.to_thread(self._fetch_unseen, limit)
