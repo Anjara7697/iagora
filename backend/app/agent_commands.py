@@ -46,8 +46,9 @@ async def cmd_run_follow_ups(*, anytime: bool) -> None:
 async def cmd_email(*, sync: bool) -> int:
     """`email-check` (test de connexion) et `email-sync` (un passage réception + envoi)."""
     from app.integrations.email.factory import create_email_client
+    from app.services import email_config
 
-    settings = get_settings()
+    settings = await email_config.effective_settings(get_mongo_db(), get_settings())
     client = create_email_client(settings, require_enabled=False)
     if client is None:
         print("Boîte email non configurée : renseignez EMAIL_USERNAME et EMAIL_PASSWORD (.env).")
@@ -100,9 +101,9 @@ async def cmd_reset_prospect(email: str, *, unread: bool) -> int:
     (@demo.example.com) ou déclarée dans EMAIL_SANDBOX_RECIPIENTS (adresses de test)."""
     from app.integrations.email.factory import create_email_client
     from app.integrations.email.imap_smtp import ImapSmtpClient
-    from app.services import demo
+    from app.services import demo, email_config
 
-    settings = get_settings()
+    settings = await email_config.effective_settings(get_mongo_db(), get_settings())
     address = email.strip().lower()
     if settings.environment == "production":
         print("Refusé : outil de recette, interdit en production.")

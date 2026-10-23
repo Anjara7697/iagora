@@ -104,9 +104,12 @@ def get_calendar() -> Calendar:
     return _calendar((s.calendar_provider, s.calendar_timezone, s.google_calendar_default_id))
 
 
-def get_email_client(settings: SettingsDep) -> EmailClient | None:
-    """Client de la boîte email, ou None si le connecteur n'est pas configuré."""
-    return create_email_client(settings, require_enabled=False)
+async def get_email_client(settings: SettingsDep, db: MongoDb) -> EmailClient | None:
+    """Client de la boîte email (console, à défaut `.env`), ou None si elle n'est pas configurée."""
+    from app.services import email_config
+
+    effective = await email_config.effective_settings(db, settings)
+    return create_email_client(effective, require_enabled=False)
 
 
 @lru_cache

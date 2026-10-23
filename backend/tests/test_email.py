@@ -364,8 +364,37 @@ async def test_check_and_manual_sync(client, env):
     assert status["last_run_at"] is not None and status["last_error"] is None
 
 
-def test_the_agent_loop_does_not_start_without_credentials():
-    assert asyncio.run(auto.email_loop(Settings(_env_file=None, email_enabled=True))) is None
+def test_the_loop_stays_idle_without_credentials_and_rereads_its_configuration(monkeypatch):
+    """Sans boîte configurée, la boucle attend sans rien faire ; elle relit la configuration à
+    chaque passage (console ou .env) : une boîte ajoutée plus tard est prise sans redémarrage."""
+    from mongomock_motor import AsyncMongoMockClient
+
+    cycles, reads = [], []
+
+    async def fake_cycle(*args, **kwargs):
+        cycles.append(1)
+
+    async def fake_effective(db, base):
+        reads.append(1)
+        return base
+
+    class Stop(Exception):
+        pass
+
+    async def stop_after_two(_seconds):
+        if len(reads) >= 2:
+            raise Stop
+
+    import app.database.clients as clients
+    from app.services import email_config
+
+    monkeypatch.setattr(auto, "email_cycle", fake_cycle)
+    monkeypatch.setattr(email_config, "effective_settings", fake_effective)
+    monkeypatch.setattr(clients, "get_mongo_db", lambda: AsyncMongoMockClient()["t"])
+    monkeypatch.setattr(auto.asyncio, "sleep", stop_after_two)
+    with pytest.raises(Stop):
+        asyncio.run(auto.email_loop(Settings(_env_file=None, email_enabled=True)))
+    assert reads == [1, 1] and cycles == []
 
 
 async def test_fictitious_addresses_never_receive_a_real_email(env):

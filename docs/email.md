@@ -1,4 +1,4 @@
-# Connecteur email (IONOS)
+# Connecteur email (toute boîte IMAP/SMTP)
 
 Le canal email permet à l'agent de **recevoir** les messages des prospects (IMAP) et d'**envoyer** les
 réponses validées (SMTP). Le code n'utilise que la bibliothèque standard Python (`imaplib`,
@@ -8,30 +8,36 @@ réponses validées (SMTP). Le code n'utilise que la bibliothèque standard Pyth
 
 | Réglage | Défaut | Effet |
 |---|---|---|
-| `EMAIL_ENABLED` | `false` | La boucle de fond ne démarre pas. |
-| `EMAIL_SEND_ENABLED` | `false` | Même activé, **rien n'est envoyé** : les messages validés restent `not_sent`. |
-| `EMAIL_SANDBOX_RECIPIENTS` | vide | Si renseigné, l'agent n'écrit **qu'à** ces adresses ; les autres sont `blocked`. |
+| Relève (`EMAIL_ENABLED`) | désactivée | Rien n'est lu tant qu'elle n'est pas cochée. |
+| Envoi (`EMAIL_SEND_ENABLED`) | désactivé | **Rien n'est envoyé** : les messages validés restent `not_sent`. |
+| Bac à sable (`EMAIL_SANDBOX_RECIPIENTS`) | vide | Si renseigné, l'agent n'écrit **qu'à** ces adresses ; les autres sont `blocked`. |
 
-Le mot de passe (`EMAIL_PASSWORD`) ne se met que dans le `.env` local (S-04). Il n'est jamais journalisé
-ni renvoyé par l'API. Utilisez une **boîte de test dédiée**, pas une boîte de production.
+Le mot de passe est saisi dans la console (chiffré en base) ou, à défaut, dans le `.env` du serveur (S-04).
+Il n'est jamais journalisé ni renvoyé par l'API. Pendant les essais, utilisez une **boîte de test dédiée**.
 
-## Mise en route
+## Mise en route (console, sans `.env`)
 
-1. Renseigner dans `.env` : `EMAIL_USERNAME`, `EMAIL_PASSWORD` (et vérifier hôtes/ports IONOS).
-2. Tester la connexion (rien n'est lu ni envoyé) : `python -m app.cli email-check`
-   ou, dans la console, **Intégrations → Tester la connexion**.
-3. Activer la réception : `EMAIL_ENABLED=true`, redémarrer. Écrire à la boîte depuis une adresse
-   personnelle : un prospect et une conversation apparaissent, l'agent prépare un brouillon
-   (mode assisté).
-4. Valider le brouillon dans « À traiter » : il passe à `not_sent`.
-5. Activer l'envoi, d'abord en bac à sable : `EMAIL_SEND_ENABLED=true` et
-   `EMAIL_SANDBOX_RECIPIENTS=votre.adresse@exemple.com`.
+Un administrateur ouvre **Intégrations → Messagerie → Paramètres de la boîte** :
 
-`python -m app.cli email-sync` exécute un passage (réception puis envoi) à la demande.
+1. Saisir l'adresse et le mot de passe de la boîte, puis **Détecter les serveurs**. La détection marche
+   pour n'importe quelle boîte : fournisseur connu (Gmail, Outlook, Orange…), hébergeur reconnu d'après
+   les serveurs MX du domaine (OVHcloud, IONOS, Google Workspace, Microsoft 365, Gandi…), base publique de
+   Thunderbird, sinon paramètres devinés. Tout reste modifiable (« Serveurs (avancé) »).
+2. **Tester ces paramètres** : connexion IMAP et SMTP, rien n'est lu ni envoyé, rien n'est enregistré.
+   Le test liste les dossiers de la boîte : choisir le **dossier surveillé** dans la liste (noms exacts,
+   accents compris).
+3. Renseigner le bac à sable, cocher « Relever la boîte » puis, plus tard, « Envoyer réellement ».
+4. **Enregistrer**. La relève prend la nouvelle configuration au passage suivant, **sans redémarrage**.
 
-**Dossier à surveiller.** `EMAIL_IMAP_FOLDER` (défaut `INBOX`) accepte un sous-dossier, par exemple
-`INBOX/Test`, y compris avec des espaces. Le nom doit être exactement celui renvoyé par le serveur
-(`LIST`) ; un dossier inconnu donne une erreur visible dans le diagnostic. Éviter les accents.
+Le mot de passe est chiffré en base (clé `CONNECTORS_SECRET_KEY`, à défaut dérivée de `JWT_SECRET_KEY` :
+changer cette clé oblige à ressaisir le mot de passe) et n'est jamais renvoyé par l'API. Gmail, Yahoo et
+iCloud exigent un **mot de passe d'application** ; Microsoft 365 refuse souvent la connexion par mot de
+passe (OAuth : lot suivant).
+
+Les variables `EMAIL_*` du `.env` restent une valeur de départ : elles s'appliquent tant qu'aucune boîte
+n'est enregistrée dans la console (« Oublier cette boîte » y revient).
+
+En ligne de commande : `python -m app.cli email-check` (test) et `email-sync` (un passage immédiat).
 
 ## Fonctionnement
 

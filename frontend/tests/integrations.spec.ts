@@ -15,9 +15,31 @@ const status = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const config = {
+  address: "agent@datum.test",
+  username: null,
+  imap_host: "imap.ionos.fr",
+  imap_port: 993,
+  imap_folder: "INBOX",
+  smtp_host: "smtp.ionos.fr",
+  smtp_port: 587,
+  smtp_security: "starttls",
+  from_name: "DATUM Academy",
+  enabled: true,
+  send_enabled: false,
+  sandbox_recipients: ["moi@example.com"],
+  source: "env",
+  password_set: true,
+};
+
 async function mockApi(
   page: Page,
-  opts: { role?: string; status?: unknown; check?: unknown } = {},
+  opts: {
+    role?: string;
+    status?: unknown;
+    check?: unknown;
+    saved?: unknown[];
+  } = {},
 ) {
   const calls: string[] = [];
   await page.route("**/api/v1/**", async (route) => {
@@ -34,6 +56,33 @@ async function mockApi(
         email: "a@example.com",
       };
     else if (path === "/integrations/email") body = opts.status ?? status();
+    else if (path === "/integrations/email/config") {
+      if (request.method() === "PUT") {
+        const sent = request.postDataJSON();
+        opts.saved?.push(sent);
+        body = { ...sent, source: "console", password_set: true };
+      } else body = config;
+    } else if (path === "/integrations/email/autodetect")
+      body = {
+        provider: "OVHcloud",
+        imap_host: "ssl0.ovh.net",
+        imap_port: 993,
+        smtp_host: "ssl0.ovh.net",
+        smtp_port: 587,
+        smtp_security: "starttls",
+        source: "mx",
+        note: null,
+      };
+    else if (path === "/integrations/email/test")
+      body = {
+        imap: "ok",
+        smtp: "ok",
+        folders: [
+          { name: "INBOX", label: "INBOX" },
+          { name: "INBOX/test", label: "INBOX/test" },
+          { name: "Programm&AOk-", label: "Programmé" },
+        ],
+      };
     else if (path === "/integrations/email/check") {
       calls.push(path);
       body = opts.check ?? { imap: "ok", smtp: "ok" };
@@ -109,7 +158,9 @@ test("tester la connexion affiche IMAP et SMTP", async ({ page }) => {
     check: { imap: "IMAP : identifiants refusés", smtp: "ok" },
   });
   await open(page);
-  await page.getByRole("button", { name: "Tester la connexion" }).click();
+  await page
+    .getByRole("button", { name: "Tester la boîte enregistrée" })
+    .click();
   await expect(page.getByText("✗ IMAP : identifiants refusés")).toBeVisible();
   await expect(page.getByText("✓ connecté")).toBeVisible();
   expect(calls).toEqual(["/integrations/email/check"]);
@@ -135,7 +186,7 @@ test("boîte non configurée : message clair et actions désactivées", async ({
   await open(page);
   await expect(page.getByText(/Boîte non configurée/)).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Tester la connexion" }),
+    page.getByRole("button", { name: "Tester la boîte enregistrée" }),
   ).toBeDisabled();
 });
 
@@ -143,4 +194,39 @@ test("réservé aux administrateurs", async ({ page }) => {
   await mockApi(page, { role: "ADVISOR" });
   await open(page);
   await expect(page.getByText("réservée aux administrateurs")).toBeVisible();
+});
+
+test("configurer une boîte depuis la console : détection, test, dossier, enregistrement", async ({
+  page,
+}) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const form = page.getByRole("region", {
+    name: "Paramètres de la boîte email",
+  });
+  await form.getByLabel("Adresse de la boîte").fill("contact@ecole.example");
+  await form.getByLabel("Mot de passe").fill("secret-123");
+  await form.getByRole("button", { name: "Détecter les serveurs" }).click();
+  await expect(form.getByText(/OVHcloud/)).toBeVisible();
+  await expect(form.getByLabel("Serveur IMAP (réception)")).toHaveValue(
+    "ssl0.ovh.net",
+  );
+  await form.getByRole("button", { name: "Tester ces paramètres" }).click();
+  await expect(
+    form.getByLabel("Résultat du test des paramètres"),
+  ).toContainText("IMAP : ✓ connecté");
+  await form
+    .getByLabel("Dossier surveillé")
+    .selectOption({ label: "Programmé" });
+  await form.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(form.getByText(/Boîte enregistrée/)).toBeVisible();
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({
+    address: "contact@ecole.example",
+    password: "secret-123",
+    imap_host: "ssl0.ovh.net",
+    imap_folder: "Programm&AOk-",
+    sandbox_recipients: ["moi@example.com"],
+  });
 });
