@@ -43,10 +43,10 @@ créé pour reproduire les chiffres d'exemple de la maquette.
 | Doublons à arbitrer | Déduplication technique existante, sans file de comparaison/fusion humaine | Définir les décisions de rapprochement et leur audit, puis développer API et interface ; pas de cinquième compteur fictif. |
 | Dashboard / Analytics | Synthèse actuelle et statistiques de campagnes disponibles ; pages de pilotage distinctes et séries historiques absentes | Définir les périodes, dénominateurs et indicateurs communs, fournir les agrégations puis les vues. |
 | Rendez-vous | Port calendrier non configuré ; parcours Calendar/Zoom réel absent | Accès de test, adaptateurs, réservation, confirmation, rappel et recette de bout en bout. |
-| Agent / Paramètres / équipe / audit / RGPD | Quelques commandes API existent, pas de module complet équivalent à la maquette | Délimiter chaque écran selon les API réelles ; traiter notamment gestion des comptes et effacement/conservation. |
+| Agent / audit / RGPD | Paramètres, Équipe et Mon compte livrés selon la maquette ; pas d'écran Agent, audit ni RGPD | Délimiter chaque écran selon les API réelles ; traiter notamment effacement/conservation. |
 | SLA, priorité commerciale, intention et confiance par dimension | Certaines priorités de tâches et confiances de brouillon existent ; pas les six dimensions complètes de la maquette | Modéliser et tracer les données avant d'ajouter les filtres/badges correspondants. |
 | Relances arrêtées après conversion | Annulation des relances programmées du rattachement converti/perdu ; garde à l’exécution et contrôle SMTP des nouveaux messages de relance | Voir [les règles et limites](../follow-ups.md), notamment les anciens brouillons à vérifier avant la recette IONOS. |
-| Email et autres canaux | Code email disponible ; recette IONOS réelle en attente ; autres connecteurs non validés | Accès IONOS, destinataire autorisé et documents métier ; recette réelle puis second canal. |
+| Email et autres canaux | Email réglé depuis la console, recette réussie sur une boîte de test ; autres connecteurs non validés | Accès IONOS, destinataire autorisé et documents métier ; recette réelle puis second canal. |
 
 ## Contradictions entre sources
 

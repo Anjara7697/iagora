@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import {
+  Feedback,
+  Field,
+  SecretOnce,
+  Section,
+  initials,
+} from "@/components/forms";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
@@ -14,50 +21,10 @@ const ROLE_LABELS: Record<Role, string> = {
   VIEWER: "Observateur",
 };
 const ROLE_HELP: Record<Role, string> = {
-  ADMIN: "tout, dont équipe et intégrations",
-  ADVISOR: "prospects, conversations, validations",
-  VIEWER: "lecture seule",
+  ADMIN: "accès complet, dont Équipe, Intégrations et Paramètres",
+  ADVISOR: "file, conversations, prospects, validations",
+  VIEWER: "consultation seule",
 };
-
-/** Mot de passe à transmettre au membre : affiché une seule fois. */
-function OneTimePassword({
-  who,
-  password,
-  onClose,
-}: {
-  who: string;
-  password: string;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div
-      className="card warnbox"
-      role="status"
-      aria-label="Mot de passe temporaire"
-    >
-      <p>
-        Mot de passe temporaire de <strong>{who}</strong> :{" "}
-        <code>{password}</code>{" "}
-        <button
-          onClick={() =>
-            navigator.clipboard
-              ?.writeText(password)
-              .then(() => setCopied(true))
-              .catch(() => setCopied(false))
-          }
-        >
-          {copied ? "Copié" : "Copier"}
-        </button>
-      </p>
-      <p className="muted">
-        Transmettez-le au membre par un canal sûr. Il ne sera plus affiché ; le
-        membre devra choisir son propre mot de passe à la première connexion.
-      </p>
-      <button onClick={onClose}>J’ai transmis le mot de passe</button>
-    </div>
-  );
-}
 
 function MemberRow({
   member,
@@ -106,86 +73,96 @@ function MemberRow({
     }
   }
 
+  const state = !member.is_active
+    ? { label: "Désactivé", cls: "badge integ-off" }
+    : member.must_change_password
+      ? { label: "Mot de passe à choisir", cls: "badge integ-warn" }
+      : { label: "Actif", cls: "badge integ-ok" };
+
   return (
-    <tr aria-label={`Membre ${member.username}`}>
-      <td>
+    <div
+      className="item-row"
+      role="listitem"
+      aria-label={`Membre ${member.username}`}
+    >
+      <span className={`avatar-36 ${member.is_active ? "" : "off"}`}>
+        {initials(member.username)}
+      </span>
+      <span className="item-main">
         {editing ? (
-          <input
-            aria-label="Nom d’utilisateur"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
+          <span className="field-inline">
+            <input
+              aria-label="Nom d’utilisateur"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <input
+              aria-label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </span>
         ) : (
           <>
-            {member.username}
-            {self && <span className="muted"> (vous)</span>}
+            <strong>
+              {member.username}
+              {self && <span className="status-text"> · vous</span>}
+            </strong>
+            <span className="item-meta">{member.email}</span>
           </>
         )}
-      </td>
-      <td>
-        {editing ? (
-          <input
-            aria-label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        ) : (
-          member.email
-        )}
-      </td>
-      <td>
-        <select
-          aria-label={`Rôle de ${member.username}`}
-          value={member.role}
-          disabled={self}
-          onChange={(e) => patch({ role: e.target.value })}
-        >
-          {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABELS[r]}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td>
-        <span className={`badge ${member.is_active ? "" : "warn"}`}>
-          {member.is_active
-            ? member.must_change_password
-              ? "Mot de passe à choisir"
-              : "Actif"
-            : "Désactivé"}
+        <span className="row">
+          <select
+            aria-label={`Rôle de ${member.username}`}
+            value={member.role}
+            disabled={self}
+            onChange={(e) => patch({ role: e.target.value })}
+          >
+            {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+          <span className={state.cls}>{state.label}</span>
+          <span className="status-text">
+            Membre depuis le {formatDate(member.created_at ?? null)}
+          </span>
         </span>
-      </td>
-      <td className="muted">{formatDate(member.created_at ?? null)}</td>
-      <td>
-        <div className="row">
-          {editing ? (
-            <>
-              <button onClick={() => patch({ username, email })}>
-                Enregistrer
-              </button>
-              <button onClick={() => setEditing(false)}>Annuler</button>
-            </>
-          ) : (
-            <button onClick={() => setEditing(true)}>Modifier</button>
-          )}
-          {!self && (
-            <>
-              <button onClick={reset}>Réinitialiser le mot de passe</button>
-              <button onClick={() => patch({ is_active: !member.is_active })}>
-                {member.is_active ? "Désactiver" : "Réactiver"}
-              </button>
-            </>
-          )}
-        </div>
         {error && (
-          <p className="error" role="alert">
+          <span className="error" role="alert">
             {error}
-          </p>
+          </span>
         )}
-      </td>
-    </tr>
+      </span>
+      <span className="item-actions">
+        {editing ? (
+          <>
+            <button
+              className="primary"
+              onClick={() => patch({ username, email })}
+            >
+              Enregistrer
+            </button>
+            <button onClick={() => setEditing(false)}>Annuler</button>
+          </>
+        ) : (
+          <button onClick={() => setEditing(true)}>Modifier</button>
+        )}
+        {!self && (
+          <>
+            <button onClick={reset}>Réinitialiser le mot de passe</button>
+            <button
+              className={member.is_active ? "danger" : ""}
+              onClick={() => patch({ is_active: !member.is_active })}
+            >
+              {member.is_active ? "Désactiver" : "Réactiver"}
+            </button>
+          </>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -237,6 +214,8 @@ export default function TeamPage() {
     }
   }
 
+  const active = members.data?.items.filter((m) => m.is_active).length ?? 0;
+
   return (
     <>
       <div className="page-heading">
@@ -244,43 +223,50 @@ export default function TeamPage() {
           <span className="eyebrow">Administration · Équipe</span>
           <h1>Équipe</h1>
           <p className="muted">
-            Ajoutez les conseillers sans passer par le serveur. Chaque nouveau
-            membre reçoit un mot de passe temporaire et choisit le sien à la
-            première connexion.
+            Les conseillers s’ajoutent ici, sans passer par le serveur. Chaque
+            nouveau membre reçoit un mot de passe temporaire et choisit le sien
+            à la première connexion.
           </p>
         </div>
       </div>
 
-      {secret && (
-        <OneTimePassword
-          who={secret.who}
-          password={secret.password}
-          onClose={() => setSecret(null)}
-        />
-      )}
+      <div className="settings-stack">
+        {secret && (
+          <SecretOnce
+            label="Mot de passe temporaire"
+            intro={
+              <>
+                Mot de passe temporaire de <strong>{secret.who}</strong>, à
+                transmettre par un canal sûr :
+              </>
+            }
+            secret={secret.password}
+            doneLabel="J’ai transmis le mot de passe"
+            onDone={() => setSecret(null)}
+          />
+        )}
 
-      <section className="card" aria-label="Ajouter un membre">
-        <h2>Ajouter un membre</h2>
-        <form onSubmit={create}>
-          <div className="form-row">
-            <label>
-              Nom d’utilisateur
+        <Section
+          region="Ajouter un membre"
+          label="Ajouter un membre"
+          intro="Trois rôles : Administrateur (accès complet), Conseiller (file, conversations, prospects), Observateur (consultation seule)."
+        >
+          <form onSubmit={create} className="settings-stack">
+            <Field label="Nom d’utilisateur" note="3 caractères minimum.">
               <input
                 value={username}
                 minLength={3}
                 onChange={(e) => setUsername(e.target.value)}
               />
-            </label>
-            <label>
-              Email
+            </Field>
+            <Field label="Email" note="Sert aussi d’identifiant de connexion.">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-            </label>
-            <label>
-              Rôle
+            </Field>
+            <Field label="Rôle">
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
@@ -291,58 +277,44 @@ export default function TeamPage() {
                   </option>
                 ))}
               </select>
-            </label>
-          </div>
-          <div className="row">
-            <button
-              className="primary"
-              type="submit"
-              disabled={busy || username.trim().length < 3 || !email}
-            >
-              Créer le membre
-            </button>
-          </div>
-        </form>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-      </section>
+            </Field>
+            <div className="actions-bar">
+              <button
+                className="primary"
+                type="submit"
+                disabled={busy || username.trim().length < 3 || !email}
+              >
+                Créer le membre
+              </button>
+              <Feedback error={error} />
+            </div>
+          </form>
+        </Section>
 
-      <Loading
-        loading={members.loading && !members.data}
-        error={members.error}
-        onRetry={members.reload}
-      />
-      {members.data && (
-        <section className="card" aria-label="Membres de l’équipe">
-          <h2>Membres ({members.data.total})</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th>Rôle</th>
-                <th>État</th>
-                <th>Créé le</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Loading
+          loading={members.loading && !members.data}
+          error={members.error}
+          onRetry={members.reload}
+        />
+        {members.data && (
+          <Section
+            region="Membres de l’équipe"
+            label={`Membres · ${active} actif(s) sur ${members.data.total}`}
+          >
+            <div role="list">
               {members.data.items.map((m) => (
                 <MemberRow
-                  key={`${m.id}-${m.username}-${m.email}`}
+                  key={`${m.id}-${m.username}-${m.email}-${m.role}-${m.is_active}`}
                   member={m}
                   self={m.id === user?.id}
                   onChanged={members.reload}
                   onPassword={(who, password) => setSecret({ who, password })}
                 />
               ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+            </div>
+          </Section>
+        )}
+      </div>
     </>
   );
 }

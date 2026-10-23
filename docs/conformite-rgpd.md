@@ -95,4 +95,4 @@ voulu. Les pièces jointes ne sont pas lues.
 - Jeton de connexion dans `localStorage` : passer à un cookie `HttpOnly` avant une exposition publique.
 - Limitation des connexions en mémoire, par processus : un compteur partagé (Redis) si plusieurs instances.
 - Identifiants non sensibles à la casse et changement de mot de passe par l'utilisateur : non faits.
-- Jetons de service pour les futurs webhooks (LinkedIn, Meta) : non faits.
+- Jetons de service : faits (`iag_…`, stockés hachés, révocables) ; webhooks LinkedIn et Meta non faits.

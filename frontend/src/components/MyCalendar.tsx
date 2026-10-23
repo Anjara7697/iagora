@@ -70,9 +70,13 @@ export function MyCalendar() {
   }
 
   return (
-    <section className="card" aria-label="Mon agenda">
-      <h2>Mon agenda</h2>
-      {result && <p role="status">{result}</p>}
+    <section className="section-card" aria-label="Mon agenda">
+      <span className="section-label">Mon agenda</span>
+      {result && (
+        <p role="status" className="status-text status-ok">
+          {result}
+        </p>
+      )}
       {status && !status.available && (
         <p className="muted">
           Google Agenda n’est pas encore branché par l’administrateur

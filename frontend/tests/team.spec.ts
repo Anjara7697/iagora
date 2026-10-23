@@ -107,8 +107,8 @@ test("réinitialiser, changer le rôle et désactiver un membre", async ({
   await mockApi(page, { calls });
   await login(page);
   await page.goto("/team");
-  const paul = page.getByRole("row", { name: "Membre paul" });
-  const self = page.getByRole("row", { name: "Membre admin" });
+  const paul = page.getByRole("listitem", { name: "Membre paul" });
+  const self = page.getByRole("listitem", { name: "Membre admin" });
   // Pas d'action sur son propre compte (rôle, désactivation, réinitialisation).
   await expect(self.getByLabel("Rôle de admin")).toBeDisabled();
   await expect(self.getByRole("button", { name: "Désactiver" })).toHaveCount(0);

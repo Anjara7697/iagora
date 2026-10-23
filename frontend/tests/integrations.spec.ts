@@ -87,7 +87,39 @@ async function mockApi(
         redirect_uri: "http://localhost:8000/api/v1/zoom/callback",
         connections: [],
       };
-    } else if (path === "/advisors")
+    } else if (path === "/integrations/tokens") {
+      if (request.method() === "POST") {
+        const sent = request.postDataJSON();
+        opts.saved?.push({ token: sent });
+        body = {
+          id: "t1",
+          ...sent,
+          hint: "iag_abcdef…",
+          channel: "web_form",
+          target_code: null,
+          created_at: "2026-10-23T10:00:00Z",
+          last_used_at: null,
+          revoked_at: null,
+          token: "iag_abcdefSECRET",
+        };
+        code = 201;
+      } else body = [];
+    } else if (path === "/campaigns")
+      body = {
+        items: [
+          {
+            id: 4,
+            name: "Rentrée 2027",
+            status: "active",
+            targets: [],
+            sources: [{ id: 9, name: "Site", type: "form", platform: "web" }],
+          },
+        ],
+        total: 1,
+        limit: 200,
+        offset: 0,
+      };
+    else if (path === "/advisors")
       body = {
         items: [{ id: 2, username: "paul" }],
         total: 1,
@@ -154,7 +186,7 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(card.getByText("Réception active")).toBeVisible();
   await expect(card.getByText("agent@datum.test")).toBeVisible();
   await expect(card.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
-  await expect(card.getByText("Prêt à envoyer :")).toBeVisible();
+  await expect(card.getByText("Prêt à envoyer")).toBeVisible();
   await expect(card.getByText("Connecté", { exact: true })).toBeVisible();
   // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
   await expect(
@@ -163,7 +195,7 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(
     page.getByRole("region", { name: "Zoom" }).getByText("Non branché"),
   ).toBeVisible();
-  for (const name of ["Meta Business", "LinkedIn", "Formulaire"])
+  for (const name of ["Meta Business", "LinkedIn"])
     await expect(
       page.getByRole("region", { name }).getByText("À venir"),
     ).toBeVisible();
@@ -322,4 +354,23 @@ test("brancher le compte Zoom de l'école", async ({ page }) => {
       host_user: "hote@ecole.fr",
     },
   });
+});
+
+test("créer un jeton pour le formulaire du site : affiché une seule fois", async ({
+  page,
+}) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const card = page.getByRole("region", { name: "Formulaire et outils" });
+  await card.getByLabel("Nom du jeton").fill("Formulaire du site");
+  await card.getByLabel("Campagne").selectOption({ label: "Rentrée 2027" });
+  await card.getByRole("button", { name: "Créer un jeton" }).click();
+  const shown = card.getByRole("status", { name: "Nouveau jeton" });
+  await expect(shown.getByText("iag_abcdefSECRET").first()).toBeVisible();
+  expect(saved).toContainEqual({
+    token: { name: "Formulaire du site", campaign_id: 4, source_id: 9 },
+  });
+  await shown.getByRole("button", { name: "J’ai copié le jeton" }).click();
+  await expect(page.getByText("iag_abcdefSECRET")).toHaveCount(0);
 });

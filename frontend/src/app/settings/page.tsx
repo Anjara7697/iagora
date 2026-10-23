@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { Feedback, Field, Section, Toggle } from "@/components/forms";
 import { api, ApiError } from "@/lib/api";
 import type { RuntimeSettings } from "@/lib/types";
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const SECRET_FIELDS = [
+const READ_ONLY = [
   "source",
   "gemini_api_key_set",
   "openai_api_key_set",
@@ -21,6 +22,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [test, setTest] = useState<{
     ok: boolean;
     model: string;
@@ -30,7 +32,10 @@ export default function SettingsPage() {
 
   const load = () =>
     api<RuntimeSettings>("/settings")
-      .then(setForm)
+      .then((s) => {
+        setForm(s);
+        setDirty(false);
+      })
       .catch((e) =>
         setError(e instanceof ApiError ? e.message : "Chargement impossible"),
       );
@@ -50,7 +55,10 @@ export default function SettingsPage() {
   const set = <K extends keyof RuntimeSettings>(
     key: K,
     value: RuntimeSettings[K],
-  ) => setForm({ ...form, [key]: value });
+  ) => {
+    setForm({ ...form, [key]: value });
+    setDirty(true);
+  };
   const num =
     (key: keyof RuntimeSettings) => (e: React.ChangeEvent<HTMLInputElement>) =>
       set(key, Number(e.target.value) as never);
@@ -67,7 +75,7 @@ export default function SettingsPage() {
 
   function payload() {
     const body: Record<string, unknown> = { ...form };
-    for (const k of SECRET_FIELDS) delete body[k];
+    for (const k of READ_ONLY) delete body[k];
     body.gemini_api_key = geminiKey || null;
     body.openai_api_key = openaiKey || null;
     return body;
@@ -91,8 +99,8 @@ export default function SettingsPage() {
       await api("/settings", { method: "PUT", body: payload() });
       setGeminiKey("");
       setOpenaiKey("");
-      setNotice("Paramètres enregistrés : appliqués immédiatement.");
       await load();
+      setNotice("Paramètres enregistrés : appliqués immédiatement.");
     });
   const runTest = () =>
     act("test", async () => {
@@ -109,15 +117,12 @@ export default function SettingsPage() {
       )
         return;
       await api("/settings", { method: "DELETE" });
-      setNotice("Retour aux valeurs du serveur.");
       await load();
+      setNotice("Retour aux valeurs du serveur.");
     });
 
-  const keyLabel = form.llm_provider === "gemini" ? "Gemini" : "OpenAI";
-  const keySet =
-    form.llm_provider === "gemini"
-      ? form.gemini_api_key_set
-      : form.openai_api_key_set;
+  const gemini = form.llm_provider === "gemini";
+  const keySet = gemini ? form.gemini_api_key_set : form.openai_api_key_set;
 
   return (
     <>
@@ -126,19 +131,21 @@ export default function SettingsPage() {
           <span className="eyebrow">Administration · Paramètres</span>
           <h1>Paramètres</h1>
           <p className="muted">
+            Réglages de l’agent, appliqués sans redémarrage.{" "}
             {form.source === "console"
-              ? "Réglages enregistrés dans la console."
-              : "Valeurs actuelles : fichier .env du serveur. Enregistrer ici les remplace."}{" "}
-            Appliqués sans redémarrage.
+              ? "Enregistrés dans la console."
+              : "Valeurs actuelles : fichier .env du serveur — enregistrer ici les remplace."}
           </p>
         </div>
       </div>
 
-      <section className="card" aria-label="Intelligence artificielle">
-        <h2>Intelligence artificielle</h2>
-        <div className="form-row">
-          <label>
-            Fournisseur
+      <div className="settings-stack">
+        <Section
+          region="Intelligence artificielle"
+          label="Intelligence artificielle"
+          intro="Le modèle rédige les réponses et lit les messages. Si le modèle principal reste indisponible (surcharge, quota) après ses nouveaux essais, la même demande part sur le modèle de secours avant tout transfert au conseiller."
+        >
+          <Field label="Fournisseur">
             <select
               value={form.llm_provider}
               onChange={(e) =>
@@ -151,38 +158,44 @@ export default function SettingsPage() {
               <option value="gemini">Google Gemini</option>
               <option value="openai">OpenAI</option>
             </select>
-          </label>
-          <label>
-            Modèle principal
+          </Field>
+          <Field label="Modèle principal" note="Ex. gemini-2.5-flash.">
             <input
               value={form.llm_model}
               onChange={(e) => set("llm_model", e.target.value)}
             />
-          </label>
-          <label>
-            Modèle de secours (si le principal est saturé)
+          </Field>
+          <Field
+            label="Modèle de secours (si le principal est saturé)"
+            note="Même fournisseur et même clé, ex. gemini-2.5-flash-lite. Vide : aucun secours."
+          >
             <input
               value={form.llm_fallback_model}
-              placeholder="ex. gemini-2.5-flash-lite (vide : aucun)"
+              placeholder="gemini-2.5-flash-lite"
               onChange={(e) => set("llm_fallback_model", e.target.value)}
             />
-          </label>
-          <label>
-            Clé d’API {keyLabel}
+          </Field>
+          <Field
+            label={`Clé d’API ${gemini ? "Gemini" : "OpenAI"}`}
+            note="Chiffrée sur le serveur, jamais réaffichée. Laisser vide pour conserver la clé actuelle."
+          >
             <input
               type="password"
               autoComplete="new-password"
-              placeholder={keySet ? "•••••• (inchangée)" : ""}
-              value={form.llm_provider === "gemini" ? geminiKey : openaiKey}
-              onChange={(e) =>
-                form.llm_provider === "gemini"
-                  ? setGeminiKey(e.target.value)
-                  : setOpenaiKey(e.target.value)
+              placeholder={
+                keySet ? "•••••• (inchangée)" : "Aucune clé enregistrée"
               }
+              value={gemini ? geminiKey : openaiKey}
+              onChange={(e) => {
+                (gemini ? setGeminiKey : setOpenaiKey)(e.target.value);
+                setDirty(true);
+              }}
             />
-          </label>
-          <label>
-            Créativité (0 = factuel, 1 = libre)
+          </Field>
+          <Field
+            label="Créativité (0 = factuel, 1 = libre)"
+            note="0,2 à 0,4 recommandé : l’agent ne doit jamais inventer."
+          >
             <input
               type="number"
               step="0.1"
@@ -191,65 +204,72 @@ export default function SettingsPage() {
               value={form.llm_temperature}
               onChange={num("llm_temperature")}
             />
-          </label>
-        </div>
-        <p className="muted">
-          Si le modèle principal reste indisponible (surcharge, quota) après ses
-          nouveaux essais, la même demande part sur le modèle de secours avant
-          tout transfert au conseiller. Recherche dans la base de connaissances
-          : <code>{form.embedding_model}</code> (changer ce modèle impose de
-          recalculer la base, côté serveur).
-        </p>
-        <div className="row">
-          <button onClick={runTest} disabled={busy !== null}>
-            Tester le modèle
-          </button>
-          {test && (
-            <span
-              aria-label="Résultat du test du modèle"
-              className={test.ok ? "" : "error"}
-            >
-              {test.ok
-                ? `✓ ${test.model} répond (« ${test.detail} »)`
-                : `✗ ${test.detail}`}
-            </span>
-          )}
-        </div>
-      </section>
+          </Field>
+          <div className="field-row">
+            <span className="field-label">Recherche documentaire</span>
+            <div className="field-control">
+              <span className="mono">{form.embedding_model}</span>
+              <p className="field-note">
+                Réglé sur le serveur : en changer impose de recalculer la base
+                de connaissances.
+              </p>
+            </div>
+          </div>
+          <div className="actions-bar">
+            <button onClick={runTest} disabled={busy !== null}>
+              {busy === "test" ? "Test en cours…" : "Tester le modèle"}
+            </button>
+            {test && (
+              <span
+                aria-label="Résultat du test du modèle"
+                className={`status-text ${test.ok ? "status-ok" : "status-bad"}`}
+              >
+                {test.ok
+                  ? `✓ ${test.model} répond (« ${test.detail} »)`
+                  : `✗ ${test.detail}`}
+              </span>
+            )}
+          </div>
+        </Section>
 
-      <section className="card" aria-label="Agent et relances">
-        <h2>Agent et relances</h2>
-        <label className="row">
-          <input
-            type="checkbox"
+        <Section
+          region="Agent et relances"
+          label="Agent et relances"
+          intro="Chaque relance reste un brouillon soumis à validation en mode assisté ; elles s’arrêtent dès que le prospect répond, se désinscrit ou est transféré."
+        >
+          <Toggle
             checked={form.agent_auto_reply}
-            onChange={(e) => set("agent_auto_reply", e.target.checked)}
+            onChange={(v) => set("agent_auto_reply", v)}
+            title="L’agent prépare automatiquement une réponse à chaque nouveau message"
+            note="Désactivé : les messages arrivent dans les conversations, sans brouillon de l’agent."
           />
-          L’agent prépare automatiquement une réponse à chaque nouveau message
-        </label>
-        <div className="form-row">
-          <label>
-            Relances : à partir de (heure)
-            <input
-              type="number"
-              min={0}
-              max={23}
-              value={form.follow_up_window_start_hour}
-              onChange={num("follow_up_window_start_hour")}
-            />
-          </label>
-          <label>
-            jusqu’à (heure)
-            <input
-              type="number"
-              min={1}
-              max={24}
-              value={form.follow_up_window_end_hour}
-              onChange={num("follow_up_window_end_hour")}
-            />
-          </label>
-          <label>
-            Relances maximum sans réponse
+          <div className="field-row">
+            <span className="field-label">Fenêtre d’envoi des relances</span>
+            <div className="field-control">
+              <div className="field-inline">
+                <input
+                  aria-label="Relances : à partir de (heure)"
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={form.follow_up_window_start_hour}
+                  onChange={num("follow_up_window_start_hour")}
+                />
+                <input
+                  aria-label="jusqu’à (heure)"
+                  type="number"
+                  min={1}
+                  max={24}
+                  value={form.follow_up_window_end_hour}
+                  onChange={num("follow_up_window_end_hour")}
+                />
+              </div>
+              <p className="field-note">
+                Heure de début et de fin (heure locale).
+              </p>
+            </div>
+          </div>
+          <Field label="Relances maximum sans réponse">
             <input
               type="number"
               min={1}
@@ -257,31 +277,29 @@ export default function SettingsPage() {
               value={form.follow_up_max_per_silence}
               onChange={num("follow_up_max_per_silence")}
             />
-          </label>
-        </div>
-        <label className="row">
-          <input
-            type="checkbox"
+          </Field>
+          <Toggle
             checked={form.follow_up_weekdays_only}
-            onChange={(e) => set("follow_up_weekdays_only", e.target.checked)}
+            onChange={(v) => set("follow_up_weekdays_only", v)}
+            title="Relances en semaine uniquement"
           />
-          Relances en semaine uniquement
-        </label>
-      </section>
+        </Section>
 
-      <section className="card" aria-label="Emails">
-        <h2>Emails</h2>
-        <label>
-          Mention de bas de message (désinscription)
-          <textarea
-            value={form.email_footer}
-            rows={2}
-            onChange={(e) => set("email_footer", e.target.value)}
-          />
-        </label>
-        <div className="form-row">
-          <label>
-            Relève de la boîte toutes les (secondes)
+        <Section region="Emails" label="Emails">
+          <Field
+            label="Mention de bas de message (désinscription)"
+            note="Ajoutée à chaque email envoyé : le prospect peut répondre STOP."
+          >
+            <textarea
+              value={form.email_footer}
+              rows={2}
+              onChange={(e) => set("email_footer", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Relève de la boîte toutes les (secondes)"
+            note="60 secondes conviennent ; la boîte se règle dans Intégrations."
+          >
             <input
               type="number"
               min={10}
@@ -289,37 +307,42 @@ export default function SettingsPage() {
               value={form.email_poll_seconds}
               onChange={num("email_poll_seconds")}
             />
-          </label>
-        </div>
-        <label className="row">
-          <input
-            type="checkbox"
+          </Field>
+          <Toggle
             checked={form.email_create_unknown_senders}
-            onChange={(e) =>
-              set("email_create_unknown_senders", e.target.checked)
-            }
+            onChange={(v) => set("email_create_unknown_senders", v)}
+            title="Un expéditeur inconnu devient un prospect"
+            note="Désactivé : seuls les emails de prospects déjà connus sont relevés."
           />
-          Un expéditeur inconnu devient un prospect
-        </label>
-      </section>
+        </Section>
 
-      <section className="card" aria-label="Disponibilités des rendez-vous">
-        <h2>Disponibilités des rendez-vous</h2>
-        <div className="row" role="group" aria-label="Jours ouvrés">
-          {DAYS.map((d, i) => (
-            <label key={d} className="row">
-              <input
-                type="checkbox"
-                checked={days.has(String(i + 1))}
-                onChange={() => toggleDay(i + 1)}
-              />
-              {d}
-            </label>
-          ))}
-        </div>
-        <div className="form-row">
-          <label>
-            Début de journée (heure)
+        <Section
+          region="Disponibilités des rendez-vous"
+          label="Disponibilités des rendez-vous"
+          intro="L’agent ne propose que des créneaux réellement libres dans l’agenda du conseiller, à l’intérieur de ces règles."
+        >
+          <div className="field-row">
+            <span className="field-label">Jours ouvrés</span>
+            <div className="field-control">
+              <div
+                className="day-picker"
+                role="group"
+                aria-label="Jours ouvrés"
+              >
+                {DAYS.map((d, i) => (
+                  <label key={d}>
+                    <input
+                      type="checkbox"
+                      checked={days.has(String(i + 1))}
+                      onChange={() => toggleDay(i + 1)}
+                    />
+                    {d}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Field label="Début de journée (heure)">
             <input
               type="number"
               min={0}
@@ -327,9 +350,8 @@ export default function SettingsPage() {
               value={form.calendar_work_start_hour}
               onChange={num("calendar_work_start_hour")}
             />
-          </label>
-          <label>
-            Fin de journée (heure)
+          </Field>
+          <Field label="Fin de journée (heure)">
             <input
               type="number"
               min={1}
@@ -337,9 +359,8 @@ export default function SettingsPage() {
               value={form.calendar_work_end_hour}
               onChange={num("calendar_work_end_hour")}
             />
-          </label>
-          <label>
-            Durée d’un rendez-vous (minutes)
+          </Field>
+          <Field label="Durée d’un rendez-vous (minutes)">
             <input
               type="number"
               min={15}
@@ -348,9 +369,11 @@ export default function SettingsPage() {
               value={form.calendar_slot_minutes}
               onChange={num("calendar_slot_minutes")}
             />
-          </label>
-          <label>
-            Délai minimum avant un rendez-vous (heures)
+          </Field>
+          <Field
+            label="Délai minimum avant un rendez-vous (heures)"
+            note="Évite de proposer un créneau dans l’heure qui vient."
+          >
             <input
               type="number"
               min={0}
@@ -358,9 +381,8 @@ export default function SettingsPage() {
               value={form.calendar_min_notice_hours}
               onChange={num("calendar_min_notice_hours")}
             />
-          </label>
-          <label>
-            Créneaux proposés sur (jours)
+          </Field>
+          <Field label="Créneaux proposés sur (jours)">
             <input
               type="number"
               min={1}
@@ -368,9 +390,8 @@ export default function SettingsPage() {
               value={form.calendar_horizon_days}
               onChange={num("calendar_horizon_days")}
             />
-          </label>
-          <label>
-            Marge entre rendez-vous (minutes)
+          </Field>
+          <Field label="Marge entre rendez-vous (minutes)">
             <input
               type="number"
               min={0}
@@ -378,33 +399,30 @@ export default function SettingsPage() {
               value={form.calendar_buffer_minutes}
               onChange={num("calendar_buffer_minutes")}
             />
-          </label>
-          <label>
-            Fuseau horaire
+          </Field>
+          <Field label="Fuseau horaire" note="Ex. Europe/Paris.">
             <input
               value={form.calendar_timezone}
               onChange={(e) => set("calendar_timezone", e.target.value)}
             />
-          </label>
-        </div>
-      </section>
+          </Field>
+        </Section>
 
-      <div className="row">
-        <button className="primary" onClick={save} disabled={busy !== null}>
-          Enregistrer les paramètres
-        </button>
-        {form.source === "console" && (
-          <button onClick={reset} disabled={busy !== null}>
-            Revenir aux valeurs du serveur
+        <div className="actions-bar sticky">
+          <button className="primary" onClick={save} disabled={busy !== null}>
+            Enregistrer les paramètres
           </button>
-        )}
+          {form.source === "console" && (
+            <button onClick={reset} disabled={busy !== null}>
+              Revenir aux valeurs du serveur
+            </button>
+          )}
+          {dirty && (
+            <span className="status-text">Modifications non enregistrées</span>
+          )}
+          <Feedback notice={notice} error={error} />
+        </div>
       </div>
-      {notice && <p role="status">{notice}</p>}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
     </>
   );
 }

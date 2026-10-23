@@ -208,6 +208,7 @@ const PAGE_TITLES: [string, string][] = [
   ["/campaigns/new", "Nouvelle campagne"],
   ["/campaigns/", "Campagne"],
   ["/campaigns", "Campagnes"],
+  ["/prospects/import", "Import de prospects"],
   ["/prospects/", "Fiche prospect"],
   ["/prospects", "Prospects"],
   ["/conversations", "Conversations"],

@@ -28,15 +28,17 @@ Vue technique : [architecture.md](architecture.md).
 | Relances : fenêtre, plafond, arrêt après conversion | Tests (`test_auto_agent.py`), [follow-ups.md](follow-ups.md) |
 | Campagnes, sources, responsable de campagne, affectation | Tests dont concurrence sur PostgreSQL réel en CI |
 | Comptes, rôles, limitation des connexions, garde-fous de production | Tests (`test_auth.py`, `test_hardening.py`) |
-| Console : Aujourd'hui, À traiter, Conversations, Prospects, Campagnes, Base de connaissances, Intégrations, Simulateur | Tests Playwright (API simulée) |
+| Console : Aujourd'hui, À traiter, Conversations, Prospects, Campagnes, Base de connaissances, Intégrations, Équipe, Mon compte, Paramètres, Import CSV, Simulateur | Tests Playwright (API simulée) |
+| Réglages sans `.env` : boîte email, agenda, Zoom, IA et relances, jetons de service ([parametres.md](parametres.md), [sources-leads.md](sources-leads.md)) | Tests API et navigateur |
+| Email de bout en bout sur une boîte de test : réception, brouillon, validation, envoi | Recette manuelle ([recette-locale.md](recette-locale.md)) |
 | Parcours complet avec Gemini jusqu'à un rendez-vous fictif | Recette locale déclarée par l'auteur ([n8n/README.md](n8n/README.md)) |
 
 ### Codé, mais non vérifié en conditions réelles
 
 | Fonction | Ce qui manque |
 |---|---|
-| Email IMAP/SMTP | Recette sur la vraie boîte IONOS : [recette-locale.md](recette-locale.md) §4 |
-| Google Calendar + Zoom (PR #54, 23/10) | Comptes réels et recette : [calendar.md](calendar.md) |
+| Email IMAP/SMTP | Recette sur la boîte définitive de DATUM : [recette-locale.md](recette-locale.md) §4 |
+| Google Calendar + Zoom (réglés dans la console, OAuth par conseiller) | Applications OAuth Google et Zoom en HTTPS, comptes réels et recette : [calendar.md](calendar.md) |
 | Déploiement serveur (`deploy/`) | Mise en service sur le VPS, comportement derrière Caddy |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
@@ -54,9 +56,9 @@ Vue technique : [architecture.md](architecture.md).
 | Connecteurs LinkedIn et Meta | Accès API non obtenus |
 | Mention IA dans chaque email | À ajouter au pied de message ([conformite-rgpd.md](conformite-rgpd.md)) |
 | Effacement / anonymisation RGPD d'un prospect | Non développé |
-| Écrans Rendez-vous, Dashboard, Analytics, Paramètres | Affichés « bientôt » dans le menu |
+| Écrans Rendez-vous, Dashboard, Analytics | Affichés « bientôt » dans le menu |
 | Rappel avant rendez-vous | Non développé |
-| Gestion de l'équipe et du compte dans la console | Branche `feat/team-management`, non fusionnée |
+| Connexion Gmail / Microsoft 365 par OAuth | Mot de passe d'application en attendant |
 
 Liste complète des limites : [limites-et-dette.md](limites-et-dette.md).
 

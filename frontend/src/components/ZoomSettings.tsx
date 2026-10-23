@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ZoomMode, ZoomSettings as Settings } from "@/lib/types";
+import { Feedback, Field } from "./forms";
 
 const MODES: Record<ZoomMode, string> = {
   none: "Aucun : rendez-vous sans lien de visioconférence",
@@ -73,57 +74,55 @@ export function ZoomSettings() {
 
   return (
     <section className="card integ-card" aria-label="Zoom">
-      <div className="integ-main">
-        <div className="row">
+      <div className="integ-main settings-stack">
+        <div className="section-head">
           <h2>Zoom</h2>
           <span className={`badge integ-${tone}`}>{badge}</span>
         </div>
         <span className="eyebrow">Visioconférence</span>
-        <p className="muted">
+        <p className="section-intro">
           Crée le lien de visioconférence de chaque rendez-vous réservé par
           l’agent.
           {cfg.source === "env" &&
             " Réglage actuel : fichier .env du serveur (enregistrer ici le remplace)."}
         </p>
-        <div className="form-row">
-          <label>
-            Mode
-            <select
-              value={cfg.mode}
-              onChange={(e) =>
-                setCfg({ ...cfg, mode: e.target.value as ZoomMode })
-              }
-            >
-              {(Object.keys(MODES) as ZoomMode[]).map((m) => (
-                <option key={m} value={m}>
-                  {MODES[m]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <Field label="Mode">
+          <select
+            value={cfg.mode}
+            onChange={(e) =>
+              setCfg({ ...cfg, mode: e.target.value as ZoomMode })
+            }
+          >
+            {(Object.keys(MODES) as ZoomMode[]).map((m) => (
+              <option key={m} value={m}>
+                {MODES[m]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {cfg.mode === "account" && (
+          <Field
+            label="Account ID"
+            note="Application « Server-to-Server OAuth » sur marketplace.zoom.us."
+          >
+            <input
+              value={cfg.account_id}
+              onChange={(e) => setCfg({ ...cfg, account_id: e.target.value })}
+            />
+          </Field>
+        )}
         {cfg.mode !== "none" && (
-          <div className="form-row">
-            {cfg.mode === "account" && (
-              <label>
-                Account ID
-                <input
-                  value={cfg.account_id}
-                  onChange={(e) =>
-                    setCfg({ ...cfg, account_id: e.target.value })
-                  }
-                />
-              </label>
-            )}
-            <label>
-              Client ID
+          <>
+            <Field label="Client ID">
               <input
                 value={cfg.client_id}
                 onChange={(e) => setCfg({ ...cfg, client_id: e.target.value })}
               />
-            </label>
-            <label>
-              Client secret
+            </Field>
+            <Field
+              label="Client secret"
+              note="Chiffré, jamais réaffiché. Vide : conserver le secret actuel."
+            >
               <input
                 type="password"
                 autoComplete="new-password"
@@ -131,65 +130,64 @@ export function ZoomSettings() {
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
               />
-            </label>
-            {cfg.mode === "account" && (
-              <label>
-                Hôte par défaut (email Zoom, ou « me »)
-                <input
-                  value={cfg.host_user}
-                  onChange={(e) =>
-                    setCfg({ ...cfg, host_user: e.target.value })
-                  }
-                />
-              </label>
-            )}
-          </div>
+            </Field>
+          </>
         )}
         {cfg.mode === "account" && (
-          <p className="muted">
-            La réunion est créée au nom du conseiller s’il a un compte Zoom dans
-            l’école, sinon au nom de l’hôte par défaut.
-          </p>
+          <Field
+            label="Hôte par défaut (email Zoom, ou « me »)"
+            note="La réunion est créée au nom du conseiller s’il a un compte Zoom dans l’école, sinon au nom de cet hôte."
+          >
+            <input
+              value={cfg.host_user}
+              onChange={(e) => setCfg({ ...cfg, host_user: e.target.value })}
+            />
+          </Field>
         )}
         {cfg.mode === "advisor" && (
           <>
-            <p className="muted">
-              URL de redirection à déclarer dans l’application Zoom :{" "}
-              <code>{cfg.redirect_uri}</code>
-            </p>
-            <h3>Comptes Zoom connectés</h3>
-            {cfg.connections.length === 0 ? (
-              <p className="muted">
-                Aucun : chaque conseiller connecte le sien depuis « Mon compte
-                ». Sans compte connecté, le rendez-vous est réservé sans lien.
-              </p>
-            ) : (
-              <ul className="plain" aria-label="Comptes Zoom connectés">
-                {cfg.connections.map((c) => (
-                  <li key={c.user_id}>
-                    <strong>{c.username ?? `#${c.user_id}`}</strong> —{" "}
-                    {c.account_email ?? "compte Zoom"} · connecté le{" "}
-                    {formatDate(c.connected_at)}
-                    {c.last_error && (
-                      <span className="error"> · à reconnecter</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="field-row">
+              <span className="field-label">URL de redirection</span>
+              <div className="field-control">
+                <code className="code-block">{cfg.redirect_uri}</code>
+                <p className="field-note">
+                  À déclarer dans l’application Zoom (HTTPS conseillé).
+                </p>
+              </div>
+            </div>
+            <div className="field-row">
+              <span className="field-label">Comptes connectés</span>
+              <div className="field-control">
+                {cfg.connections.length === 0 ? (
+                  <p className="field-note">
+                    Aucun : chaque conseiller connecte le sien depuis « Mon
+                    compte ». Sans compte connecté, le rendez-vous est réservé
+                    sans lien.
+                  </p>
+                ) : (
+                  <ul className="plain" aria-label="Comptes Zoom connectés">
+                    {cfg.connections.map((c) => (
+                      <li key={c.user_id}>
+                        <strong>{c.username ?? `#${c.user_id}`}</strong> —{" "}
+                        {c.account_email ?? "compte Zoom"} · connecté le{" "}
+                        {formatDate(c.connected_at)}
+                        {c.last_error && (
+                          <span className="error"> · à reconnecter</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </>
         )}
-        <div className="row">
+        <div className="actions-bar">
           <button className="primary" onClick={save} disabled={busy}>
             Enregistrer Zoom
           </button>
+          <Feedback notice={notice} error={error} />
         </div>
-        {notice && <p role="status">{notice}</p>}
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
       </div>
     </section>
   );

@@ -120,6 +120,23 @@ async def _record_consent(
     )
 
 
+async def check_destination(
+    session: AsyncSession,
+    channel: str | None,
+    campaign_id: int | None,
+    source_id: int | None,
+    target_code: str | None,
+) -> None:
+    """Vérifie un canal, une campagne/source et un programme avant de les enregistrer comme
+    destination par défaut (jeton de service, import) : ValidationFailure sinon."""
+    await references.get_channel(session, channel)
+    await references.get_target(session, target_code)
+    await _resolve_campaign_source(
+        session,
+        ProspectIngest(email="verif@exemple.fr", campaign_id=campaign_id, source_id=source_id),
+    )
+
+
 async def ingest_prospect(
     session: AsyncSession, data: ProspectIngest
 ) -> tuple[Prospect, bool, Interaction]:
