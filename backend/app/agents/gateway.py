@@ -25,6 +25,7 @@ from app.models import (
     Interaction,
     Source,
     Target,
+    User,
 )
 from app.models.enums import (
     ConversationStatus,
@@ -98,6 +99,8 @@ class DbGateway:
             target_code = target.code if target else None
 
         membership = row[0] if row else None
+        advisor_id = membership.assigned_advisor_id if membership else None
+        advisor = await session.get(User, advisor_id) if advisor_id is not None else None
         messages = doc.get("messages", [])
         return ProspectContext(
             prospect_id=prospect_id,
@@ -116,7 +119,8 @@ class DbGateway:
             fit_score=membership.fit_score if membership else 0,
             total_score=membership.total_score if membership else 0,
             interest_level=scoring.level_for(membership.total_score).value if membership else None,
-            advisor_id=membership.assigned_advisor_id if membership else None,
+            advisor_id=advisor_id,
+            advisor_email=advisor.email if advisor else None,
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),
             history=[

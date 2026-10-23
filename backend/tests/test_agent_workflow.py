@@ -13,7 +13,7 @@ from app.agents.defaults import RecordingMessenger, UnconfiguredCalendar
 from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
 from app.config import get_settings
 from app.graph.builder import build_workflow
-from app.graph.ports import Deps, LLMConfigError, LLMUnavailableError, Passage
+from app.graph.ports import CalendarError, Deps, LLMConfigError, LLMUnavailableError, Passage
 from app.graph.state import Qualification
 from app.main import app
 from app.models import Appointment, ConsentEvent, FollowUp, Interaction, Prospect
@@ -190,10 +190,16 @@ async def test_unrecognised_slot_choice_proposes_again(client, env):
     assert out["action"] == "propose_meeting" and env.calendar.booked == []
 
 
+class BrokenCalendar(FakeCalendar):
+    async def get_available_slots(self, count, *, advisor_email=None):
+        raise CalendarError("Google Calendar : erreur 503")
+
+
 @pytest.mark.parametrize(
     ("calendar", "reason"),
     [
-        (UnconfiguredCalendar(), "agenda_indisponible"),
+        (UnconfiguredCalendar(), "agenda_non_configure"),
+        (BrokenCalendar(), "agenda_indisponible"),
         (FakeCalendar(slots=[]), "aucun_creneau"),
     ],
 )

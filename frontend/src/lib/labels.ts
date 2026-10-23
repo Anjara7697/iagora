@@ -39,6 +39,7 @@ export const HANDOFF_REASONS: Record<string, string> = {
   llm_indisponible: "Modèle de langage indisponible",
   reponse_non_verifiable: "Réponse non vérifiable",
   agenda_indisponible: "Agenda indisponible",
+  agenda_non_configure: "Rendez-vous à planifier (agenda non branché)",
   aucun_creneau: "Aucun créneau disponible",
   reservation_impossible: "Réservation impossible",
   incertitude: "Incertitude du modèle",
