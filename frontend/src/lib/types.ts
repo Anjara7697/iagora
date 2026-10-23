@@ -455,3 +455,26 @@ export type RuntimeSettings = {
   openai_api_key_set?: boolean;
   embedding_model?: string;
 };
+
+export type ServiceToken = {
+  id: string;
+  name: string;
+  hint: string;
+  channel: string;
+  campaign_id: number | null;
+  source_id: number | null;
+  target_code: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+  token?: string;
+};
+
+export type ImportReport = {
+  dry_run: boolean;
+  total: number;
+  created: number;
+  existing: number;
+  invalid: { row: number; error: string }[];
+  columns: Record<string, string>;
+};
