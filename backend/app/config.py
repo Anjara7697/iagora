@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     zoom_client_secret: SecretStr | None = None
     zoom_host_user: str = "me"  # hôte par défaut si le conseiller n'a pas de compte Zoom
 
+    # Clé de chiffrement des identifiants saisis dans la console (connecteurs). Facultative : à
+    # défaut, dérivée de JWT_SECRET_KEY (changer l'une ou l'autre oblige à les ressaisir).
+    connectors_secret_key: SecretStr | None = None
+
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
     openai_api_key: SecretStr | None = None
     gemini_api_key: SecretStr | None = None

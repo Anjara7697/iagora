@@ -5,8 +5,10 @@ Les identifiants ne sont jamais journalisés.
 """
 
 import asyncio
+import base64
 import imaplib
 import logging
+import re
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -18,6 +20,44 @@ from app.integrations.email.parsing import parse_inbound
 
 logger = logging.getLogger(__name__)
 TIMEOUT = 30
+_LIST = re.compile(r'^\((?P<flags>[^)]*)\) (?P<delim>"[^"]*"|NIL) (?P<name>.+)$')
+
+
+def decode_folder(name: str) -> str:
+    """Nom IMAP (UTF-7 modifié, RFC 3501) -> texte lisible : « Programm&AOk- » -> « Programmé »."""
+    out: list[str] = []
+    i = 0
+    while i < len(name):
+        if name[i] == "&":
+            end = name.find("-", i)
+            if end == -1:
+                return name
+            chunk = name[i + 1 : end]
+            if chunk:
+                raw = chunk.replace(",", "/")
+                try:
+                    out.append(base64.b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-16-be"))
+                except (ValueError, UnicodeDecodeError):
+                    return name
+            else:
+                out.append("&")
+            i = end + 1
+        else:
+            out.append(name[i])
+            i += 1
+    return "".join(out)
+
+
+def parse_list_line(line: bytes | str) -> tuple[str, str] | None:
+    """Ligne LIST -> (nom brut à utiliser, libellé), ou None si non sélectionnable."""
+    text = line.decode("utf-8", "replace") if isinstance(line, bytes) else line
+    match = _LIST.match(text.strip())
+    if not match or "\\noselect" in match["flags"].lower():
+        return None
+    name = match["name"].strip()
+    if name.startswith('"') and name.endswith('"'):
+        name = name[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return name, decode_folder(name)
 
 
 class ImapSmtpClient:
@@ -98,6 +138,25 @@ class ImapSmtpClient:
             raise EmailError(f"IMAP : marquage impossible ({type(exc).__name__})") from exc
         finally:
             _quiet_logout(conn)
+
+    def _folders(self) -> list[tuple[str, str]]:
+        conn = self._imap()
+        try:
+            status, data = conn.list()
+            if status != "OK":
+                raise EmailError("IMAP : liste des dossiers indisponible")
+            lines = [x for x in data if isinstance(x, bytes | str)]
+            folders = [f for f in (parse_list_line(x) for x in lines) if f is not None]
+            return sorted(folders, key=lambda f: (f[0].upper() != "INBOX", f[1].lower()))
+        except imaplib.IMAP4.error as exc:
+            raise EmailError(
+                f"IMAP : liste des dossiers impossible ({type(exc).__name__})"
+            ) from exc
+        finally:
+            _quiet_logout(conn)
+
+    async def folders(self) -> list[tuple[str, str]]:
+        return await asyncio.to_thread(self._folders)
 
     async def mark_unseen_from(self, address: str) -> int:
         return await asyncio.to_thread(self._mark_unseen_from, address)
