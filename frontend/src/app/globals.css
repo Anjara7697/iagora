@@ -2446,3 +2446,322 @@ dl.profile-fields {
 a.user-avatar {
   text-decoration: none;
 }
+
+/* --- Réglages (maquette : Paramètres, Intégrations, Équipe, Mon compte, Import) --- */
+.settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.section-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 200px;
+}
+.section-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.section-intro {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #45403c;
+  max-width: 76ch;
+  margin: 0;
+}
+.field-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid #efece8;
+}
+.field-row > .field-label {
+  font-size: 13px;
+  color: var(--muted);
+  flex: 0 0 210px;
+  padding-top: 9px;
+}
+.field-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 560px;
+}
+.field-control input:not([type="checkbox"]),
+.field-control select,
+.field-control textarea {
+  width: 100%;
+}
+.field-control > .form-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.field-control > .form-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.field-control textarea {
+  min-height: 64px;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid #cfcac4;
+  border-radius: 6px;
+}
+.field-note {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+}
+.field-inline {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.field-inline > * {
+  flex: 1;
+  min-width: 110px;
+}
+.toggle-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-top: 12px;
+  border-top: 1px solid #efece8;
+  cursor: pointer;
+}
+.toggle-row input {
+  min-height: auto;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+.toggle-row strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.actions-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #efece8;
+}
+.actions-bar.sticky {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  padding: 12px 0;
+  z-index: 2;
+}
+.status-text {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.status-ok {
+  color: #1f7a48;
+}
+.status-bad {
+  color: var(--err);
+}
+.secret-once {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed #dcd7d1;
+  border-radius: 8px;
+  background: #faf8f7;
+}
+.secret-once code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  word-break: break-all;
+}
+.code-block {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #f7f5f3;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+.stat-grid .stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stat-grid .stat-number {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 19px;
+  color: var(--fg);
+}
+.stat-grid .stat-caption {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #45403c;
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #efece8;
+  flex-wrap: wrap;
+}
+.item-row .item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 220px;
+}
+.item-row .item-main strong {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.item-row .item-meta {
+  font-size: 12.5px;
+  color: #45403c;
+}
+.item-row .item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.avatar-36 {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #eef2fd;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.avatar-36.off {
+  background: #f0eeeb;
+  color: #8e8781;
+}
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: #f4f2f0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+.segmented button {
+  min-height: 30px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 5px;
+}
+.segmented button[aria-pressed="true"] {
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(25, 24, 23, 0.08);
+  font-weight: 600;
+}
+.stepper {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.stepper li {
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.stepper li[aria-current="step"] {
+  color: var(--accent);
+  border-color: #c9d6f7;
+  background: #eef2fd;
+  font-weight: 600;
+}
+.stepper li.done {
+  color: #1f7a48;
+}
+.day-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.day-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid #cfcac4;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #fff;
+}
+.day-picker label:has(input:checked) {
+  border-color: var(--accent);
+  background: #eef2fd;
+  color: var(--accent);
+}
+.day-picker input {
+  min-height: auto;
+  accent-color: var(--accent);
+}
+@media (max-width: 700px) {
+  .field-row > .field-label {
+    padding-top: 0;
+    flex-basis: 100%;
+  }
+}

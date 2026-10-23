@@ -70,9 +70,13 @@ export function MyZoom() {
   if (status && status.mode !== "advisor" && !result) return null;
 
   return (
-    <section className="card" aria-label="Mon Zoom">
-      <h2>Mon Zoom</h2>
-      {result && <p role="status">{result}</p>}
+    <section className="section-card" aria-label="Mon Zoom">
+      <span className="section-label">Mon Zoom</span>
+      {result && (
+        <p role="status" className="status-text status-ok">
+          {result}
+        </p>
+      )}
       {status?.mode === "advisor" && status.connected && (
         <>
           <p>
