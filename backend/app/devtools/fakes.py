@@ -84,7 +84,7 @@ class FakeCalendar:
         self._run_id = uuid4().hex[:8]
 
     async def get_available_slots(
-        self, count: int, *, advisor_email: str | None = None
+        self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
     ) -> list[Slot]:
         self.advisor_emails.append(advisor_email)
         return self.slots[:count]
@@ -95,6 +95,7 @@ class FakeCalendar:
         prospect_name: str | None,
         *,
         advisor_email: str | None = None,
+        advisor_id: int | None = None,
         prospect_email: str | None = None,
     ) -> BookedMeeting:
         if self.fail_booking:

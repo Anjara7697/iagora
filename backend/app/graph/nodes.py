@@ -319,7 +319,9 @@ class WorkflowNodes:
     async def get_calendar_slots(self, state: SalesAgentState) -> Update:
         try:
             slots = await self.deps.calendar.get_available_slots(
-                NUMBER_OF_SLOTS, advisor_email=state["ctx"].advisor_email
+                NUMBER_OF_SLOTS,
+                advisor_email=state["ctx"].advisor_email,
+                advisor_id=state["ctx"].advisor_id,
             )
         except CalendarError as exc:
             # Pas d'agenda branché = transfert normal ; agenda en panne = incident.
@@ -379,6 +381,7 @@ class WorkflowNodes:
                 slot,
                 ctx.first_name,
                 advisor_email=ctx.advisor_email,
+                advisor_id=ctx.advisor_id,
                 prospect_email=ctx.email,
             )
         except CalendarError as exc:

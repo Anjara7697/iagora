@@ -29,7 +29,7 @@ NOT_CONFIGURED = "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.m
 
 class UnconfiguredCalendar:
     async def get_available_slots(
-        self, count: int, *, advisor_email: str | None = None
+        self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None
     ) -> list[Slot]:
         raise CalendarNotConfiguredError(
             "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
@@ -41,6 +41,7 @@ class UnconfiguredCalendar:
         prospect_name: str | None,
         *,
         advisor_email: str | None = None,
+        advisor_id: int | None = None,
         prospect_email: str | None = None,
     ) -> BookedMeeting:
         raise CalendarNotConfiguredError(

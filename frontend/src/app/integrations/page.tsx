@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { CalendarSettings } from "@/components/CalendarSettings";
 import { EmailSettings } from "@/components/EmailSettings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -231,22 +232,7 @@ export default function IntegrationsPage() {
         </Card>
       )}
 
-      <Card
-        region="Agenda"
-        title="Agenda des conseillers"
-        kind="Agenda"
-        status={SOON}
-      >
-        <p>
-          Google Calendar (agenda de chaque conseiller) : réglé pour l’instant
-          sur le serveur. La connexion de son agenda par chaque conseiller,
-          depuis la console, arrive au prochain lot.
-        </p>
-        <p className="muted">
-          Sert à proposer uniquement des créneaux réellement libres et à
-          réserver le rendez-vous.
-        </p>
-      </Card>
+      <CalendarSettings />
       <Card region="Zoom" title="Zoom" kind="Visioconférence" status={SOON}>
         <p>Non connecté : aucun lien de visioconférence n’est créé.</p>
         <p className="muted">
