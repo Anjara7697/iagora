@@ -33,7 +33,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         workers.append(asyncio.create_task(reply_queue_loop(settings), name="reply-queue"))
     if settings.follow_up_worker_enabled:
         workers.append(asyncio.create_task(follow_up_loop(settings), name="follow-up-worker"))
-    if settings.email_enabled:
+    # Toujours démarrée : elle ne fait rien tant que la boîte n'est pas configurée et activée
+    # (console Intégrations ou `.env`), et prend les changements en compte sans redémarrage.
+    if settings.environment != "test":
         workers.append(asyncio.create_task(email_loop(settings), name="email-worker"))
     yield
     for worker in workers:

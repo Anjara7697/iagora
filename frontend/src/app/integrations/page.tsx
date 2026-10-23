@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { EmailSettings } from "@/components/EmailSettings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { DELIVERY, formatDate, label } from "@/lib/labels";
@@ -48,8 +49,10 @@ const SOON = <Status tone="off">À venir</Status>;
 
 export default function IntegrationsPage() {
   const user = useCurrentUser();
+  // keepPrevious : recharger l'état après un enregistrement ne démonte pas le formulaire.
   const status = useApi<EmailStatus>(
     user?.role === "ADMIN" ? "/integrations/email" : null,
+    { keepPrevious: true },
   );
   const [check, setCheck] = useState<EmailCheck | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -125,8 +128,8 @@ export default function IntegrationsPage() {
           <h1>Intégrations</h1>
           <p className="muted">
             Chaque intégration indique ce qu’elle alimente réellement dans le
-            produit. Les identifiants ne se saisissent jamais ici : ils restent
-            dans le fichier <code>.env</code> du serveur.
+            produit. Les identifiants saisis ici sont chiffrés sur le serveur et
+            ne sont jamais réaffichés.
           </p>
         </div>
       </div>
@@ -139,7 +142,7 @@ export default function IntegrationsPage() {
       {s && (
         <Card
           region="Email"
-          title="Messagerie IONOS"
+          title="Messagerie"
           kind="Canal email"
           status={<Status tone={emailTone}>{emailLabel}</Status>}
           actions={
@@ -148,7 +151,7 @@ export default function IntegrationsPage() {
                 disabled={busy || !s.configured}
                 onClick={() => run("check")}
               >
-                Tester la connexion
+                Tester la boîte enregistrée
               </button>
               <button
                 disabled={busy || !s.configured}
@@ -161,8 +164,8 @@ export default function IntegrationsPage() {
         >
           {!s.configured && (
             <p className="warnbox" role="alert">
-              Boîte non configurée : renseignez <code>EMAIL_USERNAME</code> et{" "}
-              <code>EMAIL_PASSWORD</code> dans le <code>.env</code> du serveur.
+              Boîte non configurée : renseignez-la ci-dessous (adresse et mot de
+              passe, les serveurs sont détectés automatiquement).
             </p>
           )}
           <p>
@@ -224,6 +227,7 @@ export default function IntegrationsPage() {
               {error}
             </p>
           )}
+          <EmailSettings onSaved={status.reload} />
         </Card>
       )}
 
@@ -234,12 +238,13 @@ export default function IntegrationsPage() {
         status={SOON}
       >
         <p>
-          Non connecté : l’agent ne peut pas encore proposer ni réserver de
-          créneaux.
+          Google Calendar (agenda de chaque conseiller) : réglé pour l’instant
+          sur le serveur. La connexion de son agenda par chaque conseiller,
+          depuis la console, arrive au prochain lot.
         </p>
         <p className="muted">
-          Servira à proposer uniquement des créneaux réellement libres
-          (fournisseur à confirmer : Google Calendar, Outlook ou agenda IONOS).
+          Sert à proposer uniquement des créneaux réellement libres et à
+          réserver le rendez-vous.
         </p>
       </Card>
       <Card region="Zoom" title="Zoom" kind="Visioconférence" status={SOON}>

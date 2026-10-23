@@ -332,3 +332,38 @@ export type TreatedPage = {
   total: number;
   hours: number;
 };
+
+export type EmailConfig = {
+  address: string;
+  username: string | null;
+  imap_host: string;
+  imap_port: number;
+  imap_folder: string;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: "starttls" | "ssl";
+  from_name: string;
+  enabled: boolean;
+  send_enabled: boolean;
+  sandbox_recipients: string[];
+  source?: "console" | "env";
+  password_set?: boolean;
+  updated_at?: string | null;
+};
+
+export type EmailAutodetect = {
+  provider: string | null;
+  imap_host: string;
+  imap_port: number;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_security: "starttls" | "ssl";
+  source: "preset" | "mx" | "ispdb" | "guess";
+  note: string | null;
+};
+
+export type EmailTestResult = {
+  imap: string;
+  smtp: string;
+  folders: { name: string; label: string }[];
+};

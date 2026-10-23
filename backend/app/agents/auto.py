@@ -335,29 +335,28 @@ async def email_cycle(
 
 
 async def email_loop(settings: Settings) -> None:
-    """Boucle du connecteur email (démarrée avec l'application si EMAIL_ENABLED)."""
+    """Boucle du connecteur email. La configuration (console, à défaut `.env`) est relue à chaque
+    passage : activer, désactiver ou changer de boîte ne demande pas de redémarrage."""
     from app.database.clients import get_mongo_db
     from app.database.session import get_sessionmaker
+    from app.services import email_config
 
-    client = create_email_client(settings)
-    if client is None:
-        logger.warning("Connecteur email activé mais identifiants manquants : arrêt")
-        return
     while True:
+        poll = settings.email_poll_seconds
         try:
-            if not await lease.acquire(
-                get_mongo_db(), "email-worker", settings.email_poll_seconds * 3
-            ):
-                await asyncio.sleep(settings.email_poll_seconds)
-                continue  # une autre instance lit la boîte email
-            await email_cycle(
-                settings, client, db=get_mongo_db(), session_factory=lambda: get_sessionmaker()()
-            )
+            db = get_mongo_db()
+            effective = await email_config.effective_settings(db, settings)
+            poll = effective.email_poll_seconds
+            client = create_email_client(effective)
+            if client is not None and await lease.acquire(db, "email-worker", poll * 3):
+                await email_cycle(
+                    effective, client, db=db, session_factory=lambda: get_sessionmaker()()
+                )
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("Connecteur email en erreur")
-        await asyncio.sleep(settings.email_poll_seconds)
+        await asyncio.sleep(poll)
 
 
 __all__ = [
