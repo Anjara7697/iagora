@@ -9,7 +9,17 @@ export type Page<T> = {
 
 export type Role = "ADMIN" | "ADVISOR" | "VIEWER";
 
-export type User = { id: number; username: string; email: string; role: Role };
+export type User = {
+  id: number;
+  username: string;
+  email: string;
+  role: Role;
+  is_active?: boolean;
+  must_change_password?: boolean;
+  created_at?: string;
+};
+
+export type CreatedUser = User & { temporary_password: string | null };
 
 export type Membership = {
   id: number;
