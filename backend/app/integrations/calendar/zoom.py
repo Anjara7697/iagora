@@ -1,6 +1,12 @@
-"""Client Zoom (application Server-to-Server OAuth) : création d'une réunion planifiée."""
+"""Client Zoom : création d'une réunion planifiée.
+
+Deux authentifications : application « Server-to-Server OAuth » du compte Zoom de l'école
+(identifiants saisis dans la console, à défaut le `.env`), ou jeton OAuth d'un conseiller qui a
+connecté son propre compte Zoom (`token_provider`, réunion créée à son nom).
+"""
 
 import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,27 +21,51 @@ TIMEOUT = 15.0
 
 
 class ZoomClient:
-    def __init__(self, settings: Settings, http: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        http: httpx.AsyncClient | None = None,
+        *,
+        account_id: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        host_user: str | None = None,
+        token_provider: Callable[[], Awaitable[str]] | None = None,
+        enabled: bool = True,
+    ) -> None:
         self._s = settings
         self._http = http or httpx.AsyncClient(timeout=TIMEOUT)
         self._token: str | None = None
         self._token_expiry = 0.0
+        env_secret = (
+            settings.zoom_client_secret.get_secret_value() if settings.zoom_client_secret else ""
+        )
+        explicit = account_id is not None
+        self._account_id = (account_id or "") if explicit else settings.zoom_account_id
+        self._client_id = (client_id or "") if explicit else settings.zoom_client_id
+        self._client_secret = (client_secret or "") if explicit else env_secret
+        self._host_user = host_user or settings.zoom_host_user
+        self._token_provider = token_provider
+        self._enabled = enabled
 
     @property
     def configured(self) -> bool:
-        s = self._s
-        return bool(s.zoom_account_id and s.zoom_client_id and s.zoom_client_secret)
+        if not self._enabled:
+            return False
+        if self._token_provider is not None:
+            return True
+        return bool(self._account_id and self._client_id and self._client_secret)
 
     async def _access_token(self) -> str:
+        if self._token_provider is not None:
+            return await self._token_provider()
         if self._token and time.time() < self._token_expiry - 60:
             return self._token
-        s = self._s
-        assert s.zoom_client_secret is not None  # noqa: S101 - garanti par `configured`
         try:
             response = await self._http.post(
                 TOKEN_URL,
-                params={"grant_type": "account_credentials", "account_id": s.zoom_account_id},
-                auth=(s.zoom_client_id, s.zoom_client_secret.get_secret_value()),
+                params={"grant_type": "account_credentials", "account_id": self._account_id},
+                auth=(self._client_id, self._client_secret),
             )
         except httpx.HTTPError as exc:
             raise CalendarError(f"Zoom injoignable ({type(exc).__name__})") from exc
@@ -69,10 +99,13 @@ class ZoomClient:
             "timezone": tz,
             "settings": {"join_before_host": False, "waiting_room": True},
         }
-        response = await self._create(host or self._s.zoom_host_user, payload)
-        if response.status_code == 404 and host and host != self._s.zoom_host_user:
-            # Le conseiller n'a pas de compte Zoom : on utilise l'hôte par défaut.
-            response = await self._create(self._s.zoom_host_user, payload)
+        if self._token_provider is not None:  # compte Zoom du conseiller : réunion à son nom
+            response = await self._create("me", payload)
+        else:
+            response = await self._create(host or self._host_user, payload)
+            if response.status_code == 404 and host and host != self._host_user:
+                # Le conseiller n'a pas de compte Zoom dans l'école : hôte par défaut.
+                response = await self._create(self._host_user, payload)
         if response.status_code >= 400:
             raise CalendarError(f"Zoom : création de la réunion refusée ({response.status_code})")
         body = response.json()

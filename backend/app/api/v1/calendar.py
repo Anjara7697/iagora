@@ -42,7 +42,7 @@ def _redirect_uri(request: Request) -> str:
     return str(request.url_for(CALLBACK))
 
 
-def _safe_return(settings: Settings, return_to: str) -> str:
+def safe_return(settings: Settings, return_to: str) -> str:
     """Retour uniquement vers une origine autorisée de la console (pas de redirection ouverte)."""
     parsed = urlparse(return_to)
     origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -130,7 +130,7 @@ async def connect(
         raise HTTPException(
             409, detail="Google Agenda n'est pas encore branché par l'administrateur"
         )
-    state = calendar_config.make_state(settings, user.id, _safe_return(settings, payload.return_to))
+    state = calendar_config.make_state(settings, user.id, safe_return(settings, payload.return_to))
     return ConnectOut(
         url=google_oauth.authorization_url(
             cfg.client_id, _redirect_uri(request), state, login_hint=user.email
@@ -164,7 +164,7 @@ async def google_callback(
     if parsed is None:
         raise HTTPException(400, detail="Lien de connexion expiré ou invalide : recommencez")
     user_id, return_to = parsed
-    target = _safe_return(settings, return_to)
+    target = safe_return(settings, return_to)
 
     def back(result: str, detail: str | None = None) -> RedirectResponse:
         query = {"calendar": result, **({"detail": detail} if detail else {})}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CalendarSettings } from "@/components/CalendarSettings";
 import { EmailSettings } from "@/components/EmailSettings";
+import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { DELIVERY, formatDate, label } from "@/lib/labels";
@@ -233,12 +234,7 @@ export default function IntegrationsPage() {
       )}
 
       <CalendarSettings />
-      <Card region="Zoom" title="Zoom" kind="Visioconférence" status={SOON}>
-        <p>Non connecté : aucun lien de visioconférence n’est créé.</p>
-        <p className="muted">
-          Créera le lien de visioconférence de chaque rendez-vous.
-        </p>
-      </Card>
+      <ZoomSettings />
       <Card
         region="Meta Business"
         title="Meta Business (Messenger / Instagram)"

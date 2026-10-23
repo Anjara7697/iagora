@@ -71,6 +71,22 @@ async function mockApi(
         redirect_uri: "http://localhost:8000/api/v1/calendar/google/callback",
         connections: [],
       };
+    } else if (path === "/integrations/zoom") {
+      if (request.method() === "PUT") {
+        opts.saved?.push({ zoom: request.postDataJSON() });
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      body = {
+        mode: "none",
+        source: "console",
+        account_id: "",
+        client_id: "",
+        client_secret_set: false,
+        host_user: "me",
+        redirect_uri: "http://localhost:8000/api/v1/zoom/callback",
+        connections: [],
+      };
     } else if (path === "/advisors")
       body = {
         items: [{ id: 2, username: "paul" }],
@@ -144,7 +160,10 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(
     page.getByRole("region", { name: "Agenda" }).getByText("Non branché"),
   ).toBeVisible();
-  for (const name of ["Zoom", "Meta Business", "LinkedIn", "Formulaire"])
+  await expect(
+    page.getByRole("region", { name: "Zoom" }).getByText("Non branché"),
+  ).toBeVisible();
+  for (const name of ["Meta Business", "LinkedIn", "Formulaire"])
     await expect(
       page.getByRole("region", { name }).getByText("À venir"),
     ).toBeVisible();
@@ -276,6 +295,31 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
       google_client_id: "cid.apps.googleusercontent.com",
       google_client_secret: "secret-123",
       default_user_id: 2,
+    },
+  });
+});
+
+test("brancher le compte Zoom de l'école", async ({ page }) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const card = page.getByRole("region", { name: "Zoom" });
+  await card.getByLabel("Mode").selectOption("account");
+  await card.getByLabel("Account ID").fill("acc-1");
+  await card.getByLabel("Client ID").fill("cid-1");
+  await card.getByLabel("Client secret").fill("sec-1");
+  await card
+    .getByLabel("Hôte par défaut (email Zoom, ou « me »)")
+    .fill("hote@ecole.fr");
+  await card.getByRole("button", { name: "Enregistrer Zoom" }).click();
+  await expect(card.getByText(/Zoom enregistré/)).toBeVisible();
+  expect(saved).toContainEqual({
+    zoom: {
+      mode: "account",
+      account_id: "acc-1",
+      client_id: "cid-1",
+      client_secret: "sec-1",
+      host_user: "hote@ecole.fr",
     },
   });
 });
