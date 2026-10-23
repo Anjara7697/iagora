@@ -1,3 +1,4 @@
+import hashlib
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Any
@@ -21,9 +22,20 @@ from app.integrations.llm.factory import create_language_model
 from app.models import User
 from app.models.enums import UserRole
 
-SettingsDep = Annotated[Settings, Depends(get_settings)]
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 MongoDb = Annotated[Any, Depends(get_mongo_db)]  # AsyncIOMotorDatabase
+
+
+async def get_runtime_settings(
+    base: Annotated[Settings, Depends(get_settings)], db: MongoDb
+) -> Settings:
+    """Réglages effectifs : ceux de la console (Paramètres) l'emportent sur le `.env`."""
+    from app.services import runtime_settings
+
+    return await runtime_settings.effective(db, base)
+
+
+SettingsDep = Annotated[Settings, Depends(get_runtime_settings)]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -81,18 +93,34 @@ ADMIN_ONLY = require_roles(UserRole.ADMIN)
 # --- Dépendances du workflow agentique (remplaçables dans les tests) ---
 
 
-@lru_cache
-def _language_model(provider: str, model: str, key_set: bool) -> LanguageModel:
-    return create_language_model(get_settings())
+_CLIENTS: dict[tuple[Any, ...], Any] = {}
+
+
+def _secret_digest(*values: Any) -> str:
+    raw = "|".join(v.get_secret_value() if v is not None else "" for v in values)
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _cached(key: tuple[Any, ...], build: Callable[[], Any]) -> Any:
+    """Un client par configuration : changer de modèle ou de clé dans la console en recrée un."""
+    if key not in _CLIENTS:
+        if len(_CLIENTS) > 32:
+            _CLIENTS.clear()
+        _CLIENTS[key] = build()
+    return _CLIENTS[key]
 
 
 def get_language_model(settings: SettingsDep) -> LanguageModel:
-    # Le cache est indexé par la configuration : un changement de variables recrée le client.
-    return _language_model(
+    key = (
+        "llm",
         settings.llm_provider,
         settings.llm_model,
-        bool(settings.gemini_api_key or settings.openai_api_key),
+        settings.llm_fallback_model,
+        settings.llm_temperature,
+        _secret_digest(settings.gemini_api_key, settings.openai_api_key),
     )
+    model: LanguageModel = _cached(key, lambda: create_language_model(settings))
+    return model
 
 
 def get_session_factory() -> Callable[[], AsyncSession]:
@@ -121,37 +149,38 @@ async def get_email_client(settings: SettingsDep, db: MongoDb) -> EmailClient | 
     return create_email_client(effective, require_enabled=False)
 
 
-@lru_cache
-def _embeddings(provider: str, model: str, key_set: bool) -> EmbeddingModel | None:
-    try:
-        return create_embeddings(get_settings())
-    except EmbeddingError:
-        return None
-
-
 def get_embeddings(settings: SettingsDep) -> EmbeddingModel | None:
-    return _embeddings(
-        settings.embedding_provider, settings.embedding_model, bool(settings.gemini_api_key)
+    def build() -> EmbeddingModel | None:
+        try:
+            return create_embeddings(settings)
+        except EmbeddingError:
+            return None
+
+    key = (
+        "emb",
+        settings.embedding_provider,
+        settings.embedding_model,
+        _secret_digest(settings.gemini_api_key),
     )
-
-
-@lru_cache
-def _knowledge_base(
-    provider: str, model: str, key_set: bool, environment: str, min_score: float
-) -> KnowledgeBase:
-    settings = get_settings()
-    kb = create_knowledge_base(settings, lambda: get_sessionmaker()())
-    return kb if kb is not None else EmptyKnowledgeBase()
+    embeddings: EmbeddingModel | None = _cached(key, build)
+    return embeddings
 
 
 def get_knowledge_base(settings: SettingsDep) -> KnowledgeBase:
-    return _knowledge_base(
+    def build() -> KnowledgeBase:
+        kb = create_knowledge_base(settings, lambda: get_sessionmaker()())
+        return kb if kb is not None else EmptyKnowledgeBase()
+
+    key = (
+        "kb",
         settings.embedding_provider,
         settings.embedding_model,
-        bool(settings.gemini_api_key),
+        _secret_digest(settings.gemini_api_key),
         settings.environment,
         settings.rag_min_score,
     )
+    knowledge: KnowledgeBase = _cached(key, build)
+    return knowledge
 
 
 Llm = Annotated[LanguageModel, Depends(get_language_model)]

@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # Modèle de langage (workflow agentique). Changer de fournisseur = changer ces variables.
     llm_provider: str = "gemini"
     llm_model: str = "gemini-2.5-flash"
+    # Modèle de secours (même fournisseur, même clé) si le principal est saturé : vide = aucun.
+    llm_fallback_model: str = ""
     llm_temperature: float = Field(0.3, ge=0.0, le=2.0)
     llm_timeout_seconds: float = Field(30.0, gt=0)
     llm_max_retries: int = Field(3, ge=0, le=8)

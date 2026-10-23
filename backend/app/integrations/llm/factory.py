@@ -13,6 +13,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from app.config import Settings
 from app.graph.ports import ChatMessage, LanguageModel, LLMConfigError, T
+from app.integrations.llm.fallback import FallbackLanguageModel
 from app.integrations.llm.langchain_adapter import LangChainLanguageModel
 from app.integrations.llm.resilient import ResilientLanguageModel
 
@@ -82,6 +83,18 @@ _BUILDERS: dict[str, Callable[[Settings], BaseChatModel]] = {
 
 
 def create_language_model(settings: Settings) -> LanguageModel:
+    """Modèle principal, doublé d'un modèle de secours si LLM_FALLBACK_MODEL est renseigné."""
+    primary = _create_single(settings)
+    fallback = settings.llm_fallback_model.strip()
+    if not fallback or fallback == settings.llm_model or isinstance(primary, NullLanguageModel):
+        return primary
+    secondary = _create_single(settings.model_copy(update={"llm_model": fallback}))
+    if isinstance(secondary, NullLanguageModel):
+        return primary
+    return FallbackLanguageModel(primary, secondary)
+
+
+def _create_single(settings: Settings) -> LanguageModel:
     provider = settings.llm_provider.lower()
     builder = _BUILDERS.get(provider)
     if builder is None:
