@@ -6,6 +6,7 @@ import { API_URL, api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ServiceToken } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
+import { Feedback, Field, SecretOnce } from "./forms";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */
 export function LeadSources() {
@@ -65,8 +66,8 @@ export function LeadSources() {
   const active = tokens.filter((t) => !t.revoked_at);
   return (
     <section className="card integ-card" aria-label="Formulaire et outils">
-      <div className="integ-main">
-        <div className="row">
+      <div className="integ-main settings-stack">
+        <div className="section-head">
           <h2>Formulaire du site et outils (n8n…)</h2>
           <span className={`badge integ-${active.length ? "ok" : "off"}`}>
             {active.length
@@ -75,39 +76,49 @@ export function LeadSources() {
           </span>
         </div>
         <span className="eyebrow">Source de leads</span>
-        <p className="muted">
-          Un jeton permet à un formulaire ou un outil d’envoyer des prospects (
-          <code>POST {API_URL}/leads</code>) sans compte utilisateur, vers la
-          campagne choisie. Il ne donne accès à rien d’autre. Pour un fichier :{" "}
+        <p className="section-intro">
+          Un jeton permet à un formulaire ou à un outil d’envoyer des prospects
+          vers la campagne choisie, sans compte utilisateur. Il ne donne accès à
+          rien d’autre. Pour un fichier :{" "}
           <Link href="/prospects/import">importer un CSV</Link>.
         </p>
         {created?.token && (
-          <div className="warnbox" role="status" aria-label="Nouveau jeton">
-            <p>
-              Jeton de <strong>{created.name}</strong> (affiché une seule fois)
-              : <code>{created.token}</code>
-            </p>
-            <pre className="muted">{`curl -X POST ${API_URL}/leads \\
+          <SecretOnce
+            label="Nouveau jeton"
+            intro={
+              <>
+                Jeton de <strong>{created.name}</strong> :
+              </>
+            }
+            secret={created.token}
+            doneLabel="J’ai copié le jeton"
+            onDone={() => setCreated(null)}
+          >
+            <pre className="code-block">{`curl -X POST ${API_URL}/leads \\
   -H "Authorization: Bearer ${created.token}" \\
   -H "Content-Type: application/json" \\
   -d '{"first_name":"Inès","email":"ines@exemple.fr","message":"Je veux des infos","consent":true}'`}</pre>
-            <button onClick={() => setCreated(null)}>
-              J’ai copié le jeton
-            </button>
-          </div>
+          </SecretOnce>
         )}
-        <div className="form-row">
-          <label>
-            Nom du jeton
-            <input
-              value={name}
-              placeholder="ex. Formulaire du site"
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <CampaignSourcePicker value={dest} onChange={setDest} />
+        <Field label="Nom du jeton" note="Ex. Formulaire du site, n8n.">
+          <input
+            value={name}
+            placeholder="Formulaire du site"
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
+        <div className="field-row">
+          <span className="field-label">Destination</span>
+          <div className="field-control">
+            <div className="form-row">
+              <CampaignSourcePicker value={dest} onChange={setDest} />
+            </div>
+            <p className="field-note">
+              Les prospects reçus avec ce jeton y sont rangés automatiquement.
+            </p>
+          </div>
         </div>
-        <div className="row">
+        <div className="actions-bar">
           <button
             className="primary"
             onClick={create}
@@ -115,27 +126,29 @@ export function LeadSources() {
           >
             Créer un jeton
           </button>
+          <Feedback error={error} />
         </div>
         {tokens.length > 0 && (
-          <ul className="plain" aria-label="Jetons de service">
+          <div aria-label="Jetons de service" role="list">
             {tokens.map((t) => (
-              <li key={t.id}>
-                <strong>{t.name}</strong> <code>{t.hint}</code> · créé le{" "}
-                {formatDate(t.created_at)} · dernier envoi{" "}
-                {formatDate(t.last_used_at)}{" "}
-                {t.revoked_at ? (
-                  <span className="badge warn">révoqué</span>
-                ) : (
-                  <button onClick={() => revoke(t)}>Révoquer</button>
-                )}
-              </li>
+              <div className="item-row" role="listitem" key={t.id}>
+                <span className="item-main">
+                  <strong>{t.name}</strong>
+                  <span className="item-meta">
+                    <code>{t.hint}</code> · créé le {formatDate(t.created_at)} ·
+                    dernier envoi {formatDate(t.last_used_at)}
+                  </span>
+                </span>
+                <span className="item-actions">
+                  {t.revoked_at ? (
+                    <span className="badge warn">Révoqué</span>
+                  ) : (
+                    <button onClick={() => revoke(t)}>Révoquer</button>
+                  )}
+                </span>
+              </div>
             ))}
-          </ul>
-        )}
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+          </div>
         )}
       </div>
     </section>

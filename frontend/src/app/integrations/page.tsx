@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CalendarSettings } from "@/components/CalendarSettings";
 import { EmailSettings } from "@/components/EmailSettings";
+import { Feedback, Stats } from "@/components/forms";
 import { LeadSources } from "@/components/LeadSources";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
@@ -131,8 +132,9 @@ export default function IntegrationsPage() {
           <h1>Intégrations</h1>
           <p className="muted">
             Chaque intégration indique ce qu’elle alimente réellement dans le
-            produit. Les identifiants saisis ici sont chiffrés sur le serveur et
-            ne sont jamais réaffichés.
+            produit. Une intégration en erreur prive l’agent de leads ou de
+            canal. Les identifiants saisis ici sont chiffrés sur le serveur et
+            jamais réaffichés.
           </p>
         </div>
       </div>
@@ -171,49 +173,69 @@ export default function IntegrationsPage() {
               passe, les serveurs sont détectés automatiquement).
             </p>
           )}
-          <p>
+          <div className="row">
             <Status tone={s.configured ? "ok" : "off"}>
               {s.configured ? "Identifiants présents" : "Identifiants absents"}
-            </Status>{" "}
+            </Status>
             <Status tone={s.enabled ? "ok" : "warn"}>
               {s.enabled ? "Réception active" : "Réception désactivée"}
-            </Status>{" "}
+            </Status>
             <Status tone={s.send_enabled ? "ok" : "warn"}>
               {s.send_enabled ? "Envoi activé" : "Envoi désactivé"}
             </Status>
-          </p>
-          <p>
-            Réception : relève IMAP <code>{s.imap_host}</code> · dernière relève{" "}
-            {formatDate(s.last_run_at)}
-          </p>
-          <p>
-            Envoi : SMTP <code>{s.smtp_host}</code> · boîte {s.sender ?? "-"}
-          </p>
-          <p className="muted">
-            {s.sandbox_recipients.length > 0
-              ? `Bac à sable : l’agent n’écrit qu’à ${s.sandbox_recipients.join(", ")}.`
-              : "Aucun bac à sable : tout destinataire est autorisé si l’envoi est activé."}{" "}
-            Réception et envoi des messages, fil de conversation, détection de
-            désinscription. Sans webhook : les nouveaux messages arrivent à
-            chaque relève.
-          </p>
+          </div>
+          <div className="field-row">
+            <span className="field-label">Réception</span>
+            <span className="field-control">
+              <span>
+                Relève IMAP <code>{s.imap_host}</code> · dernière relève{" "}
+                {formatDate(s.last_run_at)}
+              </span>
+            </span>
+          </div>
+          <div className="field-row">
+            <span className="field-label">Envoi</span>
+            <span className="field-control">
+              <span>
+                SMTP <code>{s.smtp_host}</code> · boîte {s.sender ?? "-"}
+              </span>
+            </span>
+          </div>
+          <div className="field-row">
+            <span className="field-label">Bac à sable</span>
+            <span className="field-control">
+              <span>
+                {s.sandbox_recipients.length > 0
+                  ? `L’agent n’écrit qu’à ${s.sandbox_recipients.join(", ")}.`
+                  : "Aucun : tout destinataire est autorisé si l’envoi est activé."}
+              </span>
+              <span className="field-note">
+                Réception et envoi, fil de conversation, détection de
+                désinscription. Les nouveaux messages arrivent à chaque relève.
+              </span>
+            </span>
+          </div>
           {s.last_error && (
             <p className="error" role="alert">
               Dernière erreur : {s.last_error}
             </p>
           )}
-          <h3>Messages email par état</h3>
-          {Object.keys(s.outbox).length === 0 ? (
-            <p className="muted">Aucun message.</p>
-          ) : (
-            <ul className="plain">
-              {Object.entries(s.outbox).map(([k, n]) => (
-                <li key={k}>
-                  {label(DELIVERY, k)} : <strong>{n}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="field-row">
+            <span className="field-label">Messages email par état</span>
+            <span className="field-control">
+              {Object.keys(s.outbox).length === 0 ? (
+                <span className="status-text">Aucun message.</span>
+              ) : (
+                <Stats
+                  label="Messages email par état"
+                  items={Object.entries(s.outbox).map(([k, n]) => ({
+                    value: n,
+                    caption: label(DELIVERY, k),
+                  }))}
+                />
+              )}
+            </span>
+          </div>
           {check && (
             <ul className="plain" aria-label="Résultat du test">
               <li>
@@ -224,12 +246,7 @@ export default function IntegrationsPage() {
               </li>
             </ul>
           )}
-          {notice && <p role="status">{notice}</p>}
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
+          <Feedback notice={notice} error={error} />
           <EmailSettings onSaved={status.reload} />
         </Card>
       )}

@@ -186,7 +186,7 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(card.getByText("Réception active")).toBeVisible();
   await expect(card.getByText("agent@datum.test")).toBeVisible();
   await expect(card.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
-  await expect(card.getByText("Prêt à envoyer :")).toBeVisible();
+  await expect(card.getByText("Prêt à envoyer")).toBeVisible();
   await expect(card.getByText("Connecté", { exact: true })).toBeVisible();
   // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
   await expect(
