@@ -310,7 +310,7 @@ function Detail({
       </header>
 
       <div className="task-context">
-        <span className="eyebrow">La demande à examiner</span>
+        <span className="sr-only">La demande à examiner</span>
         <h3>{item.title}</h3>
         {item.detail && <blockquote>« {item.detail} »</blockquote>}
         <span className="muted">
@@ -518,21 +518,8 @@ function Todo() {
   };
 
   return (
-    <>
-      <div className="review-heading">
-        <div>
-          <span className="eyebrow">Votre espace de décision</span>
-          <h1>Chaque réponse mérite votre regard.</h1>
-          <p>
-            Relisez les propositions de l’agent et prenez le relais quand c’est
-            nécessaire.
-          </p>
-        </div>
-        <div className="review-count" aria-label="Éléments en attente">
-          <strong>{all.data ? total : "—"}</strong>
-          <span>à traiter</span>
-        </div>
-      </div>
+    <div className="review-workspace">
+      <h1 className="sr-only">À traiter</h1>
       {notice && (
         <div
           className="review-notice"
@@ -558,10 +545,12 @@ function Todo() {
       )}
       <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Éléments à traiter">
-          <div className="task-list-heading">
+          <header className="task-list-heading">
             <h2>Votre file de travail</h2>
-            <p>Choisissez une demande pour commencer.</p>
-          </div>
+            <span className="review-count" aria-label="Éléments en attente">
+              <strong>{all.data ? total : "—"}</strong> en attente
+            </span>
+          </header>
           <div
             className="view-switch todo-tabs"
             role="group"
@@ -796,7 +785,7 @@ function Todo() {
           </section>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

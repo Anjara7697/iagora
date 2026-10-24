@@ -88,7 +88,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Écran | Route | Fichier | État |
 |---|---|---|---|
 | Aujourd’hui | `/` | `app/page.tsx` | Fait : grille en 3 colonnes |
-| À traiter | `/todo` | `app/todo/page.tsx` | Conforme |
+| À traiter | `/todo` | `app/todo/page.tsx` | Ajusté : contexte et brouillon accessibles plus tôt, actions de décision conservées, compteur dans la file ; couleurs partagées avec la console |
 | Conversations | `/conversations` | `app/conversations/page.tsx` | Fait : filtres compacts |
 | Prospects | `/prospects` | `app/prospects/page.tsx` | Fait : filtres repliés, pipeline par 100 avec repères de défilement |
 | Fiche prospect | `/prospects/[id]` | `app/prospects/[id]/page.tsx` | Fait : recommandation vide masquée, en-tête mobile |
@@ -196,3 +196,22 @@ Le mode Automatique reste réservé à l’administrateur et désactivé par dé
   règle existante.
 - Les tests Playwright tournent sur bureau ; quelques scénarios ne sont pas
   prévus pour 390 px (liste des campagnes, pagination des prospects).
+
+## 8. Ajustement du parcours de validation après comparaison visuelle
+
+Référence complémentaire : export utilisateur `IAGORA — Dossier interface.html`
+(28 planches, dont les vues mobiles). Cette référence guide la comparaison ; les
+améliorations d’usage déjà retenues ne sont pas annulées pour reproduire une capture.
+
+Sur « À traiter », le grand bandeau d’introduction a été remplacé par un titre de
+page accessible et un compteur dans l’en-tête de la file. Le contexte, le brouillon
+et ses actions prennent moins de place. Le bouton « Valider la réponse », l’édition,
+le refus motivé, la régénération et la confirmation après décision sont conservés.
+Les états de validation et de conversation utilisent les couleurs de `:root`.
+
+Contrôle visuel avec les mêmes données fictives avant/après : le début du brouillon
+passe d’environ 526 px à 312 px sur un écran de 1440 px de large. Sur le scénario
+court des tests, la validation est visible sans défilement sur bureau et sur mobile
+(390 × 844). Les longs messages restent naturellement défilants, sans troncature.
+L’accueil et la conversation ont été comparés et conservés : aucune donnée statique
+de la maquette n’est intégrée à l’application.
