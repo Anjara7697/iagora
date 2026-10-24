@@ -1614,6 +1614,16 @@ ul.plain {
 
 /* --- Campagnes --- */
 .primary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -3161,6 +3171,16 @@ a.button-link.primary-link:hover {
   color: #fff;
 }
 a.button-link.primary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
   background: var(--accent);
 }
 a.button-link.primary-link:hover {
@@ -3233,5 +3253,24 @@ a.button-link.primary-link:hover {
   }
   .filters .filters-reset {
     margin-left: 0;
+  }
+  /* Fiche prospect : avatar et nom sur une ligne, actions en dessous */
+  .profile-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .profile-heading-main {
+    flex: 1 1 calc(100% - 70px);
+    min-width: 0;
+  }
+  .profile-actions {
+    flex: 1 0 100%;
+  }
+  .profile-header h1 {
+    font-size: 24px;
+    overflow-wrap: anywhere;
+  }
+  .page-heading {
+    flex-wrap: wrap;
   }
 }

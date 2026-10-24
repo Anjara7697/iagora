@@ -782,7 +782,7 @@ test("observateur : file À attribuer accessible, attribution interdite", async 
   await expect
     .poll(() =>
       requests.some(
-        (u) => u.includes("pending_campaign=true") && u.includes("limit=25"),
+        (u) => u.includes("pending_campaign=true") && u.includes("limit=100"),
       ),
     )
     .toBe(true);

@@ -76,13 +76,14 @@ export function humanError(status: number, payload: unknown): string {
         : "Information manquante ou invalide : vérifiez le formulaire.";
     }
   }
-  if (status >= 500)
-    return "Le serveur a rencontré une erreur. Réessayez dans un instant ; si cela continue, prévenez l’administrateur.";
+  // Un message métier explicite (« Service temporairement indisponible ») est gardé.
   if (detail && !RAW.has(detail.trim().toLowerCase()))
     return detail
       .replace(UUID, "")
       .replace(/\s{2,}/g, " ")
       .trim();
+  if (status >= 500)
+    return "Le serveur a rencontré une erreur. Réessayez dans un instant ; si cela continue, prévenez l’administrateur.";
   return GENERIC[status] ?? `Erreur ${status} : réessayez dans un instant.`;
 }
 
