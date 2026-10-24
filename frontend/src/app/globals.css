@@ -3272,6 +3272,9 @@ a.button-link.primary-link:hover {
   }
   .page-heading {
     flex-wrap: wrap;
+  }
+}
+
 /* File de travail : priorité au contexte, à la lecture et à la décision. */
 .review-heading {
   display: flex;
