@@ -193,7 +193,10 @@ function Detail({
     });
 
   return (
-    <section className="inbox-detail" aria-label={`Conversation avec ${name}`}>
+    <section
+      className="inbox-detail conversation-workspace"
+      aria-label={`Conversation avec ${name}`}
+    >
       <header className="inbox-detail-head">
         <span className="prospect-avatar inbox-avatar" aria-hidden="true">
           {initials(name)}
@@ -287,6 +290,32 @@ function Detail({
           </p>
         </div>
       )}
+      {pendingDraft && (
+        <div className="conversation-review-callout">
+          <div>
+            <span className="eyebrow">À vous de décider</span>
+            <h3>Une réponse est prête à être relue.</h3>
+            <p>
+              Un brouillon de l&apos;agent attend votre validation :{" "}
+              <Link
+                href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${conv?.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
+              >
+                le traiter dans « À traiter »
+              </Link>
+              .
+            </p>
+          </div>
+          <span className="badge kind-validation">Validation requise</span>
+        </div>
+      )}
+      {conv && (
+        <div className="thread-heading">
+          <h3>Fil de la conversation</h3>
+          <span className="muted">
+            {conv.messages.length} message{conv.messages.length > 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
       {conv && (
         <ConversationView
           messages={conv.messages}
@@ -295,17 +324,6 @@ function Detail({
         />
       )}
 
-      {pendingDraft && (
-        <p className="warnbox card">
-          Un brouillon de l&apos;agent attend votre validation :{" "}
-          <Link
-            href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${conv?.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
-          >
-            le traiter dans « À traiter »
-          </Link>
-          .
-        </p>
-      )}
       {readOnly && (
         <p className="muted">
           Votre accès observateur permet de consulter les échanges.
@@ -333,6 +351,13 @@ function Detail({
       )}
       {!readOnly && conv && conv.status !== "closed" && (
         <div className="inbox-composer">
+          <div className="composer-heading">
+            <strong>Votre réponse</strong>
+            <span className="muted">
+              {label(CHANNELS, summary.channel)} ·{" "}
+              {p?.email ?? summary.prospect?.email ?? "Prospect"}
+            </span>
+          </div>
           <textarea
             aria-label="Votre réponse"
             placeholder="Écrire une réponse…"

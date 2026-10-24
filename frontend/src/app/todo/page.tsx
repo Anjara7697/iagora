@@ -11,7 +11,6 @@ import {
   HANDOFF_REASONS,
   PRIORITIES,
   RISKS,
-  TODO_KINDS,
   formatDate,
   fullName,
   initials,
@@ -29,6 +28,18 @@ import type {
 } from "@/lib/types";
 
 type KindFilter = "" | TodoKind;
+const TASK_LABELS: Record<TodoKind, string> = {
+  validation: "Brouillons à valider",
+  escalation: "Demandes de conseiller",
+  kb_gap: "Réponses à compléter",
+  incident: "Incidents",
+};
+const TASK_ACTIONS: Record<TodoKind, string> = {
+  validation: "Relire et valider la réponse",
+  escalation: "Prendre le relais de l’agent",
+  kb_gap: "Apporter une réponse vérifiée",
+  incident: "Examiner le problème",
+};
 const KIND_ORDER: TodoKind[] = [
   "validation",
   "escalation",
@@ -80,19 +91,23 @@ function Row({
         </span>
         <span className="inbox-row-main">
           <span className="inbox-row-top">
-            <span className="row">
-              <span className={`badge kind-${item.kind}`}>
-                {label(TODO_KINDS, item.kind)}
-              </span>
-              <span className={`badge priority-${item.priority}`}>
-                {label(PRIORITIES, item.priority)}
-              </span>
-            </span>
+            <strong>{name}</strong>
             <span className="mono">{relativeTime(item.created_at)}</span>
           </span>
-          <strong>{name}</strong>
+          <span className="task-row-context">
+            <span className={`task-kind kind-${item.kind}`}>
+              {TASK_LABELS[item.kind]}
+            </span>
+            <span>· {label(CHANNELS, item.channel)}</span>
+          </span>
           <span className="inbox-preview">
             {item.detail ? `« ${item.detail} »` : item.title}
+          </span>
+          <span className="task-row-action">
+            {TASK_ACTIONS[item.kind]}
+            <span className={`task-priority priority-${item.priority}`}>
+              {label(PRIORITIES, item.priority)}
+            </span>
           </span>
         </span>
       </button>
@@ -100,7 +115,13 @@ function Row({
   );
 }
 
-function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
+function DraftPanel({
+  item,
+  onDone,
+}: {
+  item: TodoItem;
+  onDone: (message: string) => void;
+}) {
   const user = useCurrentUser();
   const draft = item.draft!;
   const [text, setText] = useState(draft.content);
@@ -117,7 +138,13 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
     setError(null);
     try {
       await api(`${base}/${path}`, { method: "POST", body: body ?? {} });
-      onDone();
+      onDone(
+        path === "approve"
+          ? "Message validé. Son état d’envoi est disponible dans « Traités »."
+          : path === "reject"
+            ? "Brouillon refusé. Aucun envoi n’a été demandé."
+            : "Régénération demandée. Consultez la file pour retrouver la nouvelle réponse.",
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'opération");
     } finally {
@@ -129,10 +156,10 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
     <section className="draft-panel" aria-label="Brouillon de l'agent">
       <header>
         <strong>
-          Brouillon — {label(CHANNELS, item.channel)}
+          Réponse proposée — {label(CHANNELS, item.channel)}
           {draft.subject ? ` · objet : ${draft.subject}` : ""}
         </strong>
-        <span className="muted">Généré par l&apos;agent</span>
+        <span className="badge kind-validation">À relire avant validation</span>
       </header>
       {editing ? (
         <textarea
@@ -188,44 +215,52 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
           </div>
         </div>
       ) : (
-        <div className="row">
-          <button
-            className="primary"
-            disabled={busy || !text.trim()}
-            onClick={() => act("approve", { content: editing ? text : null })}
-          >
-            {editing ? "Approuver la version modifiée" : "Approuver"}
-          </button>
-          <button
-            disabled={busy}
-            onClick={() =>
-              editing
-                ? (setText(draft.content), setEditing(false))
-                : setEditing(true)
-            }
-          >
-            {editing ? "Annuler la modification" : "Modifier"}
-          </button>
-          <button disabled={busy} onClick={() => act("regenerate")}>
-            Régénérer
-          </button>
-          <button
-            className="danger"
-            disabled={busy}
-            onClick={() => setRejecting(true)}
-          >
-            Refuser (motif)
-          </button>
-          <Link
-            className="button-link"
-            href={`/conversations?id=${item.conversation_id}`}
-          >
-            Ouvrir la conversation
-          </Link>
+        <div className="draft-actions">
+          <div className="draft-decision">
+            <button
+              className="primary"
+              disabled={busy || !text.trim()}
+              onClick={() => act("approve", { content: editing ? text : null })}
+            >
+              {busy
+                ? "Traitement en cours…"
+                : editing
+                  ? "Valider la version modifiée"
+                  : "Valider la réponse"}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() =>
+                editing
+                  ? (setText(draft.content), setEditing(false))
+                  : setEditing(true)
+              }
+            >
+              {editing ? "Annuler la modification" : "Modifier"}
+            </button>
+          </div>
+          <div className="draft-alternatives">
+            <button disabled={busy} onClick={() => act("regenerate")}>
+              Régénérer
+            </button>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={() => setRejecting(true)}
+            >
+              Refuser le brouillon
+            </button>
+            <Link
+              className="button-link"
+              href={`/conversations?id=${item.conversation_id}`}
+            >
+              Voir l’échange complet →
+            </Link>
+          </div>
         </div>
       )}
       <p className="muted">
-        Approuver valide le message : il part ensuite par le canal du prospect
+        Valider approuve le message : il part ensuite par le canal du prospect
         dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
         en arrêt d’urgence. Son état reste lisible dans « Traités ».
       </p>
@@ -233,7 +268,13 @@ function DraftPanel({ item, onDone }: { item: TodoItem; onDone: () => void }) {
   );
 }
 
-function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
+function Detail({
+  item,
+  onDone,
+}: {
+  item: TodoItem;
+  onDone: (message: string) => void;
+}) {
   const name = itemName(item);
   const rec = item.recommendation;
   return (
@@ -247,7 +288,7 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
           <DemoBadge email={item.prospect?.email} />
           <div className="row">
             <span className={`badge kind-${item.kind}`}>
-              {label(TODO_KINDS, item.kind)}
+              {TASK_LABELS[item.kind]}
             </span>
             <span className={`badge priority-${item.priority}`}>
               {label(PRIORITIES, item.priority)}
@@ -268,9 +309,16 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
         )}
       </header>
 
-      <p>
-        <strong>{item.title}.</strong> {item.detail && <>« {item.detail} »</>}
-      </p>
+      <div className="task-context">
+        <span className="eyebrow">La demande à examiner</span>
+        <h3>{item.title}</h3>
+        {item.detail && <blockquote>« {item.detail} »</blockquote>}
+        <span className="muted">
+          {label(CHANNELS, item.channel)} · {formatDate(item.created_at)}
+        </span>
+      </div>
+
+      {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
 
       {rec && (
         <div className="recommendation">
@@ -323,8 +371,6 @@ function Detail({ item, onDone }: { item: TodoItem; onDone: () => void }) {
           </div>
         </div>
       )}
-
-      {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
 
       {item.handoff && (
         <div className="card warnbox">
@@ -445,6 +491,7 @@ function Todo() {
     });
   }
   const [offset, setOffset] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
   const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
@@ -472,15 +519,29 @@ function Todo() {
 
   return (
     <>
-      <div className="page-heading sr-only">
+      <div className="review-heading">
         <div>
-          <span className="eyebrow">Travail · File de validation</span>
-          <h1>À traiter</h1>
-          <p className="muted">
-            Brouillons à valider, escalades, lacunes de la base et incidents.
+          <span className="eyebrow">Votre espace de décision</span>
+          <h1>Chaque réponse mérite votre regard.</h1>
+          <p>
+            Relisez les propositions de l’agent et prenez le relais quand c’est
+            nécessaire.
           </p>
         </div>
+        <div className="review-count" aria-label="Éléments en attente">
+          <strong>{all.data ? total : "—"}</strong>
+          <span>à traiter</span>
+        </div>
       </div>
+      {notice && (
+        <div
+          className="review-notice"
+          role="status"
+          aria-label="Résultat de la décision"
+        >
+          ✓ {notice}
+        </div>
+      )}
       {selectedId && (
         <div className="inbox-mobile-nav">
           <button
@@ -497,6 +558,10 @@ function Todo() {
       )}
       <div className="inbox" data-selected={!!selectedId}>
         <aside className="inbox-list" aria-label="Éléments à traiter">
+          <div className="task-list-heading">
+            <h2>Votre file de travail</h2>
+            <p>Choisissez une demande pour commencer.</p>
+          </div>
           <div
             className="view-switch todo-tabs"
             role="group"
@@ -597,7 +662,7 @@ function Todo() {
                     setOffset(0);
                   }}
                 >
-                  {label(TODO_KINDS, k)} ({counts[k] ?? 0})
+                  {TASK_LABELS[k]} ({counts[k] ?? 0})
                 </button>
               ))}
             </div>
@@ -656,7 +721,15 @@ function Todo() {
             onChanged={refresh}
           />
         ) : tab === "todo" && selected ? (
-          <Detail item={selected} onDone={refresh} />
+          <Detail
+            key={selected.id}
+            item={selected}
+            onDone={(message) => {
+              setNotice(message);
+              router.replace(`/todo${qs({ kind })}`, { scroll: false });
+              refresh();
+            }}
+          />
         ) : tab === "todo" && selectedId ? (
           <section className="inbox-detail inbox-placeholder">
             <Loading
@@ -670,7 +743,56 @@ function Todo() {
           </section>
         ) : (
           <section className="inbox-detail inbox-placeholder">
-            <p className="muted">Sélectionnez un élément pour le traiter.</p>
+            <div className="review-start">
+              <span className="review-start-mark" aria-hidden="true">
+                ✓
+              </span>
+              <span className="eyebrow">Un regard humain, au bon moment</span>
+              <h2>
+                {tab === "treated"
+                  ? "Retrouvez vos décisions"
+                  : list.loading
+                    ? "Chargement de votre file…"
+                    : list.error
+                      ? "La file est indisponible."
+                      : items.length
+                        ? "Faisons avancer vos échanges."
+                        : kind
+                          ? "Aucune demande de ce type."
+                          : "Votre file est à jour."}
+              </h2>
+              <p>
+                {tab === "treated"
+                  ? "Sélectionnez un message pour consulter la décision et son état d’envoi."
+                  : list.loading
+                    ? "Nous récupérons les demandes à examiner."
+                    : list.error
+                      ? "Réessayez depuis la liste pour retrouver vos demandes."
+                      : items.length
+                        ? "Choisissez une demande à gauche. Vous retrouverez son contexte, la réponse proposée et les éléments pour décider."
+                        : "Les nouvelles demandes apparaîtront ici. Vous pouvez retrouver les échanges en cours dans les conversations."}
+              </p>
+              {tab === "todo" && items[0] && (
+                <button
+                  className="primary"
+                  onClick={() =>
+                    router.replace(`/todo${qs({ kind, id: items[0].id })}`, {
+                      scroll: false,
+                    })
+                  }
+                >
+                  Examiner la première demande →
+                </button>
+              )}
+              {tab === "todo" &&
+                !list.loading &&
+                !list.error &&
+                !items.length && (
+                  <Link className="button-link" href="/conversations">
+                    Voir les conversations
+                  </Link>
+                )}
+            </div>
           </section>
         )}
       </div>

@@ -68,7 +68,7 @@ export default function ConversationView({
         return (
           <article
             key={m.id}
-            className={`message message-${m.role} ${dead ? "dead" : ""}`}
+            className={`message message-${m.role} ${draft?.status === "pending" ? "message-pending" : ""} ${dead ? "dead" : ""}`}
           >
             <div className="bubble-meta">
               <span
@@ -80,6 +80,11 @@ export default function ConversationView({
             <div
               className={`bubble ${m.role} ${draft ? `draft draft-${draft.status}` : ""}`}
             >
+              {draft?.status === "pending" && (
+                <div className="pending-message-label">
+                  Brouillon · pas encore validé
+                </div>
+              )}
               {draft?.status && draft.status !== "pending" && (
                 <div className="bubble-draft">
                   {label(DRAFT_STATUS, draft.status)}
