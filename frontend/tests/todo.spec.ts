@@ -198,7 +198,7 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(page.getByRole("button", { name: "Tout (2)" })).toBeVisible();
   await expect(page.getByLabel("2 en attente")).toBeVisible();
 
-  await page.getByRole("button", { name: "Lacune KB (1)" }).click();
+  await page.getByRole("button", { name: "Réponses à compléter (1)" }).click();
   await expect(list.getByText("Marie Dupont")).toHaveCount(0);
   await page.getByRole("button", { name: /^Tout/ }).click();
 
@@ -223,7 +223,7 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
     .getByLabel("Texte du brouillon")
     .fill("Bonjour Marie, version relue.");
   await page
-    .getByRole("button", { name: "Approuver la version modifiée" })
+    .getByRole("button", { name: "Valider la version modifiée" })
     .click();
   await expect(page.getByText("Nouveau")).toHaveCount(0);
   await expect
@@ -236,6 +236,18 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(page.getByRole("button", { name: /Marie Dupont/ })).toHaveCount(
     0,
   );
+  await expect(
+    page.getByRole("status", { name: "Résultat de la décision" }),
+  ).toContainText("Message validé");
+  await expect(
+    page.getByRole("region", { name: "Brouillon de l'agent" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Examiner la première demande →" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
+  ).toBeVisible();
 });
 
 test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) => {
@@ -247,7 +259,8 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
     .poll(() => calls.posts.some((p) => p.path.endsWith("/regenerate")))
     .toBe(true);
 
-  await page.getByRole("button", { name: "Refuser (motif)" }).click();
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByRole("button", { name: "Refuser le brouillon" }).click();
   const confirm = page.getByRole("button", { name: "Confirmer le refus" });
   await expect(confirm).toBeDisabled();
   await page.getByLabel("Motif du refus").fill("Ton trop familier");
@@ -270,7 +283,9 @@ test("observateur : consultation seule", async ({ page }) => {
       "Votre accès observateur permet de consulter les brouillons.",
     ),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Approuver" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Valider la réponse", exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: /Arrêt d'urgence/ }),
   ).toHaveCount(0);
@@ -436,4 +451,33 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
   await expect(
     page.getByText("Motif du refus : Ton trop familier"),
   ).toBeVisible();
+});
+
+test("échec de validation : le brouillon reste accessible et aucune réussite n’est annoncée", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/api/v1/conversations/c1/drafts/m1/approve", (route) =>
+    route.fulfill({
+      status: 503,
+      json: { detail: "Validation temporairement indisponible" },
+    }),
+  );
+  await open(page);
+  await page
+    .getByRole("button", { name: "Examiner la première demande →" })
+    .click();
+  await page
+    .getByRole("button", { name: "Valider la réponse", exact: true })
+    .click();
+  const draft = page.getByRole("region", { name: "Brouillon de l'agent" });
+  await expect(draft.getByRole("alert")).toHaveText(
+    "Validation temporairement indisponible",
+  );
+  await expect(
+    draft.getByRole("button", { name: "Valider la réponse", exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByText("Message validé.", { exact: false })).toHaveCount(
+    0,
+  );
 });

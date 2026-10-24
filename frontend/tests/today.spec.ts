@@ -115,7 +115,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
   await request;
   await expect(page).toHaveURL(/\/todo\?kind=validation$/);
   await expect(
-    page.getByRole("button", { name: "Validation requise (2)", exact: true }),
+    page.getByRole("button", { name: "Brouillons à valider (2)", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Tout (5)", exact: true }).click();
   await expect(page).toHaveURL(/\/todo$/);
@@ -131,7 +131,7 @@ test("accueil : salutation, familles à traiter, signaux forts, activité, relan
   await mockApi(page);
   await open(page);
   await expect(
-    page.getByRole("heading", { name: "Bonjour nadia" }),
+    page.getByRole("heading", { name: "Bonjour Nadia" }),
   ).toBeVisible();
   await expect(page.getByText("5 éléments vous attendent")).toBeVisible();
   await expect(
@@ -182,7 +182,9 @@ test("accueil : panne de l'API, message clair et nouvelle tentative", async ({
   await mockApi(page, { fail: true });
   await open(page);
   await expect(
-    page.getByRole("alert").filter({ hasText: "Erreur interne" }),
+    page.getByRole("alert").filter({
+      hasText: "Le serveur a rencontré une erreur",
+    }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
 });

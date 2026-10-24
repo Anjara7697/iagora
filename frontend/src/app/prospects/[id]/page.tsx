@@ -126,6 +126,18 @@ export default function ProspectPage() {
   const recommendation =
     conv?.handoff?.recommended_action ||
     (lastRun?.action ? label(ACTIONS, lastRun.action) : null);
+  // Le bloc n'apparaît que s'il a quelque chose à dire : désinscription, campagne
+  // à attribuer, ou décision de l'agent (pendant le chargement, il reste affiché).
+  const showRecommendation =
+    !!p &&
+    (p.consent_status === "opted_out" ||
+      p.campaigns.length === 0 ||
+      !!recommendation ||
+      !!conv?.handoff?.summary ||
+      !!lastRun?.reason ||
+      runs.loading ||
+      conversation.loading ||
+      !!runs.error);
   return (
     <>
       <Link href="/prospects" className="profile-back">
@@ -209,53 +221,55 @@ export default function ProspectPage() {
           )}
           <div className="profile-columns">
             <div className="profile-column">
-              <section
-                className="recommendation profile-recommendation"
-                aria-label="Prochaine action recommandée"
-              >
-                <div className="recommendation-heading">
-                  <span className="dot tone-ai" aria-hidden="true" />
-                  Prochaine action recommandée
-                </div>
-                <div className="recommendation-body">
-                  {p.consent_status === "opted_out" ? (
-                    <>
-                      <h2>Respecter la désinscription</h2>
-                      <p>Aucun message ne peut être envoyé à ce prospect.</p>
-                    </>
-                  ) : (
-                    <>
-                      <h2>
-                        {recommendation ??
-                          (p.campaigns.length === 0
-                            ? "Attribuer une campagne et une source"
-                            : "Consulter le parcours du prospect")}
-                      </h2>
-                      {conv?.handoff?.summary ? (
-                        <p>{conv.handoff.summary}</p>
-                      ) : lastRun?.reason ? (
-                        <p>{lastRun.reason}</p>
-                      ) : (
-                        <p className="muted">
-                          Aucune recommandation de l’agent enregistrée pour
-                          l’instant.
-                        </p>
-                      )}
-                      {lastRun && !conv?.handoff && (
-                        <p className="muted">
-                          Dernière décision enregistrée le{" "}
-                          {formatDate(lastRun.started_at)}.
-                        </p>
-                      )}
-                    </>
-                  )}
-                  <Loading
-                    loading={runs.loading || conversation.loading}
-                    error={runs.error}
-                    onRetry={runs.reload}
-                  />
-                </div>
-              </section>
+              {showRecommendation && (
+                <section
+                  className="recommendation profile-recommendation"
+                  aria-label="Prochaine action recommandée"
+                >
+                  <div className="recommendation-heading">
+                    <span className="dot tone-ai" aria-hidden="true" />
+                    Prochaine action recommandée
+                  </div>
+                  <div className="recommendation-body">
+                    {p.consent_status === "opted_out" ? (
+                      <>
+                        <h2>Respecter la désinscription</h2>
+                        <p>Aucun message ne peut être envoyé à ce prospect.</p>
+                      </>
+                    ) : (
+                      <>
+                        <h2>
+                          {recommendation ??
+                            (p.campaigns.length === 0
+                              ? "Attribuer une campagne et une source"
+                              : "Consulter le parcours du prospect")}
+                        </h2>
+                        {conv?.handoff?.summary ? (
+                          <p>{conv.handoff.summary}</p>
+                        ) : lastRun?.reason ? (
+                          <p>{lastRun.reason}</p>
+                        ) : (
+                          <p className="muted">
+                            Aucune recommandation de l’agent enregistrée pour
+                            l’instant.
+                          </p>
+                        )}
+                        {lastRun && !conv?.handoff && (
+                          <p className="muted">
+                            Dernière décision enregistrée le{" "}
+                            {formatDate(lastRun.started_at)}.
+                          </p>
+                        )}
+                      </>
+                    )}
+                    <Loading
+                      loading={runs.loading || conversation.loading}
+                      error={runs.error}
+                      onRetry={runs.reload}
+                    />
+                  </div>
+                </section>
+              )}
               <section
                 className="card profile-card"
                 aria-label="Profil collecté"

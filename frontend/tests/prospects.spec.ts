@@ -408,7 +408,8 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   await expect(
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Déconnexion" }).click();
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),
@@ -619,6 +620,7 @@ test("filtres programme, intérêt, canal et consentement transmis à l'API", as
     await route.fallback();
   });
   await login(page);
+  await page.getByRole("button", { name: /Plus de filtres/ }).click();
   await page.getByLabel("Programme").selectOption("ebihar_students");
   await page.getByLabel("Intérêt").selectOption("very_hot");
   await page.getByLabel("Canal", { exact: true }).selectOption("email");
@@ -638,6 +640,25 @@ test("filtres programme, intérêt, canal et consentement transmis à l'API", as
   await expect(page.getByLabel("Programme")).toHaveValue("");
 });
 
+test("filtres avancés repliés : nombre de filtres actifs et puces retirables", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await login(page);
+  const more = page.getByRole("button", { name: /Plus de filtres/ });
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByLabel("Intérêt")).toHaveCount(0);
+  await more.click();
+  await page.getByLabel("Intérêt").selectOption("very_hot");
+  await more.click();
+  await expect(more).toContainText("1");
+  const chip = page.getByRole("button", { name: "Retirer le filtre Intérêt" });
+  await expect(chip).toContainText("Très chaud");
+  await chip.click();
+  await expect(chip).toHaveCount(0);
+  await expect(more).not.toContainText("1");
+});
+
 test("export CSV : téléchargement avec les filtres, absent pour un observateur", async ({
   page,
 }) => {
@@ -655,6 +676,7 @@ test("export CSV : téléchargement avec les filtres, absent pour un observateur
     });
   });
   await login(page);
+  await page.getByRole("button", { name: /Plus de filtres/ }).click();
   await page.getByLabel("Programme").selectOption("ebihar_students");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -760,7 +782,7 @@ test("observateur : file À attribuer accessible, attribution interdite", async 
   await expect
     .poll(() =>
       requests.some(
-        (u) => u.includes("pending_campaign=true") && u.includes("limit=25"),
+        (u) => u.includes("pending_campaign=true") && u.includes("limit=100"),
       ),
     )
     .toBe(true);

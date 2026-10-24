@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   api,
   ApiError,
@@ -65,6 +65,19 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
   },
 ];
 
+/** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
+export const firstNameOf = (username: string) => {
+  const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
+  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
+};
+const displayNameOf = (username: string) =>
+  username
+    .split("@")[0]
+    .split(/[.\s_-]+/)
+    .filter(Boolean)
+    .map((p) => p[0].toUpperCase() + p.slice(1).toLowerCase())
+    .join(" ");
+
 const initialsOf = (name: string) => {
   const parts = name.split(/[.\s_-]+/).filter(Boolean);
   return (
@@ -86,6 +99,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
   const [waiting, setWaiting] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -128,6 +143,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (mustChange && pathname !== "/account") router.replace("/account");
   }, [mustChange, pathname, router]);
 
+  // Menu du compte : fermé au clic extérieur, à Échap et au changement de page.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onClick = (event: MouseEvent) => {
+      if (!accountRef.current?.contains(event.target as Node))
+        setAccountOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [accountOpen]);
+  useEffect(() => setAccountOpen(false), [pathname]);
+
   useEffect(() => {
     if (!navOpen) return;
     const close = (event: KeyboardEvent) => {
@@ -160,8 +194,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const showSimulator = SIMULATOR_ENABLED && user.role !== "VIEWER";
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => isAdmin || !i.adminOnly),
+    items: g.items.filter((i) => i.href && (isAdmin || !i.adminOnly)),
   })).filter((g) => g.items.length > 0);
+  // Écrans prévus mais pas encore développés : regroupés dans une seule ligne repliée.
+  const upcoming = NAV_GROUPS.flatMap((g) => g.items.filter((i) => i.soon));
   const title = pageTitle(pathname);
   const subtitle = pageSubtitle(pathname);
   return (
@@ -189,18 +225,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div key={group.name}>
                 <p className="nav-group">{group.name}</p>
                 {group.items.map((link) => {
-                  if (!link.href)
-                    return (
-                      <span
-                        key={link.label}
-                        className="nav-item soon"
-                        aria-disabled="true"
-                        title="Prévu, pas encore disponible"
-                      >
-                        {link.label}
-                        <span className="nav-soon">Bientôt</span>
-                      </span>
-                    );
+                  if (!link.href) return null;
                   const active =
                     pathname === link.href ||
                     (link.href !== "/" && pathname.startsWith(`${link.href}/`));
@@ -226,6 +251,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 })}
               </div>
             ))}
+            {upcoming.length > 0 && (
+              <details className="nav-upcoming">
+                <summary>
+                  À venir
+                  <span className="nav-upcoming-count">{upcoming.length}</span>
+                </summary>
+                <ul aria-label="Écrans prévus, pas encore disponibles">
+                  {upcoming.map((item) => (
+                    <li key={item.label}>{item.label}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </nav>
           {showSimulator && (
             <div className="nav-demo">
@@ -290,25 +328,52 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
               </Link>
             )}
-            <Link
-              href="/account"
-              className="user-avatar"
-              title={`${user.username} · ${ROLE_LABELS[user.role]} · Mon compte`}
-              aria-label="Mon compte"
-            >
-              {initialsOf(user.username)}
-            </Link>
-            <span className="badge">{ROLE_LABELS[user.role]}</span>
-            <button
-              onClick={() => {
-                setToken(null);
-                setUser(null);
-                setNavOpen(false);
-                router.replace("/login");
-              }}
-            >
-              Déconnexion
-            </button>
+            <div className="account-menu" ref={accountRef}>
+              <button
+                className="account-trigger"
+                aria-label={`Menu du compte : ${displayNameOf(user.username)}, ${ROLE_LABELS[user.role]}`}
+                aria-haspopup="menu"
+                aria-expanded={accountOpen}
+                aria-controls="account-menu"
+                onClick={() => setAccountOpen(!accountOpen)}
+              >
+                <span className="user-avatar" aria-hidden="true">
+                  {initialsOf(user.username)}
+                </span>
+                <span className="account-who">
+                  <span className="account-name">
+                    {displayNameOf(user.username)}
+                  </span>
+                  <span className="account-role">{ROLE_LABELS[user.role]}</span>
+                </span>
+                <span className="account-caret" aria-hidden="true">
+                  ▾
+                </span>
+              </button>
+              {accountOpen && (
+                <div className="account-popover" id="account-menu" role="menu">
+                  <p className="account-popover-head">
+                    <strong>{user.username}</strong>
+                    <span className="muted">{user.email}</span>
+                  </p>
+                  <Link role="menuitem" href="/account">
+                    Mon compte
+                  </Link>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      setToken(null);
+                      setUser(null);
+                      setNavOpen(false);
+                      setAccountOpen(false);
+                      router.replace("/login");
+                    }}
+                  >
+                    Déconnexion
+                  </button>
+                </div>
+              )}
+            </div>
           </header>
           <main
             id="main-content"

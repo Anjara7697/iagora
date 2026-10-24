@@ -41,14 +41,50 @@ type Options = {
   multipart?: FormData;
 };
 
-function detailOf(payload: unknown, fallback: string): string {
+const UUID =
+  /\s*\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+const GENERIC: Record<number, string> = {
+  403: "Votre rôle ne permet pas cette action.",
+  404: "Élément introuvable : il a peut-être été supprimé ou déplacé.",
+  409: "Cette action entre en conflit avec une modification récente. Rechargez la page.",
+  413: "Fichier trop volumineux.",
+  429: "Trop de demandes en peu de temps : patientez quelques secondes.",
+};
+// Messages techniques renvoyés tels quels par certaines briques : jamais affichés bruts.
+const RAW = new Set([
+  "introuvable",
+  "not found",
+  "forbidden",
+  "droits insuffisants",
+  "internal server error",
+  "erreur interne du serveur",
+  "unprocessable entity",
+]);
+
+/** Message d'erreur lisible par un conseiller, sans identifiant technique. */
+export function humanError(status: number, payload: unknown): string {
+  let detail: string | null = null;
   if (payload && typeof payload === "object" && "detail" in payload) {
-    const detail = (payload as { detail: unknown }).detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail) && detail[0] && typeof detail[0].msg === "string")
-      return detail[0].msg;
+    const raw = (payload as { detail: unknown }).detail;
+    if (typeof raw === "string") detail = raw;
+    else if (Array.isArray(raw) && raw[0]) {
+      // Erreur de validation (422) : on nomme le champ plutôt que le message anglais.
+      const loc = Array.isArray(raw[0].loc) ? raw[0].loc : [];
+      const field = loc.length ? String(loc[loc.length - 1]) : null;
+      return field && field !== "body"
+        ? `Information manquante ou invalide (champ « ${field} »).`
+        : "Information manquante ou invalide : vérifiez le formulaire.";
+    }
   }
-  return fallback;
+  // Un message métier explicite (« Service temporairement indisponible ») est gardé.
+  if (detail && !RAW.has(detail.trim().toLowerCase()))
+    return detail
+      .replace(UUID, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  if (status >= 500)
+    return "Le serveur a rencontré une erreur. Réessayez dans un instant ; si cela continue, prévenez l’administrateur.";
+  return GENERIC[status] ?? `Erreur ${status} : réessayez dans un instant.`;
 }
 
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
@@ -89,8 +125,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
       "Réponse du serveur illisible. Réessayez dans quelques instants.",
     );
   }
-  if (!res.ok)
-    throw new ApiError(res.status, detailOf(payload, `Erreur ${res.status}`));
+  if (!res.ok) throw new ApiError(res.status, humanError(res.status, payload));
   return payload as T;
 }
 
@@ -119,13 +154,13 @@ export async function download(path: string, filename: string): Promise<void> {
     throw new ApiError(0, "Serveur injoignable : le backend est-il démarré ?");
   }
   if (!res.ok) {
-    let detail = `Erreur ${res.status}`;
+    let payload: unknown = null;
     try {
-      detail = detailOf(await res.json(), detail);
+      payload = await res.json();
     } catch {
       /* corps non JSON */
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, humanError(res.status, payload));
   }
   const url = URL.createObjectURL(await res.blob());
   const link = document.createElement("a");

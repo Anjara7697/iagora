@@ -32,7 +32,7 @@ type OwnerFilter = "" | "me" | "none";
 
 const STATUS_FILTERS: { value: StatusFilter; text: string }[] = [
   { value: "", text: "Toutes" },
-  { value: "handed_off", text: "En attente de vous" },
+  { value: "handed_off", text: "En attente" },
   { value: "open", text: "Ouvertes" },
   { value: "closed", text: "Clôturées" },
 ];
@@ -51,14 +51,21 @@ function Chips<T extends string>({
   value,
   options,
   onChange,
+  segmented = false,
 }: {
   name: string;
   value: T;
   options: { value: T; text: string }[];
   onChange: (value: T) => void;
+  /** Choix exclusif sur une ligne (statut) plutôt que des pastilles. */
+  segmented?: boolean;
 }) {
   return (
-    <div className="chips" role="group" aria-label={name}>
+    <div
+      className={segmented ? "segmented" : "chips"}
+      role="group"
+      aria-label={name}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -193,7 +200,10 @@ function Detail({
     });
 
   return (
-    <section className="inbox-detail" aria-label={`Conversation avec ${name}`}>
+    <section
+      className="inbox-detail conversation-workspace"
+      aria-label={`Conversation avec ${name}`}
+    >
       <header className="inbox-detail-head">
         <span className="prospect-avatar inbox-avatar" aria-hidden="true">
           {initials(name)}
@@ -287,6 +297,32 @@ function Detail({
           </p>
         </div>
       )}
+      {pendingDraft && (
+        <div className="conversation-review-callout">
+          <div>
+            <span className="eyebrow">À vous de décider</span>
+            <h3>Une réponse est prête à être relue.</h3>
+            <p>
+              Un brouillon de l&apos;agent attend votre validation :{" "}
+              <Link
+                href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${conv?.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
+              >
+                le traiter dans « À traiter »
+              </Link>
+              .
+            </p>
+          </div>
+          <span className="badge kind-validation">Validation requise</span>
+        </div>
+      )}
+      {conv && (
+        <div className="thread-heading">
+          <h3>Fil de la conversation</h3>
+          <span className="muted">
+            {conv.messages.length} message{conv.messages.length > 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
       {conv && (
         <ConversationView
           messages={conv.messages}
@@ -295,17 +331,6 @@ function Detail({
         />
       )}
 
-      {pendingDraft && (
-        <p className="warnbox card">
-          Un brouillon de l&apos;agent attend votre validation :{" "}
-          <Link
-            href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${conv?.messages.find((m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending")?.id}`)}`}
-          >
-            le traiter dans « À traiter »
-          </Link>
-          .
-        </p>
-      )}
       {readOnly && (
         <p className="muted">
           Votre accès observateur permet de consulter les échanges.
@@ -333,6 +358,13 @@ function Detail({
       )}
       {!readOnly && conv && conv.status !== "closed" && (
         <div className="inbox-composer">
+          <div className="composer-heading">
+            <strong>Votre réponse</strong>
+            <span className="muted">
+              {label(CHANNELS, summary.channel)} ·{" "}
+              {p?.email ?? summary.prospect?.email ?? "Prospect"}
+            </span>
+          </div>
           <textarea
             aria-label="Votre réponse"
             placeholder="Écrire une réponse…"
@@ -469,24 +501,27 @@ function Inbox() {
               value={status}
               options={STATUS_FILTERS}
               onChange={(v) => reset(() => setStatus(v))}
+              segmented
             />
-            <Chips
-              name="Responsable"
-              value={owner}
-              options={OWNER_FILTERS}
-              onChange={(v) => reset(() => setOwner(v))}
-            />
-            <select
-              aria-label="Canal"
-              value={channel}
-              onChange={(e) => reset(() => setChannel(e.target.value))}
-            >
-              {CHANNEL_FILTERS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.text}
-                </option>
-              ))}
-            </select>
+            <div className="inbox-filter-row">
+              <Chips
+                name="Responsable"
+                value={owner}
+                options={OWNER_FILTERS}
+                onChange={(v) => reset(() => setOwner(v))}
+              />
+              <select
+                aria-label="Canal"
+                value={channel}
+                onChange={(e) => reset(() => setChannel(e.target.value))}
+              >
+                {CHANNEL_FILTERS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.text}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <Loading
             loading={list.loading}
