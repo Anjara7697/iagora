@@ -60,6 +60,7 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 | [deploiement.md](deploiement.md) | Déploiement sur le serveur, reverse proxy, sauvegardes, retour arrière |
 | [recette-locale.md](recette-locale.md) | Procédure de recette avec Gemini puis une boîte IONOS |
 | [revue-qualite.md](revue-qualite.md) | Revue avant mise en production, lots de corrections, décisions |
+| [frontend/maquette-finale.md](frontend/maquette-finale.md) | Maquette finale : système visuel, état de chaque écran, écrans à créer |
 | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) | Écarts entre la console et la maquette |
 | [frontend/integration-prototype.md](frontend/integration-prototype.md) | Intégration de la maquette dans Next.js |
 
