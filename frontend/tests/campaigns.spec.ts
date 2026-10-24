@@ -513,7 +513,7 @@ test("l'en-tête porte le titre de chaque écran", async ({ page }) => {
   await expect(page.locator("header strong")).toHaveText("Intégrations");
 });
 
-test("menu en quatre groupes, écrans à venir grisés et recherche globale", async ({
+test("menu en quatre groupes, écrans à venir regroupés et recherche globale", async ({
   page,
 }) => {
   await mockApi(page);
@@ -525,8 +525,12 @@ test("menu en quatre groupes, écrans à venir grisés et recherche globale", as
     "aria-current",
     "page",
   );
-  const soon = nav.locator(".nav-item.soon", { hasText: "Dashboard" });
-  await expect(soon).toHaveAttribute("aria-disabled", "true");
+  // Écrans prévus : regroupés dans une ligne « À venir » repliée, sans lien.
+  const upcoming = nav.getByText("À venir");
+  await expect(upcoming).toBeVisible();
+  await expect(nav.getByText("Dashboard", { exact: true })).toBeHidden();
+  await upcoming.click();
+  await expect(nav.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
   await page.getByLabel("Rechercher un prospect").fill("alice");
   await page.getByLabel("Rechercher un prospect").press("Enter");

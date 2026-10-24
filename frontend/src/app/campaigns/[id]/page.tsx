@@ -44,15 +44,18 @@ function Bar({
   title,
   value,
   max,
+  tone,
 }: {
   title: string;
   value: number;
   max: number;
+  /** Couleur de la barre (niveau d'intérêt), sinon couleur d'accent. */
+  tone?: string;
 }) {
   return (
     <div className="bar-row">
       <span>{title}</span>
-      <div className="bar" aria-hidden="true">
+      <div className={`bar ${tone ? `bar-${tone}` : ""}`} aria-hidden="true">
         <div
           style={{ width: `${max > 0 ? Math.round((value / max) * 100) : 0}%` }}
         />
@@ -92,6 +95,7 @@ function Levels({ stats }: { stats: CampaignStats }) {
           title={k === "none" ? "Non évalué" : label(LEVELS, k)}
           value={stats.by_level[k] ?? 0}
           max={max}
+          tone={`level-${k}`}
         />
       ))}
     </section>
@@ -143,43 +147,50 @@ function Sources({
           campagne.
         </p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Source</th>
-              <th>Plateforme</th>
-              <th>Type</th>
-              <th>Prospects</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {campaign.sources.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name}</td>
-                <td>{label(PLATFORMS, s.platform)}</td>
-                <td>{label(SOURCE_TYPES, s.type)}</td>
-                <td>{counts.get(s.id) ?? 0}</td>
-                <td>
-                  {canEdit && (
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        act(() =>
-                          api(`/campaigns/${campaign.id}/sources/${s.id}`, {
-                            method: "DELETE",
-                          }),
-                        )
-                      }
-                    >
-                      Retirer
-                    </button>
-                  )}
-                </td>
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Sources de la campagne, défilement horizontal"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Plateforme</th>
+                <th>Type</th>
+                <th>Prospects</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {campaign.sources.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>{label(PLATFORMS, s.platform)}</td>
+                  <td>{label(SOURCE_TYPES, s.type)}</td>
+                  <td>{counts.get(s.id) ?? 0}</td>
+                  <td>
+                    {canEdit && (
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          act(() =>
+                            api(`/campaigns/${campaign.id}/sources/${s.id}`, {
+                              method: "DELETE",
+                            }),
+                          )
+                        }
+                      >
+                        Retirer
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {error && (
         <p className="error" role="alert">
@@ -423,51 +434,24 @@ export default function CampaignPage() {
               {c.description && <p className="muted">{c.description}</p>}
             </div>
             <span className="spacer" />
-            <Link className="button-link" href={`/prospects?campaign=${c.id}`}>
-              Voir les prospects
-            </Link>
-          </div>
-
-          <CampaignOwnership
-            key={`${c.id}:${c.responsible_advisor_id}`}
-            campaign={c}
-            onDone={campaign.reload}
-          />
-          {canEdit && !editing && (
-            <div className="row">
-              <button
-                disabled={!targets.data}
-                title={targets.error ? "Programmes indisponibles" : undefined}
-                onClick={() => setEditing(true)}
+            <div className="row page-actions">
+              {canEdit && !editing && (
+                <button
+                  disabled={!targets.data}
+                  title={targets.error ? "Programmes indisponibles" : undefined}
+                  onClick={() => setEditing(true)}
+                >
+                  Modifier la campagne
+                </button>
+              )}
+              <Link
+                className="button-link primary-link"
+                href={`/prospects?campaign=${c.id}`}
               >
-                Modifier la campagne
-              </button>
-              {c.status !== "active" && (
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => patch({ status: "active" })}
-                >
-                  Activer
-                </button>
-              )}
-              {c.status === "active" && (
-                <button
-                  disabled={busy}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Désactiver la campagne ? Les nouveaux prospects ne seront plus rattachés à ses sources.",
-                      )
-                    )
-                      void patch({ status: "inactive" });
-                  }}
-                >
-                  Désactiver
-                </button>
-              )}
+                Voir les prospects
+              </Link>
             </div>
-          )}
+          </div>
           {canEdit && targets.error && (
             <p className="error" role="alert">
               Liste des programmes indisponible : {targets.error.message}{" "}
@@ -500,22 +484,6 @@ export default function CampaignPage() {
               onCancel={() => setEditing(false)}
             />
           )}
-
-          <section className="card" aria-label="Programmes visés">
-            <h3>Programmes visés</h3>
-            <div className="row">
-              {c.targets.map((t) => (
-                <span key={t.code} className="badge">
-                  {label(TARGETS, t.code)}
-                </span>
-              ))}
-              {c.targets.length === 0 && (
-                <span className="muted">
-                  Aucun programme : modifiez la campagne pour en choisir.
-                </span>
-              )}
-            </div>
-          </section>
 
           {stats.error && (
             <p className="error" role="alert">
@@ -551,13 +519,83 @@ export default function CampaignPage() {
               </div>
             </>
           )}
-          <Sources
-            campaign={c}
-            stats={stats.data}
-            canEdit={canEdit}
-            onChanged={reload}
-          />
           <CampaignProspects campaign={c} />
+
+          <section
+            className="campaign-settings"
+            aria-labelledby="campaign-settings-title"
+          >
+            <header className="campaign-settings-head">
+              <h2 id="campaign-settings-title">Réglages de la campagne</h2>
+              <span className="muted">
+                {canEdit
+                  ? "Responsable, programmes, sources et statut."
+                  : "Consultation seule : réservé aux administrateurs."}
+              </span>
+            </header>
+            <CampaignOwnership
+              key={`${c.id}:${c.responsible_advisor_id}`}
+              campaign={c}
+              onDone={campaign.reload}
+            />
+            <section className="card" aria-label="Programmes visés">
+              <h3>Programmes visés</h3>
+              <div className="row">
+                {c.targets.map((t) => (
+                  <span key={t.code} className="badge">
+                    {label(TARGETS, t.code)}
+                  </span>
+                ))}
+                {c.targets.length === 0 && (
+                  <span className="muted">
+                    Aucun programme : modifiez la campagne pour en choisir.
+                  </span>
+                )}
+              </div>
+            </section>
+            <Sources
+              campaign={c}
+              stats={stats.data}
+              canEdit={canEdit}
+              onChanged={reload}
+            />
+            {canEdit && (
+              <section className="card campaign-status" aria-label="Statut">
+                <div>
+                  <h3>Statut</h3>
+                  <p className="muted">
+                    {c.status === "active"
+                      ? "Active : les nouveaux prospects sont rattachés par ses sources."
+                      : "Inactive : aucun nouveau prospect n’est rattaché."}
+                  </p>
+                </div>
+                {c.status !== "active" ? (
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => patch({ status: "active" })}
+                  >
+                    Activer
+                  </button>
+                ) : (
+                  <button
+                    className="danger"
+                    disabled={busy}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Désactiver la campagne ? Les nouveaux prospects ne seront plus rattachés à ses sources.",
+                        )
+                      )
+                        void patch({ status: "inactive" });
+                    }}
+                  >
+                    Désactiver
+                  </button>
+                )}
+              </section>
+            )}
+          </section>
         </>
       )}
     </>

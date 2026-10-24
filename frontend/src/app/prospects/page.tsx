@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   DemoBadge,
   Loading,
@@ -27,6 +27,8 @@ import { useApi } from "@/lib/useApi";
 import type { Campaign, Membership, Page, Prospect } from "@/lib/types";
 
 const LIMIT = 25;
+// Le pipeline affiche plus de prospects par page pour que les colonnes soient représentatives.
+const PIPELINE_LIMIT = 100;
 const PIPELINE_COLUMNS = [
   { key: "unassigned", title: "Sans campagne", stages: [] as string[] },
   { key: "new", title: "À qualifier", stages: ["new", "to_qualify"] },
@@ -61,6 +63,65 @@ function Avatar({ prospect }: { prospect: Prospect }) {
   );
 }
 
+/** Pipeline défilant : indique qu'il reste des colonnes à droite (ou à gauche). */
+function PipelineScroller({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () =>
+      setEdges({
+        left: el.scrollLeft > 4,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+      });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [children]);
+  const scroll = (direction: 1 | -1) =>
+    ref.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
+  return (
+    <div
+      className={`pipeline-scroller ${edges.left ? "more-left" : ""} ${edges.right ? "more-right" : ""}`}
+    >
+      <div
+        ref={ref}
+        className="pipeline"
+        tabIndex={0}
+        role="region"
+        aria-label="Pipeline des prospects, défilement horizontal"
+      >
+        {children}
+      </div>
+      {edges.left && (
+        <button
+          type="button"
+          className="pipeline-nav prev"
+          aria-label="Étapes précédentes"
+          onClick={() => scroll(-1)}
+        >
+          ‹
+        </button>
+      )}
+      {edges.right && (
+        <button
+          type="button"
+          className="pipeline-nav next"
+          aria-label="Étapes suivantes"
+          onClick={() => scroll(1)}
+        >
+          ›
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Prospects() {
   const params = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
@@ -83,8 +144,45 @@ function Prospects() {
   const user = useCurrentUser();
   const [exportError, setExportError] = useState<string | null>(null);
   const [view, setView] = useState<"pipeline" | "table">("pipeline");
+  const limit = view === "pipeline" ? PIPELINE_LIMIT : LIMIT;
+  const advanced = [
+    {
+      title: "Programme",
+      id: "target-filter",
+      value: targetCode,
+      set: setTargetCode,
+      options: TARGETS,
+      all: "Tous les programmes",
+    },
+    {
+      title: "Intérêt",
+      id: "level-filter",
+      value: levelFilter,
+      set: setLevelFilter,
+      options: LEVELS,
+      all: "Tous les niveaux",
+    },
+    {
+      title: "Canal",
+      id: "channel-filter",
+      value: channelFilter,
+      set: setChannelFilter,
+      options: CHANNELS,
+      all: "Tous les canaux",
+    },
+    {
+      title: "Consentement",
+      id: "consent-filter",
+      value: consentFilter,
+      set: setConsentFilter,
+      options: CONSENT,
+      all: "Tous",
+    },
+  ];
+  const activeAdvanced = advanced.filter((f) => f.value);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit: LIMIT, offset })}`,
+    `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
     { keepPrevious: true },
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
@@ -179,13 +277,19 @@ function Prospects() {
         >
           <button
             aria-pressed={view === "pipeline"}
-            onClick={() => setView("pipeline")}
+            onClick={() => {
+              setView("pipeline");
+              setOffset(0);
+            }}
           >
             Pipeline
           </button>
           <button
             aria-pressed={view === "table"}
-            onClick={() => setView("table")}
+            onClick={() => {
+              setView("table");
+              setOffset(0);
+            }}
           >
             Table
           </button>
@@ -297,61 +401,23 @@ function Prospects() {
               ))}
           </select>
         </div>
-        {[
-          [
-            "Programme",
-            "target-filter",
-            targetCode,
-            setTargetCode,
-            TARGETS,
-            "Tous les programmes",
-          ],
-          [
-            "Intérêt",
-            "level-filter",
-            levelFilter,
-            setLevelFilter,
-            LEVELS,
-            "Tous les niveaux",
-          ],
-          [
-            "Canal",
-            "channel-filter",
-            channelFilter,
-            setChannelFilter,
-            CHANNELS,
-            "Tous les canaux",
-          ],
-          [
-            "Consentement",
-            "consent-filter",
-            consentFilter,
-            setConsentFilter,
-            CONSENT,
-            "Tous",
-          ],
-        ].map(([title, id, value, setter, options, all]) => (
-          <div className="filter-field" key={id as string}>
-            <label htmlFor={id as string}>{title as string}</label>
-            <select
-              id={id as string}
-              value={value as string}
-              onChange={(e) => {
-                (setter as (v: string) => void)(e.target.value);
-                setOffset(0);
-              }}
+        <button
+          type="button"
+          className="filters-more"
+          aria-expanded={moreOpen}
+          aria-controls="more-filters"
+          onClick={() => setMoreOpen(!moreOpen)}
+        >
+          Plus de filtres
+          {activeAdvanced.length > 0 && (
+            <span
+              className="filters-count"
+              aria-label={`${activeAdvanced.length} actif${activeAdvanced.length > 1 ? "s" : ""}`}
             >
-              <option value="">{all as string}</option>
-              {Object.entries(options as Record<string, string>).map(
-                ([key, text]) => (
-                  <option key={key} value={key}>
-                    {text}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
-        ))}
+              {activeAdvanced.length}
+            </span>
+          )}
+        </button>
         <label className="inline-field">
           <input
             type="checkbox"
@@ -363,9 +429,52 @@ function Prospects() {
           />
           Masquer les prospects fictifs
         </label>
-        <button type="button" onClick={reset}>
+        <button type="button" className="filters-reset" onClick={reset}>
           Réinitialiser
         </button>
+        {moreOpen && (
+          <div className="filters-advanced" id="more-filters">
+            {advanced.map((f) => (
+              <div className="filter-field" key={f.id}>
+                <label htmlFor={f.id}>{f.title}</label>
+                <select
+                  id={f.id}
+                  value={f.value}
+                  onChange={(e) => {
+                    f.set(e.target.value);
+                    setOffset(0);
+                  }}
+                >
+                  <option value="">{f.all}</option>
+                  {Object.entries(f.options).map(([key, text]) => (
+                    <option key={key} value={key}>
+                      {text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+        {!moreOpen && activeAdvanced.length > 0 && (
+          <div className="filters-chips" aria-label="Filtres actifs">
+            {activeAdvanced.map((f) => (
+              <button
+                type="button"
+                key={f.id}
+                className="filter-chip"
+                aria-label={`Retirer le filtre ${f.title}`}
+                onClick={() => {
+                  f.set("");
+                  setOffset(0);
+                }}
+              >
+                {f.title} : {label(f.options, f.value)}
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
+          </div>
+        )}
       </form>
       {exportError && (
         <p className="error" role="alert">
@@ -396,17 +505,14 @@ function Prospects() {
               {view === "pipeline" ? (
                 <>
                   <p className="muted pipeline-note">
-                    Cette page affiche {data.items.length} prospect
-                    {data.items.length > 1 ? "s" : ""} sur {data.total}. Les
-                    colonnes regroupent les étapes ; un prospect peut apparaître
-                    dans plusieurs colonnes.
+                    {data.total > data.items.length
+                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total} : affinez les filtres ou passez en vue Table pour tout parcourir.`
+                      : `${data.total} prospect${data.total > 1 ? "s" : ""}.`}{" "}
+                    Un prospect suivi dans plusieurs campagnes apparaît dans
+                    chaque colonne concernée. Faites défiler vers la droite pour
+                    voir toutes les étapes.
                   </p>
-                  <div
-                    className="pipeline"
-                    tabIndex={0}
-                    role="region"
-                    aria-label="Pipeline des prospects, défilement horizontal"
-                  >
+                  <PipelineScroller>
                     {columns.map((column) => {
                       const { key, title } = column;
                       const items = data.items.filter((p) =>
@@ -464,14 +570,16 @@ function Prospects() {
                             </Link>
                           ))}
                           {!items.length && (
-                            <p className="muted">
-                              Aucun prospect sur cette page.
+                            <p className="muted pipeline-empty">
+                              {data.total > data.items.length
+                                ? "Aucun parmi les prospects affichés."
+                                : "Aucun prospect à cette étape."}
                             </p>
                           )}
                         </section>
                       );
                     })}
-                  </div>
+                  </PipelineScroller>
                 </>
               ) : (
                 <div className="table-wrap">

@@ -32,7 +32,7 @@ type OwnerFilter = "" | "me" | "none";
 
 const STATUS_FILTERS: { value: StatusFilter; text: string }[] = [
   { value: "", text: "Toutes" },
-  { value: "handed_off", text: "En attente de vous" },
+  { value: "handed_off", text: "En attente" },
   { value: "open", text: "Ouvertes" },
   { value: "closed", text: "Clôturées" },
 ];
@@ -51,14 +51,21 @@ function Chips<T extends string>({
   value,
   options,
   onChange,
+  segmented = false,
 }: {
   name: string;
   value: T;
   options: { value: T; text: string }[];
   onChange: (value: T) => void;
+  /** Choix exclusif sur une ligne (statut) plutôt que des pastilles. */
+  segmented?: boolean;
 }) {
   return (
-    <div className="chips" role="group" aria-label={name}>
+    <div
+      className={segmented ? "segmented" : "chips"}
+      role="group"
+      aria-label={name}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -494,24 +501,27 @@ function Inbox() {
               value={status}
               options={STATUS_FILTERS}
               onChange={(v) => reset(() => setStatus(v))}
+              segmented
             />
-            <Chips
-              name="Responsable"
-              value={owner}
-              options={OWNER_FILTERS}
-              onChange={(v) => reset(() => setOwner(v))}
-            />
-            <select
-              aria-label="Canal"
-              value={channel}
-              onChange={(e) => reset(() => setChannel(e.target.value))}
-            >
-              {CHANNEL_FILTERS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.text}
-                </option>
-              ))}
-            </select>
+            <div className="inbox-filter-row">
+              <Chips
+                name="Responsable"
+                value={owner}
+                options={OWNER_FILTERS}
+                onChange={(v) => reset(() => setOwner(v))}
+              />
+              <select
+                aria-label="Canal"
+                value={channel}
+                onChange={(e) => reset(() => setChannel(e.target.value))}
+              >
+                {CHANNEL_FILTERS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.text}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <Loading
             loading={list.loading}
