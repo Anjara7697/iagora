@@ -96,7 +96,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Campagnes | `/campaigns` | `app/campaigns/page.tsx` | Conforme |
 | Fiche campagne | `/campaigns/[id]` | `app/campaigns/[id]/page.tsx` | Fait : chiffres d’abord, réglages en bas |
 | Nouvelle campagne | `/campaigns/new` | `app/campaigns/new/page.tsx` | Conforme |
-| Knowledge Base | `/knowledge` | `app/knowledge/page.tsx` | **Reste** : action « Ajouter un document » alignée à droite comme les autres pages ; modèle d’embedding et seuil dans un encart « Réglages techniques » replié |
+| Knowledge Base | `/knowledge` | `app/knowledge/page.tsx` | Fait : action d’ajout alignée, réglages techniques repliés, recherche des documents, filtre des documents communs et accès direct aux demandes à compléter |
 | Intégrations | `/integrations` | `app/integrations/page.tsx` | **Reste** : libellés toujours au-dessus des champs, grille régulière (ports, sécurité SMTP) |
 | Paramètres | `/settings` | `app/settings/page.tsx` | Conforme |
 | Équipe | `/team` | `app/team/page.tsx` | Conforme |
@@ -215,3 +215,20 @@ court des tests, la validation est visible sans défilement sur bureau et sur mo
 (390 × 844). Les longs messages restent naturellement défilants, sans troncature.
 L’accueil et la conversation ont été comparés et conservés : aucune donnée statique
 de la maquette n’est intégrée à l’application.
+
+## 9. Base de connaissances : documents et contrôle des réponses
+
+La liste et la recherche des documents restent au premier plan. Le modèle, le
+seuil et le nombre d’extraits par défaut sont consultables dans les réglages
+techniques repliés. Les erreurs de configuration et les documents à actualiser
+restent visibles ; l’ajout et l’édition sont indisponibles si le service nécessaire
+n’est pas configuré. Les rôles de lecture et les confirmations de suppression
+sont conservés.
+
+Le filtre « Documents communs » distingue les documents sans programme de la vue
+« Toutes ». Une recherche par titre ou identifiant et une remise à zéro explicite
+couvrent le cas où aucun document ne correspond aux critères. Le tableau conserve
+son défilement propre sur mobile. Le lien des questions sans source ouvre la file
+filtrée `kind=kb_gap`. Dans le test d’une question, changer de question ou de
+programme efface les résultats précédents pour éviter de leur attribuer le mauvais
+contexte. Aucun chiffre de la maquette n’est ajouté aux données réelles.
