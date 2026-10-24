@@ -175,6 +175,9 @@ test("mobile : traitement lisible et retour explicite à la file", async ({
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toBeVisible();
   await expect(list).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Valider la réponse", exact: true }),
+  ).toBeInViewport({ ratio: 1 });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -205,6 +208,9 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await list.getByRole("button", { name: /Marie Dupont/ }).click();
   const detail = page.getByRole("region", { name: "À traiter : Marie Dupont" });
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
+  await expect(
+    detail.getByRole("button", { name: "Valider la réponse", exact: true }),
+  ).toBeInViewport({ ratio: 1 });
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(
