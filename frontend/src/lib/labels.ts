@@ -255,7 +255,7 @@ const PAGE_SUBTITLES: [string, string][] = [
   ["/prospects/", "Parcours, échanges et décisions de l’agent"],
   ["/prospects", "Pipeline et table"],
   ["/conversations", "Inbox unifiée"],
-  ["/todo", "Validations, escalades et incidents"],
+  ["/todo", "Réponses à valider et demandes de conseiller"],
   ["/knowledge", "Connaissances de l’agent"],
   ["/integrations", "Canaux et synchronisation"],
   ["/team", "Membres, rôles et accès"],

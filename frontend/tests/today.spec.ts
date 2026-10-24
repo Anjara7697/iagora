@@ -115,7 +115,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
   await request;
   await expect(page).toHaveURL(/\/todo\?kind=validation$/);
   await expect(
-    page.getByRole("button", { name: "Validation requise (2)", exact: true }),
+    page.getByRole("button", { name: "Brouillons à valider (2)", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Tout (5)", exact: true }).click();
   await expect(page).toHaveURL(/\/todo$/);
