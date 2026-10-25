@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
@@ -144,11 +144,16 @@ function Detail({
   onChanged: () => void;
 }) {
   const user = useCurrentUser();
-  const conversation = useApi<Conversation>(`/conversations/${summary.id}`);
+  const conversation = useApi<Conversation>(`/conversations/${summary.id}`, {
+    keepPrevious: true,
+  });
   const prospect = useApi<Prospect>(`/prospects/${summary.prospect_id}`);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<"send" | "status" | "agent" | null>(null);
+  const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const conv = conversation.data;
   const p = prospect.data;
@@ -159,45 +164,58 @@ function Detail({
       "pending",
   );
   const optedOut = p?.consent_status === "opted_out";
+  const syncing = conversation.loading || prospect.loading;
   const name = rowName(summary);
 
-  async function act(action: () => Promise<unknown>) {
-    setBusy(true);
+  async function act(
+    kind: "send" | "status" | "agent",
+    action: () => Promise<unknown>,
+    message: string,
+  ) {
+    setPending(kind);
     setError(null);
+    setNotice(null);
     try {
       await action();
+      setNotice(message);
       conversation.reload();
       prospect.reload();
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'opération");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
 
   const setStatus = (status: "open" | "handed_off" | "closed") =>
-    act(() =>
+    act("status", () =>
       api(`/conversations/${summary.id}`, {
         method: "PATCH",
         body: { status },
       }),
+      status === "closed"
+        ? "Conversation clôturée."
+        : status === "handed_off"
+          ? "La conversation est maintenant confiée au conseiller."
+          : "Conversation rouverte pour l’agent.",
     );
   const runAgent = () =>
-    act(() =>
+    act("agent", () =>
       api("/agent/runs", {
         method: "POST",
         body: { conversation_id: summary.id },
       }),
+      "Traitement de l’agent enregistré. Consultez le fil pour retrouver le résultat.",
     );
   const send = () =>
-    act(async () => {
+    act("send", async () => {
       await api(`/conversations/${summary.id}/messages`, {
         method: "POST",
         body: { role: "advisor", content: text.trim() },
       });
       setText("");
-    });
+    }, "Réponse enregistrée. Consultez son état d’envoi dans le fil.");
 
   return (
     <section
@@ -251,6 +269,44 @@ function Detail({
         </Link>
       </header>
 
+
+
+      <Loading
+        loading={conversation.loading}
+        error={conversation.error}
+        onRetry={conversation.reload}
+      />
+      <Loading
+        loading={prospect.loading}
+        error={prospect.error}
+        onRetry={prospect.reload}
+      />
+      {conv?.handoff && (
+        <section className="handoff-brief" aria-label="Fiche de transfert">
+          <div className="handoff-brief-heading">
+            <h3>Fiche de transfert</h3>
+            <span className="badge warn">{label(HANDOFF_REASONS, conv.handoff.reason)}</span>
+          </div>
+          <p>{conv.handoff.summary}</p>
+          {conv.handoff.pending_question && (
+            <blockquote>
+              <span className="eyebrow">Question à reprendre</span>
+              <p>« {conv.handoff.pending_question} »</p>
+            </blockquote>
+          )}
+          <p>
+            <b>Action recommandée :</b> {conv.handoff.recommended_action}
+          </p>
+          {!readOnly && !optedOut && conv.status !== "closed" && (
+            <button disabled={busy || syncing || !p} onClick={() => {
+              replyRef.current?.focus({ preventScroll: true });
+              replyRef.current?.scrollIntoView({ block: "center", behavior: "auto" });
+            }}>
+              Rédiger une réponse
+            </button>
+          )}
+        </section>
+      )}
       <div className="inbox-info">
         <div>
           <span className="eyebrow">Dernière interaction</span>
@@ -278,25 +334,6 @@ function Detail({
           <p>{p ? label(CONSENT, p.consent_status) : "-"}</p>
         </div>
       </div>
-
-      <Loading
-        loading={conversation.loading}
-        error={conversation.error}
-        onRetry={conversation.reload}
-      />
-      {conv?.handoff && (
-        <div className="card warnbox">
-          <strong>Fiche de transfert</strong> —{" "}
-          {label(HANDOFF_REASONS, conv.handoff.reason)}
-          {conv.handoff.pending_question && (
-            <p>Question : « {conv.handoff.pending_question} »</p>
-          )}
-          <p>{conv.handoff.summary}</p>
-          <p>
-            <b>Action recommandée :</b> {conv.handoff.recommended_action}
-          </p>
-        </div>
-      )}
       {pendingDraft && (
         <div className="conversation-review-callout">
           <div>
@@ -347,11 +384,12 @@ function Detail({
           {error}
         </p>
       )}
+      {notice && <p className="conversation-action-result" role="status" aria-label="Résultat de l’action">{notice}</p>}
 
       {!readOnly && conv && conv.status === "closed" && (
         <div className="row">
           <p className="muted">Cette conversation est clôturée.</p>
-          <button disabled={busy || optedOut} onClick={() => setStatus("open")}>
+          <button disabled={busy || syncing || optedOut} onClick={() => setStatus("open")}>
             Rouvrir la conversation
           </button>
         </div>
@@ -369,53 +407,61 @@ function Detail({
             aria-label="Votre réponse"
             placeholder="Écrire une réponse…"
             value={text}
-            disabled={busy || optedOut}
+            ref={replyRef}
+            disabled={busy || optedOut || !p || syncing}
             onChange={(e) => setText(e.target.value)}
           />
           <div className="row">
             <button
               className="primary"
-              disabled={busy || !p || optedOut || !text.trim()}
+              disabled={busy || syncing || !p || optedOut || !text.trim()}
               onClick={send}
             >
-              Envoyer en tant que {user?.username}
-            </button>
-            {conv.status === "open" ? (
-              <>
-                <button disabled={busy} onClick={() => setStatus("handed_off")}>
-                  Prendre la main
-                </button>
-                <button
-                  disabled={busy || optedOut || pendingDraft}
-                  onClick={runAgent}
-                >
-                  {busy ? "L'agent réfléchit…" : "Relancer l'agent"}
-                </button>
-              </>
-            ) : (
-              <button disabled={busy} onClick={() => setStatus("open")}>
-                Rendre la main à l&apos;agent
-              </button>
-            )}
-            <button
-              disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Clôturer la conversation ? Les relances et les brouillons en attente seront annulés.",
-                  )
-                )
-                  void setStatus("closed");
-              }}
-            >
-              Clôturer
+              {pending === "send" ? "Enregistrement…" : `Envoyer en tant que ${user?.username}`}
             </button>
           </div>
+
           <p className="muted">
             {summary.channel === "email"
               ? "Le message est enregistré puis placé dans la file d’envoi email. La livraison dépend de la configuration du connecteur ; consultez son état dans l’échange."
               : "Le message est enregistré. La livraison sur ce canal reste à confirmer avec son connecteur."}
           </p>
+          <details className="conversation-management">
+            <summary>Gestion de la conversation</summary>
+            <div className="row">
+              {conv.status === "open" ? (
+                <>
+                  <button disabled={busy || syncing} onClick={() => setStatus("handed_off")}>
+                    Prendre la main
+                  </button>
+                  <button
+                    disabled={busy || syncing || !p || optedOut || pendingDraft}
+                    onClick={runAgent}
+                  >
+                    {pending === "agent" ? "L'agent réfléchit…" : "Relancer l'agent"}
+                  </button>
+                </>
+              ) : (
+                <button disabled={busy || syncing} onClick={() => setStatus("open")}>
+                  Rendre la main à l&apos;agent
+                </button>
+              )}
+              <button
+                className="danger"
+                disabled={busy || syncing}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Clôturer la conversation ? Les relances et les brouillons en attente seront annulés.",
+                    )
+                  )
+                    void setStatus("closed");
+                }}
+              >
+                Clôturer
+              </button>
+            </div>
+          </details>
         </div>
       )}
     </section>
@@ -453,9 +499,10 @@ function Inbox() {
   const items = list.data?.items ?? [];
   const inPage = items.find((c) => c.id === selectedId) ?? null;
   const direct = useApi<ConversationSummary>(
-    selectedId && !inPage
+    selectedId
       ? `/conversations/${encodeURIComponent(selectedId)}/summary`
       : null,
+    { keepPrevious: true },
   );
   const selected =
     inPage ?? (direct.data?.id === selectedId ? direct.data : null);

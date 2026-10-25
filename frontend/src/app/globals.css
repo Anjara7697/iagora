@@ -3952,6 +3952,77 @@ a.button-link.primary-link:hover {
   background: var(--card);
   min-height: 120px;
 }
+.handoff-brief {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid var(--warn-line);
+  border-radius: 10px;
+  background: var(--warn-bg);
+  overflow-wrap: anywhere;
+}
+.handoff-brief-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.handoff-brief h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.handoff-brief p {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.handoff-brief blockquote {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--warn-line);
+  background: var(--card);
+}
+.handoff-brief blockquote p {
+  margin: 6px 0 0;
+}
+.conversation-management {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.conversation-management summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 13px;
+  padding-block: 6px;
+}
+.conversation-management .row {
+  margin-top: 12px;
+}
+.conversation-action-result {
+  margin: 16px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--ok-line);
+  border-radius: 8px;
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-size: 14px;
+  line-height: 1.6;
+}
+@media (max-width: 600px) {
+  .conversation-workspace .inbox-detail-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .conversation-workspace .inbox-detail-head > .prospect-avatar {
+    grid-area: 1 / 1;
+  }
+  .conversation-workspace .inbox-detail-title {
+    grid-area: 1 / 2;
+  }
+  .conversation-workspace .inbox-detail-head > .button-link {
+    grid-area: 2 / 2;
+    justify-self: start;
+  }
+}
 @media (max-width: 1023px) {
   .review-workspace .inbox-detail {
     padding: 20px 16px 32px;

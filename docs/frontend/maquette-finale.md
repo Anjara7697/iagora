@@ -317,3 +317,26 @@ l’actualisation et les conversations. Une erreur de chargement présente une
 nouvelle tentative, sans conclure que la décision a disparu. Les états présentés
 proviennent de l’API existante, sans interrogation périodique ni modification du
 mécanisme d’envoi.
+
+## 15. Reprendre une conversation transférée
+
+La fiche de transfert regroupe le motif, le résumé, la question en attente et
+l’action recommandée. Son bouton « Rédiger une réponse » donne le focus au champ
+de rédaction et le ramène à l’écran, même après un long historique, sans ajouter
+ni envoyer de texte. Il n’est pas proposé à l’observateur, au prospect désinscrit
+ou dans une conversation clôturée.
+
+L’envoi de la réponse reste l’action principale. La prise ou restitution de la
+main, la relance de l’agent et la clôture sont regroupées dans « Gestion de la
+conversation ». La confirmation de clôture est conservée. Chaque opération a
+son retour explicite ; la confirmation d’enregistrement d’une réponse ne prétend
+pas confirmer sa livraison. En cas d’échec, le texte reste dans le champ.
+
+Le chargement du consentement et ses erreurs deviennent visibles avec une
+nouvelle tentative. La réponse reste désactivée tant que les données nécessaires
+ne sont pas disponibles. Les rôles et les mécanismes d’envoi existants restent
+inchangés.
+
+Le résumé de la conversation sélectionnée est aussi chargé indépendamment de la
+liste filtrée. Après restitution de la main à l’agent, la conversation peut quitter
+« En attente » sans faire disparaître sa fiche ni la confirmation de l’action.
