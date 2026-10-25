@@ -209,13 +209,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         Aller au contenu
       </a>
       <div className={`app-layout ${navOpen ? "nav-open" : ""}`}>
-        {navOpen && (
-          <button
-            className="nav-scrim"
-            aria-label="Fermer le menu"
-            onClick={() => setNavOpen(false)}
-          />
-        )}
+        <button
+          className="nav-scrim"
+          aria-label="Fermer le menu"
+          aria-hidden={!navOpen}
+          tabIndex={navOpen ? 0 : -1}
+          onClick={() => setNavOpen(false)}
+        />
         <aside className="sidebar" id="app-navigation">
           <Link href="/" className="brand" onClick={() => setNavOpen(false)}>
             <span className="brand-mark" aria-hidden="true">

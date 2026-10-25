@@ -269,3 +269,31 @@ de test — données fictives ». Un indicateur demeure dans l’en-tête pendan
 défilement. Les réglages et le mode de l’agent restent ceux de l’application ;
 la création de données fictives exige toujours une action explicite. La route
 `/simulator` et les mécanismes métier existants sont conservés.
+
+## 12. Examiner une demande et consulter la fiche prospect
+
+Dans « À traiter », la recommandation, ses sources, la confiance et le risque
+précèdent le brouillon et ses boutons de décision. Sur mobile, la lecture et la
+décision suivent le même ordre vertical ; le retour explicite à la liste reste
+accessible. Les règles de validation, refus et régénération sont conservées.
+
+Le lien « Ouvrir la fiche ↗ » annonce une ouverture dans un nouvel onglet pour
+conserver une correction de brouillon en cours dans la demande. La fiche propose
+« Revenir à la demande », avec l’identifiant de la tâche et le filtre d’origine
+dans l’URL. Ce retour reste disponible après actualisation ; une fiche consultée
+depuis la liste habituelle conserve son entrée « Tous les prospects ».
+La consultation seule ne demande ni envoi ni traitement par l’agent et ne change
+pas les droits de l’observateur.
+
+## 13. Transitions et défilement
+
+Les interactions utilisent des transitions courtes (140 ms), l’apparition des
+panneaux un fondu (200 ms), et le menu mobile un coulissement accompagné du voile
+(240 ms), à l’ouverture comme à la fermeture. Le contenu de lecture ne se déplace
+pas. Le menu du compte apparaît avec un léger décalage de 4 px. La préférence
+système de réduction des animations désactive ces effets.
+
+À la souris, les barres natives utilisent une piste transparente et une poignée
+fine et arrondie dans Chromium/Safari, plus marquée au survol. Firefox bénéficie
+de la présentation fine standard. Les écrans tactiles conservent le comportement
+natif ; le mode de contraste forcé rétablit la présentation système.
