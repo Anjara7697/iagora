@@ -101,7 +101,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Paramètres | `/settings` | `app/settings/page.tsx` | Conforme |
 | Équipe | `/team` | `app/team/page.tsx` | Conforme |
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
-| Simulateur | `/simulator` | `app/simulator/page.tsx` | **Reste** : bandeau d’avertissement en texte foncé (`--ink-2`) sur `--warn-bg`, plus compact |
+| Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
 | Rendez-vous | `/appointments` | à créer | **À créer** (section 5.1) |
 | Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
@@ -253,3 +253,19 @@ leur exécution. Les erreurs de chargement proposent une nouvelle tentative. La
 confirmation avant un passage pouvant envoyer des emails réels est conservée.
 Les vérifications de présentation utilisent une API simulée et ne constituent
 pas une recette de connexion à une boîte réelle.
+
+## 11. Placement du simulateur
+
+Le menu principal et l’accueil ne proposent plus de raccourci dédié au simulateur.
+Les administrateurs et les conseillers autorisés passent par **Paramètres → Tests
+et démonstration** (`/settings/testing`). Les conseillers ne chargent pas les
+réglages d’administration. Les observateurs restent exclus des outils de test.
+La désactivation par le drapeau existant est conservée et couvre les liens comme
+les URL directes. Le lien contextuel dans les réglages de l’agent utilise les
+valeurs enregistrées ; les modifications en cours doivent d’abord être sauvegardées.
+
+Le parcours libre et le parcours guidé partagent le même rappel « Environnement
+de test — données fictives ». Un indicateur demeure dans l’en-tête pendant le
+défilement. Les réglages et le mode de l’agent restent ceux de l’application ;
+la création de données fictives exige toujours une action explicite. La route
+`/simulator` et les mécanismes métier existants sont conservés.

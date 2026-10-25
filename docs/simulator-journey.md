@@ -1,5 +1,25 @@
 # Premier parcours guidé et futur branchement n8n
 
+## Accéder aux essais depuis les paramètres
+
+Ouvrir **Paramètres → Tests et démonstration → Ouvrir le simulateur**.
+L’espace `/settings/testing` est accessible aux administrateurs et aux conseillers
+lorsque le simulateur est activé. Un conseiller ne voit que l’entrée vers les outils
+de test dans les paramètres : il ne charge pas les réglages d’administration et
+ne reçoit aucun nouveau droit sur l’API. L’observateur n’a pas accès à cet espace.
+
+Le lien direct `/simulator` reste valide. Son raccourci dédié dans le menu et le
+lien de l’accueil ont été retirés. Après enregistrement des réglages de l’agent,
+un lien contextuel permet de les tester ; il reste indisponible tant que des
+modifications ne sont pas enregistrées. Le simulateur emploie les réglages et le
+mode globaux de l’application, pas une copie isolée de la configuration.
+
+L’en-tête conserve l’indication « Test · données fictives » pendant le défilement,
+et les parcours libre et guidé rappellent leur contexte. Le drapeau existant
+`NEXT_PUBLIC_ENABLE_SIMULATOR=false` masque ces accès et désactive les vues, y
+compris par leurs URL directes. Les protections backend de production et de rôle
+restent inchangées. Ouvrir l’espace de test ne crée aucune donnée de démonstration.
+
 ## Ce qui a été vérifié dans le simulateur précédent
 
 L’écran `/simulator` crée un prospect fictif et appelle les API commerciales

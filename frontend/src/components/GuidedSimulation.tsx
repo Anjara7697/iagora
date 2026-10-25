@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import SimulationNotice from "./SimulationNotice";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { api, ApiError } from "@/lib/api";
@@ -109,11 +110,11 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
           Retour au simulateur libre
         </button>
       </div>
-      <div className="demo-banner" role="note">
+      <SimulationNotice>
         Agent et modèle configurés réels ; campagne, documents, boîte email et
         calendrier fictifs. Aucun email externe. Le rendez-vous réservé reste
         fictif et ne vaut pas conversion.
-      </div>
+      </SimulationNotice>
       {error && (
         <p role="alert" className="error">
           {error}

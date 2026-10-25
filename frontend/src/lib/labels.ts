@@ -216,6 +216,7 @@ const PAGE_TITLES: [string, string][] = [
   ["/knowledge", "Base de connaissances"],
   ["/integrations", "Intégrations"],
   ["/team", "Équipe"],
+  ["/settings/testing", "Tests et démonstration"],
   ["/settings", "Paramètres"],
   ["/account", "Mon compte"],
   ["/simulator", "Simulateur"],
@@ -259,9 +260,10 @@ const PAGE_SUBTITLES: [string, string][] = [
   ["/knowledge", "Connaissances de l’agent"],
   ["/integrations", "Canaux et synchronisation"],
   ["/team", "Membres, rôles et accès"],
+  ["/settings/testing", "Essais de l’agent avec des données fictives"],
   ["/settings", "IA, relances, emails et rendez-vous"],
   ["/account", "Profil et mot de passe"],
-  ["/simulator", "États de démo — prospects fictifs"],
+  ["/simulator", "Tests et démonstration"],
 ];
 
 export function pageSubtitle(pathname: string): string {
