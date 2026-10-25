@@ -187,7 +187,7 @@ test("affiche l'état de la boîte email sans aucun secret", async ({ page }) =>
   await expect(card.getByText("agent@datum.test")).toBeVisible();
   await expect(card.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
   await expect(card.getByText("Prêt à envoyer")).toBeVisible();
-  await expect(card.getByText("Connecté", { exact: true })).toBeVisible();
+  await expect(card.getByText("À tester", { exact: true })).toBeVisible();
   // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
   await expect(
     page.getByRole("region", { name: "Agenda" }).getByText("Non branché"),
@@ -373,4 +373,147 @@ test("créer un jeton pour le formulaire du site : affiché une seule fois", asy
   });
   await shown.getByRole("button", { name: "J’ai copié le jeton" }).click();
   await expect(page.getByText("iag_abcdefSECRET")).toHaveCount(0);
+});
+
+test("un test réussi de la boîte enregistrée est invalidé après enregistrement", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const card = page.getByRole("region", { name: "Email", exact: true });
+  await card
+    .getByRole("button", { name: "Tester la boîte enregistrée", exact: true })
+    .click();
+  await expect(card.getByText("Test réussi", { exact: true })).toBeVisible();
+  const form = page.getByRole("region", {
+    name: "Paramètres de la boîte email",
+    exact: true,
+  });
+  await form
+    .getByLabel("Nom d’expéditeur", { exact: true })
+    .fill("Nouvelle équipe");
+  await expect(
+    form.getByText("Modifications non enregistrées", { exact: true }),
+  ).toBeVisible();
+  await form.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(
+    form.getByText("Modifications non enregistrées", { exact: true }),
+  ).toHaveCount(0);
+  await expect(card.getByText("À tester", { exact: true })).toBeVisible();
+  await expect(card.getByText("Test réussi", { exact: true })).toHaveCount(0);
+});
+
+test("serveurs sur mobile : test périmé retiré et ports enregistrés", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const form = page.getByRole("region", {
+    name: "Paramètres de la boîte email",
+    exact: true,
+  });
+  await form
+    .getByRole("button", { name: "Tester ces paramètres", exact: true })
+    .click();
+  await expect(
+    form.getByLabel("Résultat du test des paramètres"),
+  ).toBeVisible();
+  await form
+    .getByText("Paramètres avancés des serveurs", { exact: true })
+    .click();
+  await form.getByLabel("Port SMTP", { exact: true }).fill("465");
+  await form
+    .getByRole("combobox", { name: "Sécurité SMTP", exact: true })
+    .selectOption("ssl");
+  await expect(form.getByLabel("Résultat du test des paramètres")).toHaveCount(
+    0,
+  );
+  await form.getByRole("button", { name: "Enregistrer", exact: true }).click();
+  await expect(
+    form.getByText("Boîte enregistrée", { exact: false }),
+  ).toBeVisible();
+  expect(saved).toContainEqual(
+    expect.objectContaining({
+      smtp_port: 465,
+      smtp_security: "ssl",
+      password: null,
+    }),
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("une opération en cours verrouille les paramètres et les actions de la boîte", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/integrations/email/test", async (route) => {
+    await gate;
+    await route.fulfill({ json: { imap: "ok", smtp: "ok", folders: [] } });
+  });
+  await open(page);
+  const form = page.getByRole("region", {
+    name: "Paramètres de la boîte email",
+    exact: true,
+  });
+  await form
+    .getByRole("button", { name: "Tester ces paramètres", exact: true })
+    .click();
+  try {
+    await expect(
+      form.getByLabel("Adresse de la boîte", { exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("button", {
+        name: "Tester la boîte enregistrée",
+        exact: true,
+      }),
+    ).toBeDisabled();
+  } finally {
+    release();
+  }
+  await expect(
+    form.getByLabel("Adresse de la boîte", { exact: true }),
+  ).toBeEnabled();
+});
+
+test("les paramètres de messagerie peuvent être rechargés après une erreur", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let ready = false;
+  await page.route("**/api/v1/integrations/email/config", (route) =>
+    route.fulfill(
+      ready
+        ? { json: config }
+        : { status: 503, json: { detail: "Paramètres indisponibles" } },
+    ),
+  );
+  await open(page);
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Paramètres indisponibles" }),
+  ).toBeVisible();
+  ready = true;
+  await page
+    .getByRole("button", { name: "Réessayer les paramètres", exact: true })
+    .click();
+  const form = page.getByRole("region", {
+    name: "Paramètres de la boîte email",
+    exact: true,
+  });
+  await expect(
+    form.getByLabel("Adresse de la boîte", { exact: true }),
+  ).toHaveValue(config.address);
+  await expect(form.getByLabel("Mot de passe", { exact: true })).toHaveValue(
+    "",
+  );
 });

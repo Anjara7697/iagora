@@ -97,7 +97,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Fiche campagne | `/campaigns/[id]` | `app/campaigns/[id]/page.tsx` | Fait : chiffres d’abord, réglages en bas |
 | Nouvelle campagne | `/campaigns/new` | `app/campaigns/new/page.tsx` | Conforme |
 | Knowledge Base | `/knowledge` | `app/knowledge/page.tsx` | Fait : action d’ajout alignée, réglages techniques repliés, recherche des documents, filtre des documents communs et accès direct aux demandes à compléter |
-| Intégrations | `/integrations` | `app/integrations/page.tsx` | **Reste** : libellés toujours au-dessus des champs, grille régulière (ports, sécurité SMTP) |
+| Intégrations | `/integrations` | `app/integrations/page.tsx` | Fait : libellés au-dessus des champs, serveurs IMAP/SMTP regroupés, états de test et modifications non enregistrées distingués |
 | Paramètres | `/settings` | `app/settings/page.tsx` | Conforme |
 | Équipe | `/team` | `app/team/page.tsx` | Conforme |
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
@@ -232,3 +232,24 @@ son défilement propre sur mobile. Le lien des questions sans source ouvre la fi
 filtrée `kind=kb_gap`. Dans le test d’une question, changer de question ou de
 programme efface les résultats précédents pour éviter de leur attribuer le mauvais
 contexte. Aucun chiffre de la maquette n’est ajouté aux données réelles.
+
+## 10. Intégrations : paramètres et état vérifié de la messagerie
+
+Les formulaires présentent les libellés au-dessus des champs. Les serveurs IMAP
+et SMTP sont regroupés dans un encart avancé, avec des colonnes régulières pour
+l’hôte et le port sur bureau et une seule colonne sur mobile. Les actions sur la
+boîte enregistrée restent en tête de carte, y compris sur mobile.
+
+La présence d’identifiants n’est plus présentée comme une connexion vérifiée :
+« À tester », « Test réussi » et « Test échoué » correspondent aux résultats
+réellement obtenus pendant la consultation. Une erreur de relève signalée par
+l’API reste affichée séparément. Après enregistrement des paramètres, le résultat
+du test de l’ancienne boîte est effacé.
+
+Les modifications du formulaire sont signalées comme non enregistrées. Changer
+un paramètre de connexion ou le mot de passe retire les résultats précédents ;
+les opérations de la boîte et du formulaire se verrouillent mutuellement pendant
+leur exécution. Les erreurs de chargement proposent une nouvelle tentative. La
+confirmation avant un passage pouvant envoyer des emails réels est conservée.
+Les vérifications de présentation utilisent une API simulée et ne constituent
+pas une recette de connexion à une boîte réelle.
