@@ -111,6 +111,7 @@ async function mockApi(
 ) {
   const calls: Calls = { posts: [] };
   let items = [draftItem, gapItem];
+  const decisions: unknown[] = [];
   let mode = opts.mode ?? "assisted";
   await page.context().route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -132,7 +133,9 @@ async function mockApi(
       const counts: Record<string, number> = {};
       for (const i of items) counts[i.kind] = (counts[i.kind] ?? 0) + 1;
       body = { items: rows, total: rows.length, limit: 100, offset: 0, counts };
-    } else if (path === "/agent/mode" && request.method() === "GET")
+    } else if (path === "/todo/treated")
+      body = { items: decisions, total: decisions.length, hours: 24 };
+    else if (path === "/agent/mode" && request.method() === "GET")
       body = { mode };
     else if (path === "/agent/mode") {
       mode = (request.postDataJSON() as { mode: string }).mode;
@@ -145,8 +148,19 @@ async function mockApi(
         method: request.method(),
         body: request.postDataJSON(),
       });
-      if (action === "approve" || action === "reject")
+      if (action === "approve" || action === "reject") {
         items = items.filter((i) => i.id !== draftItem.id);
+        const payload = request.postDataJSON() as { content?: string; reason?: string };
+        decisions.push({
+          id: draftItem.id, conversation_id: "c1", prospect, channel: "email",
+          decision: action === "approve" ? "approved" : "rejected",
+          decided_at: new Date().toISOString(), decided_by: 7,
+          edited: !!payload.content, content: payload.content ?? draftItem.draft.content,
+          reason: payload.reason ?? null,
+          execution: action === "approve" ? "approved" : "rejected",
+          execution_detail: null,
+        });
+      }
       code = action === "regenerate" ? 201 : 200;
       body = { ok: true };
     } else code = 404;
@@ -253,9 +267,15 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Examiner la première demande →" })
-    .click();
+  await page.getByRole("link", { name: "Consulter la décision →" }).click();
+  await expect(page).toHaveURL(/tab=treated&id=draft%3Ac1%3Am1/);
+  await expect(page.getByRole("group", { name: "Type", exact: true })).toBeHidden();
+  const delivery = page.getByRole("region", { name: "État d’envoi" });
+  await expect(delivery).toContainText("aucun envoi n’est encore confirmé");
+  await expect(page.getByRole("region", { name: "Message traité" })).toContainText("Bonjour Marie, version relue.");
+  expect(calls.posts).toHaveLength(1);
+  await page.getByRole("button", { name: "À traiter", exact: true }).click();
+  await page.getByRole("button", { name: "Examiner la première demande →" }).click();
   await expect(
     page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
   ).toBeVisible();
@@ -269,6 +289,7 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
   await expect
     .poll(() => calls.posts.some((p) => p.path.endsWith("/regenerate")))
     .toBe(true);
+  await expect(page.getByRole("link", { name: "Consulter la décision →" })).toHaveCount(0);
 
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await page.getByRole("button", { name: "Refuser le brouillon" }).click();
@@ -283,6 +304,11 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
       method: "POST",
       body: { reason: "Ton trop familier" },
     });
+  await page.getByRole("link", { name: "Consulter la décision →" }).click();
+  const delivery = page.getByRole("region", { name: "État d’envoi" });
+  await expect(delivery).toContainText("aucun envoi n’a été demandé");
+  await expect(delivery).toContainText("Motif du refus : Ton trop familier");
+  await expect(delivery.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
 });
 
 test("observateur : consultation seule", async ({ page }) => {
@@ -402,6 +428,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
 }) => {
   await mockApi(page);
   const retries: string[] = [];
+  let execution = "failed";
   await page.route("**/api/v1/todo/treated", async (route) =>
     route.fulfill({
       json: {
@@ -419,8 +446,8 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
             edited: true,
             content: "Bonjour Karim, voici les informations.",
             reason: null,
-            execution: "failed",
-            execution_detail: "SMTP : envoi refusé",
+            execution,
+            execution_detail: execution === "failed" ? "SMTP : envoi refusé" : null,
           },
           {
             id: "draft:c8:m8",
@@ -444,6 +471,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     "**/api/v1/conversations/c9/messages/m9/retry-delivery",
     async (route) => {
       retries.push(route.request().url());
+      execution = "sending";
       await route.fulfill({
         json: { id: "m9", metadata: { delivery: "not_sent" } },
       });
@@ -458,6 +486,13 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
   await expect(detail.getByText("Validé (modifié)")).toBeVisible();
   await detail.getByRole("button", { name: "Réessayer l’envoi" }).click();
   await expect.poll(() => retries.length).toBe(1);
+  await expect(detail.getByRole("status")).toContainText("Nouvelle tentative demandée");
+  await expect(detail.getByRole("heading", { name: "Envoi en cours" })).toBeVisible();
+  await expect(detail.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
+  execution = "sent";
+  await detail.getByRole("button", { name: "Actualiser l’état" }).click();
+  await expect(detail.getByRole("heading", { name: "Envoyée", exact: true })).toBeVisible();
+  expect(retries).toHaveLength(1);
   await page.getByRole("button", { name: /Léa Fontaine/ }).click();
   await expect(
     page.getByText("Motif du refus : Ton trop familier"),
@@ -531,3 +566,79 @@ for (const role of ["ADVISOR", "VIEWER"]) {
     expect(calls.posts).toHaveLength(0);
   });
 }
+
+const blockedDecision = {
+  id: draftItem.id,
+  conversation_id: "c1",
+  prospect,
+  channel: "email",
+  decision: "approved",
+  decided_at: new Date().toISOString(),
+  decided_by: 7,
+  edited: false,
+  content: draftItem.draft.content,
+  reason: null,
+  execution: "blocked",
+  execution_detail: "La messagerie est désactivée.",
+};
+
+test("mobile : la confirmation est visible et mène à la décision exacte", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByRole("button", { name: "Valider la réponse", exact: true }).click();
+  const result = page.getByRole("status", { name: "Résultat de la décision" });
+  await expect(result).toContainText("Marie Dupont");
+  await expect(result).toBeInViewport({ ratio: 1 });
+  await expect(result).toBeFocused();
+  await result.getByRole("link", { name: "Consulter la décision →" }).click();
+  await expect(page.getByRole("region", { name: "Traité : Marie Dupont" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "État d’envoi" })).toContainText("aucun envoi n’est encore confirmé");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(calls.posts).toHaveLength(1);
+});
+
+test("décision directe : erreur récupérable et absence dans la fenêtre de 24 heures", async ({ page }) => {
+  const calls = await mockApi(page);
+  let state: "error" | "missing" | "ready" = "error";
+  await page.route("**/api/v1/todo/treated", (route) => state === "error"
+    ? route.fulfill({ status: 503, json: { detail: "Historique temporairement indisponible" } })
+    : route.fulfill({ json: { hours: 24, total: state === "ready" ? 1 : 0, items: state === "ready" ? [blockedDecision] : [] } }));
+  await open(page);
+  await page.goto("/todo?tab=treated&id=draft%3Ac1%3Am1");
+  const detail = page.getByRole("region", { name: "Décision recherchée" });
+  await expect(detail.getByRole("alert")).toContainText("Historique temporairement indisponible");
+  await expect(detail.getByText("Cette décision n’est pas dans la liste.")).toHaveCount(0);
+  state = "missing";
+  await detail.getByRole("button", { name: "Réessayer", exact: true }).click();
+  await expect(detail).toContainText("dernières 24 heures");
+  await expect(detail.getByRole("link", { name: "Consulter les conversations" })).toBeVisible();
+  state = "ready";
+  await detail.getByRole("button", { name: "Actualiser les décisions" }).click();
+  await expect(page.getByRole("region", { name: "État d’envoi" })).toContainText("La messagerie est désactivée.");
+  expect(calls.posts).toHaveLength(0);
+});
+
+test("nouvelle tentative en échec : aucune réussite annoncée et observateur sans bouton d’envoi", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/v1/todo/treated", (route) => route.fulfill({ json: { items: [blockedDecision], total: 1, hours: 24 } }));
+  let retries = 0;
+  await page.route("**/api/v1/conversations/c1/messages/m1/retry-delivery", (route) => {
+    retries++;
+    return route.fulfill({ status: 503, json: { detail: "Nouvelle tentative indisponible" } });
+  });
+  await open(page);
+  await page.goto("/todo?tab=treated&id=draft%3Ac1%3Am1");
+  const delivery = page.getByRole("region", { name: "État d’envoi" });
+  await delivery.getByRole("button", { name: "Réessayer l’envoi" }).click();
+  await expect(delivery.getByRole("alert")).toContainText("Nouvelle tentative indisponible");
+  await expect(delivery.getByRole("status")).toHaveCount(0);
+  await expect(delivery.getByRole("heading", { name: "Envoi bloqué" })).toBeVisible();
+  expect(retries).toBe(1);
+  await page.route("**/api/v1/auth/me", (route) => route.fulfill({ json: { id: 7, username: "observateur", role: "VIEWER", email: "v@example.com" } }));
+  await page.reload();
+  await expect(delivery.getByRole("button", { name: "Actualiser l’état" })).toBeVisible();
+  await expect(delivery.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
+  expect(retries).toBe(1);
+});

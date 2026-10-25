@@ -297,3 +297,46 @@ système de réduction des animations désactive ces effets.
 fine et arrondie dans Chromium/Safari, plus marquée au survol. Firefox bénéficie
 de la présentation fine standard. Les écrans tactiles conservent le comportement
 natif ; le mode de contraste forcé rétablit la présentation système.
+
+## 14. Retrouver le résultat d’une décision
+
+La confirmation après validation ou refus nomme le prospect et donne accès à la
+décision exacte dans « Traités ». Elle reçoit le focus et revient à l’écran après
+l’action, y compris sur mobile. La régénération conserve une confirmation séparée
+sans lien vers une décision qui n’existe pas encore.
+
+La fiche traitée distingue la validation de l’envoi : prête à envoyer, en cours,
+envoyée, en échec, bloquée ou refusée. Chaque état est expliqué et peut être
+actualisé explicitement. La nouvelle tentative reste réservée aux conseillers et
+administrateurs, pour un message validé dont l’envoi est bloqué ou en échec. Son
+acceptation est signalée sans annoncer un envoi confirmé ; une erreur reste
+visible et ne produit aucune confirmation de réussite.
+
+Un lien direct vers une décision absente des dernières 24 heures propose
+l’actualisation et les conversations. Une erreur de chargement présente une
+nouvelle tentative, sans conclure que la décision a disparu. Les états présentés
+proviennent de l’API existante, sans interrogation périodique ni modification du
+mécanisme d’envoi.
+
+## 15. Reprendre une conversation transférée
+
+La fiche de transfert regroupe le motif, le résumé, la question en attente et
+l’action recommandée. Son bouton « Rédiger une réponse » donne le focus au champ
+de rédaction et le ramène à l’écran, même après un long historique, sans ajouter
+ni envoyer de texte. Il n’est pas proposé à l’observateur, au prospect désinscrit
+ou dans une conversation clôturée.
+
+L’envoi de la réponse reste l’action principale. La prise ou restitution de la
+main, la relance de l’agent et la clôture sont regroupées dans « Gestion de la
+conversation ». La confirmation de clôture est conservée. Chaque opération a
+son retour explicite ; la confirmation d’enregistrement d’une réponse ne prétend
+pas confirmer sa livraison. En cas d’échec, le texte reste dans le champ.
+
+Le chargement du consentement et ses erreurs deviennent visibles avec une
+nouvelle tentative. La réponse reste désactivée tant que les données nécessaires
+ne sont pas disponibles. Les rôles et les mécanismes d’envoi existants restent
+inchangés.
+
+Le résumé de la conversation sélectionnée est aussi chargé indépendamment de la
+liste filtrée. Après restitution de la main à l’agent, la conversation peut quitter
+« En attente » sans faire disparaître sa fiche ni la confirmation de l’action.
