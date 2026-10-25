@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
@@ -28,6 +28,15 @@ import type {
 } from "@/lib/types";
 
 type KindFilter = "" | TodoKind;
+type DecisionResult = { message: string; prospectName: string; treatedId?: string };
+const EXECUTION_HELP: Record<TreatedItem["execution"], string> = {
+  approved: "La réponse est validée, mais aucun envoi n’est encore confirmé.",
+  sending: "L’envoi est en cours. Actualisez pour connaître le résultat.",
+  sent: "Le service d’envoi confirme que le message a été envoyé.",
+  failed: "La tentative d’envoi a échoué. Consultez le détail avant de réessayer.",
+  blocked: "L’envoi est bloqué. Corrigez la cause indiquée avant de réessayer.",
+  rejected: "Ce brouillon a été refusé ; aucun envoi n’a été demandé.",
+};
 const TASK_LABELS: Record<TodoKind, string> = {
   validation: "Brouillons à valider",
   escalation: "Demandes de conseiller",
@@ -120,7 +129,7 @@ function DraftPanel({
   onDone,
 }: {
   item: TodoItem;
-  onDone: (message: string) => void;
+  onDone: (result: DecisionResult) => void;
 }) {
   const user = useCurrentUser();
   const draft = item.draft!;
@@ -138,13 +147,16 @@ function DraftPanel({
     setError(null);
     try {
       await api(`${base}/${path}`, { method: "POST", body: body ?? {} });
-      onDone(
-        path === "approve"
-          ? "Message validé. Son état d’envoi est disponible dans « Traités »."
-          : path === "reject"
-            ? "Brouillon refusé. Aucun envoi n’a été demandé."
-            : "Régénération demandée. Consultez la file pour retrouver la nouvelle réponse.",
-      );
+      onDone({
+        prospectName: itemName(item),
+        message:
+          path === "approve"
+            ? "Message validé. Son état d’envoi est disponible dans « Traités »."
+            : path === "reject"
+              ? "Brouillon refusé. Aucun envoi n’a été demandé."
+              : "Régénération demandée. Consultez la file pour retrouver la nouvelle réponse.",
+        treatedId: path === "regenerate" ? undefined : item.id,
+      });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'opération");
     } finally {
@@ -274,7 +286,7 @@ function Detail({
   kind,
 }: {
   item: TodoItem;
-  onDone: (message: string) => void;
+  onDone: (result: DecisionResult) => void;
   kind: KindFilter;
 }) {
   const name = itemName(item);
@@ -410,24 +422,29 @@ function Detail({
 function TreatedDetail({
   item,
   onChanged,
+  refreshing,
 }: {
   item: TreatedItem;
   onChanged: () => void;
+  refreshing: boolean;
 }) {
   const user = useCurrentUser();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const messageId = item.id.split(":")[2];
   const name = item.prospect
     ? fullName(item.prospect) || item.prospect.email || "Prospect"
     : "Prospect";
   const canRetry =
+    item.decision === "approved" &&
     (item.execution === "failed" || item.execution === "blocked") &&
     user?.role !== "VIEWER";
 
   async function retry() {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await api(
         `/conversations/${item.conversation_id}/messages/${messageId}/retry-delivery`,
@@ -435,6 +452,7 @@ function TreatedDetail({
           method: "POST",
         },
       );
+      setNotice("Nouvelle tentative demandée.");
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec");
@@ -445,7 +463,7 @@ function TreatedDetail({
 
   return (
     <section className="inbox-detail" aria-label={`Traité : ${name}`}>
-      <header className="inbox-detail-head">
+      <header className="inbox-detail-head treated-detail-head">
         <span className="prospect-avatar inbox-avatar" aria-hidden="true">
           {initials(name)}
         </span>
@@ -469,16 +487,27 @@ function TreatedDetail({
           Ouvrir la conversation
         </Link>
       </header>
-      <div className="recommendation">
-        <span className="eyebrow">Exécution</span>
-        <h3>{label(EXECUTION, item.execution)}</h3>
+      <section
+        className={`delivery-status execution-${item.execution}`}
+        aria-label="État d’envoi"
+      >
+        <div className="delivery-status-heading">
+          <div>
+            <span className="eyebrow">État d’envoi</span>
+            <h3>{label(EXECUTION, item.execution)}</h3>
+          </div>
+          <button disabled={busy || refreshing} onClick={onChanged}>
+            {refreshing ? "Actualisation…" : "Actualiser l’état"}
+          </button>
+        </div>
+        <p>{EXECUTION_HELP[item.execution]}</p>
         {item.reason && <p>Motif du refus : {item.reason}</p>}
         {item.execution_detail && (
-          <p className="error">{item.execution_detail}</p>
+          <p className="delivery-detail">{item.execution_detail}</p>
         )}
         {canRetry && (
-          <button disabled={busy} onClick={retry}>
-            Réessayer l’envoi
+          <button disabled={busy || refreshing} onClick={retry}>
+            {busy ? "Nouvelle tentative…" : "Réessayer l’envoi"}
           </button>
         )}
         {error && (
@@ -486,7 +515,8 @@ function TreatedDetail({
             {error}
           </p>
         )}
-      </div>
+        {notice && <p role="status">{notice}</p>}
+      </section>
       <section className="draft-panel" aria-label="Message traité">
         <header>
           <strong>Message — {label(CHANNELS, item.channel)}</strong>
@@ -510,7 +540,13 @@ function Todo() {
     });
   }
   const [offset, setOffset] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<DecisionResult | null>(null);
+  const noticeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!notice) return;
+    noticeRef.current?.focus({ preventScroll: true });
+    noticeRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [notice]);
   const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
@@ -541,11 +577,24 @@ function Todo() {
       <h1 className="sr-only">À traiter</h1>
       {notice && (
         <div
+          ref={noticeRef}
+          tabIndex={-1}
           className="review-notice"
           role="status"
           aria-label="Résultat de la décision"
         >
-          ✓ {notice}
+          <div>
+            <strong>{notice.prospectName}</strong>
+            <p>✓ {notice.message}</p>
+          </div>
+          {notice.treatedId && (
+            <Link
+              className="button-link"
+              href={`/todo${qs({ tab: "treated", id: notice.treatedId })}`}
+            >
+              Consulter la décision →
+            </Link>
+          )}
         </div>
       )}
       {selectedId && (
@@ -587,7 +636,7 @@ function Todo() {
                 router.replace("/todo?tab=treated", { scroll: false })
               }
             >
-              Traités (24 h) ({treated.data?.total ?? 0})
+              Traités (24 h) ({treated.data?.total ?? "—"})
             </button>
           </div>
           {tab === "treated" && (
@@ -726,15 +775,40 @@ function Todo() {
           <TreatedDetail
             key={selectedTreated.id}
             item={selectedTreated}
-            onChanged={refresh}
+            onChanged={treated.reload}
+            refreshing={treated.loading}
           />
+        ) : tab === "treated" && selectedId ? (
+          <section
+            className="inbox-detail inbox-placeholder"
+            aria-label="Décision recherchée"
+          >
+            <Loading
+              loading={treated.loading}
+              error={treated.error}
+              onRetry={treated.reload}
+            />
+            {!treated.loading && !treated.error && treated.data && (
+              <div className="review-start">
+                <h2>Cette décision n’est pas dans la liste.</h2>
+                <p>
+                  Les décisions affichées couvrent les dernières 24 heures.
+                  Retrouvez l’échange dans les conversations ou actualisez la liste.
+                </p>
+                <button onClick={treated.reload}>Actualiser les décisions</button>
+                <Link className="button-link" href="/conversations">
+                  Consulter les conversations
+                </Link>
+              </div>
+            )}
+          </section>
         ) : tab === "todo" && selected ? (
           <Detail
             key={selected.id}
             item={selected}
             kind={kind}
-            onDone={(message) => {
-              setNotice(message);
+            onDone={(result) => {
+              setNotice(result);
               router.replace(`/todo${qs({ kind })}`, { scroll: false });
               refresh();
             }}

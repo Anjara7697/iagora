@@ -3572,10 +3572,73 @@ a.button-link.primary-link:hover {
   font-variant-numeric: tabular-nums;
 }
 .review-notice {
+  scroll-margin-top: 80px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
   padding: 14px 24px;
   background: var(--ok-bg);
   color: var(--ok);
   border-bottom: 1px solid var(--ok-line);
+}
+.review-notice > div {
+  flex: 1 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.review-notice p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.delivery-status {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--accent-bg);
+  overflow-wrap: anywhere;
+}
+.delivery-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.delivery-status h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+.delivery-status p {
+  margin: 12px 0 0;
+  line-height: 1.65;
+  font-size: 14px;
+}
+.delivery-status .delivery-detail {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-strong);
+}
+.delivery-status > button {
+  margin-top: 14px;
+}
+.delivery-status.execution-sent {
+  background: var(--ok-bg);
+  border-color: var(--ok-line);
+}
+.delivery-status.execution-failed {
+  background: var(--err-bg);
+  border-color: var(--err-line);
+}
+.delivery-status.execution-blocked {
+  background: var(--warn-bg);
+  border-color: var(--warn-line);
+}
+.delivery-status.execution-rejected {
+  background: var(--surface-1);
+  border-color: var(--line);
 }
 .review-workspace .inbox {
   min-height: calc(100dvh - 68px);
@@ -3598,6 +3661,28 @@ a.button-link.primary-link:hover {
 .review-workspace .inbox-filters {
   padding: 12px 16px;
   background: var(--surface-1);
+}
+.review-workspace .inbox-filters[hidden] {
+  display: none;
+}
+@media (max-width: 600px) {
+  .review-workspace .treated-detail-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .treated-detail-head > .prospect-avatar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .treated-detail-head > .inbox-detail-title {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .treated-detail-head > .button-link {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
 }
 .review-workspace .chips {
   gap: 8px;
