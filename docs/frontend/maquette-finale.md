@@ -297,3 +297,23 @@ système de réduction des animations désactive ces effets.
 fine et arrondie dans Chromium/Safari, plus marquée au survol. Firefox bénéficie
 de la présentation fine standard. Les écrans tactiles conservent le comportement
 natif ; le mode de contraste forcé rétablit la présentation système.
+
+## 14. Retrouver le résultat d’une décision
+
+La confirmation après validation ou refus nomme le prospect et donne accès à la
+décision exacte dans « Traités ». Elle reçoit le focus et revient à l’écran après
+l’action, y compris sur mobile. La régénération conserve une confirmation séparée
+sans lien vers une décision qui n’existe pas encore.
+
+La fiche traitée distingue la validation de l’envoi : prête à envoyer, en cours,
+envoyée, en échec, bloquée ou refusée. Chaque état est expliqué et peut être
+actualisé explicitement. La nouvelle tentative reste réservée aux conseillers et
+administrateurs, pour un message validé dont l’envoi est bloqué ou en échec. Son
+acceptation est signalée sans annoncer un envoi confirmé ; une erreur reste
+visible et ne produit aucune confirmation de réussite.
+
+Un lien direct vers une décision absente des dernières 24 heures propose
+l’actualisation et les conversations. Une erreur de chargement présente une
+nouvelle tentative, sans conclure que la décision a disparu. Les états présentés
+proviennent de l’API existante, sans interrogation périodique ni modification du
+mécanisme d’envoi.
