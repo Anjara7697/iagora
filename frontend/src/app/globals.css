@@ -2323,6 +2323,108 @@ a.campaign-row:hover {
 }
 
 /* --- Intégrations : une carte par canal (maquette) --- */
+.integration-workspace .settings-stack .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  border-top: 0;
+  padding-top: 0;
+}
+.integration-workspace .settings-stack .field-label {
+  padding-top: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.integration-workspace .settings-stack .field-control {
+  width: 100%;
+  min-width: 0;
+  max-width: 760px;
+}
+.integration-saved-note {
+  padding: 12px 0;
+}
+.integration-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.integration-card-head .integ-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .integration-card-head .integ-actions {
+    width: 100%;
+  }
+  .integration-card-head .integ-actions button {
+    flex: 1 1 180px;
+  }
+}
+
+.email-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.email-settings-fields .status-pending {
+  color: var(--warn);
+}
+.email-server-settings {
+  padding: 14px 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.email-server-settings summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.email-server-settings h4 {
+  font-size: 13px;
+  margin: 18px 0 12px;
+}
+.email-server-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 120px);
+  gap: 14px;
+}
+.email-server-grid label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.email-server-grid input,
+.email-server-grid select {
+  width: 100%;
+  min-width: 0;
+}
+.email-server-wide {
+  grid-column: 1 / -1;
+}
+@media (max-width: 600px) {
+  .email-server-settings {
+    padding: 12px;
+  }
+  .email-server-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .email-settings-fields .section-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 .integ-card {
   display: flex;
   gap: 20px;
