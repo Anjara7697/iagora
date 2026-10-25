@@ -271,9 +271,11 @@ function DraftPanel({
 function Detail({
   item,
   onDone,
+  kind,
 }: {
   item: TodoItem;
   onDone: (message: string) => void;
+  kind: KindFilter;
 }) {
   const name = itemName(item);
   const rec = item.recommendation;
@@ -303,8 +305,25 @@ function Detail({
           </div>
         </div>
         {item.prospect && (
-          <Link className="button-link" href={`/prospects/${item.prospect.id}`}>
+          <Link
+            className="button-link task-profile-link"
+            href={`/prospects/${item.prospect.id}${qs({ task: item.id, kind })}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Ouvrir la fiche prospect dans un nouvel onglet"
+          >
             Ouvrir la fiche
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              aria-hidden="true"
+            >
+              <path d="M14 3h7v7m0-7L10 14M10 3H3v18h18v-7" />
+            </svg>
           </Link>
         )}
       </header>
@@ -318,10 +337,8 @@ function Detail({
         </span>
       </div>
 
-      {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
-
       {rec && (
-        <div className="recommendation">
+        <section className="recommendation" aria-label="Éléments pour décider">
           <div className="recommendation-heading">
             <span className="dot tone-ai" aria-hidden="true" />
             Prochaine action recommandée
@@ -369,8 +386,10 @@ function Detail({
               )}
             </div>
           </div>
-        </div>
+        </section>
       )}
+
+      {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
 
       {item.handoff && (
         <div className="card warnbox">
@@ -713,6 +732,7 @@ function Todo() {
           <Detail
             key={selected.id}
             item={selected}
+            kind={kind}
             onDone={(message) => {
               setNotice(message);
               router.replace(`/todo${qs({ kind })}`, { scroll: false });
