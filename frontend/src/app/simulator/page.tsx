@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import SimulationNotice from "@/components/SimulationNotice";
+import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
@@ -66,12 +68,15 @@ function pendingDraft(messages: Message[]): Message | undefined {
 }
 
 export default function SimulatorPage() {
-  const campaigns = useApi<Page<Campaign>>("/campaigns?limit=100");
-  const mode = useApi<{ mode: string }>("/agent/mode");
   const user = useCurrentUser();
+  const allowed = canUseSimulator(user?.role);
+  const campaigns = useApi<Page<Campaign>>(
+    allowed ? "/campaigns?limit=100" : null,
+  );
+  const mode = useApi<{ mode: string }>(allowed ? "/agent/mode" : null);
   const isAdmin = user?.role === "ADMIN";
   const demoData = useApi<{ prospects: number; conversations: number }>(
-    isAdmin ? "/demo" : null,
+    isAdmin && allowed ? "/demo" : null,
   );
   const [purgeNotice, setPurgeNotice] = useState<string | null>(null);
   const [guided, setGuided] = useState(false);
@@ -87,12 +92,12 @@ export default function SimulatorPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!SIMULATOR_ENABLED || user?.role === "VIEWER") {
+  if (!allowed) {
     return (
       <>
         <h1>Simulateur</h1>
         <p>
-          {user?.role === "VIEWER"
+          {SIMULATOR_ENABLED
             ? "Le simulateur est réservé aux conseillers et aux administrateurs."
             : "Le simulateur est désactivé sur cet environnement."}
         </p>
@@ -233,15 +238,14 @@ export default function SimulatorPage() {
 
   return (
     <>
-      <div className="demo-banner" role="note">
-        <strong>MODE DÉMO</strong> — prospects fictifs (adresses
-        @demo.example.com) : aucun message n&apos;est envoyé à l&apos;extérieur.
-        Ces données sont à part des vraies et peuvent être supprimées à tout
-        moment.
-      </div>
+      <SimulationNotice>
+        Prospects fictifs en @demo.example.com : aucun message n’est envoyé à
+        l’extérieur. Les données de démonstration peuvent être supprimées
+        séparément des vraies données.
+      </SimulationNotice>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">Intelligence · Banc d&apos;essai</span>
+          <span className="eyebrow">Paramètres · Tests et démonstration</span>
           <h1>Simulateur de prospect</h1>
           <p className="muted">
             Jouez un prospect <b>fictif</b> (adresse @demo.example.com) : mêmes

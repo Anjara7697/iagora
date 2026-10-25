@@ -56,6 +56,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setResult(null);
     try {
       setResult(
         await api<SearchResult>("/knowledge/search", {
@@ -72,32 +73,43 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
   }
 
   return (
-    <section className="card" aria-label="Tester une question">
+    <section className="card kb-tester" aria-label="Tester une question">
       <h2>Tester une question</h2>
       <p className="muted">
-        Voyez ce que l&apos;agent retrouverait pour cette question, avec le
-        score de chaque extrait. Sous le seuil ({status.min_score}),
-        l&apos;extrait est écarté et l&apos;agent transfère au conseiller.
+        Vérifiez quelles sources l’agent peut utiliser avant de répondre à un
+        prospect. Les extraits trop peu pertinents sont écartés.
       </p>
       <form className="kb-search" onSubmit={run}>
-        <input
-          aria-label="Question du prospect"
-          placeholder="Ex. Combien de temps dure le programme ?"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <select
-          aria-label="Programme du prospect"
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-        >
-          <option value="">Tous les programmes</option>
-          {Object.entries(TARGETS).map(([code, name]) => (
-            <option key={code} value={code}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <label>
+          Question du prospect
+          <input
+            placeholder="Ex. Combien de temps dure le programme ?"
+            value={query}
+            disabled={busy}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setResult(null);
+            }}
+          />
+        </label>
+        <label>
+          Programme du prospect
+          <select
+            value={target}
+            disabled={busy}
+            onChange={(e) => {
+              setTarget(e.target.value);
+              setResult(null);
+            }}
+          >
+            <option value="">Tous les programmes</option>
+            {Object.entries(TARGETS).map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           className="primary"
           disabled={busy || query.trim().length < 2 || !status.configured}
@@ -174,7 +186,7 @@ function Editor({
   }
 
   return (
-    <section className="card" aria-label="Éditeur de document">
+    <section className="card kb-editor-panel" aria-label="Éditeur de document">
       <h2>
         {initial.locked
           ? `Modifier « ${initial.slug} »`
@@ -265,8 +277,17 @@ function DocumentDetail({
             {d.target_code
               ? label(TARGETS, d.target_code)
               : "Tous les programmes"}{" "}
-            · {d.chunks} extraits · modèle {d.embedding_model}
+            · {d.chunks} extraits
           </p>
+          <details className="kb-technical">
+            <summary>Informations techniques du document</summary>
+            <dl>
+              <dt>Identifiant</dt>
+              <dd>{d.slug}</dd>
+              <dt>Modèle utilisé</dt>
+              <dd>{d.embedding_model}</dd>
+            </dl>
+          </details>
           <ol className="kb-sections">
             {d.sections.map((s, i) => (
               <li key={i}>
@@ -314,83 +335,94 @@ export default function KnowledgePage() {
   const needsReindex = docs.data?.some((d) => d.needs_reindex) ?? false;
   const gaps = useApi<{ counts: Record<string, number> }>("/todo?limit=1");
   const gapCount = gaps.data?.counts?.kb_gap ?? 0;
-  const [programme, setProgramme] = useState("");
+  const [programme, setProgramme] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const programmes = Array.from(
     new Set((docs.data ?? []).map((d) => d.target_code ?? "")),
   );
   const shown = (docs.data ?? []).filter(
-    (d) => !programme || (d.target_code ?? "") === programme,
+    (d) =>
+      (programme === null || (d.target_code ?? "") === programme) &&
+      `${d.title} ${d.slug}`
+        .toLocaleLowerCase("fr")
+        .includes(query.trim().toLocaleLowerCase("fr")),
   );
 
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading kb-heading">
         <div>
           <span className="eyebrow">Intelligence · Base de connaissances</span>
           <h1>Base de connaissances</h1>
           <p className="muted">
-            Les documents validés dans lesquels l&apos;agent puise ses réponses
-            (RAG).
+            Les sources de référence utilisées par l’agent pour répondre aux
+            questions des prospects.
           </p>
         </div>
         {isAdmin && (
-          <button
-            className="primary"
-            onClick={() =>
-              setEditor({ slug: "", content: TEMPLATE, locked: false })
-            }
-          >
-            Ajouter un document
-          </button>
+          <div className="page-actions">
+            <button
+              className="primary"
+              disabled={status.loading || !status.data?.configured || !!editor}
+              onClick={() =>
+                setEditor({ slug: "", content: TEMPLATE, locked: false })
+              }
+            >
+              Ajouter un document
+            </button>
+          </div>
         )}
       </div>
 
+      <Loading
+        loading={status.loading}
+        error={status.error}
+        onRetry={status.reload}
+      />
       {gapCount > 0 && (
         <div className="card kb-gap" role="status">
           <div>
             <strong>
-              {gapCount} lacune{gapCount > 1 ? "s bloquent" : " bloque"} une
-              réponse en cours
+              {gapCount} demande{gapCount > 1 ? "s nécessitent" : " nécessite"}{" "}
+              une source fiable
             </strong>
             <p className="muted">
-              Un prospect attend une réponse que la base ne contient pas :
-              l’agent refuse de répondre sans source fiable.
+              L’agent a transmis ces questions à un conseiller faute de source
+              suffisante.
             </p>
           </div>
-          <Link className="button-link" href="/todo">
+          <Link className="button-link" href="/todo?kind=kb_gap">
             Traiter la demande
           </Link>
         </div>
       )}
       {status.data && !status.data.configured && (
         <p className="card warnbox" role="alert">
-          Les embeddings ne sont pas configurés (clé <code>GEMINI_API_KEY</code>{" "}
-          absente) : la recherche et l&apos;ajout de documents sont
-          indisponibles, et l&apos;agent transfère toutes les questions
-          factuelles.
-        </p>
-      )}
-      {status.data?.configured && (
-        <p className="muted">
-          Modèle d&apos;embedding : <code>{status.data.embedding_model}</code> ·
-          seuil de pertinence <code>{status.data.min_score}</code>
+          La recherche et l’ajout de documents sont indisponibles : le service
+          de recherche n’est pas configuré. L’agent transmet les questions
+          factuelles à un conseiller.{" "}
+          {isAdmin ? (
+            <Link href="/settings">Configurer dans les paramètres</Link>
+          ) : (
+            "Contactez un administrateur pour l’activer."
+          )}
         </p>
       )}
       {needsReindex && (
         <p className="card warnbox" role="alert">
-          Certains documents ont été vectorisés avec un autre modèle :
-          l&apos;agent ne les voit plus.{" "}
+          Certains documents doivent être actualisés avant de pouvoir être
+          utilisés par l’agent.{" "}
           {isAdmin ? (
             <button
               disabled={busy}
               onClick={() =>
                 act(
                   () => api("/knowledge/reindex", { method: "POST" }),
-                  "Vecteurs recalculés.",
+                  "Documents actualisés.",
                 )
               }
             >
-              Recalculer les vecteurs
+              Actualiser les documents
             </button>
           ) : (
             "Demandez à un administrateur de les recalculer."
@@ -402,7 +434,11 @@ export default function KnowledgePage() {
           {error}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p className="kb-notice" role="status">
+          {notice}
+        </p>
+      )}
 
       {editor && (
         <Editor
@@ -423,121 +459,169 @@ export default function KnowledgePage() {
         error={docs.error}
         onRetry={docs.reload}
       />
-      {docs.data && programmes.length > 1 && (
-        <div className="chips" role="group" aria-label="Programme">
-          <button
-            aria-pressed={programme === ""}
-            onClick={() => setProgramme("")}
-          >
-            Toutes
-          </button>
-          {programmes.map((code) => (
+      <section className="kb-library" aria-label="Documents disponibles">
+        <div className="kb-library-head">
+          <h2>Documents disponibles</h2>
+          {docs.data && (
+            <span className="muted" role="status">
+              {shown.length} document{shown.length > 1 ? "s" : ""}
+              {programme !== null || query ? " affiché(s)" : ""}
+            </span>
+          )}
+        </div>
+        {docs.data && docs.data.length > 0 && (
+          <label className="kb-document-search">
+            Rechercher un document
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Titre ou identifiant…"
+            />
+          </label>
+        )}
+        {docs.data && programmes.length > 1 && (
+          <div className="chips" role="group" aria-label="Programme">
             <button
-              key={code}
-              aria-pressed={programme === code}
-              onClick={() => setProgramme(code)}
+              aria-pressed={programme === null}
+              onClick={() => setProgramme(null)}
             >
-              {code ? label(TARGETS, code) : "Tous programmes"}
+              Toutes
             </button>
-          ))}
-        </div>
-      )}
-      {docs.data && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Document</th>
-                <th>Programme</th>
-                <th>Extraits</th>
-                <th>Mis à jour</th>
-                <th>Statut</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((d) => (
-                <tr key={d.slug}>
-                  <td>
-                    <button
-                      className="link"
-                      onClick={() =>
-                        setSelected(d.slug === selected ? null : d.slug)
-                      }
-                    >
-                      {d.title}
-                    </button>
-                    <div className="muted">
-                      {d.slug}{" "}
-                      {d.is_demo && (
-                        <span className="badge warn">Fictif</span>
-                      )}{" "}
-                    </div>
-                  </td>
-                  <td>
-                    {d.target_code ? label(TARGETS, d.target_code) : "Tous"}
-                  </td>
-                  <td>{d.chunks}</td>
-                  <td>{formatDate(d.updated_at)}</td>
-                  <td>
-                    <span
-                      className={`badge ${d.needs_reindex ? "integ-warn" : "integ-ok"}`}
-                    >
-                      {d.needs_reindex ? "À recalculer" : "À jour"}
-                    </span>
-                  </td>
-                  <td>
-                    {isAdmin && (
-                      <button
-                        className="danger"
-                        disabled={busy}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Supprimer « ${d.title} » ? L'agent ne pourra plus s'en servir.`,
-                            )
-                          )
-                            act(
-                              () =>
-                                api(`/knowledge/documents/${d.slug}`, {
-                                  method: "DELETE",
-                                }),
-                              "Document supprimé.",
-                            );
-                        }}
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {docs.data.length === 0 && (
+            {programmes.map((code) => (
+              <button
+                key={code}
+                aria-pressed={programme === code}
+                onClick={() => setProgramme(code)}
+              >
+                {code ? label(TARGETS, code) : "Documents communs"}
+              </button>
+            ))}
+          </div>
+        )}
+        {docs.data && shown.length > 0 && (
+          <p className="kb-table-hint muted">
+            Faites défiler le tableau pour voir le statut et les actions.
+          </p>
+        )}
+        {docs.data && (
+          <div
+            className="table-wrap"
+            role="region"
+            aria-label="Liste des documents"
+            tabIndex={0}
+          >
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={6} className="muted">
-                    Aucun document.{" "}
-                    {isAdmin
-                      ? "Ajoutez le premier avec le bouton ci-dessus."
-                      : ""}
-                  </td>
+                  <th>Document</th>
+                  <th>Programme</th>
+                  <th>Extraits</th>
+                  <th>Mis à jour</th>
+                  <th>Statut</th>
+                  <th />
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {docs.data?.some((d) => d.is_demo) && (
-        <p className="muted">
-          Les documents « Fictif » sont des données de démonstration : ils ne
-          sont jamais utilisés en production.
-        </p>
-      )}
-
+              </thead>
+              <tbody>
+                {shown.map((d) => (
+                  <tr key={d.slug}>
+                    <td>
+                      <button
+                        className="link"
+                        onClick={() =>
+                          setSelected(d.slug === selected ? null : d.slug)
+                        }
+                      >
+                        {d.title}
+                      </button>
+                      <div className="muted">
+                        {d.slug}{" "}
+                        {d.is_demo && (
+                          <span className="badge warn">Fictif</span>
+                        )}{" "}
+                      </div>
+                    </td>
+                    <td>
+                      {d.target_code ? label(TARGETS, d.target_code) : "Tous"}
+                    </td>
+                    <td>{d.chunks}</td>
+                    <td>{formatDate(d.updated_at)}</td>
+                    <td>
+                      <span
+                        className={`badge ${d.needs_reindex ? "integ-warn" : "integ-ok"}`}
+                      >
+                        {d.needs_reindex ? "À recalculer" : "À jour"}
+                      </span>
+                    </td>
+                    <td>
+                      {isAdmin && (
+                        <button
+                          className="danger"
+                          disabled={busy}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Supprimer « ${d.title} » ? L'agent ne pourra plus s'en servir.`,
+                              )
+                            )
+                              act(
+                                () =>
+                                  api(`/knowledge/documents/${d.slug}`, {
+                                    method: "DELETE",
+                                  }),
+                                "Document supprimé.",
+                              );
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      {docs.data.length === 0 ? (
+                        <>
+                          Aucun document.{" "}
+                          {isAdmin
+                            ? "Ajoutez le premier avec le bouton ci-dessus."
+                            : "Un administrateur peut ajouter les documents de référence."}
+                        </>
+                      ) : (
+                        <>
+                          Aucun document ne correspond à ces critères.{" "}
+                          <button
+                            className="link"
+                            onClick={() => {
+                              setQuery("");
+                              setProgramme(null);
+                            }}
+                          >
+                            Réinitialiser les filtres
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {docs.data?.some((d) => d.is_demo) && (
+          <p className="muted">
+            Les documents « Fictif » sont des données de démonstration : ils ne
+            sont jamais utilisés en production.
+          </p>
+        )}
+      </section>
       {selected && (
         <DocumentDetail
           key={selected}
           slug={selected}
-          canEdit={isAdmin}
+          canEdit={isAdmin && status.data?.configured === true}
           onEdit={(d) =>
             setEditor({
               slug: d.slug,
@@ -549,6 +633,22 @@ export default function KnowledgePage() {
       )}
 
       {status.data && <SearchTester status={status.data} />}
+      {status.data && (
+        <details className="kb-technical">
+          <summary>Réglages techniques de la recherche</summary>
+          <p className="muted">
+            Ces informations expliquent comment les extraits sont sélectionnés.
+          </p>
+          <dl>
+            <dt>Modèle de recherche</dt>
+            <dd>{status.data.embedding_model ?? "Non configuré"}</dd>
+            <dt>Seuil de pertinence</dt>
+            <dd>{status.data.min_score}</dd>
+            <dt>Extraits recherchés par défaut</dt>
+            <dd>{status.data.top_k}</dd>
+          </dl>
+        </details>
+      )}
     </>
   );
 }

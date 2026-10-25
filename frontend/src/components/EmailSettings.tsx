@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Feedback, Field, Toggle } from "./forms";
 import type {
@@ -17,7 +17,15 @@ const SOURCES: Record<EmailAutodetect["source"], string> = {
 };
 
 /** Paramétrage de la boîte email depuis la console (administrateur) : aucune variable `.env`. */
-export function EmailSettings({ onSaved }: { onSaved: () => void }) {
+export function EmailSettings({
+  onSaved,
+  disabled = false,
+  onBusyChange,
+}: {
+  onSaved: () => void;
+  disabled?: boolean;
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const [form, setForm] = useState<EmailConfig | null>(null);
   const [password, setPassword] = useState("");
   const [sandbox, setSandbox] = useState("");
@@ -26,9 +34,11 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
 
-  useEffect(() => {
-    api<EmailConfig>("/integrations/email/config")
+  const load = useCallback(() => {
+    setError(null);
+    return api<EmailConfig>("/integrations/email/config")
       .then((c) => {
         setForm(c);
         setSandbox(c.sandbox_recipients.join(", "));
@@ -38,10 +48,40 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
       );
   }, []);
 
-  if (!form) return error ? <p className="error">{error}</p> : null;
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const set = <K extends keyof EmailConfig>(key: K, value: EmailConfig[K]) =>
+  if (!form)
+    return error ? (
+      <div className="error" role="alert">
+        {error} <button onClick={load}>Réessayer les paramètres</button>
+      </div>
+    ) : (
+      <p className="muted" role="status">
+        Chargement des paramètres de la boîte…
+      </p>
+    );
+
+  const set = <K extends keyof EmailConfig>(key: K, value: EmailConfig[K]) => {
     setForm({ ...form, [key]: value });
+    setDirty(true);
+    setNotice(null);
+    if (
+      [
+        "address",
+        "username",
+        "imap_host",
+        "imap_port",
+        "smtp_host",
+        "smtp_port",
+        "smtp_security",
+      ].includes(key)
+    ) {
+      setTest(null);
+      setDetected(null);
+    }
+  };
 
   function payload() {
     return {
@@ -57,6 +97,7 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
 
   async function act(name: string, fn: () => Promise<void>) {
     setBusy(name);
+    onBusyChange?.(true);
     setError(null);
     setNotice(null);
     try {
@@ -65,16 +106,20 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
       setError(e instanceof ApiError ? e.message : "Échec");
     } finally {
       setBusy(null);
+      onBusyChange?.(false);
     }
   }
 
   const detect = () =>
     act("detect", async () => {
+      setTest(null);
+      setDetected(null);
       const d = await api<EmailAutodetect>("/integrations/email/autodetect", {
         method: "POST",
         body: { address: form.address },
       });
       setDetected(d);
+      setDirty(true);
       setForm({
         ...form,
         imap_host: d.imap_host,
@@ -87,6 +132,7 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
 
   const runTest = () =>
     act("test", async () => {
+      setTest(null);
       setTest(
         await api<EmailTestResult>("/integrations/email/test", {
           method: "POST",
@@ -103,6 +149,9 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
       });
       setForm(saved);
       setPassword("");
+      setDirty(false);
+      setTest(null);
+      setDetected(null);
       setNotice(
         "Boîte enregistrée. Elle est prise en compte à la prochaine relève, sans redémarrage.",
       );
@@ -120,7 +169,11 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
       await api("/integrations/email/config", { method: "DELETE" });
       const c = await api<EmailConfig>("/integrations/email/config");
       setForm(c);
+      setPassword("");
       setSandbox(c.sandbox_recipients.join(", "));
+      setTest(null);
+      setDetected(null);
+      setDirty(false);
       setNotice("Configuration de la console supprimée.");
       onSaved();
     });
@@ -134,199 +187,229 @@ export function EmailSettings({ onSaved }: { onSaved: () => void }) {
       className="settings-stack"
       aria-label="Paramètres de la boîte email"
     >
-      <div className="section-head">
-        <h3 className="section-label">Paramètres de la boîte</h3>
-        <span className="status-text">
-          {form.source === "console"
-            ? "Enregistrés dans la console"
-            : "Valeurs du fichier .env du serveur"}
-        </span>
-      </div>
-      <Field
-        label="Adresse de la boîte"
-        note="N’importe quelle boîte IMAP/SMTP : les serveurs sont détectés à partir de l’adresse."
+      <fieldset
+        className="email-settings-fields"
+        disabled={busy !== null || disabled}
       >
-        <input
-          type="email"
-          value={form.address}
-          placeholder="admissions@ecole.fr"
-          onChange={(e) => set("address", e.target.value)}
-        />
-      </Field>
-      <Field
-        label="Mot de passe"
-        note="Chiffré sur le serveur, jamais réaffiché. Gmail, Yahoo, iCloud : mot de passe d’application."
-      >
-        <input
-          type="password"
-          autoComplete="new-password"
-          placeholder={form.password_set ? "•••••• (inchangé)" : ""}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </Field>
-      <Field label="Nom d’expéditeur" note="Affiché chez le prospect.">
-        <input
-          value={form.from_name}
-          onChange={(e) => set("from_name", e.target.value)}
-        />
-      </Field>
-      <div className="field-row">
-        <span className="field-label">Serveurs</span>
-        <div className="field-control">
-          <div className="row">
-            <button onClick={detect} disabled={busy !== null || !form.address}>
-              {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
-            </button>
-            {detected && (
-              <span className="status-text">
-                {detected.provider ?? "Hébergeur inconnu"} —{" "}
-                {SOURCES[detected.source]}.
-              </span>
-            )}
-          </div>
-          {detected?.note && <p className="field-note">{detected.note}</p>}
-          <details open={form.source !== "console"}>
-            <summary className="status-text">
-              IMAP {form.imap_host}:{form.imap_port} · SMTP {form.smtp_host}:
-              {form.smtp_port} — modifier
-            </summary>
-            <div className="form-row">
-              <label>
-                Serveur IMAP (réception)
-                <input
-                  value={form.imap_host}
-                  onChange={(e) => set("imap_host", e.target.value)}
-                />
-              </label>
-              <label>
-                Port IMAP
-                <input
-                  type="number"
-                  value={form.imap_port}
-                  onChange={(e) => set("imap_port", Number(e.target.value))}
-                />
-              </label>
-              <label>
-                Identifiant (si différent de l’adresse)
-                <input
-                  value={form.username ?? ""}
-                  onChange={(e) => set("username", e.target.value || null)}
-                />
-              </label>
-              <label>
-                Serveur SMTP (envoi)
-                <input
-                  value={form.smtp_host}
-                  onChange={(e) => set("smtp_host", e.target.value)}
-                />
-              </label>
-              <label>
-                Port SMTP
-                <input
-                  type="number"
-                  value={form.smtp_port}
-                  onChange={(e) => set("smtp_port", Number(e.target.value))}
-                />
-              </label>
-              <label>
-                Sécurité SMTP
-                <select
-                  value={form.smtp_security}
-                  onChange={(e) =>
-                    set("smtp_security", e.target.value as "starttls" | "ssl")
-                  }
-                >
-                  <option value="starttls">STARTTLS (587)</option>
-                  <option value="ssl">SSL/TLS (465)</option>
-                </select>
-              </label>
-            </div>
-          </details>
-        </div>
-      </div>
-      <div className="field-row">
-        <span className="field-label">Connexion</span>
-        <div className="field-control">
-          <div className="row">
-            <button onClick={runTest} disabled={busy !== null}>
-              {busy === "test" ? "Test en cours…" : "Tester ces paramètres"}
-            </button>
-            {test && (
-              <span
-                aria-label="Résultat du test des paramètres"
-                className={`status-text ${test.imap === "ok" && test.smtp === "ok" ? "status-ok" : "status-bad"}`}
-              >
-                IMAP : {ok(test.imap)} · SMTP : {ok(test.smtp)}
-              </span>
-            )}
-          </div>
-          <p className="field-note">
-            Rien n’est lu, envoyé ni enregistré. Le test liste les dossiers de
-            la boîte.
-          </p>
-        </div>
-      </div>
-      <Field
-        label="Dossier surveillé"
-        note={
-          folders.length > 0
-            ? "Seuls les emails non lus de ce dossier sont relevés."
-            : "Testez la connexion pour choisir dans la liste des dossiers."
-        }
-      >
-        {folders.length > 0 ? (
-          <select
-            value={hasFolder ? form.imap_folder : ""}
-            onChange={(e) => set("imap_folder", e.target.value)}
+        <legend className="sr-only">Configuration de la boîte email</legend>
+        <div className="section-head">
+          <h3 className="section-label">Paramètres de la boîte</h3>
+          <span
+            className={`status-text ${dirty ? "status-pending" : ""}`}
+            role="status"
           >
-            {!hasFolder && <option value="">Choisir un dossier…</option>}
-            {folders.map((f) => (
-              <option key={f.name} value={f.name}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        ) : (
+            {dirty
+              ? "Modifications non enregistrées"
+              : form.source === "console"
+                ? "Enregistrés dans la console"
+                : "Configuration du serveur"}
+          </span>
+        </div>
+        <p className="section-intro">
+          Modifiez et testez ces paramètres, puis enregistrez-les pour les
+          appliquer à la boîte.
+        </p>
+        <Field
+          label="Adresse de la boîte"
+          note="N’importe quelle boîte IMAP/SMTP : les serveurs sont détectés à partir de l’adresse."
+        >
           <input
-            value={form.imap_folder}
-            onChange={(e) => set("imap_folder", e.target.value)}
+            type="email"
+            value={form.address}
+            placeholder="admissions@ecole.fr"
+            onChange={(e) => set("address", e.target.value)}
           />
-        )}
-      </Field>
-      <Field
-        label="Bac à sable (adresses autorisées, séparées par des virgules)"
-        note="Pendant les essais, l’agent n’écrit qu’à ces adresses. Vide : tout destinataire."
-      >
-        <input
-          value={sandbox}
-          placeholder="moi@exemple.fr, collegue@exemple.fr"
-          onChange={(e) => setSandbox(e.target.value)}
+        </Field>
+        <Field
+          label="Mot de passe"
+          note="Chiffré sur le serveur, jamais réaffiché. Gmail, Yahoo, iCloud : mot de passe d’application."
+        >
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder={form.password_set ? "•••••• (inchangé)" : ""}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setDirty(true);
+              setTest(null);
+              setNotice(null);
+            }}
+          />
+        </Field>
+        <Field label="Nom d’expéditeur" note="Affiché chez le prospect.">
+          <input
+            value={form.from_name}
+            onChange={(e) => set("from_name", e.target.value)}
+          />
+        </Field>
+        <div className="field-row">
+          <span className="field-label">Serveurs</span>
+          <div className="field-control">
+            <div className="row">
+              <button
+                onClick={detect}
+                disabled={busy !== null || !form.address}
+              >
+                {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
+              </button>
+              {detected && (
+                <span className="status-text">
+                  {detected.provider ?? "Hébergeur inconnu"} —{" "}
+                  {SOURCES[detected.source]}.
+                </span>
+              )}
+            </div>
+            {detected?.note && <p className="field-note">{detected.note}</p>}
+            <details className="email-server-settings">
+              <summary className="status-text">
+                Paramètres avancés des serveurs
+              </summary>
+              <h4>Réception des messages</h4>
+              <div className="email-server-grid">
+                <label>
+                  Serveur IMAP (réception)
+                  <input
+                    value={form.imap_host}
+                    onChange={(e) => set("imap_host", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Port IMAP
+                  <input
+                    type="number"
+                    value={form.imap_port}
+                    onChange={(e) => set("imap_port", Number(e.target.value))}
+                  />
+                </label>
+                <label className="email-server-wide">
+                  Identifiant (si différent de l’adresse)
+                  <input
+                    value={form.username ?? ""}
+                    onChange={(e) => set("username", e.target.value || null)}
+                  />
+                </label>
+              </div>
+              <h4>Envoi des messages</h4>
+              <div className="email-server-grid">
+                <label>
+                  Serveur SMTP (envoi)
+                  <input
+                    value={form.smtp_host}
+                    onChange={(e) => set("smtp_host", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Port SMTP
+                  <input
+                    type="number"
+                    value={form.smtp_port}
+                    onChange={(e) => set("smtp_port", Number(e.target.value))}
+                  />
+                </label>
+                <label className="email-server-wide">
+                  Sécurité SMTP
+                  <select
+                    value={form.smtp_security}
+                    onChange={(e) =>
+                      set("smtp_security", e.target.value as "starttls" | "ssl")
+                    }
+                  >
+                    <option value="starttls">STARTTLS (587)</option>
+                    <option value="ssl">SSL/TLS (465)</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div className="field-row">
+          <span className="field-label">Connexion</span>
+          <div className="field-control">
+            <div className="row">
+              <button onClick={runTest} disabled={busy !== null}>
+                {busy === "test" ? "Test en cours…" : "Tester ces paramètres"}
+              </button>
+              {test && (
+                <span
+                  aria-label="Résultat du test des paramètres"
+                  className={`status-text ${test.imap === "ok" && test.smtp === "ok" ? "status-ok" : "status-bad"}`}
+                >
+                  IMAP : {ok(test.imap)} · SMTP : {ok(test.smtp)}
+                </span>
+              )}
+            </div>
+            <p className="field-note">
+              Rien n’est lu, envoyé ni enregistré. Le test liste les dossiers de
+              la boîte.
+            </p>
+          </div>
+        </div>
+        <Field
+          label="Dossier surveillé"
+          note={
+            folders.length > 0
+              ? "Seuls les emails non lus de ce dossier sont relevés."
+              : "Testez la connexion pour choisir dans la liste des dossiers."
+          }
+        >
+          {folders.length > 0 ? (
+            <select
+              value={hasFolder ? form.imap_folder : ""}
+              onChange={(e) => set("imap_folder", e.target.value)}
+            >
+              {!hasFolder && <option value="">Choisir un dossier…</option>}
+              {folders.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={form.imap_folder}
+              onChange={(e) => set("imap_folder", e.target.value)}
+            />
+          )}
+        </Field>
+        <Field
+          label="Bac à sable (adresses autorisées, séparées par des virgules)"
+          note="Pendant les essais, l’agent n’écrit qu’à ces adresses. Vide : tout destinataire."
+        >
+          <input
+            value={sandbox}
+            placeholder="moi@exemple.fr, collegue@exemple.fr"
+            onChange={(e) => {
+              setSandbox(e.target.value);
+              setDirty(true);
+              setNotice(null);
+            }}
+          />
+        </Field>
+        <Toggle
+          checked={form.enabled}
+          onChange={(v) => set("enabled", v)}
+          title="Relever la boîte automatiquement"
+          note="Les nouveaux emails deviennent des conversations ; l’agent prépare sa réponse."
         />
-      </Field>
-      <Toggle
-        checked={form.enabled}
-        onChange={(v) => set("enabled", v)}
-        title="Relever la boîte automatiquement"
-        note="Les nouveaux emails deviennent des conversations ; l’agent prépare sa réponse."
-      />
-      <Toggle
-        checked={form.send_enabled}
-        onChange={(v) => set("send_enabled", v)}
-        title="Envoyer réellement les messages validés"
-        note="Désactivé : les réponses validées attendent, rien ne part."
-      />
-      <div className="actions-bar">
-        <button className="primary" onClick={save} disabled={busy !== null}>
-          Enregistrer
-        </button>
-        {form.source === "console" && (
-          <button onClick={forget} disabled={busy !== null}>
-            Oublier cette boîte
+        <Toggle
+          checked={form.send_enabled}
+          onChange={(v) => set("send_enabled", v)}
+          title="Envoyer réellement les messages validés"
+          note="Désactivé : les réponses validées attendent, rien ne part."
+        />
+        <div className="actions-bar">
+          <button className="primary" onClick={save} disabled={busy !== null}>
+            Enregistrer
           </button>
-        )}
-        <Feedback notice={notice} error={error} />
-      </div>
+          {form.source === "console" && (
+            <button onClick={forget} disabled={busy !== null}>
+              Oublier cette boîte
+            </button>
+          )}
+          <Feedback notice={notice} error={error} />
+        </div>
+      </fieldset>
     </section>
   );
 }

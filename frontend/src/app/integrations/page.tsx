@@ -37,14 +37,18 @@ function Card({
   return (
     <section className="card integ-card" aria-label={region}>
       <div className="integ-main">
-        <div className="row">
-          <h2>{title}</h2>
-          {status}
-        </div>
-        <span className="eyebrow">{kind}</span>
+        <header className="integration-card-head">
+          <div>
+            <div className="row">
+              <h2>{title}</h2>
+              {status}
+            </div>
+            <span className="eyebrow">{kind}</span>
+          </div>
+          {actions && <div className="integ-actions">{actions}</div>}
+        </header>
         {children}
       </div>
-      {actions && <div className="integ-actions">{actions}</div>}
     </section>
   );
 }
@@ -82,6 +86,7 @@ export default function IntegrationsPage() {
     setBusy(true);
     setError(null);
     setNotice(null);
+    if (action === "check") setCheck(null);
     try {
       if (action === "check") {
         setCheck(
@@ -110,31 +115,31 @@ export default function IntegrationsPage() {
   }
 
   const s = status.data;
+  const checkPassed = check?.imap === "ok" && check?.smtp === "ok";
   const emailTone: Tone = !s?.configured
     ? "off"
-    : s.last_error
-      ? "warn"
-      : s.enabled
-        ? "ok"
-        : "warn";
+    : !s.last_error && checkPassed
+      ? "ok"
+      : "warn";
   const emailLabel = !s?.configured
     ? "Non configuré"
     : s.last_error
-      ? "Erreur"
-      : s.enabled
-        ? "Connecté"
-        : "Réception désactivée";
+      ? "Erreur signalée"
+      : check
+        ? checkPassed
+          ? "Test réussi"
+          : "Test échoué"
+        : "À tester";
   return (
-    <>
+    <div className="integration-workspace">
       <div className="page-heading">
         <div>
           <span className="eyebrow">Administration · Intégrations</span>
           <h1>Intégrations</h1>
           <p className="muted">
-            Chaque intégration indique ce qu’elle alimente réellement dans le
-            produit. Une intégration en erreur prive l’agent de leads ou de
-            canal. Les identifiants saisis ici sont chiffrés sur le serveur et
-            jamais réaffichés.
+            Reliez votre messagerie, les agendas et la visioconférence aux
+            échanges avec les prospects. Les identifiants sont chiffrés sur le
+            serveur et ne sont jamais réaffichés.
           </p>
         </div>
       </div>
@@ -167,6 +172,11 @@ export default function IntegrationsPage() {
             </>
           }
         >
+          <p className="section-intro integration-saved-note">
+            Les actions ci-dessus utilisent la boîte enregistrée. Pour essayer
+            des modifications avant de les appliquer, utilisez « Tester ces
+            paramètres » dans le formulaire.
+          </p>
           {!s.configured && (
             <p className="warnbox" role="alert">
               Boîte non configurée : renseignez-la ci-dessous (adresse et mot de
@@ -247,7 +257,14 @@ export default function IntegrationsPage() {
             </ul>
           )}
           <Feedback notice={notice} error={error} />
-          <EmailSettings onSaved={status.reload} />
+          <EmailSettings
+            disabled={busy}
+            onBusyChange={setBusy}
+            onSaved={() => {
+              setCheck(null);
+              status.reload();
+            }}
+          />
         </Card>
       )}
 
@@ -280,6 +297,6 @@ export default function IntegrationsPage() {
         </p>
       </Card>
       <LeadSources />
-    </>
+    </div>
   );
 }

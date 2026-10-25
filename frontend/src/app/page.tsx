@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { firstNameOf, useCurrentUser } from "@/components/AppShell";
 import { Loading } from "@/components/ui";
-import { SIMULATOR_ENABLED } from "@/lib/api";
 import { FUNNEL, LEVELS, STAGES, formatDate, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { DashboardSummary, Page, TodoItem } from "@/lib/types";
@@ -277,13 +276,6 @@ export default function Home() {
           )}
         </Card>
       </div>
-
-      {SIMULATOR_ENABLED && user?.role !== "VIEWER" && (
-        <p className="muted today-note">
-          Pour essayer l’agent sans toucher aux vrais prospects :{" "}
-          <Link href="/simulator">simulateur</Link> (données fictives).
-        </p>
-      )}
     </>
   );
 }

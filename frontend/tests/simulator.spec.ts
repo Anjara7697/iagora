@@ -337,8 +337,15 @@ test("mode démo : bandeau permanent et purge des données fictives avec confirm
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
   await page.goto("/simulator");
-  await expect(page.getByRole("note")).toContainText("MODE DÉMO");
+  await expect(page.getByRole("note")).toContainText(
+    "Environnement de test — données fictives",
+  );
   await expect(page.getByRole("note")).toContainText("aucun message");
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(
+    page.getByRole("status", { name: "Mode du simulateur" }),
+  ).toBeInViewport({ ratio: 1 });
+
   await expect(
     page.getByText("3 prospect(s), 2 conversation(s)"),
   ).toBeVisible();

@@ -3,13 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import {
-  api,
-  ApiError,
-  getToken,
-  setToken,
-  SIMULATOR_ENABLED,
-} from "@/lib/api";
+import { api, ApiError, getToken, setToken } from "@/lib/api";
+import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import { pageSubtitle, pageTitle } from "@/lib/labels";
 import AgentModeCard from "./AgentModeCard";
 import type { User } from "@/lib/types";
@@ -60,7 +55,7 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
     items: [
       { href: "/team", label: "Équipe", adminOnly: true },
       { href: "/integrations", label: "Intégrations", adminOnly: true },
-      { href: "/settings", label: "Paramètres", adminOnly: true },
+      { href: "/settings", label: "Paramètres" },
     ],
   },
 ];
@@ -191,15 +186,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
 
   const isAdmin = user.role === "ADMIN";
-  const showSimulator = SIMULATOR_ENABLED && user.role !== "VIEWER";
+  const inSimulator = pathname === "/simulator" && canUseSimulator(user.role);
   const groups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => i.href && (isAdmin || !i.adminOnly)),
+    items: g.items.filter(
+      (i) =>
+        i.href &&
+        (isAdmin || !i.adminOnly) &&
+        (i.href !== "/settings" || canAccessSettings(user.role)),
+    ),
   })).filter((g) => g.items.length > 0);
   // Écrans prévus mais pas encore développés : regroupés dans une seule ligne repliée.
   const upcoming = NAV_GROUPS.flatMap((g) => g.items.filter((i) => i.soon));
   const title = pageTitle(pathname);
-  const subtitle = pageSubtitle(pathname);
+  const subtitle =
+    pathname === "/settings" && !isAdmin && canUseSimulator(user.role)
+      ? "Tests et démonstration"
+      : pageSubtitle(pathname);
   return (
     <UserContext.Provider value={user}>
       <a className="skip-link" href="#main-content">
@@ -223,12 +226,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav aria-label="Navigation principale">
             {groups.map((group) => (
               <div key={group.name}>
-                <p className="nav-group">{group.name}</p>
+                <p className="nav-group">
+                  {group.name === "Administration" && !isAdmin
+                    ? "Réglages"
+                    : group.name}
+                </p>
                 {group.items.map((link) => {
                   if (!link.href) return null;
                   const active =
                     pathname === link.href ||
-                    (link.href !== "/" && pathname.startsWith(`${link.href}/`));
+                    (link.href !== "/" &&
+                      pathname.startsWith(`${link.href}/`)) ||
+                    (link.href === "/settings" && inSimulator);
                   return (
                     <Link
                       key={link.href}
@@ -265,17 +274,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </details>
             )}
           </nav>
-          {showSimulator && (
-            <div className="nav-demo">
-              <Link
-                href="/simulator"
-                className={`nav-demo-link ${pathname === "/simulator" ? "active" : ""}`}
-                onClick={() => setNavOpen(false)}
-              >
-                États de démo · Simulateur
-              </Link>
-            </div>
-          )}
           {!mustChange && (
             <AgentModeCard
               readOnly={user.role === "VIEWER"}
@@ -319,14 +317,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </form>
-            {waiting !== null && (
-              <Link href="/todo" className="todo-pill">
-                <span
-                  className={`dot ${waiting > 0 ? "warn" : ""}`}
-                  aria-hidden="true"
-                />
-                {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
-              </Link>
+            {inSimulator ? (
+              <span
+                className="simulation-header-badge"
+                role="status"
+                aria-label="Mode du simulateur"
+              >
+                Test · données fictives
+              </span>
+            ) : (
+              waiting !== null && (
+                <Link href="/todo" className="todo-pill">
+                  <span
+                    className={`dot ${waiting > 0 ? "warn" : ""}`}
+                    aria-hidden="true"
+                  />
+                  {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
+                </Link>
+              )
             )}
             <div className="account-menu" ref={accountRef}>
               <button
