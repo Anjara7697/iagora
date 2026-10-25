@@ -50,6 +50,13 @@
   --level-warm-bar: #e9b04a;
   --level-hot-bar: #e07b30;
   --level-very-hot-bar: #c2510f;
+  /* Mouvement bref et commun aux interactions. */
+  --motion-fast: 140ms;
+  --motion-enter: 200ms;
+  --motion-drawer: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --scrollbar-thumb: color-mix(in srgb, var(--muted) 40%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--muted) 65%, transparent);
 }
 
 * {
@@ -1009,7 +1016,7 @@ td {
     width: 236px;
     z-index: 70;
     transform: translateX(-100%);
-    transition: transform 180ms ease-out;
+    transition: transform var(--motion-drawer) var(--ease-out);
   }
   .nav-open .sidebar {
     transform: none;
@@ -1025,6 +1032,17 @@ td {
     background: #19181759;
     border: none;
     border-radius: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--motion-drawer) var(--ease-out),
+      visibility var(--motion-drawer);
+  }
+  .nav-open .nav-scrim {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
   .header-subtitle {
     display: none;
@@ -3882,5 +3900,94 @@ a.button-link.primary-link:hover {
   }
   .conversation-workspace .inbox-composer {
     padding: 12px;
+  }
+}
+
+/* Barres natives discrètes : piste transparente, poignée toujours accessible.
+   Sur écran tactile, on conserve le comportement de la plateforme. */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  /* Chromium/Safari : poignée arrondie et retour visuel au survol. */
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      min-height: 24px;
+      min-width: 24px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--scrollbar-thumb);
+      background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover,
+    ::-webkit-scrollbar-thumb:active {
+      background-color: var(--scrollbar-thumb-hover);
+    }
+  }
+}
+
+/* Pas de mouvement permanent ni de déplacement des contenus pendant la lecture. */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .button-link,
+  .nav-item,
+  .todo-pill,
+  .account-popover a,
+  input,
+  select,
+  textarea {
+    transition:
+      background-color var(--motion-fast) ease-out,
+      border-color var(--motion-fast) ease-out,
+      color var(--motion-fast) ease-out,
+      box-shadow var(--motion-fast) ease-out;
+  }
+  .page-heading,
+  .profile-header,
+  .inbox-detail,
+  .review-notice {
+    animation: surface-enter var(--motion-enter) ease-out;
+  }
+  .account-popover {
+    transform-origin: top right;
+    animation: popover-enter var(--motion-enter) var(--ease-out);
+  }
+}
+
+@keyframes surface-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes popover-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Le contraste et la taille natifs priment dans les modes de contraste forcé. */
+@media (forced-colors: active) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  ::-webkit-scrollbar {
+    width: auto;
+    height: auto;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: CanvasText;
   }
 }
