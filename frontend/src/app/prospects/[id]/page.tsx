@@ -2,7 +2,8 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import ProspectTaskReturn from "@/components/ProspectTaskReturn";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import MembershipActions from "@/components/MembershipActions";
@@ -140,6 +141,9 @@ export default function ProspectPage() {
       !!runs.error);
   return (
     <>
+      <Suspense>
+        <ProspectTaskReturn />
+      </Suspense>
       <Link href="/prospects" className="profile-back">
         ← Tous les prospects
       </Link>

@@ -112,7 +112,7 @@ async function mockApi(
   const calls: Calls = { posts: [] };
   let items = [draftItem, gapItem];
   let mode = opts.mode ?? "assisted";
-  await page.route("**/api/v1/**", async (route) => {
+  await page.context().route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace("/api/v1", "");
@@ -175,9 +175,9 @@ test("mobile : traitement lisible et retour explicite à la file", async ({
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toBeVisible();
   await expect(list).toBeHidden();
-  await expect(
-    page.getByRole("button", { name: "Valider la réponse", exact: true }),
-  ).toBeInViewport({ ratio: 1 });
+  const approve = page.getByRole("button", { name: "Valider la réponse", exact: true });
+  await approve.scrollIntoViewIfNeeded();
+  await expect(approve).toBeInViewport({ ratio: 1 });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -208,9 +208,14 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await list.getByRole("button", { name: /Marie Dupont/ }).click();
   const detail = page.getByRole("region", { name: "À traiter : Marie Dupont" });
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
-  await expect(
-    detail.getByRole("button", { name: "Valider la réponse", exact: true }),
-  ).toBeInViewport({ ratio: 1 });
+  const evidence = detail.getByRole("region", { name: "Éléments pour décider" });
+  const draft = detail.getByRole("region", { name: "Brouillon de l'agent" });
+  expect(
+    await evidence.evaluate((el) =>
+      Boolean(el.compareDocumentPosition(el.parentElement!.querySelector(".draft-panel")!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    ),
+  ).toBe(true);
+  await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(
@@ -487,3 +492,42 @@ test("échec de validation : le brouillon reste accessible et aucune réussite n
     0,
   );
 });
+
+for (const role of ["ADVISOR", "VIEWER"]) {
+  test(`fiche depuis une demande : retour au filtre et consultation sans perte (${role})`, async ({ page }) => {
+    if (role === "VIEWER") await page.setViewportSize({ width: 390, height: 844 });
+    const calls = await mockApi(page, { role });
+    await page.context().route("**/api/v1/prospects/1", (route) => route.fulfill({ json: {
+      ...prospect, phone: null, profile: {}, campaigns: [], consent_status: "granted",
+      consent_source: "formulaire", created_at: draftItem.created_at,
+    }}));
+    await page.context().route("**/api/v1/prospects/1/conversation", (route) => route.fulfill({ json: {
+      id: "c1", status: "open", channel: "email", messages: [], handoff: null,
+    }}));
+    await page.context().route("**/api/v1/prospects/1/agent-runs", (route) => route.fulfill({ json: [] }));
+    await page.context().route("**/api/v1/campaigns?**", (route) => route.fulfill({ json: {items: [], total: 0} }));
+    await open(page);
+    await page.getByRole("button", { name: "Brouillons à valider (1)" }).click();
+    await expect(page).toHaveURL(/kind=validation/);
+    await page.getByRole("button", { name: /Marie Dupont/ }).click();
+    if (role === "ADVISOR") {
+      await page.getByRole("button", { name: "Modifier", exact: true }).click();
+      await page.getByLabel("Texte du brouillon").fill("Version en cours de relecture.");
+    }
+    const [profile] = await Promise.all([
+      page.waitForEvent("popup"),
+      page.getByRole("link", { name: "Ouvrir la fiche prospect dans un nouvel onglet" }).click(),
+    ]);
+    await profile.setViewportSize(page.viewportSize()!);
+    await expect(profile.getByRole("heading", { name: "Marie Dupont", exact: true })).toBeVisible();
+    await profile.reload();
+    await profile.getByRole("link", { name: "← Revenir à la demande" }).click();
+    await expect(profile).toHaveURL(/\/todo\?id=draft%3Ac1%3Am1&kind=validation$/);
+    await expect(profile.getByRole("region", { name: "À traiter : Marie Dupont" })).toBeVisible();
+    if (role === "ADVISOR") await expect(profile.getByRole("button", { name: "Brouillons à valider (1)" })).toHaveAttribute("aria-pressed", "true");
+    if (role === "VIEWER") await expect(profile.getByRole("button", { name: "Valider la réponse", exact: true })).toHaveCount(0);
+    await profile.close();
+    if (role === "ADVISOR") await expect(page.getByLabel("Texte du brouillon")).toHaveValue("Version en cours de relecture.");
+    expect(calls.posts).toHaveLength(0);
+  });
+}

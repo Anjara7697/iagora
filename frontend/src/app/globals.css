@@ -3648,6 +3648,14 @@ a.button-link.primary-link:hover {
 .task-context {
   margin: 16px 0;
 }
+.task-profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.task-profile-link svg {
+  flex-shrink: 0;
+}
 .task-context h3 {
   margin: 0 0 8px;
   font-size: 14px;
@@ -3721,7 +3729,25 @@ a.button-link.primary-link:hover {
   line-height: 1.6;
 }
 .review-workspace .recommendation {
-  margin-top: 24px;
+  margin: 16px 0;
+}
+.profile-task-return {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--accent-bg);
+  border: 1px solid var(--violet-line);
+  border-radius: 10px;
+}
+.profile-task-return p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+  flex: 1 1 240px;
 }
 .review-start {
   max-width: 450px;
