@@ -106,6 +106,8 @@ async function mockApi(
       body = { items: rows, total: rows.length, limit: 30, offset: 0 };
     } else if (path === "/conversations/c1" && request.method() === "GET")
       body = conversation(status);
+    else if (path === "/conversations/c1/summary")
+      body = summary("c1", status);
     else if (path === "/conversations/c1" && request.method() === "PATCH") {
       status = (request.postDataJSON() as { status: string }).status;
       calls.posts.push({ path, body: request.postDataJSON() });
@@ -227,6 +229,9 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
       },
     });
 
+  await expect(detail.getByRole("status", { name: "Résultat de l’action" })).toContainText("Réponse enregistrée");
+  await expect(detail.getByRole("button", { name: "Rendre la main à l'agent" })).toBeHidden();
+  await detail.getByText("Gestion de la conversation", { exact: true }).click();
   await detail
     .getByRole("button", { name: "Rendre la main à l'agent" })
     .click();
@@ -263,6 +268,7 @@ test("observateur : lecture seule", async ({ page }) => {
     page.getByText("Votre accès observateur permet de consulter"),
   ).toBeVisible();
   await expect(page.getByLabel("Votre réponse")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Rédiger une réponse" })).toHaveCount(0);
 });
 
 test("prospect désinscrit : réponse impossible", async ({ page }) => {
@@ -271,6 +277,7 @@ test("prospect désinscrit : réponse impossible", async ({ page }) => {
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await expect(page.getByText("s'est désinscrit")).toBeVisible();
   await expect(page.getByLabel("Votre réponse")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Rédiger une réponse" })).toHaveCount(0);
 });
 
 test("fil à trois auteurs : prospect reçu, brouillon en attente, message envoyé après validation", async ({
@@ -331,4 +338,94 @@ test("fil à trois auteurs : prospect reçu, brouillon en attente, message envoy
   await expect(
     detail.getByText(/Relances : jours ouvrés, 8 h–19 h/),
   ).toBeVisible();
+});
+
+
+test("mobile : la fiche de transfert mène à la rédaction sans modifier le texte ni lancer l’agent", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await page.route("**/api/v1/conversations/c1", route => route.fulfill({ json: {
+    ...conversation("handed_off"),
+    messages: Array.from({ length: 40 }, (_, i) => ({
+      id: `m${i}`, role: i % 2 ? "advisor" : "prospect",
+      content: `Échange précédent ${i + 1} sur le projet de formation.`,
+      created_at: "2026-10-01T10:00:00Z", metadata: {},
+    })),
+  } }));
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  const reply = page.getByLabel("Votre réponse");
+  await reply.fill("Réponse en cours de rédaction.");
+  await page.getByRole("region", { name: "Fiche de transfert", exact: true })
+    .getByRole("button", { name: "Rédiger une réponse" }).click();
+  await expect(reply).toBeFocused();
+  await expect(reply).toBeInViewport({ ratio: 1 });
+  await expect(reply).toHaveValue("Réponse en cours de rédaction.");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(calls.posts).toHaveLength(0);
+});
+
+test("enregistrement : texte conservé après échec et confirmation sans annoncer une livraison", async ({ page }) => {
+  await mockApi(page);
+  let failed = true;
+  let release: (() => void) | undefined;
+  const submitted: unknown[] = [];
+  await page.route("**/api/v1/conversations/c1/messages", async route => {
+    submitted.push(route.request().postDataJSON());
+    if (failed) return route.fulfill({ status: 503, json: { detail: "Enregistrement temporairement indisponible" } });
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ status: 201, json: { created: true } });
+  });
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  const reply = page.getByLabel("Votre réponse");
+  await reply.fill("Bonjour Marie, je vérifie les possibilités de financement.");
+  const send = page.getByRole("button", { name: "Envoyer en tant que conseiller" });
+  await send.click();
+  await expect(page.getByRole("region", { name: "Conversation avec Marie Dupont" }).getByRole("alert")).toContainText("Enregistrement temporairement indisponible");
+  await expect(reply).toHaveValue("Bonjour Marie, je vérifie les possibilités de financement.");
+  await expect(page.getByRole("status", { name: "Résultat de l’action" })).toHaveCount(0);
+  failed = false;
+  await send.click();
+  await expect(page.getByRole("button", { name: "Enregistrement…", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "L'agent réfléchit…" })).toHaveCount(0);
+  await expect.poll(() => !!release).toBe(true);
+  release!();
+  await expect(reply).toHaveValue("");
+  await expect(page.getByRole("status", { name: "Résultat de l’action" })).toContainText("Réponse enregistrée. Consultez son état d’envoi dans le fil.");
+  expect(submitted).toHaveLength(2);
+});
+
+test("consentement indisponible : erreur récupérable et réponse désactivée", async ({ page }) => {
+  const calls = await mockApi(page);
+  let failed = true;
+  await page.route("**/api/v1/prospects/1", route => failed
+    ? route.fulfill({ status: 503, json: { detail: "Consentement temporairement indisponible" } })
+    : route.fulfill({ json: { ...prospect, campaigns: [], profile: {} } }));
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(page.getByRole("region", { name: "Conversation avec Marie Dupont" }).getByRole("alert")).toContainText("Consentement temporairement indisponible");
+  await expect(page.getByLabel("Votre réponse")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Rédiger une réponse" })).toBeDisabled();
+  failed = false;
+  await page.getByRole("region", { name: "Conversation avec Marie Dupont" }).getByRole("alert").getByRole("button", { name: "Réessayer" }).click();
+  await expect(page.getByLabel("Votre réponse")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Rédiger une réponse" })).toBeEnabled();
+  expect(calls.posts).toHaveLength(0);
+});
+
+
+test("rendre la main depuis En attente conserve la conversation sélectionnée et sa confirmation", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: "En attente", exact: true }).click();
+  await expect.poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("status")).toBe("handed_off");
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  const detail = page.getByRole("region", { name: "Conversation avec Marie Dupont" });
+  await detail.getByText("Gestion de la conversation", { exact: true }).click();
+  await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  await expect(page.getByText("Aucune conversation ne correspond à ces filtres.")).toBeVisible();
+  await expect(detail).toBeVisible();
+  await expect(detail.getByRole("status", { name: "Résultat de l’action" })).toContainText("Conversation rouverte pour l’agent.");
+  expect(calls.posts).toEqual([{ path: "/conversations/c1", body: { status: "open" } }]);
 });
