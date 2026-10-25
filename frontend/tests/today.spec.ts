@@ -111,6 +111,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
       new URL(r.url()).pathname.endsWith("/todo") &&
       new URL(r.url()).searchParams.get("kind") === "validation",
   );
+  await expect(page.locator('a[href="/simulator"]')).toHaveCount(0);
   await page.getByRole("link", { name: /^Validations/ }).click();
   await request;
   await expect(page).toHaveURL(/\/todo\?kind=validation$/);

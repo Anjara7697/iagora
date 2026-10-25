@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import TestingAccess from "@/components/TestingAccess";
+import { canUseSimulator } from "@/lib/access";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Feedback, Field, Section, Toggle } from "@/components/forms";
@@ -45,12 +48,41 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   if (user && !isAdmin)
-    return (
+    return canUseSimulator(user.role) ? (
+      <>
+        <div className="page-heading">
+          <div>
+            <span className="eyebrow">Réglages · Outils de test</span>
+            <h1>Paramètres</h1>
+            <p className="muted">
+              Retrouvez les outils pour essayer l’agent avec des données
+              fictives.
+            </p>
+          </div>
+        </div>
+        <TestingAccess />
+      </>
+    ) : (
       <p className="card warnbox" role="alert">
         Cette page est réservée aux administrateurs.
       </p>
     );
-  if (!form) return error ? <p className="error">{error}</p> : null;
+  if (!form)
+    return (
+      <>
+        <h1>Paramètres</h1>
+        <TestingAccess />
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : (
+          <p className="muted" role="status">
+            Chargement des réglages…
+          </p>
+        )}
+      </>
+    );
 
   const set = <K extends keyof RuntimeSettings>(
     key: K,
@@ -139,6 +171,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <TestingAccess disabled={busy !== null} unsaved={dirty} />
       <div className="settings-stack">
         <Section
           region="Intelligence artificielle"
@@ -237,6 +270,22 @@ export default function SettingsPage() {
           label="Agent et relances"
           intro="Chaque relance reste un brouillon soumis à validation en mode assisté ; elles s’arrêtent dès que le prospect répond, se désinscrit ou est transféré."
         >
+          {canUseSimulator(user?.role) && (
+            <div className="settings-test-link">
+              {dirty || busy !== null ? (
+                <button disabled>Tester les réglages enregistrés</button>
+              ) : (
+                <Link className="button-link" href="/simulator">
+                  Tester les réglages enregistrés →
+                </Link>
+              )}
+              {dirty && (
+                <p className="field-note">
+                  Enregistrez vos modifications avant de les tester.
+                </p>
+              )}
+            </div>
+          )}
           <Toggle
             checked={form.agent_auto_reply}
             onChange={(v) => set("agent_auto_reply", v)}

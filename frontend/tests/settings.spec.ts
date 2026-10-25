@@ -96,9 +96,127 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
   expect(put.put).not.toHaveProperty("gemini_api_key_set");
 });
 
-test("paramètres réservés aux administrateurs", async ({ page }) => {
-  await mockApi(page, [], "ADVISOR");
+test("l’observateur n’accède pas aux paramètres", async ({ page }) => {
+  await mockApi(page, [], "VIEWER");
   await login(page);
   await page.goto("/settings");
   await expect(page.getByText("réservée aux administrateurs")).toBeVisible();
+});
+
+test.describe("navigation du simulateur", () => {
+  const enabled = process.env.NEXT_PUBLIC_ENABLE_SIMULATOR !== "false";
+  for (const role of ["ADMIN", "ADVISOR", "VIEWER"]) {
+    test(`${role} : accès à l’espace de test selon le rôle et l’environnement`, async ({
+      page,
+    }) => {
+      await mockApi(page, [], role);
+      const adminRequests: string[] = [];
+      const mutations: string[] = [];
+      page.on("request", (r) => {
+        const path = new URL(r.url()).pathname;
+        if (path === "/api/v1/settings") adminRequests.push(r.method());
+        if (
+          path.startsWith("/api/v1/") &&
+          r.method() !== "GET" &&
+          !path.endsWith("/auth/login")
+        )
+          mutations.push(path);
+      });
+      await login(page);
+      await page.goto("/settings");
+      const allowed = enabled && role !== "VIEWER";
+      const nav = page.getByRole("navigation", {
+        name: "Navigation principale",
+      });
+      await expect(nav.locator('a[href="/simulator"]')).toHaveCount(0);
+      if (role === "ADMIN" || allowed)
+        await expect(
+          nav.getByRole("link", { name: "Paramètres", exact: true }),
+        ).toBeVisible();
+      else
+        await expect(
+          nav.getByRole("link", { name: "Paramètres", exact: true }),
+        ).toHaveCount(0);
+      if (allowed) {
+        await page
+          .getByRole("link", { name: "Ouvrir l’espace de test" })
+          .click();
+        await expect(page).toHaveURL(/\/settings\/testing$/);
+        await expect(
+          page.getByRole("heading", {
+            name: "Tests et démonstration",
+            exact: true,
+          }),
+        ).toBeVisible();
+        await page.getByRole("link", { name: "Ouvrir le simulateur" }).click();
+        await expect(page).toHaveURL(/\/simulator$/);
+        await expect(
+          page.getByRole("status", { name: "Mode du simulateur" }),
+        ).toContainText("données fictives");
+      } else {
+        await expect(
+          page.getByRole("link", { name: "Ouvrir l’espace de test" }),
+        ).toHaveCount(0);
+        await page.goto("/settings/testing");
+        await expect(
+          page.getByRole("link", { name: "Ouvrir le simulateur" }),
+        ).toHaveCount(0);
+        await page.goto("/simulator");
+        await expect(
+          page.getByRole("button", { name: "Créer un prospect fictif" }),
+        ).toHaveCount(0);
+        await expect(
+          page.getByText(
+            enabled
+              ? "Le simulateur est réservé aux conseillers et aux administrateurs."
+              : "Le simulateur est désactivé sur cet environnement.",
+          ),
+        ).toBeVisible();
+      }
+      if (role !== "ADMIN") {
+        expect(adminRequests).toHaveLength(0);
+        await expect(
+          page.getByRole("region", {
+            name: "Intelligence artificielle",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+      }
+      expect(mutations).toHaveLength(0);
+    });
+  }
+});
+
+test("les réglages modifiés doivent être enregistrés avant l’essai", async ({
+  page,
+}) => {
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings");
+  const agent = page.getByRole("region", {
+    name: "Agent et relances",
+    exact: true,
+  });
+  await expect(
+    agent.getByRole("link", { name: "Tester les réglages enregistrés" }),
+  ).toHaveAttribute("href", "/simulator");
+  await page
+    .getByRole("region", { name: "Intelligence artificielle" })
+    .getByLabel("Modèle principal", { exact: true })
+    .fill("autre-modele");
+  await expect(
+    agent.getByRole("button", {
+      name: "Tester les réglages enregistrés",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(
+    agent.getByRole("link", { name: "Tester les réglages enregistrés" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Enregistrer les paramètres", exact: true })
+    .click();
+  await expect(
+    agent.getByRole("link", { name: "Tester les réglages enregistrés" }),
+  ).toBeVisible();
 });
