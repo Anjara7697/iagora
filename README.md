@@ -247,12 +247,12 @@ Voir `.env.example`. Les secrets ne sont jamais versionnés ni journalisés (S-0
 
 - **Fait et testé** : réception et déduplication, workflow LangGraph, mode assisté et arrêt d'urgence, STOP sur
   toutes les entrées, RAG, relances, campagnes et affectation, comptes et rôles, console (Aujourd'hui, À traiter,
-  Conversations, Prospects, Campagnes, Base de connaissances, Intégrations, Équipe, Paramètres, Simulateur), CI.
+  Conversations, Rendez-vous en consultation, Prospects, Campagnes, Base de connaissances, Intégrations, Équipe, Paramètres, Simulateur), CI.
 - **Réglable depuis la console, sans `.env`** : boîte email, agenda Google et Zoom (OAuth par conseiller),
   modèle et clé d'IA, relances, disponibilités, jetons de service et import CSV de prospects.
 - **Recette réelle** : email réussi sur une boîte de test ; Google Calendar + Zoom et déploiement serveur à faire.
 - **À faire** : documents officiels pour la base de connaissances, mention IA dans chaque email, effacement RGPD,
-  écrans Rendez-vous / Dashboard / Analytics, connecteurs LinkedIn et Meta (accès API en attente).
+  écrans Dashboard / Analytics, gestion et rappels de rendez-vous, connecteurs LinkedIn et Meta (accès API en attente).
 
 Limites connues : [docs/limites-et-dette.md](docs/limites-et-dette.md).
 

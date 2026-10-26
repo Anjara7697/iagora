@@ -33,7 +33,7 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
       { href: "/", label: "Aujourd’hui" },
       { href: "/todo", label: "À traiter", badge: true },
       { href: "/conversations", label: "Conversations" },
-      { label: "Rendez-vous", soon: true },
+      { href: "/appointments", label: "Rendez-vous" },
       { href: "/prospects", label: "Prospects" },
     ],
   },

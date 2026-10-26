@@ -478,3 +478,14 @@ export type ImportReport = {
   invalid: { row: number; error: string }[];
   columns: Record<string, string>;
 };
+
+export type Appointment = {
+  id: number;
+  prospect: { id: number; first_name: string | null; last_name: string | null; email: string | null };
+  advisor_id: number | null;
+  advisor_name: string | null;
+  start_at: string;
+  end_at: string;
+  status: "proposed" | "scheduled" | "done" | "cancelled" | "no_show";
+  meeting_url: string | null;
+};
