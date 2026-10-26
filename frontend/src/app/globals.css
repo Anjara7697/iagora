@@ -3834,6 +3834,71 @@ a.button-link.primary-link:hover {
 .review-workspace .recommendation {
   margin: 16px 0;
 }
+.decision-brief .recommendation-heading {
+  padding: 0;
+  margin: 0 0 8px;
+  border: 0;
+  background: none;
+}
+.decision-brief h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.decision-reason {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.decision-signals {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.decision-source-warning {
+  color: var(--warn);
+  font-size: 13px;
+}
+.reading-details {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.reading-details > summary {
+  padding-block: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--ink-2);
+  font-weight: 500;
+}
+.reading-details > summary:hover {
+  color: var(--accent);
+}
+.reading-details .recommendation-grid {
+  padding-top: 6px;
+}
+.conversation-context {
+  margin-block: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.conversation-context-body > p {
+  margin: 0 0 8px;
+}
+.conversation-context-body > .row {
+  margin-block: 12px;
+}
+.conversation-context .inbox-info {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.conversation-blocker {
+  padding: 12px 14px;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-bg);
+  font-size: 14px;
+}
 .profile-task-return {
   display: flex;
   align-items: center;
@@ -3975,13 +4040,16 @@ a.button-link.primary-link:hover {
   line-height: 1.65;
 }
 .handoff-brief blockquote {
-  margin: 16px 0;
-  padding: 12px 14px;
+  margin: 12px 0;
+  padding: 10px 12px;
   border-left: 3px solid var(--warn-line);
   background: var(--card);
 }
 .handoff-brief blockquote p {
   margin: 6px 0 0;
+}
+.handoff-next-action {
+  margin: 10px 0;
 }
 .conversation-management {
   margin-top: 16px;
@@ -4008,19 +4076,31 @@ a.button-link.primary-link:hover {
   line-height: 1.6;
 }
 @media (max-width: 600px) {
+  .review-workspace .inbox-detail-head,
   .conversation-workspace .inbox-detail-head {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px 12px;
   }
+  .review-workspace .inbox-detail-head > .prospect-avatar,
   .conversation-workspace .inbox-detail-head > .prospect-avatar {
     grid-area: 1 / 1;
   }
+  .review-workspace .inbox-detail-title,
   .conversation-workspace .inbox-detail-title {
     grid-area: 1 / 2;
   }
+  .review-workspace .inbox-detail-head > .button-link,
   .conversation-workspace .inbox-detail-head > .button-link {
     grid-area: 2 / 2;
     justify-self: start;
+  }
+  .handoff-brief {
+    margin-block: 14px;
+    padding: 14px;
+  }
+  .handoff-brief-heading {
+    gap: 6px;
   }
 }
 @media (max-width: 1023px) {

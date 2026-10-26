@@ -360,3 +360,22 @@ compteurs du menu et de l’en-tête sont relus depuis l’API. Les vues de la f
 les compteurs de l’accueil se rechargent aussi lorsqu’ils sont montés. Un échec
 d’opération ne déclenche pas de décrément optimiste. Une ancienne réponse réseau
 ne peut pas écraser une valeur plus récente dans l’en-tête.
+
+## 17. Lire et répondre sur mobile
+
+Dans « À traiter », la demande précède une recommandation compacte puis la
+réponse proposée. L’action recommandée, sa justification, le risque et l’absence
+éventuelle de sources restent visibles. « Sources, confiance et contexte »
+regroupe les éléments détaillés et les indicateurs commerciaux ; ce volet se
+manipule au clavier comme au toucher. La priorité de traitement reste dans
+l’en-tête et se distingue du score commercial.
+
+Dans Conversations, l’en-tête privilégie l’identité, le statut et le canal. Le
+transfert présente la question à reprendre, l’action recommandée et l’accès à
+la rédaction. Sans question enregistrée, son résumé reste visible. Le résumé
+complémentaire, le responsable, la campagne, les scores et les règles d’envoi
+restent accessibles dans « Contexte et règles d’envoi ».
+
+Une désinscription apparaît avant le transfert et le fil ; les erreurs de
+chargement et les brouillons à valider restent hors des volets repliables. Les
+contrôles de consentement, les droits et les actions d’envoi ne changent pas.
