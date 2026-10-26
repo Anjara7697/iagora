@@ -379,3 +379,23 @@ restent accessibles dans « Contexte et règles d’envoi ».
 Une désinscription apparaît avant le transfert et le fil ; les erreurs de
 chargement et les brouillons à valider restent hors des volets repliables. Les
 contrôles de consentement, les droits et les actions d’envoi ne changent pas.
+
+## 18. Retrouver ses résultats après une fiche
+
+Les filtres des prospects, la recherche, la vue Pipeline ou Table et la page
+courante sont portés par l’adresse de la liste. Une actualisation, un lien
+partagé ou la navigation précédente/suivante du navigateur restaure ces choix.
+La saisie d’une recherche remplace l’entrée d’historique courante pour éviter
+une étape de retour par caractère. Modifier un filtre ou changer de vue remet
+la pagination au début ; réinitialiser les filtres conserve la vue choisie.
+
+Les liens des cartes et du tableau transmettent ce contexte à la fiche. Son
+lien « Retour aux résultats » retrouve la liste correspondante, même après
+actualisation de la fiche. Une fiche ouverte directement garde « Tous les
+prospects » ; le retour vers une demande de la file « À traiter » est conservé.
+Les destinations de retour sont limitées à la liste des prospects et les
+paramètres non reconnus sont ignorés.
+
+L’export utilise les mêmes filtres que les résultats restaurés. La recherche de
+l’en-tête annonce désormais le nom ou l’email du prospect et actualise aussi une
+liste de prospects déjà ouverte.

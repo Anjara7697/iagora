@@ -792,3 +792,106 @@ test("observateur : file À attribuer accessible, attribution interdite", async 
     page.getByRole("form", { name: "Attribution commerciale" }),
   ).toHaveCount(0);
 });
+
+test("résultats : filtres, table et page conservés après fiche, actualisation et export", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page, "ADMIN", { ...prospect, email: "alice@demo.example.com", campaigns: [{ ...member, assigned_advisor_id: 1 }] });
+  await page.route("**/api/v1/campaigns?**", route => route.fulfill({ json: pageOf([
+    { id: 3, name: "eBIHAR", sources: [{ id: 7, name: "Formulaire" }] },
+  ]) }));
+  const queries: URLSearchParams[] = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects") queries.push(url.searchParams);
+  });
+  await login(page);
+  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByLabel("Rechercher", { exact: true }).fill("Alice");
+  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
+  await page.getByLabel("Source", { exact: true }).selectOption("7");
+  await page.getByLabel("Étape", { exact: true }).selectOption("qualified");
+  await page.getByRole("button", { name: "Mes prospects", exact: true }).click();
+  await page.getByRole("button", { name: /Plus de filtres/ }).click();
+  await page.getByLabel("Programme", { exact: true }).selectOption("ebihar_students");
+  await page.getByLabel("Intérêt", { exact: true }).selectOption("very_hot");
+  await page.getByLabel("Canal", { exact: true }).selectOption("email");
+  await page.getByLabel("Consentement", { exact: true }).selectOption("granted");
+  await page.getByRole("button", { name: "Suivant" }).click();
+  await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
+  const results = page.url();
+  const expected = {
+    q: "Alice", campaign_id: "3", source_id: "7", stage: "qualified", advisor_id: "1",
+    target_code: "ebihar_students", level: "very_hot", channel: "email", consent_status: "granted",
+    limit: "25", offset: "25",
+  };
+  await page.getByRole("link", { name: "Alice Martin", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("link", { name: "← Retour aux résultats", exact: true }).click();
+  await expect(page).toHaveURL(results);
+  await expect(page.getByRole("button", { name: "Table", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await expect(page.getByLabel("Source", { exact: true })).toHaveValue("7");
+  await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("Alice");
+  await expect(page.getByRole("button", { name: "Retirer le filtre Intérêt" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
+  for (const [key, value] of Object.entries(expected)) expect(queries.at(-1)?.get(key)).toBe(value);
+  let exported = "";
+  await page.route("**/api/v1/prospects/export**", route => {
+    exported = route.request().url();
+    return route.fulfill({ body: "id;nom\n1;Alice", headers: { "content-type": "text/csv" } });
+  });
+  await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click()]);
+  for (const [key, value] of Object.entries(expected).filter(([key]) => !["limit", "offset"].includes(key))) {
+    expect(new URL(exported).searchParams.get(key)).toBe(value);
+  }
+  await page.getByRole("button", { name: "Retirer le filtre Intérêt" }).click();
+  await expect(page.getByText("1-25 sur 26", { exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has("offset")).toBe(false);
+});
+
+test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une liste déjà ouverte", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
+  const results = page.url();
+  await page.locator(".pipeline-card").first().click();
+  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(results);
+  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await page.goForward();
+  await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await expect(page).toHaveURL(results);
+  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await page.getByLabel("Étape", { exact: true }).selectOption("qualified");
+  await page.goBack();
+  await expect(page.getByLabel("Étape", { exact: true })).toHaveValue("");
+  await page.getByLabel("Rechercher un prospect", { exact: true }).fill("inexistant");
+  await page.getByLabel("Rechercher un prospect", { exact: true }).press("Enter");
+  await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("inexistant");
+  await expect(page.getByRole("heading", { name: "Aucun prospect ne correspond" })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("");
+});
+
+test("liens directs : paramètres invalides ignorés et retour limité aux prospects", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.goto("/prospects?view=incorrect&offset=-25&stage=invented&campaign=no&source=7&mine=true&demo=exclude&pending_campaign=true");
+  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Mes prospects", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Masquer les prospects fictifs")).toBeChecked();
+  await expect(page.getByLabel("Étape", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("Source", { exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
+  await expect(page).toHaveURL(/\/prospects$/);
+  for (const from of ["https://example.com", "//example.com", "/prospects/other", "/prospects/../settings"]) {
+    await page.goto(`/prospects/1?from=${encodeURIComponent(from)}`);
+    await expect(page.getByRole("link", { name: "← Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
+  }
+});

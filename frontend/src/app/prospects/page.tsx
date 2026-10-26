@@ -7,7 +7,6 @@ import {
   DemoBadge,
   Loading,
   Pager,
-  ProspectLink,
   ScoreBadge,
   StageBadge,
 } from "@/components/ui";
@@ -24,6 +23,11 @@ import {
 import { ApiError, download, qs } from "@/lib/api";
 import { useCurrentUser } from "@/components/AppShell";
 import { useApi } from "@/lib/useApi";
+import {
+  prospectResultsHref,
+  readProspectResults,
+  type ProspectResults,
+} from "@/lib/prospectResults";
 import type { Campaign, Membership, Page, Prospect } from "@/lib/types";
 
 const LIMIT = 25;
@@ -124,33 +128,36 @@ function PipelineScroller({ children }: { children: React.ReactNode }) {
 
 function Prospects() {
   const params = useSearchParams();
-  const [q, setQ] = useState(params.get("q") ?? "");
-  const [pendingCampaign, setPendingCampaign] = useState(
-    params.get("pending_campaign") === "true",
-  );
-  const pending = useApi<Page<Prospect>>(
-    "/prospects?pending_campaign=true&limit=1",
-  );
-  const [stage, setStage] = useState("");
-  const [campaign, setCampaign] = useState(params.get("campaign") ?? "");
-  const [offset, setOffset] = useState(0);
-  const [hideDemo, setHideDemo] = useState(false);
-  const [targetCode, setTargetCode] = useState("");
-  const [levelFilter, setLevelFilter] = useState("");
-  const [channelFilter, setChannelFilter] = useState("");
-  const [consentFilter, setConsentFilter] = useState("");
-  const [mine, setMine] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState("");
+  const state = readProspectResults(params);
+  const {
+    q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
+    levelFilter, channelFilter, consentFilter, mine, sourceFilter, view,
+  } = state;
+  const pending = useApi<Page<Prospect>>("/prospects?pending_campaign=true&limit=1");
   const user = useCurrentUser();
   const [exportError, setExportError] = useState<string | null>(null);
-  const [view, setView] = useState<"pipeline" | "table">("pipeline");
   const limit = view === "pipeline" ? PIPELINE_LIMIT : LIMIT;
+  const resultsHref = prospectResultsHref(state);
+  const profileHref = (id: number) =>
+    `/prospects/${id}?from=${encodeURIComponent(resultsHref)}`;
+
+  function update(patch: Partial<ProspectResults>, replace = false) {
+    // Read the latest URL so successive input events never overwrite another filter.
+    const current = readProspectResults(
+      new URLSearchParams(window.location.search),
+    );
+    const href = prospectResultsHref({ ...current, offset: 0, ...patch });
+    if (href === window.location.pathname + window.location.search) return;
+    // Next.js synchronizes native history changes with useSearchParams.
+    if (replace) window.history.replaceState(null, "", href);
+    else window.history.pushState(null, "", href);
+  }
   const advanced = [
     {
       title: "Programme",
       id: "target-filter",
       value: targetCode,
-      set: setTargetCode,
+      set: (value: string) => update({ targetCode: value }),
       options: TARGETS,
       all: "Tous les programmes",
     },
@@ -158,7 +165,7 @@ function Prospects() {
       title: "Intérêt",
       id: "level-filter",
       value: levelFilter,
-      set: setLevelFilter,
+      set: (value: string) => update({ levelFilter: value }),
       options: LEVELS,
       all: "Tous les niveaux",
     },
@@ -166,7 +173,7 @@ function Prospects() {
       title: "Canal",
       id: "channel-filter",
       value: channelFilter,
-      set: setChannelFilter,
+      set: (value: string) => update({ channelFilter: value }),
       options: CHANNELS,
       all: "Tous les canaux",
     },
@@ -174,7 +181,7 @@ function Prospects() {
       title: "Consentement",
       id: "consent-filter",
       value: consentFilter,
-      set: setConsentFilter,
+      set: (value: string) => update({ consentFilter: value }),
       options: CONSENT,
       all: "Tous",
     },
@@ -187,18 +194,7 @@ function Prospects() {
   );
   const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
   function reset() {
-    setQ("");
-    setStage("");
-    setPendingCampaign(false);
-    setCampaign("");
-    setHideDemo(false);
-    setTargetCode("");
-    setLevelFilter("");
-    setChannelFilter("");
-    setConsentFilter("");
-    setMine(false);
-    setSourceFilter("");
-    setOffset(0);
+    update({ ...readProspectResults(new URLSearchParams()), view });
   }
   function membershipsOf(p: Prospect): Membership[] {
     return p.campaigns.filter(
@@ -250,8 +246,7 @@ function Prospects() {
           <button
             aria-pressed={mine}
             onClick={() => {
-              setMine(!mine);
-              setOffset(0);
+              update({ mine: !mine });
             }}
           >
             Mes prospects
@@ -260,11 +255,12 @@ function Prospects() {
         <button
           aria-pressed={pendingCampaign}
           onClick={() => {
-            setPendingCampaign(!pendingCampaign);
-            setCampaign("");
-            setSourceFilter("");
-            setStage("");
-            setOffset(0);
+            update({
+              pendingCampaign: !pendingCampaign,
+              campaign: "",
+              sourceFilter: "",
+              stage: "",
+            });
           }}
         >
           À attribuer{pending.data ? ` (${pending.data.total})` : ""}
@@ -278,8 +274,7 @@ function Prospects() {
           <button
             aria-pressed={view === "pipeline"}
             onClick={() => {
-              setView("pipeline");
-              setOffset(0);
+              update({ view: "pipeline" });
             }}
           >
             Pipeline
@@ -287,8 +282,7 @@ function Prospects() {
           <button
             aria-pressed={view === "table"}
             onClick={() => {
-              setView("table");
-              setOffset(0);
+              update({ view: "table" });
             }}
           >
             Table
@@ -335,8 +329,7 @@ function Prospects() {
             placeholder="Nom, email…"
             value={q}
             onChange={(e) => {
-              setQ(e.target.value);
-              setOffset(0);
+              update({ q: e.target.value }, true);
             }}
           />
         </label>
@@ -346,8 +339,7 @@ function Prospects() {
             id="stage-filter"
             value={stage}
             onChange={(e) => {
-              setStage(e.target.value);
-              setOffset(0);
+              update({ stage: e.target.value });
             }}
           >
             <option value="">Toutes les étapes</option>
@@ -365,9 +357,7 @@ function Prospects() {
             value={campaign}
             disabled={campaigns.loading || !!campaigns.error}
             onChange={(e) => {
-              setCampaign(e.target.value);
-              setSourceFilter("");
-              setOffset(0);
+              update({ campaign: e.target.value, sourceFilter: "" });
             }}
           >
             <option value="">Toutes les campagnes</option>
@@ -385,8 +375,7 @@ function Prospects() {
             value={sourceFilter}
             disabled={!campaign || campaigns.loading || !!campaigns.error}
             onChange={(e) => {
-              setSourceFilter(e.target.value);
-              setOffset(0);
+              update({ sourceFilter: e.target.value });
             }}
           >
             <option value="">
@@ -423,8 +412,7 @@ function Prospects() {
             type="checkbox"
             checked={hideDemo}
             onChange={(e) => {
-              setHideDemo(e.target.checked);
-              setOffset(0);
+              update({ hideDemo: e.target.checked });
             }}
           />
           Masquer les prospects fictifs
@@ -442,7 +430,6 @@ function Prospects() {
                   value={f.value}
                   onChange={(e) => {
                     f.set(e.target.value);
-                    setOffset(0);
                   }}
                 >
                   <option value="">{f.all}</option>
@@ -466,7 +453,6 @@ function Prospects() {
                 aria-label={`Retirer le filtre ${f.title}`}
                 onClick={() => {
                   f.set("");
-                  setOffset(0);
                 }}
               >
                 {f.title} : {label(f.options, f.value)}
@@ -532,7 +518,7 @@ function Prospects() {
                             <Link
                               className="pipeline-card"
                               key={p.id}
-                              href={`/prospects/${p.id}`}
+                              href={profileHref(p.id)}
                             >
                               <div className="row">
                                 <Avatar prospect={p} />
@@ -602,9 +588,9 @@ function Prospects() {
                             <div className="row">
                               <Avatar prospect={p} />
                               <div>
-                                <ProspectLink id={p.id}>
+                                <Link href={profileHref(p.id)}>
                                   {fullName(p)}
-                                </ProspectLink>{" "}
+                                </Link>{" "}
                                 <DemoBadge email={p.email} />
                                 <div className="muted">
                                   {p.email || p.phone || "—"}
@@ -649,7 +635,7 @@ function Prospects() {
             total={data.total}
             limit={data.limit}
             offset={data.offset}
-            onChange={setOffset}
+            onChange={(offset) => update({ offset })}
           />
         </>
       )}
