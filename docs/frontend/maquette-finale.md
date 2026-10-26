@@ -103,7 +103,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
 | Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
-| Rendez-vous | `/appointments` | à créer | **À créer** (section 5.1) |
+| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1) |
 | Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
 | Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |
@@ -111,30 +111,39 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 Pour chaque nouvel écran, ajouter aussi son titre et sous-titre dans
 `pageTitle` / `pageSubtitle` (`lib/labels.ts`), sinon l’en-tête affiche un titre générique.
 
-## 5. Écrans à créer
+## 5. Écrans complémentaires
 
-Les quatre écrans existent dans la maquette finale (planches « Rendez-vous »,
-« Dashboard », « Analytics », « Agent »). Chaque écran a besoin de données que
-l’API ne fournit pas encore toutes : **commencer par l’API**, avec ses tests
-`pytest`, puis l’écran, puis ses tests Playwright (API simulée, comme dans
-`frontend/tests/*.spec.ts`).
+Ces rubriques proviennent de la maquette initiale ; leur périmètre peut évoluer
+selon les besoins réels. Rendez-vous est disponible en consultation. Pour les
+prochains écrans, partir des données et contrats API vérifiés, puis développer
+la vue et ses tests navigateur. Dashboard et Analytics peuvent être regroupés
+dans un espace de pilotage plutôt que reproduits à l’identique.
 
-### 5.1 Rendez-vous (`/appointments`, groupe Travail)
+### 5.1 Rendez-vous (`/appointments`, groupe Travail) — consultation livrée
 
-Contenu : deux tableaux « À venir » et « Passés » ; colonnes Prospect (lien vers
-la fiche), Programme, Date (et créneaux proposés quand le statut est « Proposé »),
-Conseiller, Lien visio, Statut. Filtres : période (segmenté), statut (segmenté),
-conseiller (liste). Un conseiller voit d’abord ses rendez-vous.
+Une liste chronologique remplace les tableaux de la maquette : prospect, conseiller,
+début, fin, statut enregistré et lien visio disponible. Les dates sont affichées dans
+le fuseau du navigateur, indiqué au-dessus de la liste. Les prospects fictifs portent
+leur badge et peuvent être masqués.
 
-Données : le modèle `Appointment` existe (`backend/app/models/appointment.py` :
-prospect, conseiller, `start_at`, `end_at`, `status`, `meeting_url`). Statuts :
-`proposed`, `scheduled`, `done`, `cancelled`, `no_show`, à traduire « Proposé,
-Planifié, Réalisé, Annulé, Absent » dans `lib/labels.ts`. Couleurs : Proposé
-`warn`, Planifié `accent`, Réalisé `ok`, Annulé neutre, Absent `err`.
+« À venir » inclut les rendez-vous dont la fin est supérieure ou égale à l’heure
+courante (y compris ceux en cours), par début croissant puis identifiant. « Passés »
+affiche les autres par début décroissant puis identifiant décroissant. La date ne
+modifie jamais le statut : un rendez-vous passé peut encore être « Planifié ».
 
-API à créer : `GET /appointments?when=upcoming|past&status=&advisor_id=&limit=&offset=`
-→ `Page[AppointmentRead]` avec le nom du prospect, du conseiller et de la campagne.
-Lecture pour tous les rôles ; aucune action d’écriture dans cette première version.
+`GET /appointments?when=upcoming|past&status=&advisor_id=&demo=all|exclude&limit=&offset=`
+renvoie une page SQL, sans appeler Google ou Zoom. Tous les rôles authentifiés ont
+accès en lecture. Le conseiller arrive sur « Mes rendez-vous » ; les autres rôles
+voient tous les rendez-vous. Les filtres et la pagination sont conservés dans l’URL.
+Changer un filtre remet la pagination au début. L’export et les opérations de
+création, modification, annulation et rappel ne font pas partie de ce premier lot.
+
+Les créneaux proposés restent dans les conversations : ils ne sont pas transformés
+en réservations fictives. Aucune campagne n’est attribuée rétroactivement au
+rendez-vous (le modèle actuel ne mémorise pas ce rattachement). Les modifications
+faites directement dans l’agenda externe ne sont pas synchronisées dans cette liste.
+Les liens visio sont limités aux adresses HTTP(S) ; aucun lien n’est inventé en cas
+d’absence. Les filtres restent utilisables si la liste des conseillers échoue.
 
 ### 5.2 Dashboard (`/dashboard`, groupe Pilotage)
 

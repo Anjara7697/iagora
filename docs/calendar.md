@@ -123,3 +123,17 @@ reçoit des créneaux ; son choix crée le rendez-vous (visible dans l'agenda et
 | Agenda non partagé avec le compte de service | Erreur explicite demandant de le partager. |
 | Aucun créneau libre sur la période | Transfert, motif « aucun créneau ». |
 | Créneau pris entre la proposition et le choix | Transfert, motif « réservation impossible ». |
+
+
+## Consulter les rendez-vous
+
+L’écran **Rendez-vous** liste les réservations enregistrées dans IAGORA. Il propose
+« À venir » (y compris les rendez-vous en cours) et « Passés », des filtres par statut
+et conseiller, et les liens vers le prospect et la visio lorsqu’elle existe.
+Les heures utilisent le fuseau du navigateur affiché à l’écran. Les conseillers
+arrivent sur leurs rendez-vous ; tous les rôles authentifiés peuvent consulter la liste.
+
+La consultation ne contacte ni Google ni Zoom. Une réservation passée n’est pas
+marquée « Réalisé » automatiquement. Les modifications ou annulations faites dans
+Google ne sont pas synchronisées vers cette liste ; les statuts affichés sont ceux
+stockés dans IAGORA. La gestion des rendez-vous et les rappels restent à développer.

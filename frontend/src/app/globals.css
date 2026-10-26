@@ -1069,8 +1069,8 @@ td {
   .app-header > .spacer {
     display: none;
   }
-  .account-who,
-  .account-caret {
+  .app-header .account-who,
+  .app-header .account-caret {
     display: none;
   }
   .account-trigger {
@@ -4240,4 +4240,44 @@ a.button-link.primary-link:hover {
 }
 .reply-draft-note button {
   font-size: 12px;
+}
+
+/* Rendez-vous : liste chronologique, avec accès direct au prospect et à la visio. */
+.appointment-help {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-block: 16px;
+}
+.appointment-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.appointment-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(150px, auto);
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.appointment-person h2 {
+  font-size: 17px;
+  margin: 0 0 8px;
+}
+.appointment-person p { margin: 8px 0 0; font-size: 13px; }
+.appointment-dates { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.appointment-dates > div { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.appointment-dates dt { color: var(--muted); min-width: 40px; font-size: 13px; }
+.appointment-dates dd { margin: 0; font-size: 14px; }
+.appointment-access { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; font-size: 13px; }
+@media (max-width: 800px) {
+  .appointment-card { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; }
+  .appointment-access { flex-direction: row; align-items: center; flex-wrap: wrap; }
+  .appointment-access .button-link { min-height: 44px; display: inline-flex; align-items: center; }
 }
