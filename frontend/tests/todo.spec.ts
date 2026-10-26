@@ -264,6 +264,8 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(
     page.getByRole("status", { name: "Résultat de la décision" }),
   ).toContainText("Message validé");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByLabel("1 en attente")).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "1 à traiter" })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toHaveCount(0);

@@ -340,3 +340,23 @@ inchangés.
 Le résumé de la conversation sélectionnée est aussi chargé indépendamment de la
 liste filtrée. Après restitution de la main à l’agent, la conversation peut quitter
 « En attente » sans faire disparaître sa fiche ni la confirmation de l’action.
+
+## 16. Réponses en cours et compteurs cohérents
+
+Les réponses non envoyées sont conservées en mémoire par conversation pendant la
+navigation dans l’application. Changer de conversation ou consulter une autre
+page ne supprime plus la saisie. L’enregistrement réussi efface uniquement la
+réponse concernée ; un échec conserve le texte. Un bouton permet de l’effacer avec
+confirmation. Le navigateur est averti des saisies en cours avant actualisation
+ou fermeture, et une déconnexion demande confirmation avant leur suppression.
+
+Ces textes ne sont stockés ni sur le serveur ni dans le stockage persistant du
+navigateur. Ils ne survivent pas à une actualisation confirmée ou à la fin de la
+session. Ils sont isolés par utilisateur connecté et ne sont pas restaurés après
+reconnexion.
+
+Après une décision dans « À traiter » ou une action sur une conversation, les
+compteurs du menu et de l’en-tête sont relus depuis l’API. Les vues de la file et
+les compteurs de l’accueil se rechargent aussi lorsqu’ils sont montés. Un échec
+d’opération ne déclenche pas de décrément optimiste. Une ancienne réponse réseau
+ne peut pas écraser une valeur plus récente dans l’en-tête.

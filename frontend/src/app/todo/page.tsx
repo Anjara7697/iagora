@@ -19,6 +19,7 @@ import {
   EXECUTION,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
+import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import type {
   TodoItem,
   TodoKind,
@@ -147,6 +148,7 @@ function DraftPanel({
     setError(null);
     try {
       await api(`${base}/${path}`, { method: "POST", body: body ?? {} });
+      notifyWorkQueueChanged();
       onDone({
         prospectName: itemName(item),
         message:

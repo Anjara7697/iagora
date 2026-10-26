@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
+import { useReplyDraft } from "@/components/ReplyDrafts";
+import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -148,7 +150,7 @@ function Detail({
     keepPrevious: true,
   });
   const prospect = useApi<Prospect>(`/prospects/${summary.prospect_id}`);
-  const [text, setText] = useState("");
+  const [text, setText] = useReplyDraft(summary.id);
   const [pending, setPending] = useState<"send" | "status" | "agent" | null>(null);
   const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +180,7 @@ function Detail({
     try {
       await action();
       setNotice(message);
+      notifyWorkQueueChanged();
       conversation.reload();
       prospect.reload();
       onChanged();
@@ -210,11 +213,13 @@ function Detail({
     );
   const send = () =>
     act("send", async () => {
+      const submitted = text;
       await api(`/conversations/${summary.id}/messages`, {
         method: "POST",
-        body: { role: "advisor", content: text.trim() },
+        body: { role: "advisor", content: submitted.trim() },
       });
-      setText("");
+      // Une réponse HTTP tardive ne doit pas effacer une nouvelle saisie.
+      setText((current) => current === submitted ? "" : current);
     }, "Réponse enregistrée. Consultez son état d’envoi dans le fil.");
 
   return (
@@ -411,6 +416,14 @@ function Detail({
             disabled={busy || optedOut || !p || syncing}
             onChange={(e) => setText(e.target.value)}
           />
+          {text.trim() && (
+            <p className="reply-draft-note">
+              Réponse non envoyée · conservée pendant votre navigation.
+              <button type="button" disabled={busy} onClick={() => {
+                if (window.confirm("Effacer cette réponse non envoyée ?")) setText("");
+              }}>Effacer la réponse</button>
+            </p>
+          )}
           <div className="row">
             <button
               className="primary"
