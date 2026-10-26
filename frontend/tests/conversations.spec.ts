@@ -334,6 +334,7 @@ test("fil à trois auteurs : prospect reçu, brouillon en attente, message envoy
     detail.getByText(/Agent IA · brouillon du .*en attente de validation/),
   ).toBeVisible();
   await expect(detail.getByText(/^Conseiller · /)).toBeVisible();
+  await detail.getByText("Contexte et règles d’envoi", { exact: true }).click();
   await expect(detail.getByText("Canal de réponse retenu")).toBeVisible();
   await expect(
     detail.getByText(/Relances : jours ouvrés, 8 h–19 h/),
@@ -355,6 +356,16 @@ test("mobile : la fiche de transfert mène à la rédaction sans modifier le tex
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   const reply = page.getByLabel("Votre réponse");
+  const brief = page.getByRole("region", { name: "Fiche de transfert", exact: true });
+  await expect(brief.getByRole("button", { name: "Rédiger une réponse" })).toBeInViewport({ ratio: 1 });
+  await expect(brief.getByText("« Puis-je financer avec mon CPF ? »")).toBeVisible();
+  const context = page.getByText("Contexte et règles d’envoi", { exact: true });
+  await expect(page.getByText("Question sur le financement.", { exact: true })).toBeHidden();
+  await context.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Question sur le financement.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Contraintes", { exact: true })).toBeVisible();
+  await page.keyboard.press("Enter");
   await reply.fill("Réponse en cours de rédaction.");
   await page.getByRole("region", { name: "Fiche de transfert", exact: true })
     .getByRole("button", { name: "Rédiger une réponse" }).click();
