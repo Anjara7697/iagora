@@ -19,6 +19,7 @@ import {
   EXECUTION,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
+import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import type {
   TodoItem,
   TodoKind,
@@ -147,6 +148,7 @@ function DraftPanel({
     setError(null);
     try {
       await api(`${base}/${path}`, { method: "POST", body: body ?? {} });
+      notifyWorkQueueChanged();
       onDone({
         prospectName: itemName(item),
         message:
@@ -305,14 +307,11 @@ function Detail({
               {TASK_LABELS[item.kind]}
             </span>
             <span className={`badge priority-${item.priority}`}>
-              {label(PRIORITIES, item.priority)}
+              Priorité {label(PRIORITIES, item.priority).toLowerCase()}
             </span>
-            {item.prospect?.stage && <StageBadge stage={item.prospect.stage} />}
-            {item.prospect?.total_score != null && (
-              <ScoreBadge
-                total={item.prospect.total_score}
-                level={item.prospect.level}
-              />
+            {!rec && item.prospect?.stage && <StageBadge stage={item.prospect.stage} />}
+            {!rec && item.prospect?.total_score != null && (
+              <ScoreBadge total={item.prospect.total_score} level={item.prospect.level} />
             )}
           </div>
         </div>
@@ -350,54 +349,63 @@ function Detail({
       </div>
 
       {rec && (
-        <section className="recommendation" aria-label="Éléments pour décider">
+        <section className="recommendation decision-brief" aria-label="Éléments pour décider">
           <div className="recommendation-heading">
             <span className="dot tone-ai" aria-hidden="true" />
             Prochaine action recommandée
           </div>
           <h3>{rec.action}</h3>
-          <div className="recommendation-grid">
-            {rec.reason && (
-              <div>
-                <span className="eyebrow">Pourquoi</span>
-                <p>{rec.reason}</p>
-              </div>
+          {rec.reason && <p className="decision-reason">{rec.reason}</p>}
+          <div className="decision-signals">
+            <span className={`badge risk-${rec.risk}`}>
+              Risque : {label(RISKS, rec.risk).toLowerCase()}
+            </span>
+            {rec.sources.length === 0 && (
+              <span className="decision-source-warning">
+                Aucune source de la base de connaissances.
+              </span>
             )}
-            <div>
-              <span className="eyebrow">Sources utilisées</span>
-              {rec.sources.length > 0 ? (
-                <ul>
-                  {rec.sources.map((s) => (
-                    <li key={s}>{s}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted">
-                  Aucune source de la base de connaissances.
-                </p>
-              )}
-            </div>
-            <div>
-              <span className="eyebrow">Confiance de l&apos;agent</span>
-              <Confidence value={rec.confidence} />
-              <span className="eyebrow">Risque</span>
-              <p>
-                <span className={`badge risk-${rec.risk}`}>
-                  {label(RISKS, rec.risk)}
-                </span>
-              </p>
-              {item.draft && (
-                <>
-                  <span className="eyebrow">Exécution</span>
-                  <p>
-                    <span className="badge integ-warn">
-                      {label(EXECUTION, "pending")}
-                    </span>
-                  </p>
-                </>
-              )}
-            </div>
           </div>
+          <details className="reading-details">
+            <summary>Sources, confiance et contexte</summary>
+            <div className="recommendation-grid">
+              <div>
+                <span className="eyebrow">Sources utilisées</span>
+                {rec.sources.length > 0 ? (
+                  <ul>
+                    {rec.sources.map((s) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                ) : <p className="muted">Aucune source disponible.</p>}
+              </div>
+              <div>
+                <span className="eyebrow">Confiance de l&apos;agent</span>
+                <Confidence value={rec.confidence} />
+                {item.draft && (
+                  <>
+                    <span className="eyebrow">Exécution</span>
+                    <p>
+                      <span className="badge integ-warn">
+                        {label(EXECUTION, "pending")}
+                      </span>
+                    </p>
+                  </>
+                )}
+              </div>
+              {item.prospect && (
+                <div>
+                  <span className="eyebrow">Contexte commercial</span>
+                  <div className="row">
+                    {item.prospect.stage && <StageBadge stage={item.prospect.stage} />}
+                    {item.prospect.total_score != null && (
+                      <ScoreBadge total={item.prospect.total_score} level={item.prospect.level} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
         </section>
       )}
 

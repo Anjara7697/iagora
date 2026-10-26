@@ -205,6 +205,7 @@ export function formatDay(iso: string | null | undefined): string {
 
 /** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
 const PAGE_TITLES: [string, string][] = [
+  ["/appointments", "Rendez-vous"],
   ["/campaigns/new", "Nouvelle campagne"],
   ["/campaigns/", "Campagne"],
   ["/campaigns", "Campagnes"],
@@ -251,6 +252,7 @@ export const PROFILE_FIELDS: Record<string, string> = {
 };
 
 const PAGE_SUBTITLES: [string, string][] = [
+  ["/appointments", "À venir et passés"],
   ["/campaigns/new", "Segments, sources et statuts"],
   ["/campaigns", "Segments, sources et statuts"],
   ["/prospects/", "Parcours, échanges et décisions de l’agent"],
@@ -289,4 +291,8 @@ export const EXECUTION: Record<string, string> = {
   failed: "Échec d’envoi",
   blocked: "Envoi bloqué",
   rejected: "Refusée",
+};
+
+export const APPOINTMENT_STATUS: Record<string, string> = {
+  proposed: "Proposé", scheduled: "Planifié", done: "Réalisé", cancelled: "Annulé", no_show: "Absent",
 };

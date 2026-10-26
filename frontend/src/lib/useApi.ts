@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "./api";
+import { WORK_QUEUE_CHANGED } from "./workQueue";
 
 type State<T> = { data: T | null; error: ApiError | null; loading: boolean };
 
@@ -17,6 +18,13 @@ export function useApi<T>(
     loading: path !== null,
   });
   const [version, setVersion] = useState(0);
+
+  useEffect(() => {
+    if (!path || !/^\/todo(?:[/?]|$)/.test(path)) return;
+    const refresh = () => setVersion((v) => v + 1);
+    window.addEventListener(WORK_QUEUE_CHANGED, refresh);
+    return () => window.removeEventListener(WORK_QUEUE_CHANGED, refresh);
+  }, [path]);
 
   useEffect(() => {
     if (path === null) {

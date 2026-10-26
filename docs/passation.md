@@ -7,6 +7,11 @@ et le dernier jour du stage.
 > État au 23 octobre 2026, branche `main` (PR #59). Rien de ce qui est marqué « non vérifié » ne doit
 > être présenté comme fonctionnel en production.
 
+Mise à jour console : la consultation des rendez-vous est disponible dans
+« Rendez-vous » (périodes, statut, conseiller, lien prospect/visio). Elle lit les
+réservations enregistrées ; elle ne valide pas à elle seule les connexions réelles
+Google Agenda/Zoom. Voir [le contrat de consultation](frontend/maquette-finale.md#51-rendez-vous-appointments-groupe-travail--consultation-livrée).
+
 ## 1. Ce que fait le projet
 
 Un agent IA reçoit les prospects des programmes de DATUM Academy (eBIHAR, Les Compagnons, Master eBIHAR),
@@ -56,7 +61,8 @@ Vue technique : [architecture.md](architecture.md).
 | Connecteurs LinkedIn et Meta | Accès API non obtenus |
 | Mention IA dans chaque email | À ajouter au pied de message ([conformite-rgpd.md](conformite-rgpd.md)) |
 | Effacement / anonymisation RGPD d'un prospect | Non développé |
-| Écrans Rendez-vous, Dashboard, Analytics | Affichés « bientôt » dans le menu |
+| Écrans Dashboard, Analytics | Affichés « À venir » dans le menu |
+| Gestion des rendez-vous | Liste de consultation disponible ; modification, annulation et synchronisation externe restent à développer |
 | Rappel avant rendez-vous | Non développé |
 | Connexion Gmail / Microsoft 365 par OAuth | Mot de passe d'application en attendant |
 

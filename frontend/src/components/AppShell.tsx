@@ -7,6 +7,8 @@ import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import { pageSubtitle, pageTitle } from "@/lib/labels";
 import AgentModeCard from "./AgentModeCard";
+import { ReplyDraftsProvider, ReplyLogoutButton } from "./ReplyDrafts";
+import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
@@ -31,7 +33,7 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
       { href: "/", label: "Aujourd’hui" },
       { href: "/todo", label: "À traiter", badge: true },
       { href: "/conversations", label: "Conversations" },
-      { label: "Rendez-vous", soon: true },
+      { href: "/appointments", label: "Rendez-vous" },
       { href: "/prospects", label: "Prospects" },
     ],
   },
@@ -127,9 +129,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
   useEffect(() => {
     if (!user || user.must_change_password) return;
-    api<{ total: number }>("/todo?limit=1")
-      .then((page) => setWaiting(page.total))
-      .catch(() => setWaiting(null));
+    let active = true;
+    let request = 0;
+    const refresh = () => {
+      const current = ++request;
+      api<{ total: number }>("/todo?limit=1")
+        .then((page) => { if (active && current === request) setWaiting(page.total); })
+        .catch(() => { if (active && current === request) setWaiting(null); });
+    };
+    refresh();
+    window.addEventListener(WORK_QUEUE_CHANGED, refresh);
+    return () => {
+      active = false;
+      window.removeEventListener(WORK_QUEUE_CHANGED, refresh);
+    };
   }, [user, pathname]);
 
   // Mot de passe temporaire : seul « Mon compte » est accessible tant qu'il n'est pas changé.
@@ -205,6 +218,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       : pageSubtitle(pathname);
   return (
     <UserContext.Provider value={user}>
+      <ReplyDraftsProvider key={user.id}>
       <a className="skip-link" href="#main-content">
         Aller au contenu
       </a>
@@ -312,7 +326,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <input
                 type="search"
                 aria-label="Rechercher un prospect"
-                placeholder="Nom, email ou campagne…"
+                placeholder="Nom ou email du prospect…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -367,18 +381,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <Link role="menuitem" href="/account">
                     Mon compte
                   </Link>
-                  <button
-                    role="menuitem"
-                    onClick={() => {
+                  <ReplyLogoutButton
+                    onLogout={() => {
                       setToken(null);
                       setUser(null);
                       setNavOpen(false);
                       setAccountOpen(false);
                       router.replace("/login");
                     }}
-                  >
-                    Déconnexion
-                  </button>
+                  />
                 </div>
               )}
             </div>
@@ -391,6 +402,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      </ReplyDraftsProvider>
     </UserContext.Provider>
   );
 }

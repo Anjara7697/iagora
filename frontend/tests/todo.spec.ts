@@ -189,6 +189,8 @@ test("mobile : traitement lisible et retour explicite à la file", async ({
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toBeVisible();
   await expect(list).toBeHidden();
+  // The response is readable immediately, before scrolling through diagnostics.
+  await expect(page.getByText("Bonjour Marie, le financement est possible.")).toBeInViewport();
   const approve = page.getByRole("button", { name: "Valider la réponse", exact: true });
   await approve.scrollIntoViewIfNeeded();
   await expect(approve).toBeInViewport({ ratio: 1 });
@@ -230,11 +232,35 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
     ),
   ).toBe(true);
   await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
+  await expect(detail.getByText("Risque : faible", { exact: true })).toBeVisible();
+  await expect(detail.getByLabel("Confiance 91 %")).toBeHidden();
+  const sources = detail.getByText("Sources, confiance et contexte", { exact: true });
+  await sources.focus();
+  await page.keyboard.press("Enter");
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(
     detail.getByText("Bonjour Marie, le financement est possible."),
   ).toBeVisible();
+});
+
+test("mobile : risque élevé et absence de sources visibles sans déplier les détails", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const calls = await mockApi(page);
+  await page.route("**/api/v1/todo?**", route => route.fulfill({ json: {
+    items: [{ ...draftItem, recommendation: {
+      ...draftItem.recommendation, risk: "high", sources: [], confidence: null,
+    } }], total: 1, limit: 50, offset: 0, counts: { validation: 1 },
+  } }));
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  const detail = page.getByRole("region", { name: "À traiter : Marie Dupont" });
+  await expect(detail.getByText("Risque : élevé", { exact: true })).toBeVisible();
+  await expect(detail.getByText("Aucune source de la base de connaissances.")).toBeVisible();
+  await expect(detail.getByText("Non évaluée", { exact: true })).toBeHidden();
+  await detail.getByText("Sources, confiance et contexte", { exact: true }).click();
+  await expect(detail.getByText("Non évaluée", { exact: true })).toBeVisible();
+  expect(calls.posts).toHaveLength(0);
 });
 
 test("approuver une version modifiée envoie le texte au serveur", async ({
@@ -264,6 +290,8 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(
     page.getByRole("status", { name: "Résultat de la décision" }),
   ).toContainText("Message validé");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByLabel("1 en attente")).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "1 à traiter" })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toHaveCount(0);
@@ -420,6 +448,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
     draft.getByText("Répondez STOP pour ne plus recevoir de messages."),
   ).toBeVisible();
   await expect(draft.getByText("pied de message compris")).toBeVisible();
+  await page.getByText("Sources, confiance et contexte", { exact: true }).click();
   await expect(page.getByText("À valider", { exact: true })).toBeVisible();
 });
 

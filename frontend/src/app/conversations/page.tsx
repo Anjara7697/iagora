@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
+import { useReplyDraft } from "@/components/ReplyDrafts";
+import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -148,7 +150,7 @@ function Detail({
     keepPrevious: true,
   });
   const prospect = useApi<Prospect>(`/prospects/${summary.prospect_id}`);
-  const [text, setText] = useState("");
+  const [text, setText] = useReplyDraft(summary.id);
   const [pending, setPending] = useState<"send" | "status" | "agent" | null>(null);
   const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +180,7 @@ function Detail({
     try {
       await action();
       setNotice(message);
+      notifyWorkQueueChanged();
       conversation.reload();
       prospect.reload();
       onChanged();
@@ -210,11 +213,13 @@ function Detail({
     );
   const send = () =>
     act("send", async () => {
+      const submitted = text;
       await api(`/conversations/${summary.id}/messages`, {
         method: "POST",
-        body: { role: "advisor", content: text.trim() },
+        body: { role: "advisor", content: submitted.trim() },
       });
-      setText("");
+      // Une réponse HTTP tardive ne doit pas effacer une nouvelle saisie.
+      setText((current) => current === submitted ? "" : current);
     }, "Réponse enregistrée. Consultez son état d’envoi dans le fil.");
 
   return (
@@ -228,6 +233,65 @@ function Detail({
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
+          <div className="row">
+            <span className={`badge conv-${summary.status}`}>
+              {label(CONVERSATION_STATUS, summary.status)}
+            </span>
+            <span className="badge">{label(CHANNELS, summary.channel)}</span>
+          </div>
+        </div>
+        <Link
+          className="button-link"
+          href={`/prospects/${summary.prospect_id}`}
+        >
+          Ouvrir la fiche
+        </Link>
+      </header>
+
+      <Loading
+        loading={conversation.loading}
+        error={conversation.error}
+        onRetry={conversation.reload}
+      />
+      <Loading
+        loading={prospect.loading}
+        error={prospect.error}
+        onRetry={prospect.reload}
+      />
+      {optedOut && (
+        <p className="conversation-blocker" role="status">
+          Ce prospect s&apos;est désinscrit : aucun message ne peut lui être
+          envoyé.
+        </p>
+      )}
+      {conv?.handoff && (
+        <section className="handoff-brief" aria-label="Fiche de transfert">
+          <div className="handoff-brief-heading">
+            <h3>Fiche de transfert</h3>
+            <span className="badge warn">{label(HANDOFF_REASONS, conv.handoff.reason)}</span>
+          </div>
+          {conv.handoff.pending_question ? (
+            <blockquote>
+              <span className="eyebrow">Question à reprendre</span>
+              <p>« {conv.handoff.pending_question} »</p>
+            </blockquote>
+          ) : <p>{conv.handoff.summary}</p>}
+          <p className="handoff-next-action">
+            <b>Action recommandée :</b> {conv.handoff.recommended_action}
+          </p>
+          {!readOnly && !optedOut && conv.status !== "closed" && (
+            <button disabled={busy || syncing || !p} onClick={() => {
+              replyRef.current?.focus({ preventScroll: true });
+              replyRef.current?.scrollIntoView({ block: "center", behavior: "auto" });
+            }}>
+              Rédiger une réponse
+            </button>
+          )}
+        </section>
+      )}
+      <details className="reading-details conversation-context">
+        <summary>Contexte et règles d’envoi</summary>
+        <div className="conversation-context-body">
           <p>
             Conseiller responsable :{" "}
             {summary.prospect?.assigned_advisor_name ??
@@ -255,85 +319,42 @@ function Detail({
                 level={summary.prospect.level}
               />
             )}
-            <span className={`badge conv-${summary.status}`}>
-              {label(CONVERSATION_STATUS, summary.status)}
-            </span>
-            <span className="badge">{label(CHANNELS, summary.channel)}</span>
+          </div>
+          {conv?.handoff?.pending_question && (
+            <div>
+              <span className="eyebrow">Résumé du transfert</span>
+              <p>{conv.handoff.summary}</p>
+            </div>
+          )}
+          <div className="inbox-info">
+            <div>
+              <span className="eyebrow">Dernière interaction</span>
+              <p>
+                {formatDate(summary.last_message_at)} ·{" "}
+                {label(CHANNELS, summary.channel)}
+              </p>
+            </div>
+            <div>
+              <span className="eyebrow">Canal de réponse retenu</span>
+              <p>
+                {label(CHANNELS, summary.channel)} —{" "}
+                {p?.email ?? summary.prospect?.email ?? "-"}
+              </p>
+            </div>
+            <div>
+              <span className="eyebrow">Contraintes</span>
+              <p>
+                Relances : jours ouvrés, 8 h–19 h (heure de Paris), 3 au plus sans
+                réponse · texte seul, pas de pièce jointe
+              </p>
+            </div>
+            <div>
+              <span className="eyebrow">Consentement</span>
+              <p>{p ? label(CONSENT, p.consent_status) : "-"}</p>
+            </div>
           </div>
         </div>
-        <Link
-          className="button-link"
-          href={`/prospects/${summary.prospect_id}`}
-        >
-          Ouvrir la fiche
-        </Link>
-      </header>
-
-
-
-      <Loading
-        loading={conversation.loading}
-        error={conversation.error}
-        onRetry={conversation.reload}
-      />
-      <Loading
-        loading={prospect.loading}
-        error={prospect.error}
-        onRetry={prospect.reload}
-      />
-      {conv?.handoff && (
-        <section className="handoff-brief" aria-label="Fiche de transfert">
-          <div className="handoff-brief-heading">
-            <h3>Fiche de transfert</h3>
-            <span className="badge warn">{label(HANDOFF_REASONS, conv.handoff.reason)}</span>
-          </div>
-          <p>{conv.handoff.summary}</p>
-          {conv.handoff.pending_question && (
-            <blockquote>
-              <span className="eyebrow">Question à reprendre</span>
-              <p>« {conv.handoff.pending_question} »</p>
-            </blockquote>
-          )}
-          <p>
-            <b>Action recommandée :</b> {conv.handoff.recommended_action}
-          </p>
-          {!readOnly && !optedOut && conv.status !== "closed" && (
-            <button disabled={busy || syncing || !p} onClick={() => {
-              replyRef.current?.focus({ preventScroll: true });
-              replyRef.current?.scrollIntoView({ block: "center", behavior: "auto" });
-            }}>
-              Rédiger une réponse
-            </button>
-          )}
-        </section>
-      )}
-      <div className="inbox-info">
-        <div>
-          <span className="eyebrow">Dernière interaction</span>
-          <p>
-            {formatDate(summary.last_message_at)} ·{" "}
-            {label(CHANNELS, summary.channel)}
-          </p>
-        </div>
-        <div>
-          <span className="eyebrow">Canal de réponse retenu</span>
-          <p>
-            {label(CHANNELS, summary.channel)} —{" "}
-            {p?.email ?? summary.prospect?.email ?? "-"}
-          </p>
-        </div>
-        <div>
-          <span className="eyebrow">Contraintes</span>
-          <p>
-            Relances : jours ouvrés, 8 h–19 h (heure de Paris), 3 au plus sans
-            réponse · texte seul, pas de pièce jointe
-          </p>
-        </div>
-        <div>
-          <span className="eyebrow">Consentement</span>
-          <p>{p ? label(CONSENT, p.consent_status) : "-"}</p>
-        </div>
-      </div>
+      </details>
       {pendingDraft && (
         <div className="conversation-review-callout">
           <div>
@@ -373,12 +394,6 @@ function Detail({
           Votre accès observateur permet de consulter les échanges.
         </p>
       )}
-      {optedOut && (
-        <p className="muted">
-          Ce prospect s&apos;est désinscrit : aucun message ne peut lui être
-          envoyé.
-        </p>
-      )}
       {error && (
         <p className="error" role="alert">
           {error}
@@ -411,6 +426,14 @@ function Detail({
             disabled={busy || optedOut || !p || syncing}
             onChange={(e) => setText(e.target.value)}
           />
+          {text.trim() && (
+            <p className="reply-draft-note">
+              Réponse non envoyée · conservée pendant votre navigation.
+              <button type="button" disabled={busy} onClick={() => {
+                if (window.confirm("Effacer cette réponse non envoyée ?")) setText("");
+              }}>Effacer la réponse</button>
+            </p>
+          )}
           <div className="row">
             <button
               className="primary"

@@ -334,6 +334,7 @@ test("fil à trois auteurs : prospect reçu, brouillon en attente, message envoy
     detail.getByText(/Agent IA · brouillon du .*en attente de validation/),
   ).toBeVisible();
   await expect(detail.getByText(/^Conseiller · /)).toBeVisible();
+  await detail.getByText("Contexte et règles d’envoi", { exact: true }).click();
   await expect(detail.getByText("Canal de réponse retenu")).toBeVisible();
   await expect(
     detail.getByText(/Relances : jours ouvrés, 8 h–19 h/),
@@ -355,6 +356,16 @@ test("mobile : la fiche de transfert mène à la rédaction sans modifier le tex
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   const reply = page.getByLabel("Votre réponse");
+  const brief = page.getByRole("region", { name: "Fiche de transfert", exact: true });
+  await expect(brief.getByRole("button", { name: "Rédiger une réponse" })).toBeInViewport({ ratio: 1 });
+  await expect(brief.getByText("« Puis-je financer avec mon CPF ? »")).toBeVisible();
+  const context = page.getByText("Contexte et règles d’envoi", { exact: true });
+  await expect(page.getByText("Question sur le financement.", { exact: true })).toBeHidden();
+  await context.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Question sur le financement.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Contraintes", { exact: true })).toBeVisible();
+  await page.keyboard.press("Enter");
   await reply.fill("Réponse en cours de rédaction.");
   await page.getByRole("region", { name: "Fiche de transfert", exact: true })
     .getByRole("button", { name: "Rédiger une réponse" }).click();
@@ -428,4 +439,93 @@ test("rendre la main depuis En attente conserve la conversation sélectionnée e
   await expect(detail).toBeVisible();
   await expect(detail.getByRole("status", { name: "Résultat de l’action" })).toContainText("Conversation rouverte pour l’agent.");
   expect(calls.posts).toEqual([{ path: "/conversations/c1", body: { status: "open" } }]);
+});
+
+test("réponses séparées par conversation, conservées entre pages et effacées après enregistrement", async ({ page }) => {
+  const calls = await mockApi(page);
+  const second = { ...summary("c2", "handed_off"), prospect_id: 2, prospect: { ...prospect, id: 2, first_name: "Ahmed", last_name: "Belkacem" } };
+  await page.route("**/api/v1/conversations?**", route => route.fulfill({ json: { items: [summary("c1", "handed_off"), second], total: 2, limit: 30, offset: 0 } }));
+  await page.route("**/api/v1/conversations/c2", route => route.fulfill({ json: { ...conversation("handed_off"), id: "c2", prospect_id: 2 } }));
+  await page.route("**/api/v1/prospects/2", route => route.fulfill({ json: { ...prospect, id: 2, first_name: "Ahmed", last_name: "Belkacem", campaigns: [], profile: {} } }));
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Liste des conversations" });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByLabel("Votre réponse").fill("Réponse destinée à Marie.");
+  await list.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("");
+  await page.getByLabel("Votre réponse").fill("Réponse destinée à Ahmed.");
+  const nav = page.getByRole("navigation", { name: "Navigation principale" });
+  await nav.getByRole("link", { name: /^À traiter/ }).click();
+  await expect(page).toHaveURL(/\/todo$/);
+  await nav.getByRole("link", { name: "Conversations", exact: true }).click();
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("Réponse destinée à Marie.");
+  expect(calls.posts).toHaveLength(0);
+  await page.route("**/api/v1/conversations/c1/messages", route => route.fulfill({ status: 503, json: { detail: "Enregistrement indisponible" } }));
+  await page.getByRole("button", { name: "Envoyer en tant que conseiller" }).click();
+  await expect(page.getByRole("region", { name: "Conversation avec Marie Dupont" }).getByRole("alert")).toContainText("Enregistrement indisponible");
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("Réponse destinée à Marie.");
+  await page.unroute("**/api/v1/conversations/c1/messages");
+  await page.getByRole("button", { name: "Envoyer en tant que conseiller" }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("");
+  await list.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("Réponse destinée à Ahmed.");
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("");
+  expect(calls.posts).toEqual([{ path: "/conversations/c1/messages", body: { role: "advisor", content: "Réponse destinée à Marie." } }]);
+});
+
+test("déconnexion : confirmation avec une réponse non envoyée et aucune restauration après reconnexion", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByLabel("Votre réponse").fill("Texte privé non envoyé.");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("Texte privé non envoyé.");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("");
+});
+
+test("effacer une réponse exige une confirmation et ne transmet aucun message", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByLabel("Votre réponse").fill("À conserver.");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "Effacer la réponse" }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("À conserver.");
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Effacer la réponse" }).click();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("");
+  expect(calls.posts).toHaveLength(0);
+});
+
+
+test("une confirmation tardive ne supprime pas la nouvelle saisie après retour dans la conversation", async ({ page }) => {
+  const calls = await mockApi(page);
+  let release: (() => void) | undefined;
+  await page.route("**/api/v1/conversations/c1/messages", async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ status: 201, json: { created: true } });
+  });
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByLabel("Votre réponse").fill("Première réponse.");
+  await page.getByRole("button", { name: "Envoyer en tant que conseiller" }).click();
+  await expect.poll(() => !!release).toBe(true);
+  await page.getByRole("navigation", { name: "Navigation principale" }).getByRole("link", { name: "Conversations", exact: true }).click();
+  await expect(page).toHaveURL(/\/conversations$/);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByLabel("Votre réponse").fill("Nouvelle réponse encore en rédaction.");
+  const previousReads = calls.listQueries.length;
+  release!();
+  await expect.poll(() => calls.listQueries.length).toBeGreaterThan(previousReads);
+  await expect(page.getByLabel("Votre réponse")).toBeEnabled();
+  await expect(page.getByLabel("Votre réponse")).toHaveValue("Nouvelle réponse encore en rédaction.");
 });

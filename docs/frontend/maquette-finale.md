@@ -103,7 +103,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
 | Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
-| Rendez-vous | `/appointments` | à créer | **À créer** (section 5.1) |
+| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1) |
 | Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
 | Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |
@@ -111,30 +111,39 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 Pour chaque nouvel écran, ajouter aussi son titre et sous-titre dans
 `pageTitle` / `pageSubtitle` (`lib/labels.ts`), sinon l’en-tête affiche un titre générique.
 
-## 5. Écrans à créer
+## 5. Écrans complémentaires
 
-Les quatre écrans existent dans la maquette finale (planches « Rendez-vous »,
-« Dashboard », « Analytics », « Agent »). Chaque écran a besoin de données que
-l’API ne fournit pas encore toutes : **commencer par l’API**, avec ses tests
-`pytest`, puis l’écran, puis ses tests Playwright (API simulée, comme dans
-`frontend/tests/*.spec.ts`).
+Ces rubriques proviennent de la maquette initiale ; leur périmètre peut évoluer
+selon les besoins réels. Rendez-vous est disponible en consultation. Pour les
+prochains écrans, partir des données et contrats API vérifiés, puis développer
+la vue et ses tests navigateur. Dashboard et Analytics peuvent être regroupés
+dans un espace de pilotage plutôt que reproduits à l’identique.
 
-### 5.1 Rendez-vous (`/appointments`, groupe Travail)
+### 5.1 Rendez-vous (`/appointments`, groupe Travail) — consultation livrée
 
-Contenu : deux tableaux « À venir » et « Passés » ; colonnes Prospect (lien vers
-la fiche), Programme, Date (et créneaux proposés quand le statut est « Proposé »),
-Conseiller, Lien visio, Statut. Filtres : période (segmenté), statut (segmenté),
-conseiller (liste). Un conseiller voit d’abord ses rendez-vous.
+Une liste chronologique remplace les tableaux de la maquette : prospect, conseiller,
+début, fin, statut enregistré et lien visio disponible. Les dates sont affichées dans
+le fuseau du navigateur, indiqué au-dessus de la liste. Les prospects fictifs portent
+leur badge et peuvent être masqués.
 
-Données : le modèle `Appointment` existe (`backend/app/models/appointment.py` :
-prospect, conseiller, `start_at`, `end_at`, `status`, `meeting_url`). Statuts :
-`proposed`, `scheduled`, `done`, `cancelled`, `no_show`, à traduire « Proposé,
-Planifié, Réalisé, Annulé, Absent » dans `lib/labels.ts`. Couleurs : Proposé
-`warn`, Planifié `accent`, Réalisé `ok`, Annulé neutre, Absent `err`.
+« À venir » inclut les rendez-vous dont la fin est supérieure ou égale à l’heure
+courante (y compris ceux en cours), par début croissant puis identifiant. « Passés »
+affiche les autres par début décroissant puis identifiant décroissant. La date ne
+modifie jamais le statut : un rendez-vous passé peut encore être « Planifié ».
 
-API à créer : `GET /appointments?when=upcoming|past&status=&advisor_id=&limit=&offset=`
-→ `Page[AppointmentRead]` avec le nom du prospect, du conseiller et de la campagne.
-Lecture pour tous les rôles ; aucune action d’écriture dans cette première version.
+`GET /appointments?when=upcoming|past&status=&advisor_id=&demo=all|exclude&limit=&offset=`
+renvoie une page SQL, sans appeler Google ou Zoom. Tous les rôles authentifiés ont
+accès en lecture. Le conseiller arrive sur « Mes rendez-vous » ; les autres rôles
+voient tous les rendez-vous. Les filtres et la pagination sont conservés dans l’URL.
+Changer un filtre remet la pagination au début. L’export et les opérations de
+création, modification, annulation et rappel ne font pas partie de ce premier lot.
+
+Les créneaux proposés restent dans les conversations : ils ne sont pas transformés
+en réservations fictives. Aucune campagne n’est attribuée rétroactivement au
+rendez-vous (le modèle actuel ne mémorise pas ce rattachement). Les modifications
+faites directement dans l’agenda externe ne sont pas synchronisées dans cette liste.
+Les liens visio sont limités aux adresses HTTP(S) ; aucun lien n’est inventé en cas
+d’absence. Les filtres restent utilisables si la liste des conseillers échoue.
 
 ### 5.2 Dashboard (`/dashboard`, groupe Pilotage)
 
@@ -340,3 +349,62 @@ inchangés.
 Le résumé de la conversation sélectionnée est aussi chargé indépendamment de la
 liste filtrée. Après restitution de la main à l’agent, la conversation peut quitter
 « En attente » sans faire disparaître sa fiche ni la confirmation de l’action.
+
+## 16. Réponses en cours et compteurs cohérents
+
+Les réponses non envoyées sont conservées en mémoire par conversation pendant la
+navigation dans l’application. Changer de conversation ou consulter une autre
+page ne supprime plus la saisie. L’enregistrement réussi efface uniquement la
+réponse concernée ; un échec conserve le texte. Un bouton permet de l’effacer avec
+confirmation. Le navigateur est averti des saisies en cours avant actualisation
+ou fermeture, et une déconnexion demande confirmation avant leur suppression.
+
+Ces textes ne sont stockés ni sur le serveur ni dans le stockage persistant du
+navigateur. Ils ne survivent pas à une actualisation confirmée ou à la fin de la
+session. Ils sont isolés par utilisateur connecté et ne sont pas restaurés après
+reconnexion.
+
+Après une décision dans « À traiter » ou une action sur une conversation, les
+compteurs du menu et de l’en-tête sont relus depuis l’API. Les vues de la file et
+les compteurs de l’accueil se rechargent aussi lorsqu’ils sont montés. Un échec
+d’opération ne déclenche pas de décrément optimiste. Une ancienne réponse réseau
+ne peut pas écraser une valeur plus récente dans l’en-tête.
+
+## 17. Lire et répondre sur mobile
+
+Dans « À traiter », la demande précède une recommandation compacte puis la
+réponse proposée. L’action recommandée, sa justification, le risque et l’absence
+éventuelle de sources restent visibles. « Sources, confiance et contexte »
+regroupe les éléments détaillés et les indicateurs commerciaux ; ce volet se
+manipule au clavier comme au toucher. La priorité de traitement reste dans
+l’en-tête et se distingue du score commercial.
+
+Dans Conversations, l’en-tête privilégie l’identité, le statut et le canal. Le
+transfert présente la question à reprendre, l’action recommandée et l’accès à
+la rédaction. Sans question enregistrée, son résumé reste visible. Le résumé
+complémentaire, le responsable, la campagne, les scores et les règles d’envoi
+restent accessibles dans « Contexte et règles d’envoi ».
+
+Une désinscription apparaît avant le transfert et le fil ; les erreurs de
+chargement et les brouillons à valider restent hors des volets repliables. Les
+contrôles de consentement, les droits et les actions d’envoi ne changent pas.
+
+## 18. Retrouver ses résultats après une fiche
+
+Les filtres des prospects, la recherche, la vue Pipeline ou Table et la page
+courante sont portés par l’adresse de la liste. Une actualisation, un lien
+partagé ou la navigation précédente/suivante du navigateur restaure ces choix.
+La saisie d’une recherche remplace l’entrée d’historique courante pour éviter
+une étape de retour par caractère. Modifier un filtre ou changer de vue remet
+la pagination au début ; réinitialiser les filtres conserve la vue choisie.
+
+Les liens des cartes et du tableau transmettent ce contexte à la fiche. Son
+lien « Retour aux résultats » retrouve la liste correspondante, même après
+actualisation de la fiche. Une fiche ouverte directement garde « Tous les
+prospects » ; le retour vers une demande de la file « À traiter » est conservé.
+Les destinations de retour sont limitées à la liste des prospects et les
+paramètres non reconnus sont ignorés.
+
+L’export utilise les mêmes filtres que les résultats restaurés. La recherche de
+l’en-tête annonce désormais le nom ou l’email du prospect et actualise aussi une
+liste de prospects déjà ouverte.
