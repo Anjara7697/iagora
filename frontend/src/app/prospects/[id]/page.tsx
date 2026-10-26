@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useState } from "react";
+import ProspectResultsReturn from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
@@ -144,9 +145,11 @@ export default function ProspectPage() {
       <Suspense>
         <ProspectTaskReturn />
       </Suspense>
-      <Link href="/prospects" className="profile-back">
-        ← Tous les prospects
-      </Link>
+      <Suspense fallback={
+        <Link href="/prospects" className="profile-back">← Tous les prospects</Link>
+      }>
+        <ProspectResultsReturn />
+      </Suspense>
       <Loading
         loading={prospect.loading}
         error={prospect.error}

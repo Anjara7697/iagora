@@ -326,7 +326,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <input
                 type="search"
                 aria-label="Rechercher un prospect"
-                placeholder="Nom, email ou campagne…"
+                placeholder="Nom ou email du prospect…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
