@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -21,6 +21,20 @@ class MembershipUpdate(BaseModel):
             raise ValueError("Choisir une exception ou l'héritage de la campagne, pas les deux")
         if self.conversion_stage is not None and not (self.reason and self.reason.strip()):
             raise ValueError("Un changement d'étape doit être justifié (champ reason)")
+        return self
+
+
+class EnrollmentConfirmation(BaseModel):
+    """Attestation humaine : nature et référence de la preuve vérifiée."""
+
+    evidence_type: Literal["school_email", "admissions_system", "signed_document", "other"]
+    evidence_reference: str = Field(min_length=10, max_length=300)
+    note: str | None = Field(None, max_length=1000)
+
+    @model_validator(mode="after")
+    def _non_blank_reference(self) -> Self:
+        if len(self.evidence_reference.strip()) < 10:
+            raise ValueError("La référence de la preuve doit contenir au moins 10 caractères")
         return self
 
 
