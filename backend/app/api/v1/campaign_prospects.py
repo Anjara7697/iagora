@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession
 from app.models.enums import UserRole
 from app.schemas.pipeline import (
+    EnrollmentConfirmation,
     HistoryRead,
     MembershipUpdate,
     ScoreEventRead,
@@ -13,6 +14,22 @@ from app.schemas.prospect import CampaignMembershipRead
 from app.services import pipeline, scoring
 
 router = APIRouter(prefix="/campaign-prospects", tags=["pipeline"], dependencies=[ANY_ROLE])
+
+
+@router.post(
+    "/{membership_id}/confirm-enrollment",
+    response_model=CampaignMembershipRead,
+    dependencies=[CAN_WRITE],
+)
+async def confirm_enrollment(
+    membership_id: int,
+    payload: EnrollmentConfirmation,
+    session: DbSession,
+    user: CurrentUser,
+) -> CampaignMembershipRead:
+    """Un conseiller atteste une inscription à partir d'une preuve vérifiée."""
+    membership = await pipeline.confirm_enrollment(session, membership_id, payload, actor=user)
+    return CampaignMembershipRead.model_validate(membership)
 
 
 @router.get("/{membership_id}", response_model=CampaignMembershipRead)
