@@ -200,7 +200,7 @@ export type History = {
 
 export type AgentMode = "assisted" | "auto" | "manual";
 
-export type TodoKind = "validation" | "escalation" | "kb_gap" | "incident";
+export type TodoKind = "validation" | "escalation" | "kb_gap" | "incident" | "application";
 export type Priority = "critical" | "high" | "medium" | "low";
 
 export type TodoItem = {

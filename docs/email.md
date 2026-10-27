@@ -47,7 +47,9 @@ relire un email ne crée aucun doublon. L'email n'est marqué lu qu'après enreg
 (marqués lus, sans réponse) : réponses automatiques, rebonds, listes de diffusion, nos propres messages.
 Un email dont l'authentification échoue (`dmarc=fail`) est conservé mais l'agent n'y répond pas.
 L'historique cité (`> …`, « Le … a écrit : ») est retiré ; le contenu est borné et traité comme **non
-fiable** (aucune pièce jointe, aucun lien suivi).
+fiable** (aucun lien suivi). Les petits PDF et fichiers texte peuvent fournir des indices pour la
+file **Candidatures** ; voir [candidatures.md](candidatures.md). Les documents originaux restent dans
+la boîte email.
 
 **Envoi.** Les messages `delivery: not_sent` (brouillons validés, réponses d'un conseiller, réponses
 directes en mode automatique) sont envoyés un par un, dans le même fil (`Re:`, `In-Reply-To`,

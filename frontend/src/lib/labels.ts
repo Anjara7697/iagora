@@ -33,6 +33,7 @@ export const ACTIONS: Record<string, string> = {
 };
 
 export const HANDOFF_REASONS: Record<string, string> = {
+  candidature_a_verifier: "Candidature à vérifier",
   question_hors_base: "Question hors base de connaissances",
   situation_sensible: "Situation sensible",
   demande_conseiller: "Le prospect demande un conseiller",

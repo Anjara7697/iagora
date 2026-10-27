@@ -3,6 +3,7 @@
 import asyncio
 from datetime import UTC, datetime
 from email.message import EmailMessage
+from pathlib import Path
 
 import pytest
 from app.agents import auto
@@ -11,9 +12,9 @@ from app.config import Settings, get_settings
 from app.integrations.email.base import InboundEmail
 from app.integrations.email.parsing import parse_inbound, strip_quoted
 from app.main import app
-from app.models import Prospect
-from app.models.enums import ConsentStatus, UserRole
-from app.services import conversations, drafts, email_sync
+from app.models import Campaign, CampaignTarget, Prospect, Target
+from app.models.enums import CampaignStatus, ConsentStatus, UserRole
+from app.services import application_intake, conversations, drafts, email_sync, todo
 from sqlalchemy import select
 
 from .fakes import FakeEmailClient
@@ -117,6 +118,82 @@ def test_parse_inbound_extracts_sender_and_text():
         parsed.text == "Bonjour,\nje suis intéressé." and parsed.message_id == "<abc@acme-corp.com>"
     )
     assert not parsed.is_automatic and not parsed.suspect
+
+
+def test_parse_inbound_keeps_small_supported_attachments_only():
+    msg = EmailMessage()
+    msg["From"] = "Jean <jean@demo.example.com>"
+    msg["To"] = "agent@datum.test"
+    msg.set_content("Voici mon dossier.")
+    msg.add_attachment(
+        b"Candidature eBIHAR", maintype="text", subtype="plain", filename="dossier.txt"
+    )
+    msg.add_attachment(
+        b"MZignored", maintype="application", subtype="octet-stream", filename="run.exe"
+    )
+    parsed = parse_inbound("1", msg.as_bytes())
+    assert parsed.attachments == [("dossier.txt", "text/plain", b"Candidature eBIHAR")]
+
+
+def test_pdf_application_text_is_read_with_document_evidence():
+    pdf = (Path(__file__).parent / "data" / "candidature-demo.pdf").read_bytes()
+    parsed = mail(91, attachments=[("candidature.pdf", "application/pdf", pdf)])
+    evidence = application_intake.document_evidence(parsed)
+    assert len(evidence) == 1
+    assert "candidature" in evidence[0].text.lower()
+    assert "eBIHAR" in evidence[0].text
+    assert "autre@demo.example.com" in evidence[0].text
+    broken = mail(92, attachments=[("dossier.pdf", "application/pdf", b"broken")])
+    assert application_intake.document_evidence(broken)[0].note == "PDF illisible : à vérifier"
+
+
+@pytest.mark.asyncio
+async def test_application_suggests_only_active_matching_campaign(session_factory):
+    async with session_factory() as session:
+        target = await session.scalar(select(Target).where(Target.code == "ebihar_students"))
+        assert target is not None
+        active = Campaign(name="eBIHAR octobre", status=CampaignStatus.ACTIVE)
+        inactive = Campaign(name="eBIHAR ancien", status=CampaignStatus.INACTIVE)
+        session.add_all([active, inactive])
+        await session.flush()
+        session.add_all(
+            [
+                CampaignTarget(campaign_id=active.id, target_id=target.id),
+                CampaignTarget(campaign_id=inactive.id, target_id=target.id),
+            ]
+        )
+        await session.commit()
+        suggestions = await application_intake.suggest_campaigns(
+            session, "Je candidate au programme eBIHAR"
+        )
+        assert suggestions == ["eBIHAR octobre"]
+
+
+@pytest.mark.asyncio
+async def test_direct_application_creates_review_without_advancing_stage(env):
+    client = FakeEmailClient(
+        [
+            mail(
+                82,
+                sender="direct@demo.example.com",
+                text="J'ai envoyé mon dossier de candidature.",
+                attachments=[
+                    ("dossier.txt", "text/plain", b"Candidature eBIHAR\nautre@demo.example.com")
+                ],
+            )
+        ]
+    )
+    report = await env.receive(client)
+    assert report.received == 1
+    assert env.replied == []
+    doc = await env.conversation()
+    assert doc["handoff"]["reason"] == "candidature_a_verifier"
+    assert "autre@demo.example.com" in doc["handoff"]["summary"]
+    async with env.factory() as session:
+        queue = await todo.list_todo(session, env.db, kind="application", limit=25, offset=0)
+        assert queue.total == 1
+        assert queue.items[0].prospect.email == "direct@demo.example.com"
+        assert queue.items[0].prospect.stage is None
 
 
 def test_automatic_messages_and_failed_authentication_are_flagged():

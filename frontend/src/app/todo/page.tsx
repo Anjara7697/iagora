@@ -39,18 +39,21 @@ const EXECUTION_HELP: Record<TreatedItem["execution"], string> = {
   rejected: "Ce brouillon a été refusé ; aucun envoi n’a été demandé.",
 };
 const TASK_LABELS: Record<TodoKind, string> = {
+  application: "Candidatures",
   validation: "Brouillons à valider",
   escalation: "Demandes de conseiller",
   kb_gap: "Réponses à compléter",
   incident: "Incidents",
 };
 const TASK_ACTIONS: Record<TodoKind, string> = {
+  application: "Vérifier le dossier et la campagne",
   validation: "Relire et valider la réponse",
   escalation: "Prendre le relais de l’agent",
   kb_gap: "Apporter une réponse vérifiée",
   incident: "Examiner le problème",
 };
 const KIND_ORDER: TodoKind[] = [
+  "application",
   "validation",
   "escalation",
   "kb_gap",
