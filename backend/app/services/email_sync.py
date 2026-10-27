@@ -29,7 +29,7 @@ from app.integrations.email.base import EmailClient, EmailError, InboundEmail, O
 from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import agent_events, agent_settings, conversations, follow_ups
+from app.services import agent_events, agent_settings, application_intake, conversations, follow_ups
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
@@ -139,15 +139,21 @@ async def _ingest_email(
                 },
             ),
         )
+        if not is_new:
+            report.duplicates += 1
+            return None
+        review = await application_intake.review_sheet(session, mail)
+        if review and not policy.is_opt_out(message.content):
+            await conversations.set_handoff(db, conversation.id, review)
+            report.received += 1
+            report.notes.append(f"candidature à vérifier : prospect {prospect.id}")
+            return None
         if (
             settings.agent_auto_reply
             and not mail.suspect
             and not policy.is_opt_out(message.content)
         ):
             await agent_events.enqueue_reply(db, conversation.id)
-        if not is_new:
-            report.duplicates += 1
-            return None
         report.received += 1
         if policy.is_opt_out(message.content):
             report.notes.append(f"désinscription reçue par email : prospect {prospect.id}")

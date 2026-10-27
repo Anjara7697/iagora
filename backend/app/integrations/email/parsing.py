@@ -16,6 +16,8 @@ from html.parser import HTMLParser
 from app.integrations.email.base import InboundEmail
 
 MAX_TEXT = 10_000
+MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
+MAX_ATTACHMENTS = 3
 _AUTOMATIC_SENDERS = re.compile(
     r"(mailer-daemon|postmaster|no-?reply|do-?not-?reply|bounce|notifications?@)", re.I
 )
@@ -114,6 +116,17 @@ def parse_inbound(uid: str, raw: bytes, *, now: datetime | None = None) -> Inbou
     references = str(msg.get("References", "")).split()
     results = str(msg.get("Authentication-Results", "")).lower()
     text = strip_quoted(_body_text(msg))[:MAX_TEXT]
+    attachments: list[tuple[str, str, bytes]] = []
+    for part in msg.iter_attachments():
+        if len(attachments) >= MAX_ATTACHMENTS:
+            break
+        filename = (part.get_filename() or "document")[:120]
+        kind = part.get_content_type()
+        if kind not in {"application/pdf", "text/plain"}:
+            continue
+        payload = part.get_payload(decode=True)
+        if isinstance(payload, bytes) and len(payload) <= MAX_ATTACHMENT_BYTES:
+            attachments.append((filename, kind, payload))
     return InboundEmail(
         uid=uid,
         message_id=message_id,
@@ -126,4 +139,5 @@ def parse_inbound(uid: str, raw: bytes, *, now: datetime | None = None) -> Inbou
         references=references[-20:],
         is_automatic=is_automatic(msg, address, subject),
         suspect="dmarc=fail" in results,
+        attachments=attachments,
     )

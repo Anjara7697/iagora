@@ -22,6 +22,7 @@ class InboundEmail:
     references: list[str] = field(default_factory=list)
     is_automatic: bool = False  # réponse automatique, rebond, liste de diffusion
     suspect: bool = False  # authentification de l'expéditeur en échec (usurpation possible)
+    attachments: list[tuple[str, str, bytes]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
