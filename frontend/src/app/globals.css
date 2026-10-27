@@ -1354,6 +1354,10 @@ button.danger {
   background: var(--warn-bg);
   color: var(--warn);
 }
+.kind-application {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
 .kind-escalation,
 .priority-critical,
 .risk-high {

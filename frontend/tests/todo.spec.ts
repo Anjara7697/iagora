@@ -69,6 +69,39 @@ const gapItem = {
   },
 };
 
+test("candidature directe : le conseiller voit la demande et ses indices", async ({ page }) => {
+  await mockApi(page);
+  const application = {
+    ...gapItem,
+    id: "handoff:application",
+    kind: "application",
+    title: "Candidature à vérifier",
+    detail: "J'ai envoyé mon dossier de candidature.",
+    prospect: { ...prospect, id: 42, first_name: "Sam", last_name: "Test", email: "sam@demo.example.com" },
+    handoff: {
+      reason: "candidature_a_verifier",
+      summary: "Document : dossier.pdf. Campagne suggérée : eBIHAR. Vérifier le document original.",
+      pending_question: "J'ai envoyé mon dossier de candidature.",
+      recommended_action: "Vérifier le dossier et confirmer la candidature",
+    },
+    recommendation: {
+      action: "Vérifier le dossier et confirmer la candidature",
+      reason: "Document : dossier.pdf. Campagne suggérée : eBIHAR.",
+      risk: "medium", confidence: null, sources: [],
+    },
+  };
+  await page.route("**/api/v1/todo?**", route => route.fulfill({ json: {
+    items: [application], total: 1, limit: 50, offset: 0, counts: { application: 1 },
+  } }));
+  await open(page);
+  await expect(page.getByRole("button", { name: "Candidatures (1)" })).toBeVisible();
+  await page.getByRole("complementary", { name: "Éléments à traiter" })
+    .getByRole("button", { name: /Sam Test/ }).click();
+  await expect(page.getByText("Campagne suggérée : eBIHAR.").first()).toBeVisible();
+  await expect(page.getByText("Vérifier le document original.")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Ouvrir la fiche/ })).toHaveAttribute("href", /\/prospects\/42/);
+});
+
 test("pagination et lien direct vers une tâche hors de la page courante", async ({
   page,
 }) => {
