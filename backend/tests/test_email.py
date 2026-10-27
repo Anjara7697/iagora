@@ -1,9 +1,11 @@
 """Connecteur email : lecture des messages reçus, envoi des messages validés, garde-fous."""
 
 import asyncio
+import io
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from app.agents import auto
@@ -15,6 +17,7 @@ from app.main import app
 from app.models import Campaign, CampaignTarget, Prospect, Target
 from app.models.enums import CampaignStatus, ConsentStatus, UserRole
 from app.services import application_intake, conversations, drafts, email_sync, todo
+from pypdf import PdfWriter
 from sqlalchemy import select
 
 from .fakes import FakeEmailClient
@@ -131,8 +134,12 @@ def test_parse_inbound_keeps_small_supported_attachments_only():
     msg.add_attachment(
         b"MZignored", maintype="application", subtype="octet-stream", filename="run.exe"
     )
+    msg.add_attachment(b"fake image", maintype="image", subtype="png", filename="dossier.png")
     parsed = parse_inbound("1", msg.as_bytes())
-    assert parsed.attachments == [("dossier.txt", "text/plain", b"Candidature eBIHAR")]
+    assert parsed.attachments == [
+        ("dossier.txt", "text/plain", b"Candidature eBIHAR"),
+        ("dossier.png", "image/png", b"fake image"),
+    ]
 
 
 def test_pdf_application_text_is_read_with_document_evidence():
@@ -145,6 +152,35 @@ def test_pdf_application_text_is_read_with_document_evidence():
     assert "autre@demo.example.com" in evidence[0].text
     broken = mail(92, attachments=[("dossier.pdf", "application/pdf", b"broken")])
     assert application_intake.document_evidence(broken)[0].note == "PDF illisible : à vérifier"
+
+
+def test_scanned_pdf_is_ocr_read_and_marked_for_review():
+    pdf = PdfWriter()
+    pdf.add_blank_page(width=595, height=842)
+    stream = io.BytesIO()
+    pdf.write(stream)
+    scanned = mail(93, attachments=[("scan.pdf", "application/pdf", stream.getvalue())])
+    with patch.object(
+        application_intake, "_ocr_pdf_page", return_value="Candidature eBIHAR"
+    ) as ocr:
+        evidence = application_intake.document_evidence(scanned)
+    ocr.assert_called_once()
+    assert evidence == [
+        application_intake.DocumentEvidence("scan.pdf", "Candidature eBIHAR", "OCR à vérifier")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_scanned_image_can_trigger_application_review(env):
+    image = mail(
+        94, text="Bonjour, voir la pièce jointe.", attachments=[("scan.png", "image/png", b"image")]
+    )
+    with patch.object(application_intake, "_ocr_image", return_value="Candidature eBIHAR"):
+        report = await env.receive(FakeEmailClient([image]))
+    assert report.received == 1
+    doc = await env.conversation()
+    assert doc["handoff"]["reason"] == "candidature_a_verifier"
+    assert "scan.png (OCR à vérifier)" in doc["handoff"]["summary"]
 
 
 @pytest.mark.asyncio
