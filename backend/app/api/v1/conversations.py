@@ -17,6 +17,7 @@ from app.api.dependencies import (
 )
 from app.graph import policy
 from app.models.enums import ConversationStatus, SenderType
+from app.schemas.application_review import ApplicationResolution
 from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
@@ -27,7 +28,7 @@ from app.schemas.conversation import (
     MessageCreate,
     MessageResult,
 )
-from app.services import agent_events, drafts, follow_ups, inbox
+from app.services import agent_events, application_review, drafts, follow_ups, inbox
 from app.services import conversations as service
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
@@ -150,6 +151,24 @@ async def update_conversation(
     if conversation.status is ConversationStatus.CLOSED:
         await drafts.cancel_pending_for_conversation(db, conversation_id)
     return conversation
+
+
+@router.post(
+    "/conversations/{conversation_id}/resolve-application",
+    response_model=ConversationRead,
+    dependencies=[CAN_WRITE],
+)
+async def resolve_application(
+    conversation_id: str,
+    payload: ApplicationResolution,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> ConversationRead:
+    """Termine la revue d'un dossier déjà confirmé sur le parcours choisi."""
+    return await application_review.resolve(
+        session, db, conversation_id, payload.membership_id, actor=user
+    )
 
 
 @router.post(
