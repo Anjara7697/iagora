@@ -62,6 +62,31 @@ export type Source = {
   platform?: string;
   external_id?: string | null;
 };
+export type MetaFormMapping = {
+  form_id: string;
+  form_name: string;
+  campaign_id: number;
+  source_id: number;
+  target_code: string | null;
+  enabled: boolean;
+};
+export type MetaSettings = {
+  configured: boolean;
+  enabled: boolean;
+  app_id: string;
+  api_version: string;
+  app_secret_set: boolean;
+  page_access_token_set: boolean;
+  verify_token_set: boolean;
+  mappings: MetaFormMapping[];
+  webhook_path: string;
+  last_event_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  received: number;
+  processed: number;
+  failed: number;
+};
 export type Campaign = {
   id: number;
   responsible_advisor_id?: number | null;

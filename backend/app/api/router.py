@@ -15,6 +15,7 @@ from app.api.v1 import (
     integrations,
     knowledge,
     leads,
+    meta,
     prospects,
     settings,
     simulation,
@@ -48,7 +49,9 @@ api_router.include_router(zoom.callback_router)
 api_router.include_router(settings.router)
 api_router.include_router(leads.admin_router)
 api_router.include_router(leads.router)
+api_router.include_router(meta.admin_router)
+api_router.include_router(meta.webhook_router)
 api_router.include_router(demo.router)
 api_router.include_router(simulation.router)
 api_router.include_router(dashboard.router)
-# Restent à ajouter (CdC 9.6) : webhooks, rendez-vous.
+# Les webhooks publics appliquent leur propre authentification (signature fournisseur).

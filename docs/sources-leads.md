@@ -41,8 +41,35 @@ connues, invalides avec leur numéro, colonnes reconnues) et **Importer**.
 - Les prospects importés **ne déclenchent pas l'agent** : personne n'est contacté sans décision d'un
   conseiller.
 
-## Meta (Messenger / Instagram) et LinkedIn Lead Gen
+## Meta Lead Ads
 
-Restent à brancher : ils exigent une application validée par Meta / LinkedIn (revue de l'application,
-compte professionnel). En attendant, les leads peuvent passer par n8n avec un jeton de service, ou par
-un export CSV.
+**Intégrations → Meta Lead Ads** prépare les formulaires instantanés Facebook et Instagram :
+
+1. renseigner l'identifiant et le secret de l'application, le jeton d'accès de la page et un jeton de
+   vérification choisi par l'administrateur ;
+2. copier l'URL `/api/v1/webhooks/meta` dans Meta for Developers ;
+3. associer chaque identifiant de formulaire à une source déjà rattachée à une campagne IAGORA ;
+4. créer un lead fictif `@demo.example.com` pour vérifier le rangement sans appeler Meta ;
+5. activer la réception, puis utiliser l'outil de test Lead Ads de Meta lorsque les permissions sont
+   disponibles.
+
+Le challenge `GET` exige le bon jeton de vérification. Chaque notification `POST` exige une signature
+`X-Hub-Signature-256` valide. IAGORA demande ensuite le détail du lead à l'API Graph officielle. Les
+identifiants sont chiffrés et ne sont jamais renvoyés par l'API IAGORA.
+
+Le `leadgen_id` réserve l'événement avant traitement : un rejeu ne crée pas de doublon et un échec peut
+être repris trois fois. Le formulaire fixe la campagne, la source et éventuellement le programme.
+L'identifiant Meta, le formulaire, la publicité, la campagne publicitaire et les réponses personnalisées
+restent dans le profil pour l'audit.
+
+Le dépôt d'un formulaire publicitaire ne devient pas automatiquement un consentement marketing : le
+statut reste `unknown` tant que DATUM n'a pas validé la base légale et la formulation du formulaire.
+
+Les états **Non configuré**, **Configuré, inactif**, **Actif, à tester** et **Testé avec un lead réel**,
+puis les compteurs reçus, traités et en erreur décrivent IAGORA. Seul un essai depuis Meta prouve les
+permissions, le jeton de page et la livraison réelle du webhook.
+
+## LinkedIn Lead Gen
+
+Reste à brancher : il exige une application LinkedIn approuvée. En attendant, les leads peuvent passer
+par l'API générique avec un jeton de service ou par un export CSV.

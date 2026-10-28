@@ -8,6 +8,7 @@ import { Feedback, Stats } from "@/components/forms";
 import { LeadSources } from "@/components/LeadSources";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
+import { MetaLeadSettings } from "@/components/MetaLeadSettings";
 import { api, ApiError } from "@/lib/api";
 import { DELIVERY, formatDate, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
@@ -270,21 +271,7 @@ export default function IntegrationsPage() {
 
       <CalendarSettings />
       <ZoomSettings />
-      <Card
-        region="Meta Business"
-        title="Meta Business (Messenger / Instagram)"
-        kind="Canal messagerie"
-        status={SOON}
-      >
-        <p>
-          Aucun webhook actif : les messages privés ne sont pas relevés
-          automatiquement.
-        </p>
-        <p className="muted">
-          Dépend de la validation de l’application Meta ; la fenêtre de réponse
-          est limitée à 24 h.
-        </p>
-      </Card>
+      <MetaLeadSettings />
       <Card
         region="LinkedIn"
         title="LinkedIn Lead Gen"
