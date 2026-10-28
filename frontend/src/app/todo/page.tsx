@@ -40,6 +40,7 @@ const EXECUTION_HELP: Record<TreatedItem["execution"], string> = {
   rejected: "Ce brouillon a été refusé ; aucun envoi n’a été demandé.",
 };
 const TASK_LABELS: Record<TodoKind, string> = {
+  enrollment: "Inscriptions",
   application: "Candidatures",
   validation: "Brouillons à valider",
   escalation: "Demandes de conseiller",
@@ -47,6 +48,7 @@ const TASK_LABELS: Record<TodoKind, string> = {
   incident: "Incidents",
 };
 const TASK_ACTIONS: Record<TodoKind, string> = {
+  enrollment: "Vérifier la preuve et confirmer l'inscription",
   application: "Vérifier le dossier et la campagne",
   validation: "Relire et valider la réponse",
   escalation: "Prendre le relais de l’agent",
@@ -54,6 +56,7 @@ const TASK_ACTIONS: Record<TodoKind, string> = {
   incident: "Examiner le problème",
 };
 const KIND_ORDER: TodoKind[] = [
+  "enrollment",
   "application",
   "validation",
   "escalation",
@@ -371,6 +374,136 @@ function ApplicationReview({
   );
 }
 
+function EnrollmentReview({
+  item,
+  onDone,
+}: {
+  item: TodoItem;
+  onDone: (result: DecisionResult) => void;
+}) {
+  const user = useCurrentUser();
+  const prospect = useApi<Prospect>(
+    item.prospect ? `/prospects/${item.prospect.id}` : null,
+  );
+  const [membershipId, setMembershipId] = useState("");
+  const [reference, setReference] = useState(
+    item.handoff?.evidence_reference ?? "",
+  );
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const eligible =
+    prospect.data?.campaigns.filter((m) =>
+      ["applied", "converted"].includes(m.conversion_stage),
+    ) ?? [];
+  const selected = eligible.find((m) => String(m.id) === membershipId);
+
+  async function confirm() {
+    if (!selected || reference.trim().length < 10) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(
+        `/conversations/${item.conversation_id}/confirm-enrollment-email`,
+        {
+          method: "POST",
+          body: {
+            membership_id: selected.id,
+            evidence_reference: reference.trim(),
+            note: note.trim() || null,
+          },
+        },
+      );
+      notifyWorkQueueChanged();
+      onDone({
+        prospectName: itemName(item),
+        message: "Inscription confirmée avec sa preuve. La demande a quitté la file.",
+      });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Confirmation impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card" aria-label="Confirmer l'inscription depuis la preuve reçue">
+      <h3>Confirmer après vérification</h3>
+      <p>
+        Ouvrez l’email original, contrôlez l’identité et le programme, puis choisissez
+        le parcours correspondant. La confirmation passe ce parcours à « Converti ».
+      </p>
+      <Loading
+        loading={prospect.loading}
+        error={prospect.error}
+        onRetry={prospect.reload}
+      />
+      {user?.role === "VIEWER" ? (
+        <p className="muted">
+          Un conseiller ou administrateur peut confirmer cette inscription.
+        </p>
+      ) : (
+        <>
+          <button type="button" disabled={prospect.loading} onClick={prospect.reload}>
+            Actualiser les parcours
+          </button>
+          {prospect.data && eligible.length === 0 && (
+            <p className="muted">
+              Aucun parcours n’est à l’étape « Candidature déposée ». La demande reste ouverte.
+            </p>
+          )}
+          {eligible.length > 0 && (
+            <label>
+              Parcours confirmé par la preuve
+              <select
+                value={membershipId}
+                onChange={(event) => setMembershipId(event.target.value)}
+              >
+                <option value="">Choisir le bon parcours</option>
+                {eligible.map((membership) => (
+                  <option key={membership.id} value={membership.id}>
+                    {membership.campaign_name ??
+                      `Campagne #${membership.campaign_id ?? "?"}`} ·{" "}
+                    {membership.source_name ?? "Source inconnue"} · parcours {membership.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            Référence de la preuve vérifiée
+            <input
+              value={reference}
+              maxLength={300}
+              onChange={(event) => setReference(event.target.value)}
+            />
+          </label>
+          <label>
+            Note facultative
+            <textarea
+              value={note}
+              maxLength={1000}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            className="primary"
+            disabled={!selected || reference.trim().length < 10 || busy}
+            onClick={() => void confirm()}
+          >
+            {busy ? "Confirmation en cours…" : "Confirmer l'inscription"}
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
 function Detail({
   item,
   onDone,
@@ -502,6 +635,10 @@ function Detail({
 
       {item.kind === "application" && (
         <ApplicationReview item={item} onDone={onDone} />
+      )}
+
+      {item.kind === "enrollment" && (
+        <EnrollmentReview item={item} onDone={onDone} />
       )}
 
       {item.handoff && (

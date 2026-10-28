@@ -14,8 +14,16 @@ from app.config import Settings, get_settings
 from app.integrations.email.base import InboundEmail
 from app.integrations.email.parsing import parse_inbound, strip_quoted
 from app.main import app
-from app.models import Campaign, CampaignTarget, Prospect, Target
-from app.models.enums import CampaignStatus, ConsentStatus, UserRole
+from app.models import (
+    Campaign,
+    CampaignProspect,
+    CampaignSource,
+    CampaignTarget,
+    Prospect,
+    Source,
+    Target,
+)
+from app.models.enums import CampaignStatus, ConsentStatus, ConversionStage, UserRole
 from app.services import application_intake, conversations, drafts, email_sync, todo
 from pypdf import PdfWriter
 from sqlalchemy import select
@@ -230,6 +238,67 @@ async def test_direct_application_creates_review_without_advancing_stage(env):
         assert queue.total == 1
         assert queue.items[0].prospect.email == "direct@demo.example.com"
         assert queue.items[0].prospect.stage is None
+
+
+@pytest.mark.asyncio
+async def test_admissions_email_is_attached_to_unique_applied_candidate(env):
+    async with env.factory() as session:
+        candidate = Prospect(email="candidate@demo.example.com")
+        campaign = Campaign(name="eBIHAR octobre", status=CampaignStatus.ACTIVE)
+        source = Source(name="Dossier", type="email", platform="email")
+        session.add_all([candidate, campaign, source])
+        await session.flush()
+        campaign_source = CampaignSource(campaign_id=campaign.id, source_id=source.id)
+        session.add(campaign_source)
+        await session.flush()
+        session.add(
+            CampaignProspect(
+                prospect_id=candidate.id,
+                campaign_source_id=campaign_source.id,
+                conversion_stage=ConversionStage.APPLIED,
+            )
+        )
+        await session.commit()
+        candidate_id = candidate.id
+
+    incoming = mail(
+        83,
+        sender="admissions@school.example.com",
+        text=("L'admission est confirmée pour candidate@demo.example.com au programme eBIHAR."),
+        subject="Admission confirmée",
+        is_automatic=True,
+    )
+    report = await env.receive(FakeEmailClient([incoming]))
+    assert report.received == 1
+    assert env.replied == []
+    doc = await env.conversation()
+    assert doc["prospect_id"] == candidate_id
+    assert doc["handoff"]["reason"] == "inscription_a_verifier"
+    assert doc["messages"][0]["metadata"]["email"]["evidence_only"] is True
+    assert drafts.live_messages(doc["messages"]) == []
+    async with env.factory() as session:
+        prospects = list(await session.scalars(select(Prospect)))
+        queue = await todo.list_todo(session, env.db, kind="enrollment", limit=25, offset=0)
+    assert [prospect.email for prospect in prospects] == ["candidate@demo.example.com"]
+    assert queue.total == 1
+    assert queue.items[0].prospect.email == "candidate@demo.example.com"
+
+
+@pytest.mark.asyncio
+async def test_unmatched_admission_email_does_not_create_or_trigger_reply(env):
+    incoming = mail(
+        84,
+        sender="admissions@school.example.com",
+        text="L'admission est confirmée pour unknown@demo.example.com.",
+        subject="Admission confirmée",
+    )
+    report = await env.receive(FakeEmailClient([incoming]))
+    assert report.skipped == 1 and report.received == 0
+    assert "non rattachée" in report.notes[0]
+    assert env.replied == []
+    assert await env.conversation() is None
+    async with env.factory() as session:
+        assert list(await session.scalars(select(Prospect))) == []
 
 
 def test_automatic_messages_and_failed_authentication_are_flagged():

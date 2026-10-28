@@ -121,6 +121,94 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   expect(resolved).toBe(true);
 });
 
+test("email d'admission : le conseiller confirme le bon parcours avec la preuve", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const enrollment = {
+    ...gapItem,
+    id: "handoff:enrollment",
+    kind: "enrollment",
+    conversation_id: "c3",
+    title: "Inscription à confirmer",
+    detail: "Admission confirmée",
+    prospect: {
+      ...prospect,
+      id: 52,
+      first_name: "Lina",
+      email: "lina@demo.example.com",
+    },
+    handoff: {
+      reason: "inscription_a_verifier",
+      summary: "Confirmation reçue du service admissions. Vérifier l'email original.",
+      pending_question: "Admission confirmée",
+      recommended_action: "Vérifier la preuve et confirmer l'inscription",
+      evidence_reference: "email de admissions@school.example.com reçu le 28/10/2026",
+    },
+    recommendation: {
+      action: "Vérifier la preuve et confirmer l'inscription",
+      reason: "Une confirmation positive a été repérée.",
+      risk: "medium",
+      confidence: null,
+      sources: [],
+    },
+  };
+  await page.route("**/api/v1/todo?**", (route) =>
+    route.fulfill({
+      json: {
+        items: [enrollment],
+        total: 1,
+        limit: 50,
+        offset: 0,
+        counts: { enrollment: 1 },
+      },
+    }),
+  );
+  await page.route("**/api/v1/prospects/52", (route) =>
+    route.fulfill({
+      json: {
+        id: 52,
+        campaigns: [
+          {
+            id: 27,
+            campaign_name: "eBIHAR",
+            source_name: "Dossier email",
+            conversion_stage: "applied",
+          },
+        ],
+      },
+    }),
+  );
+  let submitted: Record<string, unknown> | null = null;
+  await page.route(
+    "**/api/v1/conversations/c3/confirm-enrollment-email",
+    async (route) => {
+      submitted = route.request().postDataJSON();
+      await route.fulfill({ json: { status: "open", handoff: null } });
+    },
+  );
+
+  await open(page);
+  await expect(page.getByRole("button", { name: "Inscriptions (1)" })).toBeVisible();
+  await page
+    .getByRole("complementary", { name: "Éléments à traiter" })
+    .getByRole("button", { name: /Lina Dupont/ })
+    .click();
+  await page.getByLabel("Parcours confirmé par la preuve").selectOption("27");
+  await page.getByLabel("Note facultative").fill("Identité vérifiée");
+  await page
+    .getByRole("button", { name: "Confirmer l'inscription", exact: true })
+    .click();
+  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText(
+    "Inscription confirmée",
+  );
+  expect(submitted).toEqual({
+    membership_id: 27,
+    evidence_reference: "email de admissions@school.example.com reçu le 28/10/2026",
+    note: "Identité vérifiée",
+  });
+});
+
 test("pagination et lien direct vers une tâche hors de la page courante", async ({
   page,
 }) => {

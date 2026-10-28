@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from app.schemas.conversation import ConversationProspect
 from app.services.agent_settings import AgentMode
 
-TodoKind = Literal["validation", "escalation", "kb_gap", "incident", "application"]
+TodoKind = Literal["validation", "escalation", "kb_gap", "incident", "application", "enrollment"]
 Priority = Literal["critical", "high", "medium", "low"]
 
 

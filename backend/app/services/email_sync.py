@@ -13,6 +13,7 @@ destinataires, jamais vers un prospect désinscrit (S-03), trois essais au plus.
 Cycle de vie de `metadata.delivery` : not_sent -> sending -> sent | failed | blocked.
 """
 
+import asyncio
 import hashlib
 import logging
 from collections.abc import Awaitable, Callable
@@ -26,10 +27,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.graph import policy
 from app.integrations.email.base import EmailClient, EmailError, InboundEmail, OutboundEmail
+from app.models import Prospect
 from app.models.enums import ConsentStatus, SenderType
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import agent_events, agent_settings, application_intake, conversations, follow_ups
+from app.services import (
+    agent_events,
+    agent_settings,
+    application_intake,
+    conversations,
+    enrollment_intake,
+    follow_ups,
+)
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
@@ -98,6 +107,17 @@ async def _ingest_email(
     """Enregistre un email reçu. Retourne l'identifiant de conversation à traiter par l'agent,
     ou None (doublon, expéditeur ignoré, message suspect)."""
     async with session_factory() as session:
+        evidence = await asyncio.to_thread(application_intake.document_evidence, mail)
+        enrollment = await enrollment_intake.review(session, mail, evidence)
+        if enrollment is None and enrollment_intake.looks_like_confirmation(mail, evidence):
+            report.skipped += 1
+            report.notes.append(
+                f"confirmation d'inscription non rattachée : email {mail.uid} à vérifier"
+            )
+            return None
+        if mail.is_automatic and enrollment is None:
+            report.skipped += 1
+            return None
         first, last = _split_name(mail.from_name, mail.from_address)
         ingest = ProspectIngest(
             first_name=first,
@@ -107,18 +127,28 @@ async def _ingest_email(
             consent_granted=True,  # le prospect nous écrit de lui-même
             consent_source="email_inbound",
         )
-        if (
-            not settings.email_create_unknown_senders
-            and await find_existing(session, ingest) is None
-        ):
-            report.skipped += 1
-            report.notes.append("expéditeur inconnu ignoré")
-            return None
-        prospect, _, _ = await ingest_prospect(session, ingest)
+        if enrollment is not None:
+            prospect = await session.get(Prospect, enrollment.prospect_id)
+            if prospect is None:  # la fiche a été supprimée entre la détection et le chargement
+                return None
+        else:
+            if (
+                not settings.email_create_unknown_senders
+                and await find_existing(session, ingest) is None
+            ):
+                report.skipped += 1
+                report.notes.append("expéditeur inconnu ignoré")
+                return None
+            prospect, _, _ = await ingest_prospect(session, ingest)
         conversation, created = await conversations.create_conversation(
             session, db, ConversationCreate(prospect_id=prospect.id, channel=CHANNEL)
         )
         content = mail.text.strip() or mail.subject.strip() or "(message vide)"
+        if (
+            enrollment is not None
+            and mail.from_address.casefold() != (prospect.email or "").casefold()
+        ):
+            content = f"Preuve reçue de {mail.from_address}\n\n{content}"[:20_000]
         if created and mail.subject.strip():
             content = f"{mail.subject.strip()}\n\n{content}"[:20_000]
         message, is_new = await conversations.add_message(
@@ -135,6 +165,8 @@ async def _ingest_email(
                         "in_reply_to": mail.in_reply_to,
                         "references": mail.references[-20:],
                         "suspect": mail.suspect,
+                        "from_address": mail.from_address,
+                        "evidence_only": enrollment is not None,
                     }
                 },
             ),
@@ -142,7 +174,12 @@ async def _ingest_email(
         if not is_new:
             report.duplicates += 1
             return None
-        review = await application_intake.review_sheet(session, mail)
+        if enrollment is not None:
+            await conversations.set_handoff(db, conversation.id, enrollment.sheet)
+            report.received += 1
+            report.notes.append(f"inscription à vérifier : prospect {prospect.id}")
+            return None
+        review = await application_intake.review_sheet(session, mail, evidence)
         if review and not policy.is_opt_out(message.content):
             await conversations.set_handoff(db, conversation.id, review)
             report.received += 1
@@ -175,8 +212,8 @@ async def sync_inbound(
     for mail in await client.fetch_unseen():
         try:
             conversation_id: str | None = None
-            if mail.is_automatic or mail.from_address == settings.email_sender_address:
-                report.skipped += 1  # réponse automatique, rebond, ou notre propre message
+            if mail.from_address == settings.email_sender_address:
+                report.skipped += 1  # notre propre message
             else:
                 conversation_id = await _ingest_email(session_factory, db, mail, settings, report)
             await client.mark_seen(mail.uid)
