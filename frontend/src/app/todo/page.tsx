@@ -26,6 +26,7 @@ import type {
   TodoPage,
   TreatedItem,
   TreatedPage,
+  Prospect,
 } from "@/lib/types";
 
 type KindFilter = "" | TodoKind;
@@ -285,6 +286,91 @@ function DraftPanel({
   );
 }
 
+function ApplicationReview({
+  item,
+  onDone,
+}: {
+  item: TodoItem;
+  onDone: (result: DecisionResult) => void;
+}) {
+  const user = useCurrentUser();
+  const prospect = useApi<Prospect>(
+    item.prospect ? `/prospects/${item.prospect.id}` : null,
+  );
+  const [membershipId, setMembershipId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const eligible = prospect.data?.campaigns.filter((m) =>
+    ["applied", "converted"].includes(m.conversion_stage),
+  ) ?? [];
+  const selected = eligible.find((m) => String(m.id) === membershipId);
+
+  async function finish() {
+    if (!selected) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/conversations/${item.conversation_id}/resolve-application`, {
+        method: "POST",
+        body: { membership_id: selected.id },
+      });
+      notifyWorkQueueChanged();
+      onDone({
+        prospectName: itemName(item),
+        message: "Candidature vérifiée sur le parcours choisi. La demande a quitté la file.",
+      });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Vérification impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card" aria-label="Terminer la vérification de la candidature">
+      <h3>Terminer la vérification</h3>
+      <ol>
+        <li>Contrôlez le dossier original dans la boîte email.</li>
+        <li>Sur la fiche prospect, vérifiez la campagne et la source du bon parcours.</li>
+        <li>Confirmez l’étape « Candidature déposée » avec un motif.</li>
+      </ol>
+      <p className="muted">La fiche prospect s’ouvre avec le bouton en haut de cette demande.</p>
+      <Loading loading={prospect.loading} error={prospect.error} onRetry={prospect.reload} />
+      {user?.role === "VIEWER" ? (
+        <p className="muted">Un conseiller ou administrateur peut terminer cette vérification.</p>
+      ) : (
+        <>
+          <button type="button" disabled={prospect.loading} onClick={prospect.reload}>
+            Actualiser les parcours
+          </button>
+          {prospect.data && eligible.length === 0 && (
+            <p className="muted">
+              Aucun parcours n’est encore à l’étape « Candidature déposée ». La demande reste à traiter.
+            </p>
+          )}
+          {eligible.length > 0 && (
+            <label>
+              Parcours dont le dossier a été vérifié
+              <select value={membershipId} onChange={(e) => setMembershipId(e.target.value)}>
+                <option value="">Choisir le bon parcours</option>
+                {eligible.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.campaign_name ?? `Campagne #${m.campaign_id ?? "?"}`} · {m.source_name ?? "Source inconnue"} · parcours {m.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {error && <p className="error" role="alert">{error}</p>}
+          <button className="primary" disabled={!selected || busy} onClick={() => void finish()}>
+            {busy ? "Vérification en cours…" : "Terminer la vérification"}
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
 function Detail({
   item,
   onDone,
@@ -413,6 +499,10 @@ function Detail({
       )}
 
       {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
+
+      {item.kind === "application" && (
+        <ApplicationReview item={item} onDone={onDone} />
+      )}
 
       {item.handoff && (
         <div className="card warnbox">

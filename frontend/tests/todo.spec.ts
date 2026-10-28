@@ -71,6 +71,8 @@ const gapItem = {
 
 test("candidature directe : le conseiller voit la demande et ses indices", async ({ page }) => {
   await mockApi(page);
+  let stage = "new";
+  let resolved = false;
   const application = {
     ...gapItem,
     id: "handoff:application",
@@ -91,8 +93,17 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
     },
   };
   await page.route("**/api/v1/todo?**", route => route.fulfill({ json: {
-    items: [application], total: 1, limit: 50, offset: 0, counts: { application: 1 },
+    items: resolved ? [] : [application], total: resolved ? 0 : 1,
+    limit: 50, offset: 0, counts: { application: resolved ? 0 : 1 },
   } }));
+  await page.route("**/api/v1/prospects/42", route => route.fulfill({ json: {
+    id: 42, campaigns: [{ id: 17, campaign_name: "eBIHAR", source_name: "Email", conversion_stage: stage }],
+  } }));
+  await page.route("**/api/v1/conversations/c2/resolve-application", async route => {
+    expect(route.request().postDataJSON()).toEqual({ membership_id: 17 });
+    resolved = true;
+    await route.fulfill({ json: { status: "open", handoff: null } });
+  });
   await open(page);
   await expect(page.getByRole("button", { name: "Candidatures (1)" })).toBeVisible();
   await page.getByRole("complementary", { name: "Éléments à traiter" })
@@ -100,6 +111,14 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   await expect(page.getByText("Campagne suggérée : eBIHAR.").first()).toBeVisible();
   await expect(page.getByText("Vérifier le document original.")).toBeVisible();
   await expect(page.getByRole("link", { name: /Ouvrir la fiche/ })).toHaveAttribute("href", /\/prospects\/42/);
+  const finish = page.getByRole("button", { name: "Terminer la vérification", exact: true });
+  await expect(finish).toBeDisabled();
+  stage = "applied";
+  await page.getByRole("button", { name: "Actualiser les parcours" }).click();
+  await page.getByLabel("Parcours dont le dossier a été vérifié").selectOption("17");
+  await finish.click();
+  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText("Candidature vérifiée");
+  expect(resolved).toBe(true);
 });
 
 test("pagination et lien direct vers une tâche hors de la page courante", async ({
