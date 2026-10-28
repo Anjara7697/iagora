@@ -17,7 +17,7 @@ from app.api.dependencies import (
 )
 from app.graph import policy
 from app.models.enums import ConversationStatus, SenderType
-from app.schemas.application_review import ApplicationResolution
+from app.schemas.application_review import ApplicationResolution, EnrollmentEmailResolution
 from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
@@ -168,6 +168,30 @@ async def resolve_application(
     """Termine la revue d'un dossier déjà confirmé sur le parcours choisi."""
     return await application_review.resolve(
         session, db, conversation_id, payload.membership_id, actor=user
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/confirm-enrollment-email",
+    response_model=ConversationRead,
+    dependencies=[CAN_WRITE],
+)
+async def confirm_enrollment_email(
+    conversation_id: str,
+    payload: EnrollmentEmailResolution,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> ConversationRead:
+    """Confirme après contrôle humain d'une preuve d'inscription reçue par email."""
+    return await application_review.confirm_enrollment(
+        session,
+        db,
+        conversation_id,
+        payload.membership_id,
+        payload.evidence_reference,
+        payload.note,
+        actor=user,
     )
 
 

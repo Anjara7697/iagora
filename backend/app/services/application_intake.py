@@ -163,10 +163,15 @@ async def suggest_campaigns(session: AsyncSession, text: str) -> list[str]:
     )
 
 
-async def review_sheet(session: AsyncSession, mail: InboundEmail) -> dict[str, str] | None:
+async def review_sheet(
+    session: AsyncSession,
+    mail: InboundEmail,
+    evidence: list[DocumentEvidence] | None = None,
+) -> dict[str, str] | None:
     if mail.suspect:
         return None
-    evidence = await asyncio.to_thread(document_evidence, mail)
+    if evidence is None:
+        evidence = await asyncio.to_thread(document_evidence, mail)
     text = "\n".join([mail.subject, mail.text, *(d.text for d in evidence)])
     if not APPLICATION.search(normalized(text)):
         return None

@@ -48,7 +48,9 @@ relire un email ne crée aucun doublon. L'email n'est marqué lu qu'après enreg
 Un email dont l'authentification échoue (`dmarc=fail`) est conservé mais l'agent n'y répond pas.
 L'historique cité (`> …`, « Le … a écrit : ») est retiré ; le contenu est borné et traité comme **non
 fiable** (aucun lien suivi). Les petits PDF et fichiers texte peuvent fournir des indices pour la
-file **Candidatures** ; voir [candidatures.md](candidatures.md). Les documents originaux restent dans
+file **Candidatures** ; voir [candidatures.md](candidatures.md). Les confirmations positives liées à
+un unique candidat déjà déposé créent une demande **Inscription à confirmer** ; voir
+[confirmation-inscription.md](confirmation-inscription.md). Les documents originaux restent dans
 la boîte email.
 
 **Envoi.** Les messages `delivery: not_sent` (brouillons validés, réponses d'un conseiller, réponses

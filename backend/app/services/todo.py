@@ -46,6 +46,8 @@ def _aware(value: Any) -> datetime | None:
 
 
 def handoff_kind(reason: str | None) -> TodoKind:
+    if reason == "inscription_a_verifier":
+        return "enrollment"
     if reason == "candidature_a_verifier":
         return "application"
     if reason == "question_hors_base":
@@ -80,6 +82,7 @@ def draft_risk(draft_meta: dict[str, Any], sources: list[str]) -> Literal["low",
 
 
 _HANDOFF_TITLES = {
+    "enrollment": "Inscription à confirmer",
     "application": "Candidature à vérifier",
     "kb_gap": "Lacune de la base de connaissances",
     "incident": "Incident : l'agent n'a pas pu répondre",
