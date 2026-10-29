@@ -139,6 +139,7 @@ export default function CampaignsPage() {
         loading={list.loading && !list.data}
         error={list.error}
         onRetry={list.reload}
+        shape="rows"
       />
       {list.data && items.length === 0 && (
         <p className="card muted">

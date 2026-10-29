@@ -182,7 +182,7 @@ export default function Home() {
                       <strong>{f.prospect_name}</strong>
                     </Link>
                     <span className="spacer" />
-                    <span className="mono">{formatDate(f.scheduled_at)}</span>
+                    <span className="time">{formatDate(f.scheduled_at)}</span>
                   </span>
                   {f.reason && (
                     <span className="muted today-row-meta">{f.reason}</span>
@@ -208,7 +208,7 @@ export default function Home() {
         >
           {s && (
             <>
-              <dl className="stat-grid">
+              <dl className="today-stats">
                 {[
                   [s.activity.prospects_analysed, "prospects analysés"],
                   [s.activity.drafts_generated, "brouillons générés"],

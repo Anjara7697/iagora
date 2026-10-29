@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
   CHANNELS,
@@ -111,7 +111,7 @@ function Row({
         <span className="inbox-row-main">
           <span className="inbox-row-top">
             <strong>{name}</strong>
-            <span className="mono">{relativeTime(item.created_at)}</span>
+            <span className="time">{relativeTime(item.created_at)}</span>
           </span>
           <span className="task-row-context">
             <span className={`task-kind kind-${item.kind}`}>
@@ -1040,7 +1040,7 @@ function Todo() {
                         <span className="inbox-row-main">
                           <span className="inbox-row-top">
                             <strong>{name}</strong>
-                            <span className="mono">
+                            <span className="time">
                               {formatDate(t.decided_at)}
                             </span>
                           </span>
@@ -1260,7 +1260,7 @@ function Todo() {
 
 export default function TodoPageRoute() {
   return (
-    <Suspense fallback={<p className="muted">Chargement…</p>}>
+    <Suspense fallback={<Skeleton shape="rows" />}>
       <Todo />
     </Suspense>
   );

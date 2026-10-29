@@ -2269,25 +2269,27 @@ a.today-row:hover {
 .today-row-meta {
   font-size: 12px;
 }
-.stat-grid {
+.today-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
   padding: 16px 18px;
   margin: 0;
 }
-.stat-grid dd {
+.today-stats dd {
   margin: 0;
   font-size: 22px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
-.stat-grid dt {
+.today-stats dt {
   font-size: 12px;
+  line-height: 1.35;
 }
 .today-card .bar-row {
   padding: 4px 18px;
 }
-.stat-grid > div {
+.today-stats > div {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -4743,4 +4745,100 @@ a.button-link.primary-link:hover {
 }
 .connector-facts .dot.off {
   background: var(--warn);
+}
+
+/* Squelettes de chargement : la silhouette du contenu à venir plutôt qu'un texte. */
+.skeleton {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0;
+}
+.skeleton-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.skeleton-text {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+.skeleton-bar,
+.skeleton-avatar {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    var(--surface-3) 45%,
+    var(--surface-2) 90%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-bar {
+  height: 12px;
+  width: 100%;
+}
+.skeleton-bar.short {
+  width: 62%;
+}
+.skeleton-bar.tiny {
+  width: 38%;
+}
+.skeleton-lines .skeleton-item:nth-child(3) .skeleton-bar {
+  width: 70%;
+}
+.skeleton-avatar {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+.skeleton-rows .skeleton-item {
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.skeleton-cards {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.skeleton-cards .skeleton-item {
+  align-items: flex-start;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.skeleton-cards .skeleton-text {
+  gap: 12px;
+}
+.skeleton-cards .skeleton-bar:first-child {
+  height: 16px;
+  width: 55%;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+/* Dates et temps relatifs lisibles : police du texte, chiffres de largeur fixe (la police mono reste
+   pour les identifiants, scores et valeurs chiffrées). */
+.time {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Accueil : toutes les cartes d'une colonne partent du même alignement. */
+.today-grid > .card {
+  margin: 0;
+}
+.today-card-head .button-link {
+  flex: none;
+  white-space: nowrap;
 }

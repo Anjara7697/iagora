@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import {
-  DemoBadge,
-  Loading,
-  Pager,
-  ScoreBadge,
-  StageBadge,
-} from "@/components/ui";
+import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import {
   formatDate,
   fullName,
@@ -475,7 +469,7 @@ function Prospects() {
           <button onClick={campaigns.reload}>Réessayer les campagnes</button>
         </div>
       )}
-      <Loading loading={loading} error={error} onRetry={reload} />
+      <Loading loading={loading} error={error} onRetry={reload} shape="rows" />
       {!loading && data && (
         <>
           {data.items.length === 0 ? (
@@ -550,7 +544,7 @@ function Prospects() {
                                   {label(CONSENT, p.consent_status)}
                                 </span>
                               </div>
-                              <span className="mono muted">
+                              <span className="time">
                                 Créé le {formatDate(p.created_at)}
                               </span>
                             </Link>
@@ -625,7 +619,7 @@ function Prospects() {
                               {label(CONSENT, p.consent_status)}
                             </span>
                           </td>
-                          <td className="mono muted">
+                          <td className="time">
                             {formatDate(p.created_at)}
                           </td>
                         </tr>
@@ -650,7 +644,7 @@ function Prospects() {
 
 export default function ProspectsPage() {
   return (
-    <Suspense fallback={<p className="muted">Chargement…</p>}>
+    <Suspense fallback={<Skeleton shape="rows" />}>
       <Prospects />
     </Suspense>
   );

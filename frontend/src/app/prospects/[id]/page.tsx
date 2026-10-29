@@ -548,7 +548,7 @@ export default function ProspectPage() {
                 )}
                 {runs.data?.map((r) => (
                   <div key={r.run_id} className="profile-run">
-                    <div className="muted mono">{formatDate(r.started_at)}</div>
+                    <div className="time">{formatDate(r.started_at)}</div>
                     <RunView run={r} />
                     {r.reply && <blockquote>{r.reply}</blockquote>}
                   </div>

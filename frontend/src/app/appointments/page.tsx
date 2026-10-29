@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { DemoBadge, Loading, Pager } from "@/components/ui";
+import { DemoBadge, Loading, Pager, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { APPOINTMENT_STATUS, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
@@ -118,7 +118,7 @@ function Appointments() {
         {when === "upcoming" ? "Rendez-vous à venir et en cours, du plus proche au plus lointain." : "Rendez-vous passés, du plus récent au plus ancien. Le statut indique le suivi enregistré."}
         {timeZone && <> Horaires : {timeZone}.</>}
       </p>
-      <Loading loading={list.loading || !timeZone} error={list.error} onRetry={list.reload} />
+      <Loading loading={list.loading || !timeZone} error={list.error} onRetry={list.reload} shape="rows" />
       {!list.loading && timeZone && list.data && (
         <>
           {list.data.items.length ? (
@@ -197,5 +197,5 @@ function Appointments() {
 }
 
 export default function AppointmentsPage() {
-  return <Suspense fallback={<p className="muted">Chargement…</p>}><Appointments /></Suspense>;
+  return <Suspense fallback={<Skeleton shape="rows" />}><Appointments /></Suspense>;
 }
