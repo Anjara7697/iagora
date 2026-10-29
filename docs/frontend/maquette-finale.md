@@ -408,3 +408,18 @@ paramètres non reconnus sont ignorés.
 L’export utilise les mêmes filtres que les résultats restaurés. La recherche de
 l’en-tête annonce désormais le nom ou l’email du prospect et actualise aussi une
 liste de prospects déjà ouverte.
+
+## 20. Paramètres : une catégorie à la fois
+
+Les réglages de l'agent ne forment plus un long formulaire : une **navigation latérale** (sticky sur bureau,
+bandeau défilant sur mobile) propose quatre catégories (Intelligence artificielle, Agent et relances, Emails,
+Rendez-vous), chacune avec une ligne d'aide. Seule la catégorie choisie est affichée ; elle est dans l'URL
+(`/settings?section=ia|agent|emails|rdv`, valeur inconnue : la première) et l'élément courant porte
+`aria-current="page"`.
+
+Les quatre sections restent dans la page (attribut `hidden`) : le formulaire est **un seul état**, une saisie
+faite dans une catégorie n'est pas perdue en passant à une autre, et la barre « Enregistrer les paramètres »,
+avec son indicateur « Modifications non enregistrées », reste commune. Le bandeau « Tests et démonstration »
+et le contrôle d'accès des conseillers sont inchangés. Une règle globale `[hidden] { display: none }` garantit
+que l'attribut l'emporte sur les `display: flex` des cartes (elle corrige aussi l'onglet inactif de la
+messagerie, §19).
