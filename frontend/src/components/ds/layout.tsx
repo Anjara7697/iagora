@@ -113,7 +113,7 @@ export function EmptyPanel({
         <Icon className="size-5" />
       </span>
       <div className="flex max-w-sm flex-col gap-1">
-        <span className="text-base font-semibold text-foreground">{title}</span>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
         {description && <span className="text-sm text-muted">{description}</span>}
       </div>
       {action}

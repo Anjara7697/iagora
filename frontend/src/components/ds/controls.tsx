@@ -3,7 +3,7 @@
 import { Button, Chip, Input, TextArea } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import { cloneElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
@@ -175,7 +175,10 @@ export function FilterChip({
   );
 }
 
-/** Libellé au-dessus d'un champ, avec une aide facultative en dessous. */
+/**
+ * Libellé au-dessus d'un champ (relié par `htmlFor`, pour que le nom accessible soit
+ * exactement le libellé), avec une aide facultative en dessous.
+ */
 export function Field({
   label,
   hint,
@@ -184,15 +187,24 @@ export function Field({
 }: {
   label: ReactNode;
   hint?: ReactNode;
-  children: ReactNode;
+  children: ReactElement<{ id?: string; "aria-describedby"?: string }>;
   className?: string;
 }) {
+  const auto = useId();
+  const id = children.props.id ?? auto;
+  const hintId = hint ? `${id}-hint` : undefined;
   return (
-    <label className={cx("flex min-w-0 flex-col gap-1.5", className)}>
-      <span className="text-[13px] font-medium text-foreground">{label}</span>
-      {children}
-      {hint && <span className="text-xs/[16px] font-normal text-muted">{hint}</span>}
-    </label>
+    <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
+      <label htmlFor={id} className="text-[13px] font-medium text-foreground">
+        {label}
+      </label>
+      {cloneElement(children, { id, "aria-describedby": hintId ?? children.props["aria-describedby"] })}
+      {hint && (
+        <span id={hintId} className="text-xs/[16px] font-normal text-muted">
+          {hint}
+        </span>
+      )}
+    </div>
   );
 }
 
