@@ -550,7 +550,7 @@ function Prospects() {
                                   {label(CONSENT, p.consent_status)}
                                 </span>
                               </div>
-                              <span className="mono muted">
+                              <span className="time">
                                 Créé le {formatDate(p.created_at)}
                               </span>
                             </Link>
@@ -625,7 +625,7 @@ function Prospects() {
                               {label(CONSENT, p.consent_status)}
                             </span>
                           </td>
-                          <td className="mono muted">
+                          <td className="time">
                             {formatDate(p.created_at)}
                           </td>
                         </tr>

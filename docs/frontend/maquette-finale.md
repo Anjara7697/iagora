@@ -446,3 +446,14 @@ opération couvre les deux. Agenda, Zoom et jetons de service réutilisent leurs
 leur en-tête, déjà porté par le panneau. Les couleurs d'état viennent des variables de `:root` (`err`
 ajouté pour l'erreur de relève). L'état d'une carte décrit la configuration, pas une connexion vérifiée : seul
 un test dans le panneau le confirme.
+
+## 21. Accueil : alignement et lisibilité des dates
+
+Sur l'accueil, les trois colonnes partent du même alignement (les cartes enfants directes de la grille
+n'ont plus la marge par défaut des cartes) et « Activité de l'agent » s'affiche en grille de deux colonnes au
+lieu d'une pile de chiffres : le conflit venait d'un nom de classe partagé avec le composant `Stats` des
+écrans d'import et d'intégrations, l'accueil utilise désormais `today-stats`.
+
+Les dates et temps relatifs destinés à la lecture (« il y a 2 h », « 27/10/2026 09:00 ») utilisent la
+classe `time` : police du texte, chiffres de largeur fixe, couleur atténuée. La police mono reste réservée
+aux identifiants, scores et valeurs chiffrées (`mono`).
