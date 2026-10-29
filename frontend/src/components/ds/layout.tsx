@@ -37,7 +37,7 @@ export function PageHeader({
 }) {
   return (
     <header className={cx("flex flex-wrap items-end gap-4", className)}>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="text-[28px]/[34px] font-semibold tracking-[-0.02em] text-foreground">{title}</h1>
         {subtitle && <p className="max-w-[72ch] text-sm text-muted">{subtitle}</p>}
