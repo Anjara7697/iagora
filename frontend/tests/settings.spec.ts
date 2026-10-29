@@ -194,7 +194,10 @@ test.describe("navigation du simulateur", () => {
         ).toHaveCount(0);
       if (allowed) {
         await page
-          .getByRole("link", { name: "Ouvrir l’espace de test" })
+          .getByRole("link", {
+            name: /Ouvrir l’espace de test|Tests et démonstration/,
+          })
+          .first()
           .click();
         await expect(page).toHaveURL(/\/settings\/testing$/);
         await expect(
@@ -324,14 +327,17 @@ test("les paramètres s'affichent par catégorie, sans perdre les saisies", asyn
   ).toBeVisible();
 });
 
-test("paramètres sur mobile : catégories en bandeau, sans défilement horizontal", async ({
+test("paramètres sur mobile : catégorie choisie dans une liste, sans défilement horizontal", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page, []);
   await login(page);
   await page.goto("/settings");
-  await goSection(page, "Emails");
+  await page
+    .getByRole("combobox", { name: "Catégorie", exact: true })
+    .selectOption("emails");
+  await expect(page).toHaveURL(/section=emails/);
   await expect(page.getByRole("region", { name: "Emails" })).toBeVisible();
   expect(
     await page.evaluate(

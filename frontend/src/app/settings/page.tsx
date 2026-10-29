@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
@@ -41,6 +41,7 @@ export default function SettingsPage() {
 function Settings() {
   const user = useCurrentUser();
   const pathname = usePathname();
+  const router = useRouter();
   const requested = useSearchParams().get("section");
   const active: SectionId =
     SECTIONS.find((s) => s.id === requested)?.id ?? SECTIONS[0].id;
@@ -200,13 +201,29 @@ function Settings() {
             Réglages de l’agent, appliqués sans redémarrage.{" "}
             {form.source === "console"
               ? "Enregistrés dans la console."
-              : "Valeurs actuelles : fichier .env du serveur — enregistrer ici les remplace."}
+              : "Valeurs par défaut du serveur : enregistrer ici les remplace."}
           </p>
         </div>
       </div>
 
-      <TestingAccess disabled={busy !== null} unsaved={dirty} />
       <div className="settings-layout">
+        <label className="settings-select">
+          Catégorie
+          <select
+            value={active}
+            onChange={(e) =>
+              router.replace(`${pathname}?section=${e.target.value}`, {
+                scroll: false,
+              })
+            }
+          >
+            {SECTIONS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <nav className="settings-nav" aria-label="Catégories de paramètres">
           {SECTIONS.map((s) => (
             <Link
@@ -220,6 +237,7 @@ function Settings() {
               <small>{s.hint}</small>
             </Link>
           ))}
+          <TestingAccess compact disabled={busy !== null} unsaved={dirty} />
         </nav>
         <div className="settings-stack settings-content">
           <Section

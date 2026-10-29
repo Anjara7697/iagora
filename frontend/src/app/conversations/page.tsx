@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";
@@ -155,6 +155,13 @@ function Detail({
   const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Le message de confirmation s'efface seul : il ne doit pas rester en place
+  // comme un état de la conversation.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const conv = conversation.data;
@@ -446,8 +453,8 @@ function Detail({
 
           <p className="muted">
             {summary.channel === "email"
-              ? "Le message est enregistré puis placé dans la file d’envoi email. La livraison dépend de la configuration du connecteur ; consultez son état dans l’échange."
-              : "Le message est enregistré. La livraison sur ce canal reste à confirmer avec son connecteur."}
+              ? "Envoyé par email dès que l’envoi est actif ; son état s’affiche sous le message dans le fil."
+              : "Message enregistré ; la livraison sur ce canal reste à confirmer."}
           </p>
           <details className="conversation-management">
             <summary>Gestion de la conversation</summary>

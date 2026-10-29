@@ -194,7 +194,7 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
@@ -243,7 +243,7 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
   await page.goto("/prospects/1");
   await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const stage = page.getByRole("form", {
     name: "Étape du parcours 11",
@@ -368,7 +368,7 @@ test("exception individuelle : retour au responsable de la campagne", async ({
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",

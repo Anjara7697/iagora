@@ -117,18 +117,33 @@ export function EmailConnector({
         hidden={tab !== "overview"}
         className="settings-stack"
       >
-        <div className="row">
+        <div className="connector-state">
+          <span className="muted">Dernier test de la boîte</span>
           <Pill tone={testTone}>{testLabel}</Pill>
-          <Pill tone={s.configured ? "ok" : "off"}>
-            {s.configured ? "Identifiants présents" : "Identifiants absents"}
-          </Pill>
-          <Pill tone={s.enabled ? "ok" : "warn"}>
-            {s.enabled ? "Réception active" : "Réception désactivée"}
-          </Pill>
-          <Pill tone={s.send_enabled ? "ok" : "warn"}>
-            {s.send_enabled ? "Envoi activé" : "Envoi désactivé"}
-          </Pill>
         </div>
+        <ul className="connector-facts" aria-label="État de la messagerie">
+          {(
+            [
+              [
+                s.configured,
+                s.configured ? "Identifiants présents" : "Identifiants absents",
+              ],
+              [
+                s.enabled,
+                s.enabled ? "Réception active" : "Réception désactivée",
+              ],
+              [
+                s.send_enabled,
+                s.send_enabled ? "Envoi activé" : "Envoi désactivé",
+              ],
+            ] as const
+          ).map(([on, text]) => (
+            <li key={text}>
+              <span className={`dot ${on ? "on" : "off"}`} aria-hidden="true" />
+              {text}
+            </li>
+          ))}
+        </ul>
         <div className="actions-bar">
           <button disabled={busy || !s.configured} onClick={() => run("check")}>
             Tester la boîte enregistrée

@@ -360,7 +360,7 @@ function Prospects() {
               update({ campaign: e.target.value, sourceFilter: "" });
             }}
           >
-            <option value="">Toutes les campagnes</option>
+            <option value="">Toutes</option>
             {campaigns.data?.items.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -379,7 +379,7 @@ function Prospects() {
             }}
           >
             <option value="">
-              {campaign ? "Toutes les sources" : "Choisir d’abord une campagne"}
+              {campaign ? "Toutes" : "Campagne d’abord"}
             </option>
             {campaigns.data?.items
               .find((c) => c.id === Number(campaign))
@@ -556,10 +556,15 @@ function Prospects() {
                             </Link>
                           ))}
                           {!items.length && (
-                            <p className="muted pipeline-empty">
-                              {data.total > data.items.length
-                                ? "Aucun parmi les prospects affichés."
-                                : "Aucun prospect à cette étape."}
+                            <p
+                              className="muted pipeline-empty"
+                              title={
+                                data.total > data.items.length
+                                  ? "Aucun parmi les prospects affichés sur cette page"
+                                  : "Aucun prospect à cette étape"
+                              }
+                            >
+                              Aucun
                             </p>
                           )}
                         </section>
