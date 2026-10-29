@@ -4826,6 +4826,8 @@ a.button-link.primary-link:hover {
   to {
     background-position: -120% 0;
   }
+}
+
 /* Dates et temps relatifs lisibles : police du texte, chiffres de largeur fixe (la police mono reste
    pour les identifiants, scores et valeurs chiffrées). */
 .time {
