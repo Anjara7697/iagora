@@ -424,7 +424,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
           <main
             id="main-content"
-            className={`page-content ${["/conversations", "/todo"].includes(pathname) ? "workspace-page" : ""}`}
+            className={`page-content ${pathname === "/conversations" ? "workspace-page" : ""}`}
           >
             {children}
           </main>
