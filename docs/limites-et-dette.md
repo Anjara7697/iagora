@@ -8,9 +8,8 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | Prio | Limite | Détail |
 |---|---|---|
 | P1 | Base de connaissances fictive : les documents officiels de DATUM manquent | [rag.md](rag.md) |
-| P1 | Pas de mention IA systématique dans les emails | [conformite-rgpd.md](conformite-rgpd.md) §3.1 |
 | P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
-| P1 | Pas d'effacement / anonymisation d'un prospect réel, pas de durée de conservation | [conformite-rgpd.md](conformite-rgpd.md) §3.2 |
+| P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
 | P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
 | P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
@@ -20,7 +19,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |
 | P3 | Dashboard et Analytics absents ; Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
-| P3 | Email en texte brut, pas de pièces jointes ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
+| P3 | Email : mise en page HTML simple, pas de pièces jointes ni d'images intégrées ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
 
 ## Technique
 
