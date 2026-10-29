@@ -66,12 +66,12 @@ export default function ConversationView({
 }) {
   if (messages.length === 0)
     return (
-      <p data-ui="v2" className="text-sm text-muted">
+      <p className="text-sm text-muted">
         Aucun message.
       </p>
     );
   return (
-    <div data-ui="v2" className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {messages.map((m) => {
         const sources = m.metadata.sources;
         const draft = m.metadata.draft as Draft | undefined;

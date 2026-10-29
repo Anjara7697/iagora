@@ -27,33 +27,30 @@ Elles viennent de `AGENTS.md` et ne se discutent pas :
 ## 2. Système visuel
 
 Depuis la branche `feat/ui-heroui-v3`, la console repose sur **HeroUI v3** (React Aria,
-Tailwind CSS v4) avec le thème IAGORA, décrit dans le design system « IAGORA »
-(artefact Claude, `tokens.json`). Deux feuilles de style, importées dans cet ordre par
-`app/layout.tsx` :
+Tailwind CSS v4, icônes Lucide) avec le thème IAGORA, décrit dans le design system
+« IAGORA » (artefact Claude, `tokens.json`). Une seule feuille de style,
+`frontend/src/app/heroui.css`, importée par `app/layout.tsx` : preflight et utilitaires
+Tailwind, HeroUI, polices locales, puis le **thème IAGORA** (`:root` déclare les
+variables lues par HeroUI : `--background`, `--surface`, `--accent`, `--agent`,
+`--level-cold`…). C'est la seule source des couleurs, rayons et ombres.
 
-- `frontend/src/app/heroui.css` : Tailwind (thème et utilitaires, **sans** preflight
-  global), HeroUI, puis le **thème IAGORA** : `:root` y déclare les variables lues par
-  HeroUI (`--background`, `--surface`, `--accent`, `--agent`, `--level-cold`…). C'est la
-  source des couleurs, rayons et ombres pour tout nouveau code.
-- `frontend/src/app/globals.css` : les écrans historiques. Tout le fichier est dans
-  `@scope (html) to (…)` : ses règles ne touchent aucun composant HeroUI (classes
-  `.button`, `.chip`, `.card`… et éléments React Aria). Son `:root` garde les anciens
-  noms (`--fg`, `--card`, `--line`…), recalés sur la nouvelle palette.
+Les écrans sont écrits en composants HeroUI et en classes Tailwind ; les briques
+communes sont dans `frontend/src/components/ds/` (`layout.tsx` : `Screen`, `PageHeader`,
+`Panel`, `KpiCard`, `EmptyPanel`… ; `controls.tsx` : `Btn`, `LinkButton`, `Field`,
+`TextInput`, `NativeSelect`, `Check`, `Tag`, `Segmented`, `FilterChip`… ; `settings.tsx`,
+`badges.tsx`). Ne pas écrire de code hexadécimal dans un écran : utiliser une classe
+du thème (`bg-surface`, `text-muted`, `bg-agent-soft`…).
 
-Ne pas ajouter de code hexadécimal dans les règles : utiliser une variable du thème.
-Les classes historiques qui portaient un nom de composant HeroUI ont été préfixées :
-`.ui-card`, `.ui-badge`, `.ui-link`, `.ui-skeleton`, `.ui-empty-state`, `.ui-toolbar`.
-
-| Rôle | Thème (nouveau code) | Anciens noms (globals.css) |
-|---|---|---|
-| Texte | `--foreground`, `--muted` | `--fg`, `--ink-2`, `--muted`, `--faint` |
-| Fonds | `--background`, `--surface`, `--surface-secondary/tertiary`, `--overlay` | `--bg`, `--card`, `--surface-1/2/3` |
-| Bordures | `--border`, `--separator`, `--field-border` (3:1) | `--line`, `--line-strong` |
-| Action | `--accent`, `--accent-soft`, `--accent-soft-foreground` | `--accent*` |
-| Agent | `--agent`, `--agent-soft`, `--agent-soft-foreground` | `--violet*` |
-| États | `--success*`, `--warning*`, `--danger*` (plein, `-soft`, `-soft-foreground`) | `--ok*`, `--warn*`, `--err*` |
-| Intérêt | `--level-cold`, `--level-warm`, `--level-hot`, `--level-very-hot` (remplissages) | `--level-*-text/-bg/-line`, `--level-*-bar` |
-| Ombres | `--surface-shadow`, `--field-shadow`, `--overlay-shadow` | — |
+| Rôle | Variables du thème |
+|---|---|
+| Texte | `--foreground`, `--muted` |
+| Fonds | `--background`, `--surface`, `--surface-secondary/tertiary`, `--overlay` |
+| Bordures | `--border`, `--separator`, `--field-border` (3:1) |
+| Action | `--accent`, `--accent-soft`, `--accent-soft-foreground` |
+| Agent | `--agent`, `--agent-soft`, `--agent-soft-foreground` |
+| États | `--success*`, `--warning*`, `--danger*` (plein, `-soft`, `-soft-foreground`) |
+| Intérêt | `--level-cold`, `--level-warm`, `--level-hot`, `--level-very-hot` (remplissages) |
+| Ombres | `--surface-shadow`, `--field-shadow`, `--overlay-shadow` |
 
 Règles de sens :
 
@@ -218,14 +215,8 @@ Le mode Automatique reste réservé à l’administrateur et désactivé par dé
 
 ## 7. Dette connue
 
-- Une vingtaine de couleurs encore écrites en dur dans `globals.css` (surtout du blanc
-  sur bouton plein et quelques teintes uniques) : à remplacer au fil de l’eau.
-- Migration HeroUI : les écrans gardent leur HTML et `globals.css`, recalés sur la
-  palette. Ils passent aux composants HeroUI écran par écran (une PR par écran) ; chaque
-  règle de `globals.css` devenue inutile est alors supprimée.
-- `globals.css` garde la trace des étapes successives (sections « Alignement
-  maquette », « Réglages »…). Ne pas ajouter de troisième couche : modifier la
-  règle existante.
+- La page de connexion garde deux teintes propres (fond sombre et halos) écrites dans
+  ses classes : à reprendre si le thème sombre arrive.
 - Les tests Playwright tournent sur bureau ; quelques scénarios ne sont pas
   prévus pour 390 px (liste des campagnes, pagination des prospects).
 

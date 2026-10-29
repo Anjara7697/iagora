@@ -11,7 +11,7 @@ export default function ProspectResultsReturn() {
   const params = useSearchParams();
   const href = prospectReturnHref(params.get("from"));
   return (
-    <Link data-ui="v2" href={href ?? "/prospects"} className={backLinkClass}>
+    <Link href={href ?? "/prospects"} className={backLinkClass}>
       {href ? "← Retour aux résultats" : "← Tous les prospects"}
     </Link>
   );

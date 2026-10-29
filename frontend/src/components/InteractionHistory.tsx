@@ -32,7 +32,7 @@ export default function InteractionHistory({ id }: { id: number }) {
     `/prospects/${id}/interactions?limit=${LIMIT}&offset=${offset}`,
   );
   return (
-    <section data-ui="v2" className="card card--default gap-0 p-0" aria-label="Historique des interactions">
+    <section className="card card--default gap-0 p-0" aria-label="Historique des interactions">
       <div className="flex min-h-14 items-center border-b border-separator px-5 py-3">
         <h2 className="text-base font-semibold text-foreground">Interactions</h2>
       </div>

@@ -18,7 +18,7 @@ export default function ProspectTaskReturn() {
 
   return (
     <nav
-      data-ui="v2"
+     
       className="flex flex-wrap items-center gap-3 rounded-xl bg-accent-soft px-4 py-3"
       aria-label="Demande à traiter"
     >

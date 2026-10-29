@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { FlaskConical, Plus } from "lucide-react";
 import { API_URL, api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MetaFormMapping, MetaSettings } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
-import { Feedback, Field, Stats } from "./forms";
+import { Btn, Check, ErrorText, TextInput, TextLink } from "./ds/controls";
+import { Eyebrow } from "./ds/layout";
+import { ActionsBar, CodeBlock, Feedback, InfoRow, SettingRow as Field, StatePill, Stats } from "./ds/settings";
 
 type Secrets = {
   app_secret: string;
@@ -48,11 +50,16 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section
-        className={embedded ? undefined : "ui-card integ-card"}
-        aria-label="Meta Lead Ads"
-      >
-        {error ? <p className="error">{error}</p> : "Chargement…"}
+      <section className="flex flex-col gap-3" aria-label="Meta Lead Ads">
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : (
+          <p className="text-sm text-muted" role="status">
+            Chargement…
+          </p>
+        )}
       </section>
     );
 
@@ -150,180 +157,169 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      className={embedded ? undefined : "ui-card integ-card"}
+     
+      className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
       aria-label="Meta Lead Ads"
     >
-      <div className="integ-main settings-stack">
-        {!embedded && (
-          <div className="section-head">
-            <h2>Meta Lead Ads</h2>
-            <span className={`ui-badge integ-${tone}`}>{status}</span>
-          </div>
-        )}
-        {!embedded && (
-          <span className="eyebrow">Source de leads · Facebook et Instagram</span>
-        )}
-        <p className="section-intro">
-          Reçoit les formulaires instantanés Meta, évite les doublons et range
-          chaque prospect dans la campagne choisie. Les secrets sont chiffrés et
-          ne sont jamais réaffichés.
-        </p>
-        <Field label="Identifiant de l’application Meta">
-          <input
-            value={cfg.app_id}
-            placeholder="1234567890"
-            onChange={(event) => setCfg({ ...cfg, app_id: event.target.value })}
-          />
-        </Field>
-        <Field label="Version de l’API Graph" note="À conserver alignée avec l’application Meta.">
-          <input
-            value={cfg.api_version}
-            placeholder="v24.0"
-            onChange={(event) => setCfg({ ...cfg, api_version: event.target.value })}
-          />
-        </Field>
-        {(
-          [
-            ["app_secret", "Code secret de l’application", cfg.app_secret_set],
-            ["page_access_token", "Jeton d’accès de la page", cfg.page_access_token_set],
-            ["verify_token", "Jeton de vérification du webhook", cfg.verify_token_set],
-          ] as const
-        ).map(([key, label, present]) => (
-          <Field
-            key={key}
-            label={label}
-            note="Vide : conserver la valeur enregistrée."
-          >
-            <input
-              type="password"
-              autoComplete="new-password"
-              value={secrets[key]}
-              placeholder={present ? "•••••• (inchangé)" : ""}
-              onChange={(event) =>
-                setSecrets({ ...secrets, [key]: event.target.value })
-              }
-            />
-          </Field>
-        ))}
-        <div className="field-row">
-          <span className="field-label">URL du webhook</span>
-          <div className="field-control">
-            <code className="code-block">{webhookUrl}</code>
-            <p className="field-note">
-              À copier dans Meta for Developers, avec le jeton de vérification
-              choisi ci-dessus.
-            </p>
+      {!embedded && (
+        <div className="flex flex-col gap-1">
+          <Eyebrow>Source de leads · Facebook et Instagram</Eyebrow>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="flex-1 text-base font-semibold text-foreground">Meta Lead Ads</h2>
+            <StatePill tone={tone}>{status}</StatePill>
           </div>
         </div>
+      )}
+      <p className="text-[13px]/[20px] text-muted">
+        Reçoit les formulaires instantanés Meta, évite les doublons et range
+        chaque prospect dans la campagne choisie. Les secrets sont chiffrés et
+        ne sont jamais réaffichés.
+      </p>
+      <Field label="Identifiant de l’application Meta">
+        <TextInput
+          value={cfg.app_id}
+          placeholder="1234567890"
+          onChange={(event) => setCfg({ ...cfg, app_id: event.target.value })}
+        />
+      </Field>
+      <Field label="Version de l’API Graph" note="À conserver alignée avec l’application Meta.">
+        <TextInput
+          value={cfg.api_version}
+          placeholder="v24.0"
+          onChange={(event) => setCfg({ ...cfg, api_version: event.target.value })}
+        />
+      </Field>
+      {(
+        [
+          ["app_secret", "Code secret de l’application", cfg.app_secret_set],
+          ["page_access_token", "Jeton d’accès de la page", cfg.page_access_token_set],
+          ["verify_token", "Jeton de vérification du webhook", cfg.verify_token_set],
+        ] as const
+      ).map(([key, label, present]) => (
+        <Field key={key} label={label} note="Vide : conserver la valeur enregistrée.">
+          <TextInput
+            type="password"
+            autoComplete="new-password"
+            value={secrets[key]}
+            placeholder={present ? "•••••• (inchangé)" : ""}
+            onChange={(event) => setSecrets({ ...secrets, [key]: event.target.value })}
+          />
+        </Field>
+      ))}
+      <InfoRow
+        label="URL du webhook"
+        note="À copier dans Meta for Developers, avec le jeton de vérification choisi ci-dessus."
+      >
+        <CodeBlock>{webhookUrl}</CodeBlock>
+      </InfoRow>
 
-        <div className="settings-subsection">
-          <h3>Correspondance des formulaires</h3>
-          <p className="field-note">
+      <div className="flex flex-col gap-3 border-t border-separator pt-4">
+        <div className="flex flex-col gap-0.5">
+          <h3 className="text-sm font-semibold text-foreground">Correspondance des formulaires</h3>
+          <p className="text-xs/[18px] text-muted">
             Un identifiant de formulaire Meta correspond à une seule source de
             campagne IAGORA.
           </p>
-          {cfg.mappings.map((mapping) => (
-            <div className="item-row" key={mapping.form_id}>
-              <span className="item-main">
-                <strong>{mapping.form_name}</strong>
-                <span className="item-meta">
-                  Formulaire <code>{mapping.form_id}</code> · campagne #{mapping.campaign_id} · source #{mapping.source_id}
-                </span>
+        </div>
+        {cfg.mappings.map((mapping) => (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-separator px-4 py-3" key={mapping.form_id}>
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <strong className="text-sm font-semibold text-foreground">{mapping.form_name}</strong>
+              <span className="text-xs text-muted">
+                Formulaire <code className="rounded bg-surface-tertiary px-1 font-mono">{mapping.form_id}</code> · campagne #{mapping.campaign_id} · source #{mapping.source_id}
               </span>
-              <span className="item-actions">
-                <label className="check-line">
-                  <input
-                    type="checkbox"
-                    checked={mapping.enabled}
-                    onChange={(event) =>
-                      setCfg({
-                        ...cfg,
-                        mappings: cfg.mappings.map((item) =>
-                          item.form_id === mapping.form_id
-                            ? { ...item, enabled: event.target.checked }
-                            : item,
-                        ),
-                      })
-                    }
-                  />
-                  Actif
-                </label>
-                <button
-                  onClick={() =>
-                    setCfg({
-                      ...cfg,
-                      mappings: cfg.mappings.filter(
-                        (item) => item.form_id !== mapping.form_id,
-                      ),
-                    })
-                  }
-                >
-                  Retirer
-                </button>
-              </span>
-            </div>
-          ))}
-          <div className="form-row">
-            <input
+            </span>
+            <Check
+              checked={mapping.enabled}
+              onChange={(checked) =>
+                setCfg({
+                  ...cfg,
+                  mappings: cfg.mappings.map((item) =>
+                    item.form_id === mapping.form_id ? { ...item, enabled: checked } : item,
+                  ),
+                })
+              }
+            >
+              Actif
+            </Check>
+            <Btn
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setCfg({
+                  ...cfg,
+                  mappings: cfg.mappings.filter((item) => item.form_id !== mapping.form_id),
+                })
+              }
+            >
+              Retirer
+            </Btn>
+          </div>
+        ))}
+        <div className="flex flex-col gap-3 rounded-xl bg-surface-secondary p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextInput
               aria-label="Identifiant du formulaire Meta"
               value={formId}
               placeholder="Identifiant du formulaire"
               onChange={(event) => setFormId(event.target.value)}
             />
-            <input
+            <TextInput
               aria-label="Nom du formulaire Meta"
               value={formName}
               placeholder="Nom lisible"
               onChange={(event) => setFormName(event.target.value)}
             />
           </div>
-          <CampaignSourcePicker value={destination} onChange={setDestination} />
-          <button
+          <div className="flex flex-wrap gap-3">
+            <CampaignSourcePicker value={destination} onChange={setDestination} />
+          </div>
+          <Btn
+            variant="outline"
+            size="sm"
+            className="w-fit"
             onClick={addMapping}
-            disabled={
-              !formId.trim() ||
-              !formName.trim() ||
-              !destination.campaign_id ||
-              !destination.source_id
-            }
+            disabled={!formId.trim() || !formName.trim() || !destination.campaign_id || !destination.source_id}
           >
+            <Plus className="size-4" aria-hidden="true" />
             Ajouter cette correspondance
-          </button>
-        </div>
-
-        <label className="check-line">
-          <input
-            type="checkbox"
-            checked={cfg.enabled}
-            onChange={(event) => setCfg({ ...cfg, enabled: event.target.checked })}
-          />
-          Activer la réception des leads Meta
-        </label>
-        <Stats
-          label="Traitement des leads Meta"
-          items={[
-            { value: cfg.received, caption: "reçus" },
-            { value: cfg.processed, caption: "traités" },
-            { value: cfg.failed, caption: "en erreur" },
-          ]}
-        />
-        <p className="field-note">
-          Dernier événement : {formatDate(cfg.last_event_at)} · dernier succès :{" "}
-          {formatDate(cfg.last_success_at)}
-        </p>
-        {cfg.last_error && <p className="error">Dernière erreur : {cfg.last_error}</p>}
-        <div className="actions-bar">
-          <button className="primary" onClick={save} disabled={busy}>
-            Enregistrer Meta
-          </button>
-          <button onClick={simulate} disabled={busy || !cfg.mappings.some((m) => m.enabled)}>
-            Créer un lead fictif
-          </button>
-          {simulatedId && <Link href={`/prospects/${simulatedId}`}>Ouvrir le prospect test</Link>}
-          <Feedback notice={notice} error={error} />
+          </Btn>
         </div>
       </div>
+
+      <Check
+        checked={cfg.enabled}
+        onChange={(value) => setCfg({ ...cfg, enabled: value })}
+        className="border-t border-separator pt-4 font-medium"
+      >
+        Activer la réception des leads Meta
+      </Check>
+      <Stats
+        label="Traitement des leads Meta"
+        items={[
+          { value: cfg.received, caption: "reçus" },
+          { value: cfg.processed, caption: "traités" },
+          { value: cfg.failed, caption: "en erreur" },
+        ]}
+      />
+      <p className="text-xs/[18px] text-muted">
+        Dernier événement : {formatDate(cfg.last_event_at)} · dernier succès :{" "}
+        {formatDate(cfg.last_success_at)}
+      </p>
+      {cfg.last_error && <ErrorText>Dernière erreur : {cfg.last_error}</ErrorText>}
+      <ActionsBar className="border-t border-separator pt-4">
+        <Btn variant="primary" onClick={save} disabled={busy}>
+          Enregistrer Meta
+        </Btn>
+        <Btn onClick={simulate} disabled={busy || !cfg.mappings.some((m) => m.enabled)}>
+          <FlaskConical className="size-4" aria-hidden="true" />
+          Créer un lead fictif
+        </Btn>
+        {simulatedId && (
+          <TextLink href={`/prospects/${simulatedId}`}>Ouvrir le prospect test</TextLink>
+        )}
+      </ActionsBar>
+      <Feedback notice={notice} error={error} />
     </section>
   );
 }
-

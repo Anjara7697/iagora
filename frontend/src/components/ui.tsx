@@ -16,7 +16,7 @@ export function Skeleton({ shape = "lines" }: { shape?: SkeletonShape }) {
   const count = shape === "lines" ? 3 : shape === "rows" ? 5 : 4;
   return (
     <div
-      data-ui="v2"
+     
       className={
         shape === "cards"
           ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
@@ -62,7 +62,7 @@ export function Loading({
   if (loading) return <Skeleton shape={shape} />;
   if (error)
     return (
-      <div data-ui="v2">
+      <div>
         <ErrorState message={error.message} onRetry={onRetry} />
       </div>
     );
@@ -99,7 +99,7 @@ export function Pager({
   const from = total === 0 ? 0 : offset + 1;
   const to = Math.min(offset + limit, total);
   return (
-    <div data-ui="v2" className="flex items-center justify-between gap-3 pt-2">
+    <div className="flex items-center justify-between gap-3 pt-2">
       <Btn size="sm" variant="ghost" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>
         <ChevronLeft className="size-4" aria-hidden="true" />
         Précédent

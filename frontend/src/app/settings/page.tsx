@@ -1,12 +1,15 @@
 "use client";
 
+import { Bot, CalendarClock, Mail, Sparkles, FlaskConical, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Feedback, Field, Section, Toggle } from "@/components/forms";
+import { Btn, LinkButton, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
+import { PageHeader, Screen, cx } from "@/components/ds/layout";
+import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
 import type { RuntimeSettings } from "@/lib/types";
 
@@ -28,6 +31,7 @@ const SECTIONS = [
   { id: "emails", label: "Emails", hint: "Pied, mise en page, relève" },
   { id: "rdv", label: "Rendez-vous", hint: "Jours et horaires" },
 ] as const;
+const ICONS: Record<string, LucideIcon> = { ia: Sparkles, agent: Bot, emails: Mail, rdv: CalendarClock };
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 export default function SettingsPage() {
@@ -76,39 +80,36 @@ function Settings() {
 
   if (user && !isAdmin)
     return canUseSimulator(user.role) ? (
-      <>
-        <div className="page-heading">
-          <div>
-            <span className="eyebrow">Réglages · Outils de test</span>
-            <h1>Paramètres</h1>
-            <p className="muted">
-              Retrouvez les outils pour essayer l’agent avec des données
-              fictives.
-            </p>
-          </div>
-        </div>
+      <Screen className="max-w-[960px]">
+        <PageHeader
+          eyebrow="Réglages · Outils de test"
+          title="Paramètres"
+          subtitle="Retrouvez les outils pour essayer l’agent avec des données fictives."
+        />
         <TestingAccess />
-      </>
+      </Screen>
     ) : (
-      <p className="ui-card warnbox" role="alert">
-        Cette page est réservée aux administrateurs.
-      </p>
+      <Screen>
+        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
+          Cette page est réservée aux administrateurs.
+        </p>
+      </Screen>
     );
   if (!form)
     return (
-      <>
-        <h1>Paramètres</h1>
+      <Screen className="max-w-[1200px]">
+        <PageHeader eyebrow="Administration · Paramètres" title="Paramètres" />
         <TestingAccess />
         {error ? (
-          <p className="error" role="alert">
+          <p className="text-sm text-danger" role="alert">
             {error}
           </p>
         ) : (
-          <p className="muted" role="status">
+          <p className="text-sm text-muted" role="status">
             Chargement des réglages…
           </p>
         )}
-      </>
+      </Screen>
     );
 
   const set = <K extends keyof RuntimeSettings>(
@@ -192,24 +193,27 @@ function Settings() {
   const keySet = gemini ? form.gemini_api_key_set : form.openai_api_key_set;
 
   return (
-    <>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Administration · Paramètres</span>
-          <h1>Paramètres</h1>
-          <p className="muted">
+    <Screen className="max-w-[1200px]">
+      <PageHeader
+        eyebrow="Administration · Paramètres"
+        title="Paramètres"
+        subtitle={
+          <>
             Réglages de l’agent, appliqués sans redémarrage.{" "}
             {form.source === "console"
               ? "Enregistrés dans la console."
               : "Valeurs par défaut du serveur : enregistrer ici les remplace."}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      <div className="settings-layout">
-        <label className="settings-select">
-          Catégorie
-          <select
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="flex flex-col gap-1.5 lg:hidden">
+          <label htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
+            Catégorie
+          </label>
+          <NativeSelect
+            id="settings-category"
             value={active}
             onChange={(e) =>
               router.replace(`${pathname}?section=${e.target.value}`, {
@@ -222,32 +226,45 @@ function Settings() {
                 {s.label}
               </option>
             ))}
-          </select>
-        </label>
-        <nav className="settings-nav" aria-label="Catégories de paramètres">
-          {SECTIONS.map((s) => (
-            <Link
-              key={s.id}
-              href={`${pathname}?section=${s.id}`}
-              replace
-              scroll={false}
-              aria-current={active === s.id ? "page" : undefined}
-            >
-              <span>{s.label}</span>
-              <small>{s.hint}</small>
-            </Link>
-          ))}
+          </NativeSelect>
+        </div>
+        <nav className="hidden flex-col gap-1 lg:sticky lg:top-24 lg:flex" aria-label="Catégories de paramètres">
+          {SECTIONS.map((s) => {
+            const Icon = ICONS[s.id];
+            const on = active === s.id;
+            return (
+              <Link
+                key={s.id}
+                href={`${pathname}?section=${s.id}`}
+                replace
+                scroll={false}
+                aria-current={on ? "page" : undefined}
+                className={cx(
+                  "flex items-start gap-3 rounded-xl px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                  on ? "bg-surface shadow-surface" : "hover:bg-default/60",
+                )}
+              >
+                <Icon className={cx("mt-0.5 size-4 shrink-0", on ? "text-accent" : "text-muted")} aria-hidden="true" />
+                <span className="flex flex-col">
+                  <span className={cx("text-sm font-medium", on ? "text-foreground" : "text-foreground/90")}>{s.label}</span>
+                  <small className="text-xs text-muted">{s.hint}</small>
+                </span>
+              </Link>
+            );
+          })}
+          <div className="my-2 border-t border-separator" />
           <TestingAccess compact disabled={busy !== null} unsaved={dirty} />
         </nav>
-        <div className="settings-stack settings-content">
-          <Section
+        <div className="flex min-w-0 flex-col gap-4">
+          <SettingsCard
             region="Intelligence artificielle"
             hidden={active !== "ia"}
-            label="Intelligence artificielle"
+            label="Paramètres"
+            title="Intelligence artificielle"
             intro="Le modèle rédige les réponses et lit les messages. Si le modèle principal reste indisponible (surcharge, quota) après ses nouveaux essais, la même demande part sur le modèle de secours avant tout transfert au conseiller."
           >
             <Field label="Fournisseur">
-              <select
+              <NativeSelect
                 value={form.llm_provider}
                 onChange={(e) =>
                   set(
@@ -258,10 +275,10 @@ function Settings() {
               >
                 <option value="gemini">Google Gemini</option>
                 <option value="openai">OpenAI</option>
-              </select>
+              </NativeSelect>
             </Field>
             <Field label="Modèle principal" note="Ex. gemini-2.5-flash.">
-              <input
+              <TextInput
                 value={form.llm_model}
                 onChange={(e) => set("llm_model", e.target.value)}
               />
@@ -270,7 +287,7 @@ function Settings() {
               label="Modèle de secours (si le principal est saturé)"
               note="Même fournisseur et même clé, ex. gemini-2.5-flash-lite. Vide : aucun secours."
             >
-              <input
+              <TextInput
                 value={form.llm_fallback_model}
                 placeholder="gemini-2.5-flash-lite"
                 onChange={(e) => set("llm_fallback_model", e.target.value)}
@@ -280,7 +297,7 @@ function Settings() {
               label={`Clé d’API ${gemini ? "Gemini" : "OpenAI"}`}
               note="Chiffrée sur le serveur, jamais réaffichée. Laisser vide pour conserver la clé actuelle."
             >
-              <input
+              <TextInput
                 type="password"
                 autoComplete="new-password"
                 placeholder={
@@ -297,7 +314,7 @@ function Settings() {
               label="Créativité (0 = factuel, 1 = libre)"
               note="0,2 à 0,4 recommandé : l’agent ne doit jamais inventer."
             >
-              <input
+              <TextInput
                 type="number"
                 step="0.1"
                 min={0}
@@ -306,50 +323,51 @@ function Settings() {
                 onChange={num("llm_temperature")}
               />
             </Field>
-            <div className="field-row">
-              <span className="field-label">Recherche documentaire</span>
-              <div className="field-control">
-                <span className="mono">{form.embedding_model}</span>
-                <p className="field-note">
-                  Réglé sur le serveur : en changer impose de recalculer la base
-                  de connaissances.
-                </p>
-              </div>
-            </div>
-            <div className="actions-bar">
-              <button onClick={runTest} disabled={busy !== null}>
+            <InfoRow
+              label="Recherche documentaire"
+              note="Réglé sur le serveur : en changer impose de recalculer la base de connaissances."
+            >
+              <span className="font-mono text-[13px]">{form.embedding_model}</span>
+            </InfoRow>
+            <ActionsBar className="border-t border-separator pt-4">
+              <Btn variant="outline" onClick={runTest} disabled={busy !== null}>
+                <Sparkles className="size-4" aria-hidden="true" />
                 {busy === "test" ? "Test en cours…" : "Tester le modèle"}
-              </button>
+              </Btn>
               {test && (
                 <span
                   aria-label="Résultat du test du modèle"
-                  className={`status-text ${test.ok ? "status-ok" : "status-bad"}`}
+                  className={cx("font-mono text-[12.5px]", test.ok ? "text-success" : "text-danger")}
                 >
                   {test.ok
                     ? `✓ ${test.model} répond (« ${test.detail} »)`
                     : `✗ ${test.detail}`}
                 </span>
               )}
-            </div>
-          </Section>
+            </ActionsBar>
+          </SettingsCard>
 
-          <Section
+          <SettingsCard
             region="Agent et relances"
             hidden={active !== "agent"}
-            label="Agent et relances"
+            label="Paramètres"
+            title="Agent et relances"
             intro="Chaque relance reste un brouillon soumis à validation en mode assisté ; elles s’arrêtent dès que le prospect répond, se désinscrit ou est transféré."
           >
             {canUseSimulator(user?.role) && (
-              <div className="settings-test-link">
+              <div className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3">
                 {dirty || busy !== null ? (
-                  <button disabled>Tester les réglages enregistrés</button>
+                  <Btn size="sm" disabled>
+                    Tester les réglages enregistrés
+                  </Btn>
                 ) : (
-                  <Link className="button-link" href="/simulator">
+                  <LinkButton size="sm" variant="outline" href="/simulator">
+                    <FlaskConical className="size-4" aria-hidden="true" />
                     Tester les réglages enregistrés →
-                  </Link>
+                  </LinkButton>
                 )}
                 {dirty && (
-                  <p className="field-note">
+                  <p className="text-xs text-muted">
                     Enregistrez vos modifications avant de les tester.
                   </p>
                 )}
@@ -361,34 +379,31 @@ function Settings() {
               title="L’agent prépare automatiquement une réponse à chaque nouveau message"
               note="Désactivé : les messages arrivent dans les conversations, sans brouillon de l’agent."
             />
-            <div className="field-row">
-              <span className="field-label">Fenêtre d’envoi des relances</span>
-              <div className="field-control">
-                <div className="field-inline">
-                  <input
+            <InfoRow label="Fenêtre d’envoi des relances" note="Heure de début et de fin (heure locale).">
+                <div className="flex items-center gap-2">
+                  <TextInput
                     aria-label="Relances : à partir de (heure)"
                     type="number"
                     min={0}
                     max={23}
                     value={form.follow_up_window_start_hour}
                     onChange={num("follow_up_window_start_hour")}
+                    className="w-24"
                   />
-                  <input
+                  <span className="text-sm text-muted">→</span>
+                  <TextInput
                     aria-label="jusqu’à (heure)"
                     type="number"
                     min={1}
                     max={24}
                     value={form.follow_up_window_end_hour}
                     onChange={num("follow_up_window_end_hour")}
+                    className="w-24"
                   />
                 </div>
-                <p className="field-note">
-                  Heure de début et de fin (heure locale).
-                </p>
-              </div>
-            </div>
+            </InfoRow>
             <Field label="Relances maximum sans réponse">
-              <input
+              <TextInput
                 type="number"
                 min={1}
                 max={10}
@@ -401,14 +416,14 @@ function Settings() {
               onChange={(v) => set("follow_up_weekdays_only", v)}
               title="Relances en semaine uniquement"
             />
-          </Section>
+          </SettingsCard>
 
-          <Section region="Emails" hidden={active !== "emails"} label="Emails">
+          <SettingsCard region="Emails" hidden={active !== "emails"} label="Paramètres" title="Emails">
             <Field
               label="Mention de bas de message (désinscription)"
               note="Ajoutée à chaque email envoyé : le prospect peut répondre STOP."
             >
-              <textarea
+              <TextBox
                 value={form.email_footer}
                 rows={2}
                 onChange={(e) => set("email_footer", e.target.value)}
@@ -418,7 +433,7 @@ function Settings() {
               label="Mention « message rédigé avec une IA »"
               note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
             >
-              <textarea
+              <TextBox
                 value={form.email_ai_notice}
                 rows={2}
                 minLength={10}
@@ -430,7 +445,7 @@ function Settings() {
               label="Nom affiché en tête d’email"
               note="Remplacé par le logo s’il est renseigné."
             >
-              <input
+              <TextInput
                 value={form.email_brand_name}
                 maxLength={80}
                 onChange={(e) => set("email_brand_name", e.target.value)}
@@ -441,6 +456,7 @@ function Settings() {
               note="Liseré, nom, liens et pastille IA."
             >
               <input
+                className="h-9 w-16 cursor-pointer rounded-[var(--field-radius)] border border-field-border bg-field-background p-1"
                 type="color"
                 value={form.email_brand_color}
                 onChange={(e) => set("email_brand_color", e.target.value)}
@@ -450,40 +466,35 @@ function Settings() {
               label="Logo (adresse https, facultatif)"
               note="Image publique hébergée par l’école, hauteur 36 px. Vide : le nom est affiché."
             >
-              <input
+              <TextInput
                 type="url"
                 placeholder="https://…/logo.png"
                 value={form.email_logo_url}
                 onChange={(e) => set("email_logo_url", e.target.value)}
               />
             </Field>
-            <div className="field-row">
-              <span className="field-label">Aperçu</span>
-              <div className="field-control">
-                <div>
-                  <button onClick={showPreview} disabled={busy !== null}>
-                    Voir un exemple d’email
-                  </button>
-                </div>
-                {preview && (
-                  <iframe
-                    className="email-preview"
-                    title="Aperçu de l’email"
-                    sandbox=""
-                    srcDoc={preview}
-                  />
-                )}
-                <p className="field-note">
-                  Rendu par le même code que l’envoi, avec les réglages saisis
-                  (non enregistrés).
-                </p>
-              </div>
-            </div>
+            <InfoRow
+              label="Aperçu"
+              note="Rendu par le même code que l’envoi, avec les réglages saisis (non enregistrés)."
+            >
+              <Btn size="sm" variant="outline" className="w-fit" onClick={showPreview} disabled={busy !== null}>
+                <Mail className="size-4" aria-hidden="true" />
+                Voir un exemple d’email
+              </Btn>
+              {preview && (
+                <iframe
+                  className="email-preview h-[420px] w-full rounded-xl border border-separator bg-white"
+                  title="Aperçu de l’email"
+                  sandbox=""
+                  srcDoc={preview}
+                />
+              )}
+            </InfoRow>
             <Field
               label="Relève de la boîte toutes les (secondes)"
               note="60 secondes conviennent ; la boîte se règle dans Intégrations."
             >
-              <input
+              <TextInput
                 type="number"
                 min={10}
                 max={3600}
@@ -497,37 +508,43 @@ function Settings() {
               title="Un expéditeur inconnu devient un prospect"
               note="Désactivé : seuls les emails de prospects déjà connus sont relevés."
             />
-          </Section>
+          </SettingsCard>
 
-          <Section
+          <SettingsCard
             region="Disponibilités des rendez-vous"
             hidden={active !== "rdv"}
-            label="Disponibilités des rendez-vous"
+            label="Paramètres"
+            title="Disponibilités des rendez-vous"
             intro="L’agent ne propose que des créneaux réellement libres dans l’agenda du conseiller, à l’intérieur de ces règles."
           >
-            <div className="field-row">
-              <span className="field-label">Jours ouvrés</span>
-              <div className="field-control">
-                <div
-                  className="day-picker"
-                  role="group"
-                  aria-label="Jours ouvrés"
-                >
-                  {DAYS.map((d, i) => (
-                    <label key={d}>
+            <InfoRow label="Jours ouvrés">
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Jours ouvrés">
+                {DAYS.map((d, i) => {
+                  const on = days.has(String(i + 1));
+                  return (
+                    <label
+                      key={d}
+                      className={cx(
+                        "relative inline-flex h-9 min-w-12 cursor-pointer items-center justify-center rounded-lg border px-3 text-[13px] font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus",
+                        on
+                          ? "border-transparent bg-accent-soft text-accent-soft-foreground"
+                          : "border-border bg-surface text-muted hover:bg-surface-secondary",
+                      )}
+                    >
                       <input
                         type="checkbox"
-                        checked={days.has(String(i + 1))}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        checked={on}
                         onChange={() => toggleDay(i + 1)}
                       />
                       {d}
                     </label>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            </div>
+            </InfoRow>
             <Field label="Début de journée (heure)">
-              <input
+              <TextInput
                 type="number"
                 min={0}
                 max={23}
@@ -536,7 +553,7 @@ function Settings() {
               />
             </Field>
             <Field label="Fin de journée (heure)">
-              <input
+              <TextInput
                 type="number"
                 min={1}
                 max={24}
@@ -545,7 +562,7 @@ function Settings() {
               />
             </Field>
             <Field label="Durée d’un rendez-vous (minutes)">
-              <input
+              <TextInput
                 type="number"
                 min={15}
                 max={240}
@@ -558,7 +575,7 @@ function Settings() {
               label="Délai minimum avant un rendez-vous (heures)"
               note="Évite de proposer un créneau dans l’heure qui vient."
             >
-              <input
+              <TextInput
                 type="number"
                 min={0}
                 max={240}
@@ -567,7 +584,7 @@ function Settings() {
               />
             </Field>
             <Field label="Créneaux proposés sur (jours)">
-              <input
+              <TextInput
                 type="number"
                 min={1}
                 max={60}
@@ -576,7 +593,7 @@ function Settings() {
               />
             </Field>
             <Field label="Marge entre rendez-vous (minutes)">
-              <input
+              <TextInput
                 type="number"
                 min={0}
                 max={120}
@@ -585,31 +602,34 @@ function Settings() {
               />
             </Field>
             <Field label="Fuseau horaire" note="Ex. Europe/Paris.">
-              <input
+              <TextInput
                 value={form.calendar_timezone}
                 onChange={(e) => set("calendar_timezone", e.target.value)}
               />
             </Field>
-          </Section>
+          </SettingsCard>
 
-          <div className="actions-bar sticky">
-            <button className="primary" onClick={save} disabled={busy !== null}>
-              Enregistrer les paramètres
-            </button>
-            {form.source === "console" && (
-              <button onClick={reset} disabled={busy !== null}>
-                Revenir aux valeurs du serveur
-              </button>
-            )}
-            {dirty && (
-              <span className="status-text">
-                Modifications non enregistrées
-              </span>
-            )}
+          <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-separator bg-surface/95 px-4 py-3 shadow-overlay backdrop-blur">
+            <ActionsBar>
+              <Btn variant="primary" onClick={save} disabled={busy !== null}>
+                Enregistrer les paramètres
+              </Btn>
+              {form.source === "console" && (
+                <Btn variant="ghost" onClick={reset} disabled={busy !== null}>
+                  Revenir aux valeurs du serveur
+                </Btn>
+              )}
+              {dirty && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning-soft-foreground">
+                  <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />
+                  Modifications non enregistrées
+                </span>
+              )}
+            </ActionsBar>
             <Feedback notice={notice} error={error} />
           </div>
         </div>
       </div>
-    </>
+    </Screen>
   );
 }

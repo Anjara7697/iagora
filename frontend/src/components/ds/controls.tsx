@@ -286,7 +286,7 @@ export function Tag({
       size="sm"
       variant="soft"
       color={color}
-      className={cx(tone === "agent" && "chip--agent", tone === "muted" && "text-muted", className)}
+      className={cx("whitespace-nowrap", tone === "agent" && "chip--agent", tone === "muted" && "text-muted", className)}
     >
       {icon}
       <Chip.Label>{children}</Chip.Label>
