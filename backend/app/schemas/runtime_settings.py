@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
+from app.config import DEFAULT_AI_NOTICE, DEFAULT_BRAND_COLOR, DEFAULT_BRAND_NAME
+
 
 class RuntimeSettingsBase(BaseModel):
     # Intelligence artificielle
@@ -18,6 +20,10 @@ class RuntimeSettingsBase(BaseModel):
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
     # Emails
     email_footer: str = Field("", max_length=1000)
+    email_ai_notice: str = Field(DEFAULT_AI_NOTICE, min_length=10, max_length=500)
+    email_brand_name: str = Field(DEFAULT_BRAND_NAME, min_length=1, max_length=80)
+    email_brand_color: str = Field(DEFAULT_BRAND_COLOR, pattern=r"^#[0-9a-fA-F]{6}$")
+    email_logo_url: str = Field("", max_length=500, pattern=r"^(https://\S+)?$")
     email_create_unknown_senders: bool = True
     email_poll_seconds: int = Field(60, ge=10, le=3600)
     # Disponibilités des rendez-vous
@@ -62,3 +68,8 @@ class LlmTestResult(BaseModel):
     ok: bool
     model: str
     detail: str
+
+
+class EmailPreview(BaseModel):
+    html: str
+    text: str

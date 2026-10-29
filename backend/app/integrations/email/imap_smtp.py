@@ -204,6 +204,8 @@ class ImapSmtpClient:
         # Désinscription en un clic pour les clients mail (bonne pratique et conformité, S-03).
         msg["List-Unsubscribe"] = f"<mailto:{sender}?subject=STOP>"
         msg.set_content(email.text)
+        if email.html:
+            msg.add_alternative(email.html, subtype="html")
         return msg
 
     def _send(self, email: OutboundEmail) -> str:

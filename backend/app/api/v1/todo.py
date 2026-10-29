@@ -26,7 +26,7 @@ from app.schemas.todo import (
     TodoPage,
     TreatedPage,
 )
-from app.services import agent_settings, drafts, prospects
+from app.services import agent_settings, drafts, email_format, prospects
 from app.services import conversations as conversation_service
 from app.services import todo as todo_service
 from app.services.agent_settings import AgentMode
@@ -46,7 +46,12 @@ async def list_todo(
 ) -> TodoPage:
     """Ce qui attend un conseiller : brouillons à valider, transferts, lacunes, incidents."""
     return await todo_service.list_todo(
-        session, db, kind=kind, limit=limit, offset=offset, footer=settings.email_footer
+        session,
+        db,
+        kind=kind,
+        limit=limit,
+        offset=offset,
+        footer=email_format.footer_text(settings),
     )
 
 
@@ -78,7 +83,7 @@ async def get_todo_item(
         kind=None,
         limit=200,
         offset=0,
-        footer=settings.email_footer,
+        footer=email_format.footer_text(settings),
         conversation_id=parts[1],
     )
     for item in result.items:

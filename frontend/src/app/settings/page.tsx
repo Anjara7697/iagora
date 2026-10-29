@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const [test, setTest] = useState<{
     ok: boolean;
     model: string;
@@ -139,6 +140,14 @@ export default function SettingsPage() {
       setTest(
         await api("/settings/llm/test", { method: "POST", body: payload() }),
       );
+    });
+  const showPreview = () =>
+    act("preview", async () => {
+      const r = await api<{ html: string }>("/settings/email/preview", {
+        method: "POST",
+        body: payload(),
+      });
+      setPreview(r.html);
     });
   const reset = () =>
     act("reset", async () => {
@@ -345,6 +354,71 @@ export default function SettingsPage() {
               onChange={(e) => set("email_footer", e.target.value)}
             />
           </Field>
+          <Field
+            label="Mention « message rédigé avec une IA »"
+            note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
+          >
+            <textarea
+              value={form.email_ai_notice}
+              rows={2}
+              minLength={10}
+              maxLength={500}
+              onChange={(e) => set("email_ai_notice", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Nom affiché en tête d’email"
+            note="Remplacé par le logo s’il est renseigné."
+          >
+            <input
+              value={form.email_brand_name}
+              maxLength={80}
+              onChange={(e) => set("email_brand_name", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Couleur principale des emails"
+            note="Liseré, nom, liens et pastille IA."
+          >
+            <input
+              type="color"
+              value={form.email_brand_color}
+              onChange={(e) => set("email_brand_color", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Logo (adresse https, facultatif)"
+            note="Image publique hébergée par l’école, hauteur 36 px. Vide : le nom est affiché."
+          >
+            <input
+              type="url"
+              placeholder="https://…/logo.png"
+              value={form.email_logo_url}
+              onChange={(e) => set("email_logo_url", e.target.value)}
+            />
+          </Field>
+          <div className="field-row">
+            <span className="field-label">Aperçu</span>
+            <div className="field-control">
+              <div>
+                <button onClick={showPreview} disabled={busy !== null}>
+                  Voir un exemple d’email
+                </button>
+              </div>
+              {preview && (
+                <iframe
+                  className="email-preview"
+                  title="Aperçu de l’email"
+                  sandbox=""
+                  srcDoc={preview}
+                />
+              )}
+              <p className="field-note">
+                Rendu par le même code que l’envoi, avec les réglages saisis
+                (non enregistrés).
+              </p>
+            </div>
+          </div>
           <Field
             label="Relève de la boîte toutes les (secondes)"
             note="60 secondes conviennent ; la boîte se règle dans Intégrations."
