@@ -1,8 +1,12 @@
 "use client";
 
+import { ChevronRight, Radar, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Feedback, Field, Toggle } from "./forms";
+import { Btn, NativeSelect, TextInput } from "./ds/controls";
+import { cx } from "./ds/layout";
+import { ActionsBar, Feedback, InfoRow, SettingRow as Field, Toggle } from "./ds/settings";
+import { Field as Stacked } from "./ds/controls";
 import type {
   EmailAutodetect,
   EmailConfig,
@@ -54,11 +58,14 @@ export function EmailSettings({
 
   if (!form)
     return error ? (
-      <div className="error" role="alert">
-        {error} <button onClick={load}>Réessayer les paramètres</button>
+      <div data-ui="v2" className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground" role="alert">
+        <span className="flex-1">{error}</span>
+        <Btn size="sm" variant="outline" onClick={load}>
+          Réessayer les paramètres
+        </Btn>
       </div>
     ) : (
-      <p className="muted" role="status">
+      <p data-ui="v2" className="text-sm text-muted" role="status">
         Chargement des paramètres de la boîte…
       </p>
     );
@@ -183,37 +190,37 @@ export function EmailSettings({
   const hasFolder = folders.some((f) => f.name === form.imap_folder);
 
   return (
-    <section
-      className="settings-stack"
-      aria-label="Paramètres de la boîte email"
-    >
-      <fieldset
-        className="email-settings-fields"
-        disabled={busy !== null || disabled}
-      >
+    <section data-ui="v2" className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
+      <fieldset className="flex min-w-0 flex-col gap-4" disabled={busy !== null || disabled}>
         <legend className="sr-only">Configuration de la boîte email</legend>
-        <div className="section-head">
-          <h3 className="section-label">Paramètres de la boîte</h3>
-          <span
-            className={`status-text ${dirty ? "status-pending" : ""}`}
-            role="status"
-          >
-            {dirty
-              ? "Modifications non enregistrées"
-              : form.source === "console"
-                ? "Enregistrés dans la console"
-                : "Configuration du serveur"}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="flex-1 text-sm font-semibold text-foreground">Paramètres de la boîte</h3>
+            <span
+              className={cx(
+                "inline-flex items-center gap-1.5 text-xs font-medium",
+                dirty ? "text-warning-soft-foreground" : "text-muted",
+              )}
+              role="status"
+            >
+              <span className={cx("size-1.5 rounded-full", dirty ? "bg-warning" : "bg-success")} aria-hidden="true" />
+              {dirty
+                ? "Modifications non enregistrées"
+                : form.source === "console"
+                  ? "Enregistrés dans la console"
+                  : "Configuration du serveur"}
+            </span>
+          </div>
+          <p className="text-[13px]/[20px] text-muted">
+            Modifiez et testez ces paramètres, puis enregistrez-les pour les
+            appliquer à la boîte.
+          </p>
         </div>
-        <p className="section-intro">
-          Modifiez et testez ces paramètres, puis enregistrez-les pour les
-          appliquer à la boîte.
-        </p>
         <Field
           label="Adresse de la boîte"
           note="N’importe quelle boîte IMAP/SMTP : les serveurs sont détectés à partir de l’adresse."
         >
-          <input
+          <TextInput
             type="email"
             value={form.address}
             placeholder="admissions@ecole.fr"
@@ -224,7 +231,7 @@ export function EmailSettings({
           label="Mot de passe"
           note="Chiffré sur le serveur, jamais réaffiché. Gmail, Yahoo, iCloud : mot de passe d’application."
         >
-          <input
+          <TextInput
             type="password"
             autoComplete="new-password"
             placeholder={form.password_set ? "•••••• (inchangé)" : ""}
@@ -238,113 +245,86 @@ export function EmailSettings({
           />
         </Field>
         <Field label="Nom d’expéditeur" note="Affiché chez le prospect.">
-          <input
-            value={form.from_name}
-            onChange={(e) => set("from_name", e.target.value)}
-          />
+          <TextInput value={form.from_name} onChange={(e) => set("from_name", e.target.value)} />
         </Field>
-        <div className="field-row">
-          <span className="field-label">Serveurs</span>
-          <div className="field-control">
-            <div className="row">
-              <button
-                onClick={detect}
-                disabled={busy !== null || !form.address}
-              >
-                {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
-              </button>
-              {detected && (
-                <span className="status-text">
-                  {detected.provider ?? "Hébergeur inconnu"} —{" "}
-                  {SOURCES[detected.source]}.
-                </span>
-              )}
-            </div>
-            {detected?.note && <p className="field-note">{detected.note}</p>}
-            <details className="email-server-settings">
-              <summary className="status-text">
-                Paramètres avancés des serveurs
-              </summary>
-              <h4>Réception des messages</h4>
-              <div className="email-server-grid">
-                <label>
-                  Serveur IMAP (réception)
-                  <input
-                    value={form.imap_host}
-                    onChange={(e) => set("imap_host", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Port IMAP
-                  <input
+        <InfoRow label="Serveurs" note={detected?.note}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Btn size="sm" variant="outline" onClick={detect} disabled={busy !== null || !form.address}>
+              <Radar className="size-4" aria-hidden="true" />
+              {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
+            </Btn>
+            {detected && (
+              <span className="text-[13px] text-success-soft-foreground">
+                {detected.provider ?? "Hébergeur inconnu"} — {SOURCES[detected.source]}.
+              </span>
+            )}
+          </div>
+          <details className="group rounded-xl border border-separator px-4 py-3">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-medium text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
+              Paramètres avancés des serveurs
+            </summary>
+            <div className="mt-3 flex flex-col gap-4">
+              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
+                <Stacked label="Serveur IMAP (réception)">
+                  <TextInput value={form.imap_host} onChange={(e) => set("imap_host", e.target.value)} />
+                </Stacked>
+                <Stacked label="Port IMAP">
+                  <TextInput
                     type="number"
-                    value={form.imap_port}
+                    value={String(form.imap_port)}
                     onChange={(e) => set("imap_port", Number(e.target.value))}
                   />
-                </label>
-                <label className="email-server-wide">
-                  Identifiant (si différent de l’adresse)
-                  <input
-                    value={form.username ?? ""}
-                    onChange={(e) => set("username", e.target.value || null)}
-                  />
-                </label>
+                </Stacked>
+                <Stacked label="Identifiant (si différent de l’adresse)" className="sm:col-span-2">
+                  <TextInput value={form.username ?? ""} onChange={(e) => set("username", e.target.value || null)} />
+                </Stacked>
               </div>
-              <h4>Envoi des messages</h4>
-              <div className="email-server-grid">
-                <label>
-                  Serveur SMTP (envoi)
-                  <input
-                    value={form.smtp_host}
-                    onChange={(e) => set("smtp_host", e.target.value)}
-                  />
-                </label>
-                <label>
-                  Port SMTP
-                  <input
+              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Envoi des messages</h4>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
+                <Stacked label="Serveur SMTP (envoi)">
+                  <TextInput value={form.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} />
+                </Stacked>
+                <Stacked label="Port SMTP">
+                  <TextInput
                     type="number"
-                    value={form.smtp_port}
+                    value={String(form.smtp_port)}
                     onChange={(e) => set("smtp_port", Number(e.target.value))}
                   />
-                </label>
-                <label className="email-server-wide">
-                  Sécurité SMTP
-                  <select
+                </Stacked>
+                <Stacked label="Sécurité SMTP" className="sm:col-span-2">
+                  <NativeSelect
                     value={form.smtp_security}
-                    onChange={(e) =>
-                      set("smtp_security", e.target.value as "starttls" | "ssl")
-                    }
+                    onChange={(e) => set("smtp_security", e.target.value as "starttls" | "ssl")}
                   >
                     <option value="starttls">STARTTLS (587)</option>
                     <option value="ssl">SSL/TLS (465)</option>
-                  </select>
-                </label>
+                  </NativeSelect>
+                </Stacked>
               </div>
-            </details>
-          </div>
-        </div>
-        <div className="field-row">
-          <span className="field-label">Connexion</span>
-          <div className="field-control">
-            <div className="row">
-              <button onClick={runTest} disabled={busy !== null}>
-                {busy === "test" ? "Test en cours…" : "Tester ces paramètres"}
-              </button>
-              {test && (
-                <span
-                  aria-label="Résultat du test des paramètres"
-                  className={`status-text ${test.imap === "ok" && test.smtp === "ok" ? "status-ok" : "status-bad"}`}
-                >
-                  IMAP : {ok(test.imap)} · SMTP : {ok(test.smtp)}
-                </span>
-              )}
             </div>
-            <p className="field-note">
-              Rien n’est lu, envoyé ni enregistré. Le test liste les dossiers de
-              la boîte.
-            </p>
+          </details>
+        </InfoRow>
+        <InfoRow label="Connexion" note="Rien n’est lu, envoyé ni enregistré. Le test liste les dossiers de la boîte.">
+          <div className="flex flex-wrap items-center gap-3">
+            <Btn size="sm" variant="outline" onClick={runTest} disabled={busy !== null}>
+              <ShieldCheck className="size-4" aria-hidden="true" />
+              {busy === "test" ? "Test en cours…" : "Tester ces paramètres"}
+            </Btn>
+            {test && (
+              <span
+                aria-label="Résultat du test des paramètres"
+                className={cx(
+                  "font-mono text-[12.5px]",
+                  test.imap === "ok" && test.smtp === "ok" ? "text-success" : "text-danger",
+                )}
+              >
+                IMAP : {ok(test.imap)} · SMTP : {ok(test.smtp)}
+              </span>
+            )}
           </div>
-        </div>
+        </InfoRow>
         <Field
           label="Dossier surveillé"
           note={
@@ -354,7 +334,7 @@ export function EmailSettings({
           }
         >
           {folders.length > 0 ? (
-            <select
+            <NativeSelect
               value={hasFolder ? form.imap_folder : ""}
               onChange={(e) => set("imap_folder", e.target.value)}
             >
@@ -364,19 +344,16 @@ export function EmailSettings({
                   {f.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           ) : (
-            <input
-              value={form.imap_folder}
-              onChange={(e) => set("imap_folder", e.target.value)}
-            />
+            <TextInput value={form.imap_folder} onChange={(e) => set("imap_folder", e.target.value)} />
           )}
         </Field>
         <Field
           label="Bac à sable (adresses autorisées, séparées par des virgules)"
           note="Pendant les essais, l’agent n’écrit qu’à ces adresses. Vide : tout destinataire."
         >
-          <input
+          <TextInput
             value={sandbox}
             placeholder="moi@exemple.fr, collegue@exemple.fr"
             onChange={(e) => {
@@ -398,17 +375,17 @@ export function EmailSettings({
           title="Envoyer réellement les messages validés"
           note="Désactivé : les réponses validées attendent, rien ne part."
         />
-        <div className="actions-bar">
-          <button className="primary" onClick={save} disabled={busy !== null}>
+        <ActionsBar className="border-t border-separator pt-4">
+          <Btn variant="primary" onClick={save} disabled={busy !== null}>
             Enregistrer
-          </button>
+          </Btn>
           {form.source === "console" && (
-            <button onClick={forget} disabled={busy !== null}>
+            <Btn onClick={forget} disabled={busy !== null}>
               Oublier cette boîte
-            </button>
+            </Btn>
           )}
-          <Feedback notice={notice} error={error} />
-        </div>
+        </ActionsBar>
+        <Feedback notice={notice} error={error} />
       </fieldset>
     </section>
   );
