@@ -134,6 +134,11 @@
 }
 
 @layer components {
+  /* Interrupteur éteint : piste visible sur fond blanc. */
+  .switch {
+    --switch-control-bg: #a1a1aa;
+  }
+
   /* Étapes portées par l’agent (« En conversation », « Qualifié »). */
   .chip--agent.chip--soft {
     background: var(--agent-soft);
