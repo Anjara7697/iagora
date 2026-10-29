@@ -228,6 +228,19 @@ test("l'état détaillé de la boîte email est dans son panneau", async ({
   await expect(drawer.getByText("À tester", { exact: true })).toBeVisible();
 });
 
+test("un seul onglet de la messagerie est affiché à la fois", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const drawer = await openConnector(page, "Messagerie email");
+  await expect(drawer.getByText("Réception active")).toBeVisible();
+  await expect(drawer.getByLabel("Adresse de la boîte")).toBeHidden();
+  await drawer.getByRole("tab", { name: "Configuration" }).click();
+  await expect(drawer.getByLabel("Adresse de la boîte")).toBeVisible();
+  await expect(drawer.getByText("Réception active")).toBeHidden();
+});
+
 test("rechercher et filtrer les connecteurs", async ({ page }) => {
   await mockApi(page);
   await open(page);
