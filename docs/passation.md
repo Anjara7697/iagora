@@ -45,7 +45,7 @@ Vue technique : [architecture.md](architecture.md).
 |---|---|
 | Email IMAP/SMTP | Recette sur la boîte définitive de DATUM : [recette-locale.md](recette-locale.md) §4 |
 | Google Calendar + Zoom (réglés dans la console, OAuth par conseiller) | Applications OAuth Google et Zoom en HTTPS, comptes réels et recette : [calendar.md](calendar.md) |
-| Déploiement serveur (`deploy/`) | Mise en service sur le VPS, comportement derrière Caddy |
+| Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement (29/10) ; reste la production, la copie des sauvegardes hors serveur et un test de restauration |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
 

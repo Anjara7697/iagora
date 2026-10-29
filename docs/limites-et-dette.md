@@ -27,7 +27,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 |---|---|---|
 | P1 | Un message resté `sending` après un arrêt brutal n'est pas repris automatiquement (on préfère ne pas envoyer deux fois) : vérification manuelle | [email.md](email.md) |
 | P1 | Pas de transaction entre PostgreSQL, MongoDB, le LLM et SMTP : une panne en plein workflow peut demander de vérifier les traces avant reprise | [intake.md](intake.md) |
-| P1 | Déploiement non vérifié sur le serveur (construction des images, reverse proxy réel, quotas Gemini) | [deploiement.md](deploiement.md) §8 |
+| P1 | Seul l'environnement `dev` est déployé et vérifié ; production, restauration d'une sauvegarde et quotas Gemini en usage réel restent à vérifier | [deploiement.md](deploiement.md) §8 |
 | P2 | Tâches de fond dans le processus de l'API : garder `--workers 1` ; un worker dédié si la charge augmente | [decisions.md](decisions.md) D-08 |
 | P2 | Verrou par conversation local au processus (en plus du bail MongoDB) | [revue-qualite.md](revue-qualite.md) |
 | P2 | File « À traiter » : 500 conversations examinées au plus ; pagination côté base à faire | [advisor-workflow.md](advisor-workflow.md) |
