@@ -39,6 +39,9 @@ from app.services.errors import NotFoundError
 REASONS = ("request", "retention", "other")
 _SALT = "iagora-suppression-v1:"
 MONGO_COLLECTIONS = ("conversations", "agent_runs", "agent_events")
+# Ces événements servent de marqueur d'idempotence (un rejeu ne recrée rien) : on ne les supprime
+# pas, on coupe seulement leur lien avec la fiche effacée.
+UNLINK_COLLECTIONS = ("meta_lead_events",)
 
 
 def fingerprint(value: str | None, *, phone: bool = False) -> str | None:
@@ -74,6 +77,10 @@ async def _delete_mongo(db: Any, prospect_id: int) -> int:
         result = await db[name].delete_many({"prospect_id": prospect_id})
         if name == "conversations":
             conversations = int(result.deleted_count)
+    for name in UNLINK_COLLECTIONS:
+        await db[name].update_many(
+            {"prospect_id": prospect_id}, {"$unset": {"prospect_id": "", "interaction_id": ""}}
+        )
     return conversations
 
 

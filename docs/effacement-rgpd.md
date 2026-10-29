@@ -26,6 +26,10 @@ nouveau message avec cette adresse crée alors un prospect **déjà désinscrit*
 gardée. Une empreinte est une pseudonymisation, pas une anonymisation : c'est le minimum nécessaire pour
 respecter l'opposition.
 
+Les événements de réception Meta (`meta_lead_events`) servent de marqueur anti-rejeu : ils ne sont pas
+supprimés, mais leur lien avec la fiche (`prospect_id`, `interaction_id`) est retiré. Meta qui rejoue la
+notification ne recrée donc pas la personne effacée. Ses données restent chez Meta : à effacer côté Meta.
+
 ## Ce qu'IAGORA n'efface pas (à faire à la main)
 
 Le rapport affiché après l'effacement le rappelle :

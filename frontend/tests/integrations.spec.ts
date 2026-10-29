@@ -32,6 +32,24 @@ const config = {
   password_set: true,
 };
 
+const meta = {
+  configured: false,
+  enabled: false,
+  app_id: "",
+  api_version: "v24.0",
+  app_secret_set: false,
+  page_access_token_set: false,
+  verify_token_set: false,
+  mappings: [],
+  webhook_path: "/api/v1/webhooks/meta",
+  last_event_at: null,
+  last_success_at: null,
+  last_error: null,
+  received: 0,
+  processed: 0,
+  failed: 0,
+};
+
 async function mockApi(
   page: Page,
   opts: {
@@ -42,6 +60,7 @@ async function mockApi(
   } = {},
 ) {
   const calls: string[] = [];
+  let metaState = { ...meta };
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -104,6 +123,23 @@ async function mockApi(
         };
         code = 201;
       } else body = [];
+    } else if (path === "/integrations/meta") {
+      if (request.method() === "PUT") {
+        const sent = request.postDataJSON();
+        opts.saved?.push({ meta: sent });
+        metaState = {
+          ...metaState,
+          ...sent,
+          configured: true,
+          app_secret_set: true,
+          page_access_token_set: true,
+          verify_token_set: true,
+        };
+        body = metaState;
+      } else body = metaState;
+    } else if (path === "/integrations/meta/simulate") {
+      opts.saved?.push({ metaSimulation: request.postDataJSON() });
+      body = { prospect_id: 42, created: true, duplicate: false };
     } else if (path === "/campaigns")
       body = {
         items: [
@@ -206,11 +242,12 @@ test("le catalogue résume l'état de chaque connecteur sans aucun secret", asyn
       .getByRole("article", { name: "Formulaire du site et outils" })
       .getByText("Aucun jeton"),
   ).toBeVisible();
-  // Canaux prévus mais pas encore développés : annoncés comme tels.
-  for (const name of ["Meta Business", "LinkedIn Lead Gen"])
-    await expect(
-      page.getByRole("article", { name }).getByText("Bientôt"),
-    ).toBeVisible();
+  await expect(
+    page.getByRole("article", { name: "Meta Lead Ads" }).getByText("Non configuré"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("article", { name: "LinkedIn Lead Gen" }).getByText("Bientôt"),
+  ).toBeVisible();
   await expect(page.getByText("iag_")).toHaveCount(0);
 });
 
@@ -252,11 +289,11 @@ test("rechercher et filtrer les connecteurs", async ({ page }) => {
   await expect(page.getByText(/Aucun connecteur ne correspond/)).toBeVisible();
   await page.getByLabel("Rechercher un connecteur").fill("");
   await page.getByRole("button", { name: "Bientôt", exact: true }).click();
-  await expect(cards).toHaveCount(2);
+  await expect(cards).toHaveCount(1);
   await page.getByRole("button", { name: "Configurés", exact: true }).click();
   await expect(cards).toHaveCount(2); // messagerie + import CSV
   await page.getByRole("button", { name: "À configurer", exact: true }).click();
-  await expect(cards).toHaveCount(3); // agenda, Zoom, jetons
+  await expect(cards).toHaveCount(4); // agenda, Zoom, jetons, Meta
 });
 
 test("le panneau est adressable, se ferme avec Échap et rend le focus", async ({
@@ -286,13 +323,48 @@ test("les connecteurs pas encore branchés expliquent pourquoi", async ({
   await mockApi(page);
   await open(page);
   await page
-    .getByRole("button", { name: "En savoir plus Meta Business" })
+    .getByRole("button", { name: "En savoir plus LinkedIn Lead Gen" })
     .click();
-  const drawer = page.getByRole("dialog", { name: "Meta Business" });
+  const drawer = page.getByRole("dialog", { name: "LinkedIn Lead Gen" });
   await expect(
-    drawer.getByText(/validation de l’application Meta/),
+    drawer.getByText(/accès à l’API LinkedIn/),
   ).toBeVisible();
   await expect(drawer.getByRole("textbox")).toHaveCount(0);
+});
+
+test("configure Meta, associe un formulaire et simule un lead", async ({ page }) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  const drawer = await openConnector(page, "Meta Lead Ads");
+  const card = drawer.getByRole("region", { name: "Meta Lead Ads" });
+  await card.getByLabel("Identifiant de l’application Meta").fill("app-123");
+  await card.getByLabel("Code secret de l’application").fill("app-secret");
+  await card.getByLabel("Jeton d’accès de la page").fill("page-token");
+  await card.getByLabel("Jeton de vérification du webhook").fill("verify-token");
+  await card.getByLabel("Identifiant du formulaire Meta").fill("form-123");
+  await card.getByLabel("Nom du formulaire Meta").fill("Formulaire eBIHAR");
+  await card.getByLabel("Campagne").selectOption("4");
+  await card.getByLabel("Source").selectOption("9");
+  await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
+  await card.getByLabel("Activer la réception des leads Meta").check();
+  await card.getByRole("button", { name: "Enregistrer Meta" }).click();
+  await expect(card.getByText("Configuration Meta enregistrée.")).toBeVisible();
+  expect(saved[0]).toMatchObject({
+    meta: {
+      app_id: "app-123",
+      enabled: true,
+      app_secret: "app-secret",
+      page_access_token: "page-token",
+      verify_token: "verify-token",
+      mappings: [{ form_id: "form-123", campaign_id: 4, source_id: 9 }],
+    },
+  });
+  await card.getByRole("button", { name: "Créer un lead fictif" }).click();
+  await expect(card.getByText("Lead fictif reçu")).toBeVisible();
+  await expect(
+    card.getByRole("link", { name: "Ouvrir le prospect test" }),
+  ).toHaveAttribute("href", "/prospects/42");
 });
 
 test("l'import CSV ouvre sa page", async ({ page }) => {

@@ -9,6 +9,7 @@ import { ConnectorIcon } from "@/components/ConnectorIcons";
 import { Drawer } from "@/components/Drawer";
 import { EmailConnector } from "@/components/EmailConnector";
 import { LeadSources } from "@/components/LeadSources";
+import { MetaLeadSettings } from "@/components/MetaLeadSettings";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
 import {
@@ -17,6 +18,7 @@ import {
   calendarView,
   emailView,
   leadsView,
+  metaView,
   zoomView,
   type ConnectorDef,
   type ConnectorId,
@@ -26,6 +28,7 @@ import { useApi } from "@/lib/useApi";
 import type {
   CalendarSettings as CalendarConfig,
   EmailStatus,
+  MetaSettings,
   ServiceToken,
   ZoomSettings as ZoomConfig,
 } from "@/lib/types";
@@ -43,10 +46,6 @@ function Pill({ view }: { view: ConnectorView }) {
 }
 
 const SOON_TEXT: Partial<Record<ConnectorId, string[]>> = {
-  meta: [
-    "Aucun webhook actif : les messages privés ne sont pas relevés automatiquement.",
-    "Dépend de la validation de l’application Meta ; la fenêtre de réponse est limitée à 24 h.",
-  ],
   linkedin: [
     "Aucune synchronisation : les leads LinkedIn passent par le formulaire externe.",
     "Dépend des accès à l’API LinkedIn, non obtenus à ce jour.",
@@ -74,6 +73,9 @@ function Catalog() {
     isAdmin ? "/integrations/tokens" : null,
     { keepPrevious: true },
   );
+  const meta = useApi<MetaSettings>(isAdmin ? "/integrations/meta" : null, {
+    keepPrevious: true,
+  });
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -90,7 +92,7 @@ function Catalog() {
     zoom: zoomView(zoom.data ?? undefined),
     leads: leadsView(tokens.data ?? undefined),
     csv: { tone: "ok", label: "Disponible", configured: true },
-    meta: { tone: "off", label: "Bientôt", configured: false },
+    meta: metaView(meta.data ?? undefined),
     linkedin: { tone: "off", label: "Bientôt", configured: false },
   };
 
@@ -107,6 +109,7 @@ function Catalog() {
     calendar.reload();
     zoom.reload();
     tokens.reload();
+    meta.reload();
   }
 
   const text = query.trim().toLowerCase();
@@ -119,7 +122,8 @@ function Catalog() {
   };
   const shown = CONNECTORS.filter(visible);
   const loading = isAdmin && (email.loading || calendar.loading) && !email.data;
-  const failed = email.error || calendar.error || zoom.error || tokens.error;
+  const failed =
+    email.error || calendar.error || zoom.error || tokens.error || meta.error;
 
   return (
     <div className="connector-page">
@@ -169,6 +173,7 @@ function Catalog() {
           calendar.reload();
           zoom.reload();
           tokens.reload();
+          meta.reload();
         }}
       />
 
@@ -267,6 +272,7 @@ function Catalog() {
         {open?.id === "calendar" && <CalendarSettings embedded />}
         {open?.id === "zoom" && <ZoomSettings embedded />}
         {open?.id === "leads" && <LeadSources embedded />}
+        {open?.id === "meta" && <MetaLeadSettings embedded />}
         {open?.soon && (
           <div className="settings-stack">
             {SOON_TEXT[open.id]?.map((line) => (

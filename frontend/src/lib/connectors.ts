@@ -2,6 +2,7 @@ import { formatDate } from "./labels";
 import type {
   CalendarSettings,
   EmailStatus,
+  MetaSettings,
   ServiceToken,
   Tone,
   ZoomSettings,
@@ -45,12 +46,11 @@ export const CONNECTORS: ConnectorDef[] = [
   },
   {
     id: "meta",
-    name: "Meta Business",
-    category: "channels",
+    name: "Meta Lead Ads",
+    category: "leads",
     icon: "chat",
-    soon: true,
     description:
-      "Messenger et Instagram. Dépend de la validation de l’application Meta.",
+      "Reçoit les formulaires instantanés Facebook et Instagram et rattache chaque prospect à la bonne campagne.",
   },
   {
     id: "calendar",
@@ -193,6 +193,25 @@ export function leadsView(tokens: ServiceToken[] | undefined): ConnectorView {
     tone: "ok",
     label: `${active.length} jeton(s) actif(s)`,
     meta: last ? `Dernier envoi ${formatDate(last)}` : "Jamais utilisé",
+    configured: true,
+  };
+}
+
+export function metaView(cfg: MetaSettings | undefined): ConnectorView {
+  if (!cfg) return LOADING;
+  if (cfg.last_success_at)
+    return {
+      tone: "ok",
+      label: "Testé avec un lead réel",
+      meta: `Dernier succès ${formatDate(cfg.last_success_at)}`,
+      configured: true,
+    };
+  if (!cfg.configured)
+    return { tone: "off", label: "Non configuré", configured: false };
+  return {
+    tone: "warn",
+    label: cfg.enabled ? "Actif, à tester" : "Configuré, inactif",
+    meta: cfg.last_error ?? `${cfg.mappings.length} formulaire(s) associé(s)`,
     configured: true,
   };
 }
