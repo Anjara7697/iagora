@@ -2269,25 +2269,27 @@ a.today-row:hover {
 .today-row-meta {
   font-size: 12px;
 }
-.stat-grid {
+.today-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
   padding: 16px 18px;
   margin: 0;
 }
-.stat-grid dd {
+.today-stats dd {
   margin: 0;
   font-size: 22px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
-.stat-grid dt {
+.today-stats dt {
   font-size: 12px;
+  line-height: 1.35;
 }
 .today-card .bar-row {
   padding: 4px 18px;
 }
-.stat-grid > div {
+.today-stats > div {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -4824,4 +4826,19 @@ a.button-link.primary-link:hover {
   to {
     background-position: -120% 0;
   }
+/* Dates et temps relatifs lisibles : police du texte, chiffres de largeur fixe (la police mono reste
+   pour les identifiants, scores et valeurs chiffrées). */
+.time {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Accueil : toutes les cartes d'une colonne partent du même alignement. */
+.today-grid > .card {
+  margin: 0;
+}
+.today-card-head .button-link {
+  flex: none;
+  white-space: nowrap;
 }

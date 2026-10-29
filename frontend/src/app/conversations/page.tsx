@@ -114,7 +114,7 @@ function InboxRow({
           <span className="inbox-row-top">
             <strong>{name}</strong>
             <DemoBadge email={c.prospect?.email} />
-            <span className="mono">{relativeTime(c.last_message_at)}</span>
+            <span className="time">{relativeTime(c.last_message_at)}</span>
           </span>
           <span className="row">
             <span className="badge">{label(CHANNELS, c.channel)}</span>

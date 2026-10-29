@@ -111,7 +111,7 @@ function Row({
         <span className="inbox-row-main">
           <span className="inbox-row-top">
             <strong>{name}</strong>
-            <span className="mono">{relativeTime(item.created_at)}</span>
+            <span className="time">{relativeTime(item.created_at)}</span>
           </span>
           <span className="task-row-context">
             <span className={`task-kind kind-${item.kind}`}>
@@ -1040,7 +1040,7 @@ function Todo() {
                         <span className="inbox-row-main">
                           <span className="inbox-row-top">
                             <strong>{name}</strong>
-                            <span className="mono">
+                            <span className="time">
                               {formatDate(t.decided_at)}
                             </span>
                           </span>
