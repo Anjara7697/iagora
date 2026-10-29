@@ -2,21 +2,44 @@ import Link from "next/link";
 import type { ApiError } from "@/lib/api";
 import { LEVELS, STAGES, isDemoEmail, label } from "@/lib/labels";
 
+export type SkeletonShape = "lines" | "rows" | "cards";
+
+/** Silhouette du contenu à venir : lignes de texte, lignes de liste ou cartes. */
+export function Skeleton({ shape = "lines" }: { shape?: SkeletonShape }) {
+  const count = shape === "lines" ? 3 : shape === "rows" ? 5 : 4;
+  return (
+    <div
+      className={`skeleton skeleton-${shape}`}
+      role="status"
+      aria-busy="true"
+    >
+      <span className="sr-only">Chargement…</span>
+      {Array.from({ length: count }, (_, i) => (
+        <div className="skeleton-item" aria-hidden="true" key={i}>
+          {shape === "rows" && <span className="skeleton-avatar" />}
+          <span className="skeleton-text">
+            <span className="skeleton-bar" />
+            {shape !== "lines" && <span className="skeleton-bar short" />}
+            {shape === "cards" && <span className="skeleton-bar tiny" />}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Loading({
   loading,
   error,
   onRetry,
+  shape = "lines",
 }: {
   loading: boolean;
   error: ApiError | null;
   onRetry?: () => void;
+  shape?: SkeletonShape;
 }) {
-  if (loading)
-    return (
-      <p className="muted" role="status">
-        Chargement…
-      </p>
-    );
+  if (loading) return <Skeleton shape={shape} />;
   if (error)
     return (
       <div className="error" role="alert">
@@ -34,7 +57,10 @@ export function Loading({
 
 export function DemoBadge({ email }: { email: string | null | undefined }) {
   return isDemoEmail(email) ? (
-    <span className="badge demo-badge" title="Prospect fictif : aucun message réel ne lui est envoyé">
+    <span
+      className="badge demo-badge"
+      title="Prospect fictif : aucun message réel ne lui est envoyé"
+    >
       Fictif
     </span>
   ) : null;
