@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
+import { zoomBadge } from "@/lib/connectors";
 import type { ZoomMode, ZoomSettings as Settings } from "@/lib/types";
 import { Feedback, Field } from "./forms";
 
@@ -12,8 +13,9 @@ const MODES: Record<ZoomMode, string> = {
   advisor: "Compte Zoom de chaque conseiller (connexion dans Mon compte)",
 };
 
-/** Visioconférence Zoom, réglée par l'administrateur : aucune variable `.env`. */
-export function ZoomSettings() {
+/** Visioconférence Zoom, réglée par l'administrateur : aucune variable `.env`.
+ *  `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
+export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
   const [cfg, setCfg] = useState<Settings | null>(null);
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,22 +66,23 @@ export function ZoomSettings() {
     }
   }
 
-  const tone = cfg.mode === "none" ? "off" : "ok";
-  const badge =
-    cfg.mode === "none"
-      ? "Non branché"
-      : cfg.mode === "account"
-        ? "Compte de l’école"
-        : `${cfg.connections.length} compte(s) connecté(s)`;
+  const { tone, label: badge } = zoomBadge(cfg);
 
   return (
-    <section className="card integ-card" aria-label="Zoom">
+    <section
+      className={embedded ? undefined : "card integ-card"}
+      aria-label="Zoom"
+    >
       <div className="integ-main settings-stack">
-        <div className="section-head">
-          <h2>Zoom</h2>
-          <span className={`badge integ-${tone}`}>{badge}</span>
-        </div>
-        <span className="eyebrow">Visioconférence</span>
+        {!embedded && (
+          <>
+            <div className="section-head">
+              <h2>Zoom</h2>
+              <span className={`badge integ-${tone}`}>{badge}</span>
+            </div>
+            <span className="eyebrow">Visioconférence</span>
+          </>
+        )}
         <p className="section-intro">
           Crée le lien de visioconférence de chaque rendez-vous réservé par
           l’agent.

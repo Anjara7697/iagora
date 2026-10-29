@@ -7,6 +7,7 @@ import ProspectResultsReturn from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
+import { ErasePanel, ErasureResult } from "@/components/ErasePanel";
 import MembershipActions from "@/components/MembershipActions";
 import InteractionHistory from "@/components/InteractionHistory";
 import RunView from "@/components/TraceView";
@@ -29,6 +30,7 @@ import type {
   AgentRun,
   Campaign,
   Conversation,
+  ErasureReport,
   History,
   Page,
   Prospect,
@@ -44,6 +46,7 @@ export default function ProspectPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [erased, setErased] = useState<ErasureReport | null>(null);
   const [editingMembership, setEditingMembership] = useState<number | null>(
     null,
   );
@@ -140,6 +143,7 @@ export default function ProspectPage() {
       runs.loading ||
       conversation.loading ||
       !!runs.error);
+  if (erased) return <ErasureResult report={erased} />;
   return (
     <>
       <Suspense>
@@ -507,8 +511,8 @@ export default function ProspectPage() {
                           );
                       }}
                     >
-                      <summary>
-                        Suivi du parcours {m.id} · Affectation et étape
+                      <summary data-membership={m.id}>
+                        Modifier l’affectation ou l’étape
                       </summary>
                       <MembershipActions
                         key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
@@ -552,6 +556,9 @@ export default function ProspectPage() {
               </section>
             </div>
           </div>
+          {user?.role === "ADMIN" && (
+            <ErasePanel prospect={p} onErased={setErased} />
+          )}
         </>
       )}
     </>

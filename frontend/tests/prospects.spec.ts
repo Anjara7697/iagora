@@ -194,7 +194,7 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
@@ -243,7 +243,7 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
   await page.goto("/prospects/1");
   await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const stage = page.getByRole("form", {
     name: "Étape du parcours 11",
@@ -368,7 +368,7 @@ test("exception individuelle : retour au responsable de la campagne", async ({
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .getByText("Suivi du parcours 11 · Affectation et étape", { exact: true })
+    .locator('summary[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
@@ -599,6 +599,99 @@ test("fiche : désinscription confirmée, campagne liée et lien vers la convers
     .click();
   await expect(page.getByText("Désinscription enregistrée.")).toBeVisible();
   expect(posts[0].body).toMatchObject({ channel: "email" });
+});
+
+test("fiche : effacer un prospect (administrateur) et lister ce qui reste à la main", async ({
+  page,
+}) => {
+  await mockApi(page, "ADMIN");
+  const posts: unknown[] = [];
+  await page.route("**/api/v1/prospects/1/erase", async (route) => {
+    posts.push(route.request().postDataJSON());
+    await route.fulfill({
+      json: {
+        prospect_id: 1,
+        conversations: 1,
+        interactions: 4,
+        appointments: 1,
+        suppressed: true,
+        external_events: [
+          {
+            start_at: "2026-11-03T14:00:00Z",
+            advisor: "nadia",
+            calendar_event_id: "evt-1",
+            zoom_meeting_id: "zoom-1",
+            meeting_url: null,
+          },
+        ],
+      },
+    });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  const panel = page.getByRole("region", { name: "Données personnelles" });
+  await panel.getByRole("button", { name: "Effacer ce prospect…" }).click();
+  const confirmButton = panel.getByRole("button", {
+    name: "Effacer définitivement",
+  });
+  await expect(confirmButton).toBeDisabled();
+  await panel.getByLabel("Adresse email du prospect").fill("alice@example.com");
+  await panel.getByLabel("Motif").selectOption("other");
+  await confirmButton.click();
+  await expect(
+    page.getByRole("heading", { name: "Prospect effacé" }),
+  ).toBeVisible();
+  expect(posts[0]).toEqual({ reason: "other", confirm: "alice@example.com" });
+  const manual = page.getByRole("region", { name: "À supprimer à la main" });
+  await expect(manual).toContainText("boîte de l’école");
+  await expect(manual).toContainText("agenda de nadia");
+  await expect(manual).toContainText("evt-1");
+  await expect(
+    page.getByRole("region", { name: "Résultat de l’effacement" }),
+  ).toContainText("empreinte illisible");
+});
+
+test("fiche : l’effacement est refusé par l’API puis annulable", async ({
+  page,
+}) => {
+  await mockApi(page, "ADMIN");
+  await page.route("**/api/v1/prospects/1/erase", (route) =>
+    route.fulfill({
+      status: 422,
+      json: {
+        detail:
+          "La confirmation ne correspond pas à l'adresse email du prospect",
+      },
+    }),
+  );
+  await login(page);
+  await page.goto("/prospects/1");
+  const panel = page.getByRole("region", { name: "Données personnelles" });
+  await panel.getByRole("button", { name: "Effacer ce prospect…" }).click();
+  await panel.getByLabel("Adresse email du prospect").fill("autre@example.com");
+  await panel.getByRole("button", { name: "Effacer définitivement" }).click();
+  await expect(panel.getByRole("alert")).toContainText("ne correspond pas");
+  await expect(
+    page.getByRole("heading", { name: "Alice Martin" }),
+  ).toBeVisible();
+  await panel.getByRole("button", { name: "Annuler" }).click();
+  await expect(
+    panel.getByRole("button", { name: "Effacer ce prospect…" }),
+  ).toBeVisible();
+});
+
+test("fiche : seuls les administrateurs voient l’effacement", async ({
+  page,
+}) => {
+  await mockApi(page, "ADVISOR");
+  await login(page);
+  await page.goto("/prospects/1");
+  await expect(
+    page.getByRole("heading", { name: "Alice Martin" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Effacer ce prospect…" }),
+  ).toHaveCount(0);
 });
 
 test("fiche : un observateur ne voit aucune action de consentement", async ({

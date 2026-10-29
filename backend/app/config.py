@@ -7,6 +7,12 @@ from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_JWT_SECRET = "dev-insecure-secret-change-me-before-any-real-use"  # noqa: S105
+# Mention de transparence (AI Act, art. 50) ajoutée à tout email rédigé par l'agent.
+DEFAULT_AI_NOTICE = (
+    "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy."
+)
+DEFAULT_BRAND_NAME = "DATUM Academy"
+DEFAULT_BRAND_COLOR = "#1f4fd8"
 
 
 class Settings(BaseSettings):
@@ -87,6 +93,12 @@ class Settings(BaseSettings):
     email_footer: str = (
         "Pour ne plus recevoir de messages de notre part, répondez simplement STOP à cet email."
     )
+    # Mention IA : la formulation se règle, mais elle est toujours ajoutée (jamais vide).
+    email_ai_notice: str = DEFAULT_AI_NOTICE
+    # Mise en page des emails : nom, couleur et logo (URL https publique, facultatif).
+    email_brand_name: str = DEFAULT_BRAND_NAME
+    email_brand_color: str = DEFAULT_BRAND_COLOR
+    email_logo_url: str = ""
 
     # Rendez-vous : `none` (l'agent transfère les demandes au conseiller), `google` (Google Calendar
     # du conseiller + visioconférence Zoom) ou `demo` (créneaux fictifs, hors production).

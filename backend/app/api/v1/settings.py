@@ -10,11 +10,17 @@ from app.config import Settings, get_settings
 from app.graph.ports import ChatMessage, LLMError
 from app.integrations.llm.factory import create_language_model
 from app.schemas.runtime_settings import (
+    EmailPreview,
     LlmTestResult,
     RuntimeSettingsRead,
     RuntimeSettingsWrite,
 )
-from app.services import runtime_settings
+from app.services import email_format, runtime_settings
+
+PREVIEW_BODY = (
+    "Bonjour Camille,\n\nMerci pour votre message. Voici deux créneaux possibles avec un "
+    "conseiller :\n- Mardi à 14 h\n- Jeudi à 10 h\n\nDites-moi celui qui vous convient."
+)
 
 router = APIRouter(prefix="/settings", tags=["settings"], dependencies=[ADMIN_ONLY])
 BaseSettings = Annotated[Settings, Depends(get_settings)]
@@ -79,3 +85,17 @@ async def test_llm(payload: RuntimeSettingsWrite, base: BaseSettings, db: MongoD
     except (LLMError, TimeoutError) as exc:
         return LlmTestResult(ok=False, model=candidate.llm_model, detail=str(exc)[:300])
     return LlmTestResult(ok=True, model=candidate.llm_model, detail=answer.strip()[:200])
+
+
+@router.post("/email/preview", response_model=EmailPreview)
+async def preview_email(
+    payload: RuntimeSettingsWrite, base: BaseSettings, db: MongoDb
+) -> EmailPreview:
+    """Rend un exemple d'email avec les réglages SAISIS (non enregistrés), par le même code que
+    l'envoi : ce que l'administrateur voit est ce que le prospect recevra."""
+    existing = await runtime_settings.load(db)
+    candidate = runtime_settings.apply(
+        base, runtime_settings.to_document(base, _plain(payload), existing, None)
+    )
+    rendered = email_format.render(PREVIEW_BODY, candidate, ai_generated=True)
+    return EmailPreview(html=rendered.html, text=rendered.text)

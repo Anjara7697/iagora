@@ -640,6 +640,7 @@ main.page-content {
 .page-heading {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 22px;
 }
@@ -1517,6 +1518,24 @@ a.stat-link:focus-visible .stat {
   margin-top: 6px;
   font-size: 12px;
 }
+/* Simulateur : rappel compact, sur une ligne quand la largeur le permet */
+.simulation-context .demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 8px 14px;
+}
+.simulation-context .demo-banner strong {
+  display: inline;
+  margin: 0;
+}
+.simulation-context .demo-banner p,
+.simulation-context .demo-banner .simulation-shared-note {
+  margin: 0;
+  font-size: 13px;
+}
+
 .simulation-context > a {
   display: inline-block;
   margin-bottom: 12px;
@@ -4253,35 +4272,475 @@ a.button-link.primary-link:hover {
   line-height: 1.6;
   margin-block: 16px;
 }
-.appointment-list {
-  list-style: none;
-  padding: 0;
+@media (max-width: 800px) {
+  .appointment-access .button-link { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+.email-preview {
+  width: 100%;
+  height: 460px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f4f5f7;
+}
+
+/* Paramètres : navigation latérale par catégories (une catégorie affichée à la fois). */
+.settings-layout {
   display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.settings-nav {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+.settings-nav a small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-nav a:hover {
+  background: var(--surface-2);
+}
+.settings-nav a[aria-current="page"] {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(25, 24, 23, 0.06);
+}
+.settings-content {
+  min-width: 0;
+}
+.settings-select {
+  display: none;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.settings-select select {
+  width: 100%;
+  color: var(--fg);
+}
+.settings-nav .settings-nav-item {
+  margin-top: 8px;
+  border-top-color: var(--line);
+  border-radius: 0 0 8px 8px;
+  padding-top: 12px;
+}
+.settings-nav span.settings-nav-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 12px 12px 9px;
+  color: var(--faint);
+  border-top: 1px solid var(--line);
+}
+.settings-nav span.settings-nav-item small {
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .settings-nav a {
+    flex: none;
+    white-space: nowrap;
+  }
+  .settings-nav a small {
+    display: none;
+  }
+  /* Sur mobile, les catégories passent par la liste « Catégorie » ;
+     seule l'entrée Tests et démonstration reste un lien. */
+  .settings-nav > a:not(.settings-nav-item) {
+    display: none;
+  }
+  .settings-select {
+    display: grid;
+  }
+}
+/* Intégrations : catalogue de cartes et panneau de configuration. */
+.badge.integ-err {
+  background: var(--err-bg);
+  color: var(--err);
+  border: 1px solid var(--err-line);
+}
+.connector-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.connector-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 12px;
 }
-.appointment-card {
+.connector-search {
+  flex: 1 1 260px;
+  max-width: 380px;
+  min-height: 38px;
+}
+.connector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.connector-group > .section-label {
+  margin: 4px 0 0;
+}
+.connector-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(150px, auto);
-  align-items: center;
-  gap: 20px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.connector-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 10px;
-  overflow-wrap: anywhere;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
 }
-.appointment-person h2 {
+.connector-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 8px #19181712;
+}
+.connector-card.is-soon {
+  background: var(--surface-1);
+}
+.connector-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.connector-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.is-soon .connector-icon {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.connector-name {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.connector-head .badge {
+  flex: none;
+}
+.connector-desc {
+  flex: 1;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.connector-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid #efece8;
+}
+.connector-meta {
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+/* Toute la carte est cliquable : le bouton s'étend sur elle. */
+.connector-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+}
+.connector-open:focus-visible {
+  outline: none;
+}
+.connector-open:focus-visible::after {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(25, 24, 23, 0.38);
+  animation: drawer-fade var(--motion-enter) var(--ease-out);
+}
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 121;
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100vw);
+  background: var(--bg);
+  box-shadow: -10px 0 30px rgba(25, 24, 23, 0.14);
+  animation: drawer-slide var(--motion-drawer) var(--ease-out);
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.drawer-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.drawer-title h2 {
+  margin: 0;
   font-size: 17px;
-  margin: 0 0 8px;
 }
-.appointment-person p { margin: 8px 0 0; font-size: 13px; }
-.appointment-dates { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.appointment-dates > div { display: flex; flex-wrap: wrap; gap: 6px 12px; }
-.appointment-dates dt { color: var(--muted); min-width: 40px; font-size: 13px; }
-.appointment-dates dd { margin: 0; font-size: 14px; }
-.appointment-access { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; font-size: 13px; }
-@media (max-width: 800px) {
-  .appointment-card { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; }
-  .appointment-access { flex-direction: row; align-items: center; flex-wrap: wrap; }
-  .appointment-access .button-link { min-height: 44px; display: inline-flex; align-items: center; }
+.drawer-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  line-height: 1;
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+@keyframes drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes drawer-slide {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+}
+@media (max-width: 700px) {
+  .connector-grid {
+    grid-template-columns: 1fr;
+  }
+  .drawer-head,
+  .drawer-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+.segmented button[aria-selected="true"] {
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(25, 24, 23, 0.08);
+  font-weight: 600;
+}
+
+/* `hidden` doit l'emporter sur les `display: flex` des cartes et des piles de champs. */
+[hidden] {
+  display: none !important;
+}
+
+/* --- À traiter : formulaires de vérification (candidature, inscription) --- */
+.review-form {
+  display: grid;
+  gap: 14px;
+}
+.review-form h3 {
+  margin: 0;
+}
+.review-form > p {
+  margin: 0;
+}
+.review-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 640px;
+}
+.review-form label select,
+.review-form label input:not([type="checkbox"]),
+.review-form label textarea {
+  width: 100%;
+  color: var(--fg);
+  font-size: 14px;
+}
+.review-form label textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.review-form label.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fg);
+  font-size: 14px;
+}
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.review-actions .muted {
+  font-size: 13px;
+}
+.handoff-link {
+  margin: 0;
+}
+.chips .chips-more {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* --- Rendez-vous : regroupés par jour, une ligne par rendez-vous --- */
+.appointment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+.appointment-day {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 18px 0 8px;
+}
+.appointment-day::first-letter {
+  text-transform: uppercase;
+}
+.appointment-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) minmax(0, 200px) 110px 150px;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: none;
+}
+.appointment-day + .appointment-row {
+  border-top: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
+}
+.appointment-row:has(+ .appointment-day),
+.appointment-row:last-child {
+  border-radius: 0 0 10px 10px;
+}
+.appointment-day + .appointment-row:has(+ .appointment-day),
+.appointment-day + .appointment-row:last-child {
+  border-radius: 10px;
+}
+.appointment-hours {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.appointment-row .appointment-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+.appointment-row .badge {
+  justify-self: start;
+}
+.appointment-row .appointment-access {
+  justify-self: end;
+  display: flex;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .appointment-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+  .appointment-row .appointment-person,
+  .appointment-row .appointment-advisor {
+    grid-column: 1 / -1;
+  }
+  .appointment-row .appointment-access {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+/* Intégrations : un état principal, puis les faits */
+.connector-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.connector-facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.connector-facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.connector-facts .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.connector-facts .dot.on {
+  background: var(--ok);
+}
+.connector-facts .dot.off {
+  background: var(--warn);
 }

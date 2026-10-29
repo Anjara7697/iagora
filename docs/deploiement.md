@@ -5,8 +5,11 @@ service de migration, PostgreSQL (pgvector) et MongoDB avec mot de passe.
 L'API et le web sont publiés **uniquement sur `127.0.0.1`** (`IAGORA_API_PORT`, `IAGORA_WEB_PORT`) ; le
 reverse proxy de l'hôte les joint. Les bases ne sont jamais publiées.
 
-> Ce guide est écrit **avant** la mise en place sur le serveur. Les points marqués **À CONFIRMER**
-> dépendent de la configuration du reverse proxy existant et sont à compléter ensemble.
+> **État (29 octobre 2026)** : l'environnement `dev` est en ligne sur `dev.iagora.neosolve.info` (VPS,
+> Caddy installé sur l'hôte) et se met à jour automatiquement après chaque CI verte sur `dev`. Les images
+> se construisent, les migrations passent et l'API est joignable en HTTPS derrière Caddy. **Pas encore
+> fait** : l'environnement de production, la planification des sauvegardes hors serveur et la recette
+> des connecteurs réels (Google Agenda, Zoom, boîte définitive).
 
 ## 1. Deux environnements
 
@@ -52,8 +55,10 @@ Premier démarrage :
 deploy/deploy.sh dev          # branche à déployer (dev pour l'environnement d'essai)
 ```
 
-Le script : récupère le code (fast-forward uniquement), sauvegarde, construit les images, applique les
-migrations (service `migrate`), démarre, puis attend `/api/v1/health/ready`.
+Le script : récupère le code (fast-forward uniquement), sauvegarde (sauf à la première installation,
+quand les bases n'existent pas encore), construit les images, applique les migrations (service
+`migrate`), démarre, puis attend `/api/v1/health/ready`. Sans droits sur `/var/backups`, renseigner
+`BACKUP_DIR` dans `deploy/.env` (dossier de l'utilisateur de déploiement).
 
 ## 4. Reverse proxy (Caddy)
 
@@ -90,7 +95,18 @@ lance `deploy/deploy.sh dev`. Environnement GitHub `dev` avec les secrets :
 | `DEPLOY_SSH_KEY` | clé privée dédiée (ed25519), créée uniquement pour IAGORA |
 | `DEPLOY_KNOWN_HOSTS` | sortie de `ssh-keyscan -t ed25519 <hôte>` (vérifiée une fois à la main) |
 
-La clé publique correspondante est ajoutée à `~/.ssh/authorized_keys` de l'utilisateur de déploiement.
+La clé publique correspondante est ajoutée à `~/.ssh/authorized_keys` de l'utilisateur de déploiement,
+**restreinte à une seule commande** : même si la clé privée fuitait, elle ne servirait qu'à lancer le
+déploiement de `dev` (le client ne peut rien exécuter d'autre) :
+
+```text
+command="cd /srv/iagora-dev && deploy/deploy.sh dev",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… iagora-deploy-gha
+```
+
+`DEPLOY_KNOWN_HOSTS` se construit sur le serveur à partir de sa propre clé d'hôte, sans scan réseau :
+`echo "<IP> $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"`. Après avoir copié la clé privée dans
+le secret GitHub, la supprimer du serveur (`shred -u`). Le workflow ne gère que le port SSH 22. Pour
+déclencher un déploiement à la main : Actions → « Deploy dev » → Run workflow.
 Le déploiement de production restera manuel.
 
 ## 5. Première mise en service
@@ -152,5 +168,8 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 - `EMAIL_ENABLED` et `EMAIL_SEND_ENABLED` restent à `false` jusqu'à la recette sur boîte de test
   (`docs/email.md`), puis ouverture progressive avec `EMAIL_SANDBOX_RECIPIENTS`.
 - La CI valide la construction des deux images et la syntaxe du compose ; elle ne déploie rien.
-- Non vérifié : construction des images sur le serveur, comportement derrière le reverse proxy réel,
-  quotas Gemini en usage réel.
+- Vérifié sur `dev` : construction des images, migrations, démarrage, HTTPS derrière Caddy, déploiement
+  automatique par GitHub Actions. Non vérifié : quotas Gemini en usage réel, restauration d'une sauvegarde
+  (à tester avant des données réelles), environnement de production.
+- Un déploiement reconstruit les images puis redémarre l'API pendant environ une minute (relève mail et
+  relances reprennent ensuite sans perte) : éviter de fusionner pendant une démonstration.

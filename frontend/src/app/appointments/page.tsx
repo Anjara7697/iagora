@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { DemoBadge, Loading, Pager } from "@/components/ui";
 import { qs } from "@/lib/api";
@@ -54,8 +54,12 @@ function Appointments() {
     const query = next.toString();
     window.history.pushState(null, "", `/appointments${query ? `?${query}` : ""}`);
   }
-  const date = (value: string) => new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium", timeStyle: "short", timeZone: timeZone ?? "UTC",
+  const tz = timeZone ?? "UTC";
+  const hour = (value: string) => new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit", minute: "2-digit", timeZone: tz,
+  }).format(new Date(value));
+  const day = (value: string) => new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz,
   }).format(new Date(value));
 
   return (
@@ -119,25 +123,61 @@ function Appointments() {
         <>
           {list.data.items.length ? (
             <ul className="appointment-list" aria-label="Rendez-vous enregistrés">
-              {list.data.items.map(appointment => {
+              {list.data.items.map((appointment, index, items) => {
                 const url = meetingLink(appointment.meeting_url);
+                const dayLabel = day(appointment.start_at);
+                const newDay =
+                  index === 0 || day(items[index - 1].start_at) !== dayLabel;
                 return (
-                  <li key={appointment.id} className="appointment-card">
-                    <div className="appointment-person">
-                      <h2><Link href={`/prospects/${appointment.prospect.id}`}>{fullName(appointment.prospect)}</Link></h2>
-                      <DemoBadge email={appointment.prospect.email} />
-                      <p className="muted">Conseiller : {appointment.advisor_name ?? (appointment.advisor_id ? `Conseiller #${appointment.advisor_id}` : "Non affecté")}</p>
-                    </div>
-                    <dl className="appointment-dates">
-                      <div><dt>Début</dt><dd><time dateTime={appointment.start_at}>{date(appointment.start_at)}</time></dd></div>
-                      <div><dt>Fin</dt><dd><time dateTime={appointment.end_at}>{date(appointment.end_at)}</time></dd></div>
-                    </dl>
-                    <div className="appointment-access">
-                      <span className={`badge ${TONES[appointment.status] ?? ""}`}>{label(APPOINTMENT_STATUS, appointment.status)}</span>
-                      {url ? <a className="button-link" href={url} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir la visio de ${fullName(appointment.prospect)} dans un nouvel onglet`}>Ouvrir la visio</a>
-                        : <span className="muted">Lien visio non disponible</span>}
-                    </div>
-                  </li>
+                  <Fragment key={appointment.id}>
+                    {newDay && <li className="appointment-day">{dayLabel}</li>}
+                    <li className="appointment-row">
+                      <span className="appointment-hours">
+                        <time dateTime={appointment.start_at}>
+                          {hour(appointment.start_at)}
+                        </time>
+                        {" – "}
+                        <time dateTime={appointment.end_at}>
+                          {hour(appointment.end_at)}
+                        </time>
+                      </span>
+                      <div className="appointment-person">
+                        <Link href={`/prospects/${appointment.prospect.id}`}>
+                          {fullName(appointment.prospect)}
+                        </Link>
+                        <DemoBadge email={appointment.prospect.email} />
+                      </div>
+                      <span className="muted appointment-advisor">
+                        Conseiller :{" "}
+                        {appointment.advisor_name ??
+                          (appointment.advisor_id
+                            ? `Conseiller #${appointment.advisor_id}`
+                            : "Non affecté")}
+                      </span>
+                      <span
+                        className={`badge ${TONES[appointment.status] ?? ""}`}
+                      >
+                        {label(APPOINTMENT_STATUS, appointment.status)}
+                      </span>
+                      <span className="appointment-access">
+                        {url ? (
+                          <a
+                            className="button-link"
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Ouvrir la visio de ${fullName(appointment.prospect)} dans un nouvel onglet`}
+                          >
+                            Ouvrir la visio
+                          </a>
+                        ) : (
+                          <span className="muted">
+                            Lien visio non disponible
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  </Fragment>
                 );
               })}
             </ul>

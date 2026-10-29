@@ -72,6 +72,7 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 | [acces-et-comptes.md](acces-et-comptes.md) | Comptes, clés et secrets : où ils sont, à qui ils appartiennent, comment les remplacer |
 | [limites-et-dette.md](limites-et-dette.md) | Limites connues et dette technique, regroupées en un seul endroit |
 | [conformite-rgpd.md](conformite-rgpd.md) | Données traitées, mesures en place, points à régler |
+| [effacement-rgpd.md](effacement-rgpd.md) | Effacer un prospect, liste de suppression, purge par durée de conservation |
 
 ## Écrire dans ce dossier
 

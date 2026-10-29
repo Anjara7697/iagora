@@ -180,6 +180,9 @@ test("l'administrateur ajoute un document", async ({ page }) => {
 test("la suppression demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
+  // La suppression se fait depuis le détail du document.
+  await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "Supprimer" }).click();
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);

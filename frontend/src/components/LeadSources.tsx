@@ -9,7 +9,7 @@ import { CampaignSourcePicker } from "./CampaignSourcePicker";
 import { Feedback, Field, SecretOnce } from "./forms";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */
-export function LeadSources() {
+export function LeadSources({ embedded = false }: { embedded?: boolean }) {
   const [tokens, setTokens] = useState<ServiceToken[]>([]);
   const [name, setName] = useState("");
   const [dest, setDest] = useState<{
@@ -65,17 +65,24 @@ export function LeadSources() {
 
   const active = tokens.filter((t) => !t.revoked_at);
   return (
-    <section className="card integ-card" aria-label="Formulaire et outils">
+    <section
+      className={embedded ? undefined : "card integ-card"}
+      aria-label="Formulaire et outils"
+    >
       <div className="integ-main settings-stack">
-        <div className="section-head">
-          <h2>Formulaire du site et outils (n8n…)</h2>
-          <span className={`badge integ-${active.length ? "ok" : "off"}`}>
-            {active.length
-              ? `${active.length} jeton(s) actif(s)`
-              : "Aucun jeton"}
-          </span>
-        </div>
-        <span className="eyebrow">Source de leads</span>
+        {!embedded && (
+          <>
+            <div className="section-head">
+              <h2>Formulaire du site et outils (n8n…)</h2>
+              <span className={`badge integ-${active.length ? "ok" : "off"}`}>
+                {active.length
+                  ? `${active.length} jeton(s) actif(s)`
+                  : "Aucun jeton"}
+              </span>
+            </div>
+            <span className="eyebrow">Source de leads</span>
+          </>
+        )}
         <p className="section-intro">
           Un jeton permet à un formulaire ou à un outil d’envoyer des prospects
           vers la campagne choisie, sans compte utilisateur. Il ne donne accès à

@@ -20,7 +20,8 @@ const EMPTY_SECRETS: Secrets = {
   verify_token: "",
 };
 
-export function MetaLeadSettings() {
+/** `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
+export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
   const [cfg, setCfg] = useState<MetaSettings | null>(null);
   const [secrets, setSecrets] = useState<Secrets>(EMPTY_SECRETS);
   const [formId, setFormId] = useState("");
@@ -47,7 +48,10 @@ export function MetaLeadSettings() {
 
   if (!cfg)
     return (
-      <section className="card integ-card" aria-label="Meta Lead Ads">
+      <section
+        className={embedded ? undefined : "card integ-card"}
+        aria-label="Meta Lead Ads"
+      >
         {error ? <p className="error">{error}</p> : "Chargement…"}
       </section>
     );
@@ -145,13 +149,20 @@ export function MetaLeadSettings() {
   const webhookUrl = `${API_URL.replace(/\/$/, "")}/webhooks/meta`;
 
   return (
-    <section className="card integ-card" aria-label="Meta Lead Ads">
+    <section
+      className={embedded ? undefined : "card integ-card"}
+      aria-label="Meta Lead Ads"
+    >
       <div className="integ-main settings-stack">
-        <div className="section-head">
-          <h2>Meta Lead Ads</h2>
-          <span className={`badge integ-${tone}`}>{status}</span>
-        </div>
-        <span className="eyebrow">Source de leads · Facebook et Instagram</span>
+        {!embedded && (
+          <div className="section-head">
+            <h2>Meta Lead Ads</h2>
+            <span className={`badge integ-${tone}`}>{status}</span>
+          </div>
+        )}
+        {!embedded && (
+          <span className="eyebrow">Source de leads · Facebook et Instagram</span>
+        )}
         <p className="section-intro">
           Reçoit les formulaires instantanés Meta, évite les doublons et range
           chaque prospect dans la campagne choisie. Les secrets sont chiffrés et

@@ -1,289 +1,294 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CalendarSettings } from "@/components/CalendarSettings";
-import { EmailSettings } from "@/components/EmailSettings";
-import { Feedback, Stats } from "@/components/forms";
+import { ConnectorIcon } from "@/components/ConnectorIcons";
+import { Drawer } from "@/components/Drawer";
+import { EmailConnector } from "@/components/EmailConnector";
 import { LeadSources } from "@/components/LeadSources";
+import { MetaLeadSettings } from "@/components/MetaLeadSettings";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Loading } from "@/components/ui";
-import { MetaLeadSettings } from "@/components/MetaLeadSettings";
-import { api, ApiError } from "@/lib/api";
-import { DELIVERY, formatDate, label } from "@/lib/labels";
+import {
+  CATEGORIES,
+  CONNECTORS,
+  calendarView,
+  emailView,
+  leadsView,
+  metaView,
+  zoomView,
+  type ConnectorDef,
+  type ConnectorId,
+  type ConnectorView,
+} from "@/lib/connectors";
 import { useApi } from "@/lib/useApi";
-import type { EmailCheck, EmailStatus } from "@/lib/types";
+import type {
+  CalendarSettings as CalendarConfig,
+  EmailStatus,
+  MetaSettings,
+  ServiceToken,
+  ZoomSettings as ZoomConfig,
+} from "@/lib/types";
 
-type Tone = "ok" | "warn" | "off";
+type Filter = "all" | "configured" | "todo" | "soon";
+const FILTERS: [Filter, string][] = [
+  ["all", "Tous"],
+  ["configured", "Configurés"],
+  ["todo", "À configurer"],
+  ["soon", "Bientôt"],
+];
 
-function Status({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return <span className={`badge integ-${tone}`}>{children}</span>;
+function Pill({ view }: { view: ConnectorView }) {
+  return <span className={`badge integ-${view.tone}`}>{view.label}</span>;
 }
 
-function Card({
-  title,
-  status,
-  kind,
-  children,
-  actions,
-  region,
-}: {
-  title: string;
-  status: React.ReactNode;
-  kind: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
-  region: string;
-}) {
-  return (
-    <section className="card integ-card" aria-label={region}>
-      <div className="integ-main">
-        <header className="integration-card-head">
-          <div>
-            <div className="row">
-              <h2>{title}</h2>
-              {status}
-            </div>
-            <span className="eyebrow">{kind}</span>
-          </div>
-          {actions && <div className="integ-actions">{actions}</div>}
-        </header>
-        {children}
-      </div>
-    </section>
-  );
-}
+const SOON_TEXT: Partial<Record<ConnectorId, string[]>> = {
+  linkedin: [
+    "Aucune synchronisation : les leads LinkedIn passent par le formulaire externe.",
+    "Dépend des accès à l’API LinkedIn, non obtenus à ce jour.",
+  ],
+};
 
-const SOON = <Status tone="off">À venir</Status>;
-
-export default function IntegrationsPage() {
+function Catalog() {
   const user = useCurrentUser();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const isAdmin = user?.role === "ADMIN";
   // keepPrevious : recharger l'état après un enregistrement ne démonte pas le formulaire.
-  const status = useApi<EmailStatus>(
-    user?.role === "ADMIN" ? "/integrations/email" : null,
+  const email = useApi<EmailStatus>(isAdmin ? "/integrations/email" : null, {
+    keepPrevious: true,
+  });
+  const calendar = useApi<CalendarConfig>(
+    isAdmin ? "/integrations/calendar" : null,
     { keepPrevious: true },
   );
-  const [check, setCheck] = useState<EmailCheck | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const zoom = useApi<ZoomConfig>(isAdmin ? "/integrations/zoom" : null, {
+    keepPrevious: true,
+  });
+  const tokens = useApi<ServiceToken[]>(
+    isAdmin ? "/integrations/tokens" : null,
+    { keepPrevious: true },
+  );
+  const meta = useApi<MetaSettings>(isAdmin ? "/integrations/meta" : null, {
+    keepPrevious: true,
+  });
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
-  if (user && user.role !== "ADMIN")
+  if (user && !isAdmin)
     return (
       <p className="card warnbox" role="alert">
         Cette page est réservée aux administrateurs.
       </p>
     );
 
-  async function run(action: "check" | "sync") {
-    if (
-      action === "sync" &&
-      status.data?.send_enabled &&
-      !window.confirm(
-        "L’envoi est activé : ce passage peut envoyer de vrais emails aux prospects (hors bac à sable). Continuer ?",
-      )
-    )
-      return;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    if (action === "check") setCheck(null);
-    try {
-      if (action === "check") {
-        setCheck(
-          await api<EmailCheck>("/integrations/email/check", {
-            method: "POST",
-          }),
-        );
-      } else {
-        const r = await api<{ report: Record<string, number> }>(
-          "/integrations/email/sync",
-          {
-            method: "POST",
-          },
-        );
-        const n = (key: string) => r.report[key] ?? 0;
-        setNotice(
-          `Passage terminé : ${n("received")} reçu(s), ${n("sent")} envoyé(s), ${n("blocked")} bloqué(s), ${n("errors")} erreur(s).`,
-        );
-        status.reload();
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Échec");
-    } finally {
-      setBusy(false);
-    }
+  const views: Record<ConnectorId, ConnectorView> = {
+    email: emailView(email.data ?? undefined),
+    calendar: calendarView(calendar.data ?? undefined),
+    zoom: zoomView(zoom.data ?? undefined),
+    leads: leadsView(tokens.data ?? undefined),
+    csv: { tone: "ok", label: "Disponible", configured: true },
+    meta: metaView(meta.data ?? undefined),
+    linkedin: { tone: "off", label: "Bientôt", configured: false },
+  };
+
+  const openId = params.get("c") as ConnectorId | null;
+  const open = CONNECTORS.find((c) => c.id === openId && !c.href) ?? null;
+
+  function openConnector(id: ConnectorId) {
+    router.replace(`${pathname}?c=${id}`, { scroll: false });
+  }
+  function closeConnector() {
+    router.replace(pathname, { scroll: false });
+    // L'état des cartes peut avoir changé pendant la configuration.
+    email.reload();
+    calendar.reload();
+    zoom.reload();
+    tokens.reload();
+    meta.reload();
   }
 
-  const s = status.data;
-  const checkPassed = check?.imap === "ok" && check?.smtp === "ok";
-  const emailTone: Tone = !s?.configured
-    ? "off"
-    : !s.last_error && checkPassed
-      ? "ok"
-      : "warn";
-  const emailLabel = !s?.configured
-    ? "Non configuré"
-    : s.last_error
-      ? "Erreur signalée"
-      : check
-        ? checkPassed
-          ? "Test réussi"
-          : "Test échoué"
-        : "À tester";
+  const text = query.trim().toLowerCase();
+  const visible = (c: ConnectorDef) => {
+    const v = views[c.id];
+    if (filter === "soon" && !c.soon) return false;
+    if (filter === "configured" && !(v.configured && !c.soon)) return false;
+    if (filter === "todo" && !(!v.configured && !c.soon)) return false;
+    return !text || `${c.name} ${c.description}`.toLowerCase().includes(text);
+  };
+  const shown = CONNECTORS.filter(visible);
+  const loading = isAdmin && (email.loading || calendar.loading) && !email.data;
+  const failed =
+    email.error || calendar.error || zoom.error || tokens.error || meta.error;
+
   return (
-    <div className="integration-workspace">
+    <div className="connector-page">
       <div className="page-heading">
         <div>
           <span className="eyebrow">Administration · Intégrations</span>
           <h1>Intégrations</h1>
           <p className="muted">
-            Reliez votre messagerie, les agendas et la visioconférence aux
-            échanges avec les prospects. Les identifiants sont chiffrés sur le
-            serveur et ne sont jamais réaffichés.
+            Reliez votre messagerie, les agendas et les sources de prospects.
+            Les identifiants sont chiffrés sur le serveur et ne sont jamais
+            réaffichés.
           </p>
         </div>
       </div>
+
+      <div className="connector-toolbar">
+        <input
+          type="search"
+          className="connector-search"
+          placeholder="Rechercher un connecteur"
+          aria-label="Rechercher un connecteur"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div
+          className="segmented"
+          role="group"
+          aria-label="Filtrer les connecteurs"
+        >
+          {FILTERS.map(([id, text]) => (
+            <button
+              key={id}
+              aria-pressed={filter === id}
+              onClick={() => setFilter(id)}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Loading
-        loading={status.loading}
-        error={status.error}
-        onRetry={status.reload}
+        loading={loading}
+        error={failed}
+        onRetry={() => {
+          email.reload();
+          calendar.reload();
+          zoom.reload();
+          tokens.reload();
+          meta.reload();
+        }}
       />
 
-      {s && (
-        <Card
-          region="Email"
-          title="Messagerie"
-          kind="Canal email"
-          status={<Status tone={emailTone}>{emailLabel}</Status>}
-          actions={
-            <>
-              <button
-                disabled={busy || !s.configured}
-                onClick={() => run("check")}
-              >
-                Tester la boîte enregistrée
-              </button>
-              <button
-                disabled={busy || !s.configured}
-                onClick={() => run("sync")}
-              >
-                Lancer un passage maintenant
-              </button>
-            </>
-          }
-        >
-          <p className="section-intro integration-saved-note">
-            Les actions ci-dessus utilisent la boîte enregistrée. Pour essayer
-            des modifications avant de les appliquer, utilisez « Tester ces
-            paramètres » dans le formulaire.
-          </p>
-          {!s.configured && (
-            <p className="warnbox" role="alert">
-              Boîte non configurée : renseignez-la ci-dessous (adresse et mot de
-              passe, les serveurs sont détectés automatiquement).
-            </p>
-          )}
-          <div className="row">
-            <Status tone={s.configured ? "ok" : "off"}>
-              {s.configured ? "Identifiants présents" : "Identifiants absents"}
-            </Status>
-            <Status tone={s.enabled ? "ok" : "warn"}>
-              {s.enabled ? "Réception active" : "Réception désactivée"}
-            </Status>
-            <Status tone={s.send_enabled ? "ok" : "warn"}>
-              {s.send_enabled ? "Envoi activé" : "Envoi désactivé"}
-            </Status>
-          </div>
-          <div className="field-row">
-            <span className="field-label">Réception</span>
-            <span className="field-control">
-              <span>
-                Relève IMAP <code>{s.imap_host}</code> · dernière relève{" "}
-                {formatDate(s.last_run_at)}
-              </span>
-            </span>
-          </div>
-          <div className="field-row">
-            <span className="field-label">Envoi</span>
-            <span className="field-control">
-              <span>
-                SMTP <code>{s.smtp_host}</code> · boîte {s.sender ?? "-"}
-              </span>
-            </span>
-          </div>
-          <div className="field-row">
-            <span className="field-label">Bac à sable</span>
-            <span className="field-control">
-              <span>
-                {s.sandbox_recipients.length > 0
-                  ? `L’agent n’écrit qu’à ${s.sandbox_recipients.join(", ")}.`
-                  : "Aucun : tout destinataire est autorisé si l’envoi est activé."}
-              </span>
-              <span className="field-note">
-                Réception et envoi, fil de conversation, détection de
-                désinscription. Les nouveaux messages arrivent à chaque relève.
-              </span>
-            </span>
-          </div>
-          {s.last_error && (
-            <p className="error" role="alert">
-              Dernière erreur : {s.last_error}
-            </p>
-          )}
-          <div className="field-row">
-            <span className="field-label">Messages email par état</span>
-            <span className="field-control">
-              {Object.keys(s.outbox).length === 0 ? (
-                <span className="status-text">Aucun message.</span>
-              ) : (
-                <Stats
-                  label="Messages email par état"
-                  items={Object.entries(s.outbox).map(([k, n]) => ({
-                    value: n,
-                    caption: label(DELIVERY, k),
-                  }))}
-                />
-              )}
-            </span>
-          </div>
-          {check && (
-            <ul className="plain" aria-label="Résultat du test">
-              <li>
-                IMAP : {check.imap === "ok" ? "✓ connecté" : `✗ ${check.imap}`}
-              </li>
-              <li>
-                SMTP : {check.smtp === "ok" ? "✓ connecté" : `✗ ${check.smtp}`}
-              </li>
-            </ul>
-          )}
-          <Feedback notice={notice} error={error} />
-          <EmailSettings
-            disabled={busy}
-            onBusyChange={setBusy}
-            onSaved={() => {
-              setCheck(null);
-              status.reload();
-            }}
-          />
-        </Card>
+      {shown.length === 0 && !loading && (
+        <p className="muted" role="status">
+          Aucun connecteur ne correspond à cette recherche.
+        </p>
       )}
 
-      <CalendarSettings />
-      <ZoomSettings />
-      <MetaLeadSettings />
-      <Card
-        region="LinkedIn"
-        title="LinkedIn Lead Gen"
-        kind="Source de leads"
-        status={SOON}
+      {CATEGORIES.map((category) => {
+        const items = shown.filter((c) => c.category === category.id);
+        if (items.length === 0) return null;
+        return (
+          <section
+            key={category.id}
+            className="connector-group"
+            aria-label={category.label}
+          >
+            <h2 className="section-label">{category.label}</h2>
+            <div className="connector-grid">
+              {items.map((c) => {
+                const v = views[c.id];
+                const cta = c.soon
+                  ? "En savoir plus"
+                  : c.href
+                    ? "Ouvrir"
+                    : v.configured
+                      ? "Gérer"
+                      : "Configurer";
+                return (
+                  <article
+                    key={c.id}
+                    className={`connector-card${c.soon ? " is-soon" : ""}`}
+                    aria-label={c.name}
+                  >
+                    <div className="connector-head">
+                      <span className="connector-icon" aria-hidden="true">
+                        <ConnectorIcon name={c.icon} />
+                      </span>
+                      <h3 className="connector-name">{c.name}</h3>
+                      <Pill view={v} />
+                    </div>
+                    <p className="connector-desc">{c.description}</p>
+                    <div className="connector-foot">
+                      <span className="connector-meta">{v.meta ?? " "}</span>
+                      {c.href ? (
+                        <Link
+                          href={c.href}
+                          className="button-link connector-open"
+                          aria-label={`${cta} ${c.name}`}
+                        >
+                          {cta}
+                        </Link>
+                      ) : (
+                        <button
+                          className={`connector-open${
+                            !c.soon && !v.configured ? " primary" : ""
+                          }`}
+                          aria-label={`${cta} ${c.name}`}
+                          onClick={() => openConnector(c.id)}
+                        >
+                          {cta}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
+      <Drawer
+        open={open !== null}
+        onClose={closeConnector}
+        title={open?.name ?? ""}
+        eyebrow={
+          open
+            ? CATEGORIES.find((c) => c.id === open.category)?.label
+            : undefined
+        }
+        icon={open ? <ConnectorIcon name={open.icon} /> : undefined}
+        aside={open ? <Pill view={views[open.id]} /> : undefined}
       >
-        <p>
-          Aucune synchronisation : les leads LinkedIn passent par le formulaire
-          externe.
-        </p>
-      </Card>
-      <LeadSources />
+        {open?.id === "email" && email.data && (
+          <EmailConnector status={email.data} onReload={email.reload} />
+        )}
+        {open?.id === "email" && !email.data && (
+          <Loading
+            loading={email.loading}
+            error={email.error}
+            onRetry={email.reload}
+          />
+        )}
+        {open?.id === "calendar" && <CalendarSettings embedded />}
+        {open?.id === "zoom" && <ZoomSettings embedded />}
+        {open?.id === "leads" && <LeadSources embedded />}
+        {open?.id === "meta" && <MetaLeadSettings embedded />}
+        {open?.soon && (
+          <div className="settings-stack">
+            {SOON_TEXT[open.id]?.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        )}
+      </Drawer>
     </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <Suspense>
+      <Catalog />
+    </Suspense>
   );
 }

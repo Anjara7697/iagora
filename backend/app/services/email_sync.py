@@ -36,6 +36,7 @@ from app.services import (
     agent_settings,
     application_intake,
     conversations,
+    email_format,
     enrollment_intake,
     follow_ups,
 )
@@ -301,11 +302,6 @@ def _thread_headers(
     return subject[:300], in_reply_to, references[-20:]
 
 
-def _with_footer(text: str, settings: Settings) -> str:
-    footer = settings.email_footer.strip()
-    return f"{text.rstrip()}\n\n-- \n{footer}" if footer else text
-
-
 @dataclass
 class _SendAttempt:
     smtp_started: bool = False
@@ -411,11 +407,18 @@ async def _deliver_claimed(
     attempts = int((message.get("metadata") or {}).get("delivery_info", {}).get("attempts", 0)) + 1
     try:
         attempt.smtp_started = True
+        # La mention IA accompagne tout message rédigé par l'agent, validé ou non par un conseiller.
+        rendered = email_format.render(
+            message["content"],
+            settings,
+            ai_generated=message["role"] == SenderType.AGENT.value,
+        )
         message_id = await client.send(
             OutboundEmail(
                 to_address=recipient,
                 subject=subject,
-                text=_with_footer(message["content"], settings),
+                text=rendered.text,
+                html=rendered.html,
                 in_reply_to=in_reply_to,
                 references=references,
             )

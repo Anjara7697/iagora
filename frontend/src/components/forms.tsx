@@ -17,6 +17,7 @@ export function Section({
   aside,
   children,
   region,
+  hidden,
 }: {
   label?: string;
   title?: string;
@@ -24,9 +25,11 @@ export function Section({
   aside?: ReactNode;
   children: ReactNode;
   region: string;
+  /** Masquée mais conservée dans la page : une saisie en cours n'est pas perdue. */
+  hidden?: boolean;
 }) {
   return (
-    <section className="section-card" aria-label={region}>
+    <section className="section-card" aria-label={region} hidden={hidden}>
       {label && <span className="section-label">{label}</span>}
       {(title || aside) && (
         <div className="section-head">
