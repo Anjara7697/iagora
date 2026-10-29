@@ -57,6 +57,11 @@ Le challenge `GET` exige le bon jeton de vérification. Chaque notification `POS
 `X-Hub-Signature-256` valide. IAGORA demande ensuite le détail du lead à l'API Graph officielle. Les
 identifiants sont chiffrés et ne sont jamais renvoyés par l'API IAGORA.
 
+Le jeton de la page part dans l'en-tête `Authorization: Bearer`, jamais dans l'URL : `httpx` journalise
+l'URL de chaque requête, un jeton en paramètre se retrouverait dans les journaux (S-04). Un identifiant de
+lead qui n'est pas un simple identifiant (lettres, chiffres, tiret) est ignoré au lieu d'être inséré dans
+une URL.
+
 Le `leadgen_id` réserve l'événement avant traitement : un rejeu ne crée pas de doublon et un échec peut
 être repris trois fois. Le formulaire fixe la campagne, la source et éventuellement le programme.
 L'identifiant Meta, le formulaire, la publicité, la campagne publicitaire et les réponses personnalisées

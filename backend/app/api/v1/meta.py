@@ -22,6 +22,7 @@ from app.api.dependencies import (
     SessionFactoryDep,
     SettingsDep,
 )
+from app.integrations.meta.client import SAFE_ID
 from app.schemas.meta import (
     MetaConfigRead,
     MetaConfigWrite,
@@ -170,6 +171,9 @@ async def receive_webhook(
             form_id = value.get("form_id")
             if change.get("field") != "leadgen" or not leadgen_id or not form_id:
                 ignored += 1
+                continue
+            if not SAFE_ID.match(str(leadgen_id)):
+                ignored += 1  # un identifiant inattendu n'est ni enregistré ni utilisé dans une URL
                 continue
             if await meta_leads.enqueue(db, str(leadgen_id), str(form_id), page_id):
                 accepted += 1

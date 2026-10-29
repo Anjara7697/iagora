@@ -1,8 +1,12 @@
 import hashlib
 import hmac
 import json
+import logging
 from unittest.mock import AsyncMock
 
+import httpx
+from app.core.logging import configure_logging
+from app.integrations.meta import MetaLeadError, fetch_lead
 from app.models.enums import UserRole
 from app.services import meta_leads
 
@@ -249,3 +253,67 @@ async def test_meta_simulator_creates_only_demo_prospects_and_is_idempotent(clie
 async def test_meta_configuration_is_admin_only(make_client):
     advisor = await make_client(UserRole.ADVISOR)
     assert (await advisor.get(f"{API}/integrations/meta")).status_code == 403
+
+
+async def test_page_token_travels_in_a_header_and_never_in_logs(caplog):
+    """httpx journalise l'URL de chaque requête en INFO : le jeton n'y figure pas (S-04)."""
+    seen: dict[str, httpx.Request] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["request"] = request
+        return httpx.Response(200, json={"id": "lead-1", "form_id": "form-123"})
+
+    configure_logging("INFO")
+    caplog.set_level(logging.INFO)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        await fetch_lead("lead-1", "v24.0", PAGE_TOKEN, http=http)
+    request = seen["request"]
+    assert request.headers["Authorization"] == f"Bearer {PAGE_TOKEN}"
+    assert PAGE_TOKEN not in str(request.url)
+    assert PAGE_TOKEN not in caplog.text
+
+
+async def test_unsafe_identifiers_are_never_put_in_a_url():
+    for leadgen_id, version in (("../me", "v24.0"), ("lead-1/x?y=1", "v24.0"), ("lead-1", "v24")):
+        try:
+            await fetch_lead(leadgen_id, version, PAGE_TOKEN)
+        except MetaLeadError:
+            continue
+        raise AssertionError(f"{leadgen_id!r} {version!r} aurait dû être refusé")
+
+
+async def test_webhook_ignores_a_lead_identifier_that_is_not_a_plain_id(
+    client, make_client, monkeypatch
+):
+    await _configure(client)
+    fetch = AsyncMock(return_value=_lead())
+    monkeypatch.setattr(meta_leads, "fetch_lead", fetch)
+    anonymous = await make_client(None)
+    body, headers = _signed(_event(leadgen_id="../me"))
+    response = await anonymous.post(f"{API}/webhooks/meta", content=body, headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"accepted": 0, "duplicates": 0, "ignored": 1}
+    fetch.assert_not_awaited()
+
+
+async def test_erasing_a_meta_prospect_unlinks_the_event_but_keeps_the_replay_marker(
+    client, make_client, monkeypatch, mongo_db
+):
+    await _configure(client)
+    monkeypatch.setattr(meta_leads, "fetch_lead", AsyncMock(return_value=_lead()))
+    anonymous = await make_client(None)
+    body, headers = _signed(_event())
+    await anonymous.post(f"{API}/webhooks/meta", content=body, headers=headers)
+    prospect = (await client.get(f"{API}/prospects")).json()["items"][0]
+    erased = await client.post(
+        f"{API}/prospects/{prospect['id']}/erase",
+        json={"reason": "request", "confirm": "ines@example.com"},
+    )
+    assert erased.status_code == 200, erased.text
+    stored = await mongo_db["meta_lead_events"].find_one({"_id": "lead-1"})
+    assert stored is not None and stored["status"] == "processed"
+    assert "prospect_id" not in stored and "interaction_id" not in stored
+    # Meta rejoue la notification : rien n'est recréé.
+    replay = await anonymous.post(f"{API}/webhooks/meta", content=body, headers=headers)
+    assert replay.json() == {"accepted": 0, "duplicates": 1, "ignored": 0}
+    assert (await client.get(f"{API}/prospects")).json()["total"] == 0
