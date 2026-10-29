@@ -26,37 +26,56 @@ Elles viennent de `AGENTS.md` et ne se discutent pas :
 
 ## 2. Système visuel
 
-Tout est dans `frontend/src/app/globals.css`. Le bloc `:root` en tête de fichier
-est **la seule source des couleurs** : n’ajoutez pas de code hexadécimal dans
-les règles, utilisez une variable (ou ajoutez-en une dans `:root`).
+Depuis la branche `feat/ui-heroui-v3`, la console repose sur **HeroUI v3** (React Aria,
+Tailwind CSS v4) avec le thème IAGORA, décrit dans le design system « IAGORA »
+(artefact Claude, `tokens.json`). Deux feuilles de style, importées dans cet ordre par
+`app/layout.tsx` :
 
-| Rôle | Variables |
-|---|---|
-| Texte | `--fg` (encre), `--ink-2` (texte secondaire), `--muted` (légendes), `--faint` |
-| Fonds | `--bg` (page), `--card` (cartes), `--surface-1/2/3` (du plus clair au plus foncé) |
-| Bordures | `--line` (fine), `--line-strong` (champs, boutons) |
-| Action | `--accent`, `--accent-hover`, `--accent-bg`, `--accent-line` |
-| Identité | `--violet`, `--violet-bg`, `--violet-soft`, `--violet-line`, `--violet-strong` (avatar, recommandations de l’agent) |
-| États | `--ok*`, `--warn*`, `--err*` (chaque famille : texte, `-bg`, `-line`) |
-| Intérêt | `--level-cold*`, `--level-warm*`, `--level-hot*`, `--level-very-hot*`, et `--level-*-bar` pour les barres |
+- `frontend/src/app/heroui.css` : Tailwind (thème et utilitaires, **sans** preflight
+  global), HeroUI, puis le **thème IAGORA** : `:root` y déclare les variables lues par
+  HeroUI (`--background`, `--surface`, `--accent`, `--agent`, `--level-cold`…). C'est la
+  source des couleurs, rayons et ombres pour tout nouveau code.
+- `frontend/src/app/globals.css` : les écrans historiques. Tout le fichier est dans
+  `@scope (html) to (…)` : ses règles ne touchent aucun composant HeroUI (classes
+  `.button`, `.chip`, `.card`… et éléments React Aria). Son `:root` garde les anciens
+  noms (`--fg`, `--card`, `--line`…), recalés sur la nouvelle palette.
+
+Ne pas ajouter de code hexadécimal dans les règles : utiliser une variable du thème.
+Les classes historiques qui portaient un nom de composant HeroUI ont été préfixées :
+`.ui-card`, `.ui-badge`, `.ui-link`, `.ui-skeleton`, `.ui-empty-state`, `.ui-toolbar`.
+
+| Rôle | Thème (nouveau code) | Anciens noms (globals.css) |
+|---|---|---|
+| Texte | `--foreground`, `--muted` | `--fg`, `--ink-2`, `--muted`, `--faint` |
+| Fonds | `--background`, `--surface`, `--surface-secondary/tertiary`, `--overlay` | `--bg`, `--card`, `--surface-1/2/3` |
+| Bordures | `--border`, `--separator`, `--field-border` (3:1) | `--line`, `--line-strong` |
+| Action | `--accent`, `--accent-soft`, `--accent-soft-foreground` | `--accent*` |
+| Agent | `--agent`, `--agent-soft`, `--agent-soft-foreground` | `--violet*` |
+| États | `--success*`, `--warning*`, `--danger*` (plein, `-soft`, `-soft-foreground`) | `--ok*`, `--warn*`, `--err*` |
+| Intérêt | `--level-cold`, `--level-warm`, `--level-hot`, `--level-very-hot` (remplissages) | `--level-*-text/-bg/-line`, `--level-*-bar` |
+| Ombres | `--surface-shadow`, `--field-shadow`, `--overlay-shadow` | — |
 
 Règles de sens :
 
-- **Le rouge (`--err`) est réservé** à ce qui bloque ou interdit : désinscription,
-  erreur, incident, arrêt d’urgence, suppression. Jamais pour « très chaud ».
-- Les niveaux d’intérêt vont du bleu-gris (froid) à l’orange plein (très chaud) :
-  classes `badge level-cold|warm|hot|very_hot`, barres `bar bar-level-…`.
-- Le violet signale ce qui vient de l’agent (recommandation, lacune de la base).
+- **Le rouge (`danger`) est réservé** à ce qui bloque ou interdit : désinscription,
+  erreur, incident, arrêt d’urgence, suppression. Jamais pour « très chaud » ni pour un
+  chiffre en baisse.
+- L’intérêt a sa propre échelle de chaleur, distincte de l’avertissement : jauge à
+  quatre barres (`HeatMeter`) et mot (« Chaud »). Seul « Très chaud » est une puce pleine.
+- Le violet (`agent`) signale ce qui vient de l’agent (recommandation, lacune de la base) ;
+  il n’est jamais la couleur d’un bouton.
 
-Typographie : Instrument Sans (texte), IBM Plex Mono (chiffres, libellés en
-capitales, identifiants), servies localement depuis `public/fonts`.
+Typographie : Instrument Sans (texte), IBM Plex Mono (chiffres, scores, identifiants,
+libellés en capitales), servies localement depuis `public/fonts`. Six tailles :
+28 (titre de page), 20, 16, 14 (texte), 13, 12. Rayons : 12 px pour boutons, champs et
+cartes, 8 px pour les puces. Icônes : Lucide (`lucide-react`), décoratives (`aria-hidden`).
 
 Composants et classes à réutiliser :
 
 | Besoin | Classe ou composant |
 |---|---|
 | En-tête de page | `.page-heading` > `.eyebrow` (« Travail · … ») + `h1` + `p.muted`, actions à droite |
-| Carte | `.card` (padding 20 px, rayon 10 px) |
+| Carte | `.ui-card` (padding 20 px, rayon 12 px, ombre de repos) ; nouveau code : `Card` HeroUI |
 | Chiffres clés | `.kpis.kpis-wide` > `.kpi` |
 | Barres de répartition | `.bar-row` > `span` + `.bar > div` + `.mono` |
 | Bouton principal | `button.primary`, lien `a.button-link.primary-link` |
@@ -66,7 +85,8 @@ Composants et classes à réutiliser :
 | Vue Pipeline / Table | `.view-switch` |
 | Filtres repliables | `.filters` + `.filters-more` + `.filters-advanced` + `.filters-chips` (voir `prospects/page.tsx`) |
 | Tableau large | l’envelopper dans `div.table-scroll` (`role="region"`, `tabIndex={0}`, `aria-label`) |
-| États | `Loading`, `Pager`, `StageBadge`, `ScoreBadge`, `DemoBadge` dans `components/ui.tsx` |
+| États | `Loading`, `Pager`, `StageBadge`, `ScoreBadge`, `LevelBadge`, `DemoBadge` dans `components/ui.tsx` (puces HeroUI dans `components/ds/badges.tsx`) |
+| Notification après une action | `toast` de `@heroui/react` (zone montée une fois par `components/ds/Toaster.tsx`) |
 | Formulaires de réglages | `Section`, `Field`, `Toggle`, `Feedback` dans `components/forms.tsx` |
 | Erreurs | `ApiError.message` est déjà lisible (voir `humanError` dans `lib/api.ts`) |
 
@@ -198,8 +218,11 @@ Le mode Automatique reste réservé à l’administrateur et désactivé par dé
 
 ## 7. Dette connue
 
-- 22 couleurs encore écrites en dur dans `globals.css` (surtout du blanc sur
-  bouton plein et quelques teintes uniques) : à remplacer au fil de l’eau.
+- Une vingtaine de couleurs encore écrites en dur dans `globals.css` (surtout du blanc
+  sur bouton plein et quelques teintes uniques) : à remplacer au fil de l’eau.
+- Migration HeroUI : les écrans gardent leur HTML et `globals.css`, recalés sur la
+  palette. Ils passent aux composants HeroUI écran par écran (une PR par écran) ; chaque
+  règle de `globals.css` devenue inutile est alors supprimée.
 - `globals.css` garde la trace des étapes successives (sections « Alignement
   maquette », « Réglages »…). Ne pas ajouter de troisième couche : modifier la
   règle existante.
