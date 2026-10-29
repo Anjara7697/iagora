@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from app.api.v1 import settings as settings_api
-from app.config import Settings, get_settings
+from app.config import DEFAULT_AI_NOTICE, Settings, get_settings
 from app.graph.ports import ChatMessage, LLMConfigError, LLMUnavailableError
 from app.integrations.llm.factory import create_language_model
 from app.integrations.llm.fallback import FallbackLanguageModel
@@ -145,6 +145,36 @@ async def test_settings_api_round_trip_without_secrets(client, env):
     assert (await client.get(f"{API}/settings")).json()["source"] == "env"
 
 
+async def test_email_layout_settings_reach_the_emails(client, env, mongo_db):
+    from app.api.dependencies import get_runtime_settings
+    from app.services import email_format
+
+    form = {
+        **FORM,
+        "email_ai_notice": "Message préparé par notre assistant IA.",
+        "email_brand_name": "DATUM Academy",
+        "email_brand_color": "#123456",
+        "email_logo_url": "https://datum.example/logo.png",
+    }
+    assert (await client.put(f"{API}/settings", json=form)).status_code == 204
+    shown = (await client.get(f"{API}/settings")).json()
+    assert shown["email_brand_color"] == "#123456"
+    eff = await get_runtime_settings(base(llm_model="env-model"), mongo_db)
+    out = email_format.render("Bonjour", eff, ai_generated=True)
+    assert "Message préparé par notre assistant IA." in out.text
+    assert "#123456" in out.html and "https://datum.example/logo.png" in out.html
+
+
+async def test_email_preview_uses_typed_values_and_saves_nothing(client, env, mongo_db):
+    form = {**FORM, "email_brand_color": "#0a7a4b", "email_brand_name": "École test"}
+    r = await client.post(f"{API}/settings/email/preview", json=form)
+    assert r.status_code == 200
+    body = r.json()
+    assert "#0a7a4b" in body["html"] and "École test" in body["html"]
+    assert DEFAULT_AI_NOTICE in body["text"] and "<li" in body["html"]
+    assert await runtime_settings.load(mongo_db) is None  # un aperçu n'enregistre rien
+
+
 async def test_effective_settings_reach_the_agent_dependencies(client, env, mongo_db):
     from app.api.dependencies import get_language_model, get_runtime_settings
 
@@ -161,6 +191,9 @@ async def test_effective_settings_reach_the_agent_dependencies(client, env, mong
         {"calendar_work_start_hour": 18, "calendar_work_end_hour": 9},
         {"calendar_timezone": "Mars/Olympus"},
         {"calendar_work_days": "1,9"},
+        {"email_ai_notice": "IA"},  # la mention de transparence ne peut pas être vidée
+        {"email_brand_color": "bleu"},
+        {"email_logo_url": "http://datum.example/logo.png"},  # https obligatoire
     ],
 )
 async def test_incoherent_values_are_refused(client, env, change):

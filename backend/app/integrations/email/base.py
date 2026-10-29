@@ -32,6 +32,7 @@ class OutboundEmail:
     text: str
     in_reply_to: str | None = None
     references: list[str] = field(default_factory=list)
+    html: str | None = None  # version mise en page ; le texte reste la version de référence
 
 
 class EmailClient(Protocol):

@@ -42,7 +42,7 @@ déjà protégé dans le code et de ce que DATUM doit encore décider.
 | Traçabilité | Chaque décision de l'agent est journalisée avec sa justification ; chaque changement de score ou d'étape a un auteur | `agent_runs`, `score_events`, `stage_events` |
 | Minimisation vers le modèle | Pas de coordonnées envoyées au LLM | `graph/prompts.py` |
 | Exactitude | Aucun prix, date ou durée inventés : vérification par le code, sinon transfert | `policy.py::ungrounded_claims` |
-| Transparence | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain | `prompts.py::IDENTITY` |
+| Transparence | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain ; la **mention IA** est ajoutée par le code à chaque email rédigé par l'agent, sans pouvoir être supprimée | `prompts.py::IDENTITY`, `services/email_format.py` |
 | Pas de scraping (S-08) | Uniquement les API officielles | [decisions.md](decisions.md) D-11 |
 | Sécurité | JWT, rôles, argon2, limitation des connexions, garde-fous de production, bases non exposées, secrets hors Git | [architecture.md](architecture.md) |
 | Droit à l'effacement | Effacement définitif par un administrateur (fiche, échanges, rendez-vous, relances, conversation et traces de l'agent), liste de suppression par empreinte pour ne pas recontacter ; commande de purge par durée, sans exécution automatique | `services/erasure.py`, [effacement-rgpd.md](effacement-rgpd.md) |
@@ -50,20 +50,14 @@ déjà protégé dans le code et de ce que DATUM doit encore décider.
 
 ## 3. Écarts à corriger avant une mise en production réelle
 
-### 3.1 Mention IA systématique (AI Act, art. 50 ; tâche 27 du cahier des charges)
+### 3.1 Mention IA systématique (AI Act, art. 50 ; tâche 27 du cahier des charges) : faite
 
-Les consignes demandent à l'agent de se présenter comme assistant virtuel dans son premier message et de
-le confirmer si on le lui demande. Mais rien ne **garantit** la mention dans chaque message, et le pied
-des emails ne la contient pas. Correction simple et déterministe : compléter `email_footer` dans
-`backend/app/config.py`, par exemple :
-
-```text
-Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.
-Pour ne plus recevoir de messages de notre part, répondez simplement STOP à cet email.
-```
-
-Puis ajouter un test qui vérifie la présence de la mention dans un email envoyé, et faire valider la
-formulation par DATUM.
+Tout email rédigé par l'agent porte, dans son pied de message, une mention IA ajoutée **par le code** à
+l'envoi (`services/email_format.py`), après validation éventuelle du conseiller : l'agent n'a donc pas à
+y penser et un conseiller ne peut pas l'oublier. Elle ne peut pas être désactivée ; sa formulation se règle
+dans Paramètres → Emails. Les messages écrits à la main par un conseiller ne la portent pas. Des tests
+vérifient sa présence dans l'email envoyé (texte et HTML) et son absence sur un message humain.
+**À faire valider par DATUM** : la formulation exacte.
 
 ### 3.2 Droit à l'effacement et durée de conservation : effacement fait, durée à décider
 

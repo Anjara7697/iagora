@@ -383,12 +383,34 @@ async def test_a_validated_reply_is_sent_in_the_same_thread(env):
     assert out.in_reply_to == "<m1@acme-corp.com>"
     assert out.references == ["<old@x>", "<m1@acme-corp.com>"]
     assert out.text.startswith("Voici les informations") and "STOP" in out.text
+    assert "assistant virtuel (IA)" in out.text  # mention de transparence, art. 50 de l'AI Act
+    assert out.html and "Voici les informations" in out.html
     (reply,) = await env.messages("agent")
     assert reply["metadata"]["delivery"] == "sent"
     assert reply["metadata"]["delivery_info"]["email_message_id"] == "<sent-1@fake.test>"
     assert (
         reply["metadata"]["draft"]["status"] == "approved"
     )  # le reste des métadonnées est conservé
+
+
+async def test_advisor_messages_do_not_carry_the_ai_notice(env):
+    await env.receive(FakeEmailClient([mail()]))
+    doc = await env.conversation()
+    message = {
+        "id": "human-1",
+        "role": "advisor",
+        "content": "Bonjour, je reprends votre dossier.",
+        "external_message_id": None,
+        "created_at": datetime.now(UTC),
+        "metadata": {"delivery": "not_sent"},
+    }
+    await env.db[conversations.COLLECTION].update_one(
+        {"_id": doc["_id"]}, {"$push": {"messages": message}}
+    )
+    client = FakeEmailClient()
+    await env.deliver(client)
+    (out,) = client.sent
+    assert "assistant virtuel" not in out.text and "STOP" in out.text
 
 
 async def test_sending_is_disabled_by_default(env):
