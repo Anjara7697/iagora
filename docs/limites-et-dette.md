@@ -8,9 +8,8 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | Prio | Limite | Détail |
 |---|---|---|
 | P1 | Base de connaissances fictive : les documents officiels de DATUM manquent | [rag.md](rag.md) |
-| P1 | Pas de mention IA systématique dans les emails | [conformite-rgpd.md](conformite-rgpd.md) §3.1 |
 | P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
-| P1 | Pas d'effacement / anonymisation d'un prospect réel, pas de durée de conservation | [conformite-rgpd.md](conformite-rgpd.md) §3.2 |
+| P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
 | P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
 | P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
