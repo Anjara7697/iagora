@@ -411,6 +411,9 @@ export type MyCalendar = {
 
 export type ZoomMode = "none" | "account" | "advisor";
 
+/** Couleur d'état d'une pastille (ok : en service, warn : à surveiller, err : bloqué, off : inactif). */
+export type Tone = "ok" | "warn" | "err" | "off";
+
 export type ZoomSettings = {
   mode: ZoomMode;
   source: "console" | "env";
