@@ -4294,6 +4294,69 @@ a.button-link.primary-link:hover {
   background: #f4f5f7;
 }
 
+/* Paramètres : navigation latérale par catégories (une catégorie affichée à la fois). */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.settings-nav {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ink-2);
+  text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out);
+}
+.settings-nav a small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-nav a:hover {
+  background: var(--surface-2);
+}
+.settings-nav a[aria-current="page"] {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(25, 24, 23, 0.06);
+}
+.settings-content {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .settings-nav a {
+    flex: none;
+    white-space: nowrap;
+  }
+  .settings-nav a small {
+    display: none;
+  }
+}
 /* Intégrations : catalogue de cartes et panneau de configuration. */
 .badge.integ-err {
   background: var(--err-bg);
