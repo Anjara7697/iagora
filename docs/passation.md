@@ -28,6 +28,7 @@ Vue technique : [architecture.md](architecture.md).
 | Réception REST, déduplication, file « À attribuer » | Tests API, [intake.md](intake.md) |
 | Workflow LangGraph : qualification, score, décision, réponse, transfert | Tests + scénarios hors ligne, [agent-workflow.md](agent-workflow.md) |
 | Mode assisté, brouillons, arrêt d'urgence, file « À traiter » | Tests API et navigateur |
+| Effacement RGPD d'un prospect (console, administrateur), liste de suppression, commande de purge par durée ([effacement-rgpd.md](effacement-rgpd.md)) | Tests (`test_erasure.py`) et navigateur |
 | STOP et désinscription sur toutes les entrées | Tests (`test_lot1_safety.py`, `test_review_safeguards.py`) |
 | RAG pgvector et page d'administration | Tests, [rag.md](rag.md) |
 | Relances : fenêtre, plafond, arrêt après conversion | Tests (`test_auto_agent.py`), [follow-ups.md](follow-ups.md) |
@@ -44,7 +45,7 @@ Vue technique : [architecture.md](architecture.md).
 |---|---|
 | Email IMAP/SMTP | Recette sur la boîte définitive de DATUM : [recette-locale.md](recette-locale.md) §4 |
 | Google Calendar + Zoom (réglés dans la console, OAuth par conseiller) | Applications OAuth Google et Zoom en HTTPS, comptes réels et recette : [calendar.md](calendar.md) |
-| Déploiement serveur (`deploy/`) | Mise en service sur le VPS, comportement derrière Caddy |
+| Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement (29/10) ; reste la production, la copie des sauvegardes hors serveur et un test de restauration |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
 
@@ -59,8 +60,6 @@ Vue technique : [architecture.md](architecture.md).
 | Sujet | Raison ou prochaine action |
 |---|---|
 | Connecteurs LinkedIn et Meta | Accès API non obtenus |
-| Mention IA dans chaque email | À ajouter au pied de message ([conformite-rgpd.md](conformite-rgpd.md)) |
-| Effacement / anonymisation RGPD d'un prospect | Non développé |
 | Écrans Dashboard, Analytics | Affichés « À venir » dans le menu |
 | Gestion des rendez-vous | Liste de consultation disponible ; modification, annulation et synchronisation externe restent à développer |
 | Rappel avant rendez-vous | Non développé |

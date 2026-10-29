@@ -9,7 +9,7 @@ valeur de départ ; « Revenir aux valeurs du serveur » efface les réglages de
 |---|---|
 | Intelligence artificielle | fournisseur (Gemini, OpenAI), modèle principal, **modèle de secours**, clé d'API (chiffrée, jamais réaffichée), créativité ; bouton **Tester le modèle** (réglages saisis, non enregistrés) |
 | Agent et relances | réponse automatique à chaque nouveau message, fenêtre horaire des relances, semaine seulement, nombre maximum de relances sans réponse |
-| Emails | mention de désinscription en bas des messages, fréquence de relève, création d'un prospect pour un expéditeur inconnu |
+| Emails | mention de désinscription, **mention IA** (toujours ajoutée), nom, couleur et logo de l'en-tête avec aperçu, fréquence de relève, création d'un prospect pour un expéditeur inconnu |
 | Disponibilités des rendez-vous | jours ouvrés, début/fin de journée, durée d'un rendez-vous, délai minimum, horizon, marge entre rendez-vous, fuseau horaire |
 
 **Modèle de secours.** Si le modèle principal reste indisponible (surcharge 503, quota) après ses nouveaux

@@ -8,7 +8,7 @@ import sys
 
 from pydantic import ValidationError
 
-from app import agent_commands, kb_commands
+from app import agent_commands, kb_commands, privacy_commands
 from app.database.session import dispose_engine, get_sessionmaker
 from app.devtools import commands
 from app.models.enums import UserRole
@@ -84,6 +84,19 @@ def main() -> None:
     reset.add_argument(
         "--unread", action="store_true", help="Remettre ses emails non lus dans la boîte surveillée"
     )
+    purge = sub.add_parser(
+        "purge-inactive",
+        help="Durée de conservation : effacer les prospects inactifs (aperçu sans --apply)",
+    )
+    purge.add_argument(
+        "--older-than-days", type=int, required=True, help="Inactifs depuis au moins N jours"
+    )
+    purge.add_argument(
+        "--include-converted", action="store_true", help="Inclure les prospects convertis"
+    )
+    purge.add_argument(
+        "--apply", action="store_true", help="Effacer réellement (sinon : simple aperçu)"
+    )
     cal = sub.add_parser(
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
@@ -119,6 +132,16 @@ def main() -> None:
         sys.exit(asyncio.run(agent_commands.cmd_email(sync=args.command == "email-sync")))
     elif args.command == "reset-prospect":
         sys.exit(asyncio.run(agent_commands.cmd_reset_prospect(args.email, unread=args.unread)))
+    elif args.command == "purge-inactive":
+        sys.exit(
+            asyncio.run(
+                privacy_commands.cmd_purge_inactive(
+                    args.older_than_days,
+                    include_converted=args.include_converted,
+                    apply=args.apply,
+                )
+            )
+        )
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":

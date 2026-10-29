@@ -37,7 +37,7 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 |---|---|---|
 | Accusé de transfert (`HANDOFF_MESSAGE`) | `graph/nodes.py` | Toujours identique ; exempté de validation en mode assisté |
 | Proposition de créneaux | `nodes.py::propose_meeting` | Les créneaux viennent uniquement de l'agenda réel (NF-10) |
-| Pied des emails (`email_footer`) | `config.py` | Mention STOP ; à compléter par une mention IA (voir [conformite-rgpd.md](conformite-rgpd.md)) |
+| Pied des emails (`email_footer`) | `config.py` | Mention STOP ; la mention IA (`email_ai_notice`) est ajoutée à part, par `services/email_format.py` (voir [conformite-rgpd.md](conformite-rgpd.md)) |
 
 ## Ce que le code vérifie après le modèle
 

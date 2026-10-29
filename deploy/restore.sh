@@ -9,7 +9,13 @@ PG_FILE="$1"; MONGO_FILE="$2"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE=(docker compose -f "$ROOT/deploy/compose.prod.yml" --env-file "$ROOT/deploy/.env")
-set -a; . "$ROOT/deploy/.env"; set +a
+ENV_FILE="$ROOT/deploy/.env"
+. "$ROOT/deploy/env.sh"
+POSTGRES_USER="$(env_get POSTGRES_USER iagora)"
+POSTGRES_DB="$(env_get POSTGRES_DB iagora)"
+MONGO_USER="$(env_get MONGO_USER iagora)"
+MONGO_DB="$(env_get MONGO_DB iagora)"
+MONGO_PASSWORD="$(env_get MONGO_PASSWORD)"
 
 read -r -p "Remplacer les bases ACTUELLES par ces sauvegardes ? Tapez « oui » : " answer
 [ "$answer" = "oui" ] || { echo "Abandon."; exit 1; }

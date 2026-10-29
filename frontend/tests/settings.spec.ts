@@ -11,6 +11,11 @@ const current = {
   follow_up_weekdays_only: true,
   follow_up_max_per_silence: 3,
   email_footer: "Répondez STOP.",
+  email_ai_notice:
+    "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_brand_name: "DATUM Academy",
+  email_brand_color: "#1f4fd8",
+  email_logo_url: "",
   email_create_unknown_senders: true,
   email_poll_seconds: 60,
   calendar_timezone: "Europe/Paris",
@@ -44,12 +49,23 @@ async function mockApi(page: Page, calls: unknown[], role = "ADMIN") {
     else if (path === "/settings/llm/test") {
       calls.push({ test: request.postDataJSON() });
       body = { ok: true, model: "gemini-2.5-flash", detail: "ok" };
+    } else if (path === "/settings/email/preview") {
+      calls.push({ preview: request.postDataJSON() });
+      body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
     else code = 404;
     await route.fulfill({ status: code, json: body });
   });
+}
+
+/** Affiche une catégorie de paramètres depuis la navigation latérale. */
+async function goSection(page: Page, name: string) {
+  await page
+    .getByRole("navigation", { name: "Catégories de paramètres" })
+    .getByRole("link", { name: new RegExp(`^${name}`) })
+    .click();
 }
 
 async function login(page: Page) {
@@ -75,6 +91,7 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
   await expect(ia.getByLabel("Résultat du test du modèle")).toContainText(
     "gemini-2.5-flash répond",
   );
+  await goSection(page, "Rendez-vous");
   const slots = page.getByRole("region", {
     name: "Disponibilités des rendez-vous",
   });
@@ -94,6 +111,44 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
     calendar_work_start_hour: 10,
   });
   expect(put.put).not.toHaveProperty("gemini_api_key_set");
+});
+
+test("régler la mise en page des emails et voir un aperçu", async ({
+  page,
+}) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings");
+  await goSection(page, "Emails");
+  const emails = page.getByRole("region", { name: "Emails" });
+  const notice = emails.getByLabel("Mention « message rédigé avec une IA »");
+  await expect(notice).toHaveValue(/assistant virtuel/);
+  await notice.fill("Message préparé par notre assistant IA.");
+  await emails.getByLabel("Nom affiché en tête d’email").fill("École test");
+  await emails.getByLabel("Couleur principale des emails").fill("#0a7a4b");
+  await emails
+    .getByLabel("Logo (adresse https, facultatif)")
+    .fill("https://exemple.test/logo.png");
+  await emails.getByRole("button", { name: "Voir un exemple d’email" }).click();
+  await expect(
+    page
+      .frameLocator("iframe[title='Aperçu de l’email']")
+      .getByText("Exemple IAGORA"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enregistrer les paramètres" })
+    .click();
+  await expect(page.getByText(/Paramètres enregistrés/)).toBeVisible();
+  const put = calls.find((c) => (c as { put?: unknown }).put) as {
+    put: Record<string, unknown>;
+  };
+  expect(put.put).toMatchObject({
+    email_ai_notice: "Message préparé par notre assistant IA.",
+    email_brand_name: "École test",
+    email_brand_color: "#0a7a4b",
+    email_logo_url: "https://exemple.test/logo.png",
+  });
 });
 
 test("l’observateur n’accède pas aux paramètres", async ({ page }) => {
@@ -193,6 +248,7 @@ test("les réglages modifiés doivent être enregistrés avant l’essai", async
   await mockApi(page, []);
   await login(page);
   await page.goto("/settings");
+  await goSection(page, "Agent et relances");
   const agent = page.getByRole("region", {
     name: "Agent et relances",
     exact: true,
@@ -200,10 +256,12 @@ test("les réglages modifiés doivent être enregistrés avant l’essai", async
   await expect(
     agent.getByRole("link", { name: "Tester les réglages enregistrés" }),
   ).toHaveAttribute("href", "/simulator");
+  await goSection(page, "Intelligence artificielle");
   await page
     .getByRole("region", { name: "Intelligence artificielle" })
     .getByLabel("Modèle principal", { exact: true })
     .fill("autre-modele");
+  await goSection(page, "Agent et relances");
   await expect(
     agent.getByRole("button", {
       name: "Tester les réglages enregistrés",
@@ -219,4 +277,65 @@ test("les réglages modifiés doivent être enregistrés avant l’essai", async
   await expect(
     agent.getByRole("link", { name: "Tester les réglages enregistrés" }),
   ).toBeVisible();
+});
+
+test("les paramètres s'affichent par catégorie, sans perdre les saisies", async ({
+  page,
+}) => {
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings");
+  const ia = page.getByRole("region", { name: "Intelligence artificielle" });
+  const emails = page.getByRole("region", { name: "Emails" });
+  const nav = page.getByRole("navigation", {
+    name: "Catégories de paramètres",
+  });
+  // Une seule catégorie à la fois ; la première par défaut.
+  await expect(ia).toBeVisible();
+  await expect(emails).toBeHidden();
+  await expect(
+    nav.getByRole("link", { name: /^Intelligence artificielle/ }),
+  ).toHaveAttribute("aria-current", "page");
+
+  await ia.getByLabel("Modèle principal", { exact: true }).fill("modele-x");
+  await goSection(page, "Emails");
+  await expect(page).toHaveURL(/section=emails/);
+  await expect(emails).toBeVisible();
+  await expect(ia).toBeHidden();
+  await goSection(page, "Intelligence artificielle");
+  await expect(ia.getByLabel("Modèle principal", { exact: true })).toHaveValue(
+    "modele-x",
+  );
+  // La barre d'enregistrement reste commune à toutes les catégories.
+  await expect(page.getByText("Modifications non enregistrées")).toBeVisible();
+  await goSection(page, "Rendez-vous");
+  await expect(
+    page.getByRole("button", { name: "Enregistrer les paramètres" }),
+  ).toBeVisible();
+
+  // Un lien direct ouvre la bonne catégorie ; une valeur inconnue retombe sur la première.
+  await page.goto("/settings?section=agent");
+  await expect(
+    page.getByRole("region", { name: "Agent et relances" }),
+  ).toBeVisible();
+  await page.goto("/settings?section=inconnue");
+  await expect(
+    page.getByRole("region", { name: "Intelligence artificielle" }),
+  ).toBeVisible();
+});
+
+test("paramètres sur mobile : catégories en bandeau, sans défilement horizontal", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings");
+  await goSection(page, "Emails");
+  await expect(page.getByRole("region", { name: "Emails" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

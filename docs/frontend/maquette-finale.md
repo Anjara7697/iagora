@@ -408,3 +408,41 @@ paramètres non reconnus sont ignorés.
 L’export utilise les mêmes filtres que les résultats restaurés. La recherche de
 l’en-tête annonce désormais le nom ou l’email du prospect et actualise aussi une
 liste de prospects déjà ouverte.
+
+## 20. Paramètres : une catégorie à la fois
+
+Les réglages de l'agent ne forment plus un long formulaire : une **navigation latérale** (sticky sur bureau,
+bandeau défilant sur mobile) propose quatre catégories (Intelligence artificielle, Agent et relances, Emails,
+Rendez-vous), chacune avec une ligne d'aide. Seule la catégorie choisie est affichée ; elle est dans l'URL
+(`/settings?section=ia|agent|emails|rdv`, valeur inconnue : la première) et l'élément courant porte
+`aria-current="page"`.
+
+Les quatre sections restent dans la page (attribut `hidden`) : le formulaire est **un seul état**, une saisie
+faite dans une catégorie n'est pas perdue en passant à une autre, et la barre « Enregistrer les paramètres »,
+avec son indicateur « Modifications non enregistrées », reste commune. Le bandeau « Tests et démonstration »
+et le contrôle d'accès des conseillers sont inchangés. Une règle globale `[hidden] { display: none }` garantit
+que l'attribut l'emporte sur les `display: flex` des cartes (elle corrige aussi l'onglet inactif de la
+messagerie, §19).
+## 19. Intégrations : catalogue et panneau de configuration
+
+La page **Intégrations** n'empile plus les formulaires : elle présente un **catalogue de cartes** groupées par
+famille (canaux de messagerie, rendez-vous, sources de prospects). Chaque carte porte un pictogramme générique
+(pas de logo de marque), le nom, une description, une **pastille d'état** (Configurée, À configurer, À
+connecter, Erreur de relève, Démonstration, Non branché, Bientôt) et une ligne d'information (dernière
+relève, dernier envoi d'un jeton…). Toute la carte est cliquable ; le bouton annonce « Configurer » ou
+« Gérer » selon l'état, « En savoir plus » pour un canal pas encore branché, « Ouvrir » pour l'import CSV, qui
+garde sa propre page. Une recherche et un filtre (Tous, Configurés, À configurer, Bientôt) réduisent la liste.
+
+Le réglage s'ouvre dans un **panneau latéral** (`components/Drawer.tsx`) : `role="dialog"` modal, le focus y
+entre, reste dans le panneau et revient à la carte à la fermeture ; Échap, la croix et le clic sur le voile
+ferment ; le défilement de la page est bloqué. Le panneau est **adressable** (`/integrations?c=email`,
+`calendar`, `zoom`, `leads`, `meta`, `linkedin`), ce qui permet un lien direct et un retour du navigateur
+cohérent. À la fermeture, l'état des cartes est relu.
+
+La messagerie s'ouvre sur **Vue d'ensemble** (état, actions sur la boîte enregistrée, répartition des
+messages) ou, si elle n'est pas configurée, sur **Configuration** ; les deux onglets restent dans le DOM, de
+sorte qu'une saisie ou un test en cours n'est pas perdu en changeant d'onglet, et le verrouillage pendant une
+opération couvre les deux. Agenda, Zoom et jetons de service réutilisent leurs formulaires (`embedded`) sans
+leur en-tête, déjà porté par le panneau. Les couleurs d'état viennent des variables de `:root` (`err`
+ajouté pour l'erreur de relève). L'état d'une carte décrit la configuration, pas une connexion vérifiée : seul
+un test dans le panneau le confirme.

@@ -178,27 +178,129 @@ async function open(page: Page) {
   await page.goto("/integrations");
 }
 
-test("affiche l'état de la boîte email sans aucun secret", async ({ page }) => {
+/** Ouvre le panneau d'un connecteur depuis le catalogue (et un onglet, s'il y en a). */
+async function openConnector(page: Page, name: string, tab?: string) {
+  await page
+    .getByRole("button", { name: new RegExp(`^(Configurer|Gérer) ${name}$`) })
+    .click();
+  const drawer = page.getByRole("dialog", { name });
+  await expect(drawer).toBeVisible();
+  if (tab) await drawer.getByRole("tab", { name: tab }).click();
+  return drawer;
+}
+
+test("le catalogue résume l'état de chaque connecteur sans aucun secret", async ({
+  page,
+}) => {
   await mockApi(page);
   await open(page);
-  const card = page.getByRole("region", { name: "Email" });
-  await expect(card.getByText("Envoi désactivé")).toBeVisible();
-  await expect(card.getByText("Réception active")).toBeVisible();
-  await expect(card.getByText("agent@datum.test")).toBeVisible();
-  await expect(card.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
-  await expect(card.getByText("Prêt à envoyer")).toBeVisible();
-  await expect(card.getByText("À tester", { exact: true })).toBeVisible();
-  // Canaux prévus mais pas encore développés : annoncés comme tels, sans action.
-  await expect(
-    page.getByRole("region", { name: "Agenda" }).getByText("Non branché"),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Zoom" }).getByText("Non branché"),
-  ).toBeVisible();
-  for (const name of ["Meta Business", "LinkedIn"])
+  const email = page.getByRole("article", { name: "Messagerie email" });
+  await expect(email.getByText("Configurée")).toBeVisible();
+  await expect(email.getByText(/Dernière relève/)).toBeVisible();
+  for (const name of ["Agenda des conseillers", "Zoom"])
     await expect(
-      page.getByRole("region", { name }).getByText("À venir"),
+      page.getByRole("article", { name }).getByText("Non branché"),
     ).toBeVisible();
+  await expect(
+    page
+      .getByRole("article", { name: "Formulaire du site et outils" })
+      .getByText("Aucun jeton"),
+  ).toBeVisible();
+  // Canaux prévus mais pas encore développés : annoncés comme tels.
+  for (const name of ["Meta Business", "LinkedIn Lead Gen"])
+    await expect(
+      page.getByRole("article", { name }).getByText("Bientôt"),
+    ).toBeVisible();
+  await expect(page.getByText("iag_")).toHaveCount(0);
+});
+
+test("l'état détaillé de la boîte email est dans son panneau", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const drawer = await openConnector(page, "Messagerie email");
+  await expect(drawer.getByText("Envoi désactivé")).toBeVisible();
+  await expect(drawer.getByText("Réception active")).toBeVisible();
+  await expect(drawer.getByText(/agent@datum.test/).first()).toBeVisible();
+  await expect(drawer.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
+  await expect(drawer.getByText("Prêt à envoyer")).toBeVisible();
+  await expect(drawer.getByText("À tester", { exact: true })).toBeVisible();
+});
+
+test("un seul onglet de la messagerie est affiché à la fois", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const drawer = await openConnector(page, "Messagerie email");
+  await expect(drawer.getByText("Réception active")).toBeVisible();
+  await expect(drawer.getByLabel("Adresse de la boîte")).toBeHidden();
+  await drawer.getByRole("tab", { name: "Configuration" }).click();
+  await expect(drawer.getByLabel("Adresse de la boîte")).toBeVisible();
+  await expect(drawer.getByText("Réception active")).toBeHidden();
+});
+
+test("rechercher et filtrer les connecteurs", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  const cards = page.getByRole("article");
+  await expect(cards).toHaveCount(7);
+  await page.getByLabel("Rechercher un connecteur").fill("zoom");
+  await expect(cards).toHaveCount(1);
+  await page.getByLabel("Rechercher un connecteur").fill("introuvable");
+  await expect(page.getByText(/Aucun connecteur ne correspond/)).toBeVisible();
+  await page.getByLabel("Rechercher un connecteur").fill("");
+  await page.getByRole("button", { name: "Bientôt", exact: true }).click();
+  await expect(cards).toHaveCount(2);
+  await page.getByRole("button", { name: "Configurés", exact: true }).click();
+  await expect(cards).toHaveCount(2); // messagerie + import CSV
+  await page.getByRole("button", { name: "À configurer", exact: true }).click();
+  await expect(cards).toHaveCount(3); // agenda, Zoom, jetons
+});
+
+test("le panneau est adressable, se ferme avec Échap et rend le focus", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  const opener = page.getByRole("button", { name: "Configurer Zoom" });
+  await opener.click();
+  await expect(page).toHaveURL(/\?c=zoom/);
+  await expect(page.getByRole("dialog", { name: "Zoom" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fermer" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/\?c=/);
+  await expect(opener).toBeFocused();
+  // Un lien direct rouvre le panneau.
+  await page.goto("/integrations?c=calendar");
+  await expect(
+    page.getByRole("dialog", { name: "Agenda des conseillers" }),
+  ).toBeVisible();
+});
+
+test("les connecteurs pas encore branchés expliquent pourquoi", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await open(page);
+  await page
+    .getByRole("button", { name: "En savoir plus Meta Business" })
+    .click();
+  const drawer = page.getByRole("dialog", { name: "Meta Business" });
+  await expect(
+    drawer.getByText(/validation de l’application Meta/),
+  ).toBeVisible();
+  await expect(drawer.getByRole("textbox")).toHaveCount(0);
+});
+
+test("l'import CSV ouvre sa page", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  await expect(
+    page.getByRole("link", { name: "Ouvrir Import de fichier CSV" }),
+  ).toHaveAttribute("href", "/prospects/import");
 });
 
 test("lancer un passage demande confirmation quand l'envoi est activé", async ({
@@ -211,6 +313,7 @@ test("lancer un passage demande confirmation quand l'envoi est activé", async (
     await route.fulfill({ json: { report: {} } });
   });
   await open(page);
+  await openConnector(page, "Messagerie email");
   page.once("dialog", (dialog) => void dialog.dismiss());
   await page
     .getByRole("button", { name: "Lancer un passage maintenant" })
@@ -228,6 +331,7 @@ test("tester la connexion affiche IMAP et SMTP", async ({ page }) => {
     check: { imap: "IMAP : identifiants refusés", smtp: "ok" },
   });
   await open(page);
+  await openConnector(page, "Messagerie email");
   await page
     .getByRole("button", { name: "Tester la boîte enregistrée" })
     .click();
@@ -239,6 +343,7 @@ test("tester la connexion affiche IMAP et SMTP", async ({ page }) => {
 test("lancer un passage résume le résultat", async ({ page }) => {
   await mockApi(page);
   await open(page);
+  await openConnector(page, "Messagerie email");
   await page
     .getByRole("button", { name: "Lancer un passage maintenant" })
     .click();
@@ -254,7 +359,18 @@ test("boîte non configurée : message clair et actions désactivées", async ({
     status: status({ configured: false, enabled: false, sender: null }),
   });
   await open(page);
-  await expect(page.getByText(/Boîte non configurée/)).toBeVisible();
+  await expect(
+    page
+      .getByRole("article", { name: "Messagerie email" })
+      .getByText("À configurer"),
+  ).toBeVisible();
+  const drawer = await openConnector(page, "Messagerie email");
+  await expect(drawer.getByText(/Boîte non configurée/)).toBeVisible();
+  // Non configurée : le panneau s'ouvre sur la configuration.
+  await expect(
+    drawer.getByRole("tab", { name: "Configuration" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await drawer.getByRole("tab", { name: "Vue d’ensemble" }).click();
   await expect(
     page.getByRole("button", { name: "Tester la boîte enregistrée" }),
   ).toBeDisabled();
@@ -272,6 +388,7 @@ test("configurer une boîte depuis la console : détection, test, dossier, enreg
   const saved: unknown[] = [];
   await mockApi(page, { saved });
   await open(page);
+  await openConnector(page, "Messagerie email", "Configuration");
   const form = page.getByRole("region", {
     name: "Paramètres de la boîte email",
   });
@@ -307,6 +424,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
   const saved: unknown[] = [];
   await mockApi(page, { saved });
   await open(page);
+  await openConnector(page, "Agenda des conseillers");
   const card = page.getByRole("region", { name: "Agenda" });
   await card.getByLabel("Mode").selectOption("google");
   await expect(
@@ -335,6 +453,7 @@ test("brancher le compte Zoom de l'école", async ({ page }) => {
   const saved: unknown[] = [];
   await mockApi(page, { saved });
   await open(page);
+  await openConnector(page, "Zoom");
   const card = page.getByRole("region", { name: "Zoom" });
   await card.getByLabel("Mode").selectOption("account");
   await card.getByLabel("Account ID").fill("acc-1");
@@ -362,6 +481,7 @@ test("créer un jeton pour le formulaire du site : affiché une seule fois", asy
   const saved: unknown[] = [];
   await mockApi(page, { saved });
   await open(page);
+  await openConnector(page, "Formulaire du site et outils");
   const card = page.getByRole("region", { name: "Formulaire et outils" });
   await card.getByLabel("Nom du jeton").fill("Formulaire du site");
   await card.getByLabel("Campagne").selectOption({ label: "Rentrée 2027" });
@@ -380,11 +500,12 @@ test("un test réussi de la boîte enregistrée est invalidé après enregistrem
 }) => {
   await mockApi(page);
   await open(page);
-  const card = page.getByRole("region", { name: "Email", exact: true });
-  await card
+  const drawer = await openConnector(page, "Messagerie email");
+  await drawer
     .getByRole("button", { name: "Tester la boîte enregistrée", exact: true })
     .click();
-  await expect(card.getByText("Test réussi", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("Test réussi", { exact: true })).toBeVisible();
+  await drawer.getByRole("tab", { name: "Configuration" }).click();
   const form = page.getByRole("region", {
     name: "Paramètres de la boîte email",
     exact: true,
@@ -399,8 +520,9 @@ test("un test réussi de la boîte enregistrée est invalidé après enregistrem
   await expect(
     form.getByText("Modifications non enregistrées", { exact: true }),
   ).toHaveCount(0);
-  await expect(card.getByText("À tester", { exact: true })).toBeVisible();
-  await expect(card.getByText("Test réussi", { exact: true })).toHaveCount(0);
+  await drawer.getByRole("tab", { name: "Vue d’ensemble" }).click();
+  await expect(drawer.getByText("À tester", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("Test réussi", { exact: true })).toHaveCount(0);
 });
 
 test("serveurs sur mobile : test périmé retiré et ports enregistrés", async ({
@@ -410,6 +532,7 @@ test("serveurs sur mobile : test périmé retiré et ports enregistrés", async 
   const saved: unknown[] = [];
   await mockApi(page, { saved });
   await open(page);
+  await openConnector(page, "Messagerie email", "Configuration");
   const form = page.getByRole("region", {
     name: "Paramètres de la boîte email",
     exact: true,
@@ -461,6 +584,7 @@ test("une opération en cours verrouille les paramètres et les actions de la bo
     await route.fulfill({ json: { imap: "ok", smtp: "ok", folders: [] } });
   });
   await open(page);
+  await openConnector(page, "Messagerie email", "Configuration");
   const form = page.getByRole("region", {
     name: "Paramètres de la boîte email",
     exact: true,
@@ -472,10 +596,12 @@ test("une opération en cours verrouille les paramètres et les actions de la bo
     await expect(
       form.getByLabel("Adresse de la boîte", { exact: true }),
     ).toBeDisabled();
+    // L'action de l'autre onglet est verrouillée aussi, même masquée.
     await expect(
       page.getByRole("button", {
         name: "Tester la boîte enregistrée",
         exact: true,
+        includeHidden: true,
       }),
     ).toBeDisabled();
   } finally {
@@ -499,6 +625,7 @@ test("les paramètres de messagerie peuvent être rechargés après une erreur",
     ),
   );
   await open(page);
+  await openConnector(page, "Messagerie email", "Configuration");
   await expect(
     page.getByRole("alert").filter({ hasText: "Paramètres indisponibles" }),
   ).toBeVisible();

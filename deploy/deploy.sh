@@ -17,8 +17,13 @@ git checkout --quiet "$BRANCH"
 git merge --ff-only "origin/$BRANCH"
 echo "   $PREVIOUS → $(git rev-parse --short HEAD)"
 
-echo "→ Sauvegarde avant migration"
-"$ROOT/deploy/backup.sh" || { echo "Sauvegarde impossible : arrêt."; exit 1; }
+# Première installation : les bases n'existent pas encore, il n'y a rien à sauvegarder.
+if [ -n "$("${COMPOSE[@]}" ps -q postgres 2>/dev/null)" ]; then
+  echo "→ Sauvegarde avant migration"
+  "$ROOT/deploy/backup.sh" || { echo "Sauvegarde impossible : arrêt."; exit 1; }
+else
+  echo "→ Première installation : aucune sauvegarde à faire"
+fi
 
 echo "→ Construction des images"
 "${COMPOSE[@]}" build
