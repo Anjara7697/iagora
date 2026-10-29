@@ -19,7 +19,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |
 | P3 | Dashboard et Analytics absents ; Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
-| P3 | Email en texte brut, pas de pièces jointes ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
+| P3 | Email : mise en page HTML simple, pas de pièces jointes ni d'images intégrées ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
 
 ## Technique
 
