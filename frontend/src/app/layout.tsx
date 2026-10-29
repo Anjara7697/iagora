@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
 import { Toaster } from "@/components/ds/Toaster";
 import "./heroui.css";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Commercial 2.0 - DATUM Academy",

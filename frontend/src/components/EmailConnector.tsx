@@ -81,7 +81,7 @@ export function EmailConnector({
         : "À tester";
 
   return (
-    <div data-ui="v2" className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {!s.configured && (
         <p className="rounded-xl bg-warning-soft px-4 py-3 text-[13px]/[20px] text-warning-soft-foreground" role="alert">
           Boîte non configurée : renseignez-la dans l’onglet « Configuration »

@@ -34,7 +34,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main data-ui="v2" className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+    <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <section className="relative hidden flex-col justify-between overflow-hidden bg-[#0f1220] p-12 text-white lg:flex">
         <span
           aria-hidden="true"

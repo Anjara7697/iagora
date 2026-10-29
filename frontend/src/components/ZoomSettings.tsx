@@ -35,7 +35,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section data-ui="v2" className="flex flex-col gap-3" aria-label="Zoom">
+      <section className="flex flex-col gap-3" aria-label="Zoom">
         {error ? (
           <p className="text-sm text-danger" role="alert">
             {error}
@@ -78,7 +78,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      data-ui="v2"
+     
       className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
       aria-label="Zoom"
     >

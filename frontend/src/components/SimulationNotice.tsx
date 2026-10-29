@@ -9,7 +9,7 @@ export default function SimulationNotice({
   children: ReactNode;
 }) {
   return (
-    <div data-ui="v2" className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <Link
         className="w-fit rounded text-sm font-medium text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
         href="/settings/testing"

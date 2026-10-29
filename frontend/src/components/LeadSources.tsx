@@ -67,7 +67,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
   const active = tokens.filter((t) => !t.revoked_at);
   return (
     <section
-      data-ui="v2"
+     
       className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
       aria-label="Formulaire et outils"
     >

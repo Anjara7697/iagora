@@ -7,7 +7,7 @@ import { ScoreBadge, StageBadge } from "./ui";
 /** Décision de l'agent, justification et trace des étapes du graphe (explicabilité, OB-05). */
 export default function RunView({ run }: { run: AgentRun }) {
   return (
-    <div data-ui="v2" className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex size-6 items-center justify-center rounded-lg bg-agent-soft text-agent" aria-hidden="true">
           <Sparkles className="size-3.5" />

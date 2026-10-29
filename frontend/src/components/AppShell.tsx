@@ -174,9 +174,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Mot de passe temporaire : seul « Mon compte » est accessible tant qu'il n'est pas changé.
   const mustChange = !!user?.must_change_password;
+  const blocked = mustChange && pathname !== "/account";
   useEffect(() => {
-    if (mustChange && pathname !== "/account") router.replace("/account");
-  }, [mustChange, pathname, router]);
+    if (!blocked) return;
+    router.replace("/account");
+    // Une navigation déjà en cours peut absorber la redirection : on la redemande.
+    const retry = window.setInterval(() => router.replace("/account"), 1000);
+    return () => window.clearInterval(retry);
+  }, [blocked, router]);
 
   useEffect(() => {
     if (!navOpen) return;
@@ -190,7 +195,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isLogin) return <>{children}</>;
   if (!user)
     return (
-      <main data-ui="v2" className="grid min-h-dvh place-items-center bg-background p-6">
+      <main className="grid min-h-dvh place-items-center bg-background p-6">
         <Card className="w-full max-w-sm items-center gap-4 p-8 text-center" role={error ? "alert" : "status"}>
           <Brand />
           {error ? (
@@ -252,7 +257,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <UserContext.Provider value={user}>
       <ReplyDraftsProvider key={user.id}>
       <a
-        data-ui="v2"
+       
         className="fixed top-[-80px] left-3 z-[100] rounded-xl bg-surface px-3 py-2 text-sm font-medium text-foreground shadow-overlay focus:top-3"
         href="#main-content"
       >
@@ -260,7 +265,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <div className="flex min-h-dvh bg-background">
         <button
-          data-ui="v2"
+         
           className={`fixed inset-0 z-40 bg-backdrop transition-opacity duration-200 lg:hidden ${navOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
           aria-label="Fermer le menu"
           aria-hidden={!navOpen}
@@ -268,7 +273,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setNavOpen(false)}
         />
         <aside
-          data-ui="v2"
+         
           id="app-navigation"
           className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col gap-4 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
         >
@@ -345,7 +350,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            data-ui="v2"
+           
             className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md lg:px-8"
           >
             <Button
@@ -424,9 +429,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
           <main
             id="main-content"
-            className="page-content"
+            className="min-w-0 flex-1 px-4 pt-5 pb-12 min-[601px]:px-6 min-[601px]:pt-6 min-[601px]:pb-16"
           >
-            {children}
+            {blocked ? (
+              <p className="mx-auto max-w-[560px] rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="status">
+                Votre mot de passe est temporaire : changez-le dans{" "}
+                <Link href="/account" className="font-medium underline">
+                  Mon compte
+                </Link>{" "}
+                avant de continuer.
+              </p>
+            ) : (
+              children
+            )}
           </main>
         </div>
       </div>

@@ -43,7 +43,7 @@ export default function TestingAccess({
     );
   return (
     <section
-      data-ui="v2"
+     
       className="card card--default flex-row flex-wrap items-center gap-4 p-5"
       aria-label="Tests et démonstration"
     >

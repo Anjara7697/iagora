@@ -34,7 +34,7 @@ export function SettingsCard({
 }) {
   return (
     <section
-      data-ui="v2"
+     
       aria-label={region}
       hidden={hidden}
       className={cx("card card--default gap-4 p-5", className)}
@@ -198,7 +198,7 @@ export function SecretOnce({
   const [copied, setCopied] = useState(false);
   return (
     <div
-      data-ui="v2"
+     
       role="status"
       aria-label={label}
       className="flex flex-col gap-3 rounded-2xl border border-warning/30 bg-warning-soft/50 px-4 py-4"

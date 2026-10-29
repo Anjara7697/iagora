@@ -82,7 +82,7 @@ export function MyCalendar() {
   ) : null;
 
   return (
-    <section data-ui="v2" className="card card--default gap-4 p-5" aria-label="Mon agenda">
+    <section className="card card--default gap-4 p-5" aria-label="Mon agenda">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
           <CalendarDays className="size-5" />

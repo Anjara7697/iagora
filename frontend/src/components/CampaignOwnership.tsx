@@ -34,7 +34,7 @@ export default function CampaignOwnership({
     (c.responsible_advisor_id ? `Conseiller #${c.responsible_advisor_id}` : "Aucun responsable");
   return (
     <section
-      data-ui="v2"
+     
       className="card card--default gap-4 p-5"
       aria-label="Responsable de campagne"
     >

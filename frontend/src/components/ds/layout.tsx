@@ -10,7 +10,7 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 /** Racine d'un écran refait : soustrait le sous-arbre à l'ancienne feuille de style. */
 export function Screen({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
   return (
-    <div data-ui="v2" className={cx("mx-auto flex w-full flex-col gap-6", wide ? "max-w-none" : "max-w-[1400px]", className)}>
+    <div className={cx("mx-auto flex w-full flex-col gap-6", wide ? "max-w-none" : "max-w-[1400px]", className)}>
       {children}
     </div>
   );

@@ -58,14 +58,14 @@ export function EmailSettings({
 
   if (!form)
     return error ? (
-      <div data-ui="v2" className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground" role="alert">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground" role="alert">
         <span className="flex-1">{error}</span>
         <Btn size="sm" variant="outline" onClick={load}>
           Réessayer les paramètres
         </Btn>
       </div>
     ) : (
-      <p data-ui="v2" className="text-sm text-muted" role="status">
+      <p className="text-sm text-muted" role="status">
         Chargement des paramètres de la boîte…
       </p>
     );
@@ -190,7 +190,7 @@ export function EmailSettings({
   const hasFolder = folders.some((f) => f.name === form.imap_folder);
 
   return (
-    <section data-ui="v2" className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
+    <section className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={busy !== null || disabled}>
         <legend className="sr-only">Configuration de la boîte email</legend>
         <div className="flex flex-col gap-1">

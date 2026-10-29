@@ -81,7 +81,7 @@ export default function MembershipActions({
   const formClass = "flex flex-col gap-3 rounded-xl border border-separator p-4";
   return (
     <section
-      data-ui="v2"
+     
       className="flex flex-col gap-3 pt-3"
       aria-label={`Suivi du parcours ${m.id}`}
     >

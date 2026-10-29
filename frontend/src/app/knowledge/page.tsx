@@ -271,7 +271,7 @@ function DocumentDetail({
   );
   const d = detail.data;
   return (
-    <section data-ui="v2" className="card card--default gap-4 p-5" aria-label={`Document ${slug}`}>
+    <section className="card card--default gap-4 p-5" aria-label={`Document ${slug}`}>
       <Loading
         loading={detail.loading}
         error={detail.error}

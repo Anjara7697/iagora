@@ -77,7 +77,7 @@ export function Drawer({
 
   if (!open || !mounted) return null;
   return createPortal(
-    <div data-ui="v2">
+    <div>
       <div
         className="fixed inset-0 z-[60] bg-foreground/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150"
         onClick={onClose}

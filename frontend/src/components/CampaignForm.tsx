@@ -80,7 +80,7 @@ export default function CampaignForm({
 
   return (
     <form
-      data-ui="v2"
+     
       className="card card--default gap-5 p-5"
       aria-label="Campagne"
       onSubmit={(e) => {

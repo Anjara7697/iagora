@@ -50,7 +50,7 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section data-ui="v2" className="flex flex-col gap-3" aria-label="Meta Lead Ads">
+      <section className="flex flex-col gap-3" aria-label="Meta Lead Ads">
         {error ? (
           <p className="text-sm text-danger" role="alert">
             {error}
@@ -157,7 +157,7 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      data-ui="v2"
+     
       className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
       aria-label="Meta Lead Ads"
     >

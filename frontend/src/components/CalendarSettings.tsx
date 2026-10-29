@@ -41,7 +41,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section data-ui="v2" className="flex flex-col gap-3" aria-label="Agenda">
+      <section className="flex flex-col gap-3" aria-label="Agenda">
         {error ? (
           <p className="text-sm text-danger" role="alert">
             {error}
@@ -84,7 +84,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      data-ui="v2"
+     
       className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
       aria-label="Agenda"
     >
