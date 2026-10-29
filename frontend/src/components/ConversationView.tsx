@@ -1,8 +1,10 @@
+import { Sparkles, UserRound } from "lucide-react";
 import {
   CHANNELS,
   DELIVERY,
   DRAFT_STATUS,
   formatDate,
+  initials,
   label,
 } from "@/lib/labels";
 import type { Message } from "@/lib/types";
@@ -46,6 +48,13 @@ function authorLine(
     : `Agent IA · ${when}`;
 }
 
+const DELIVERY_TONE: Record<string, string> = {
+  sent: "text-success-soft-foreground",
+  failed: "text-danger-soft-foreground",
+  blocked: "text-danger-soft-foreground",
+};
+
+/** Fil de messages : prospect à gauche, agent et conseiller à droite, état d'envoi sous chaque message. */
 export default function ConversationView({
   messages,
   prospectName = "Prospect",
@@ -55,9 +64,14 @@ export default function ConversationView({
   prospectName?: string;
   channel?: string;
 }) {
-  if (messages.length === 0) return <p className="muted">Aucun message.</p>;
+  if (messages.length === 0)
+    return (
+      <p data-ui="v2" className="text-sm text-muted">
+        Aucun message.
+      </p>
+    );
   return (
-    <div className="chat">
+    <div data-ui="v2" className="flex flex-col gap-4">
       {messages.map((m) => {
         const sources = m.metadata.sources;
         const draft = m.metadata.draft as Draft | undefined;
@@ -65,56 +79,63 @@ export default function ConversationView({
           draft?.status === "rejected" ||
           draft?.status === "superseded" ||
           draft?.status === "cancelled";
+        const fromProspect = m.role === "prospect";
+        const fromAgent = m.role !== "prospect" && m.role !== "advisor";
+        const pending = draft?.status === "pending";
+        const line = deliveryLine(
+          m.metadata.delivery,
+          m.metadata.delivery_info as DeliveryInfo | undefined,
+        );
         return (
           <article
             key={m.id}
-            className={`message message-${m.role} ${draft?.status === "pending" ? "message-pending" : ""} ${dead ? "dead" : ""}`}
+            className={`flex gap-2.5 ${fromProspect ? "flex-row" : "flex-row-reverse"} ${dead ? "opacity-60" : ""}`}
           >
-            <div className="bubble-meta">
-              <span
-                className={`author-dot author-${m.role}`}
-                aria-hidden="true"
-              />
-              {authorLine(m, prospectName, channel)}
-            </div>
-            <div
-              className={`bubble ${m.role} ${draft ? `draft draft-${draft.status}` : ""}`}
+            <span
+              className={`mt-5 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                fromProspect
+                  ? "bg-surface-tertiary text-foreground"
+                  : fromAgent
+                    ? "bg-agent-soft text-agent"
+                    : "bg-accent-soft text-accent-soft-foreground"
+              }`}
+              aria-hidden="true"
             >
-              {draft?.status === "pending" && (
-                <div className="pending-message-label">
-                  Brouillon · pas encore validé
-                </div>
-              )}
-              {draft?.status && draft.status !== "pending" && (
-                <div className="bubble-draft">
-                  {label(DRAFT_STATUS, draft.status)}
-                  {draft.edited ? " (modifié par un conseiller)" : ""}
-                  {draft.reason ? ` — motif : ${draft.reason}` : ""}
-                </div>
-              )}
-              <div className="bubble-text">{m.content}</div>
-              {Array.isArray(sources) && sources.length > 0 && (
-                <div className="bubble-sources">
-                  Sources : {sources.join(" ; ")}
-                </div>
+              {fromProspect ? initials(prospectName) : fromAgent ? <Sparkles className="size-3.5" /> : <UserRound className="size-3.5" />}
+            </span>
+            <div className={`flex max-w-[min(640px,85%)] min-w-0 flex-col gap-1 ${fromProspect ? "items-start" : "items-end"}`}>
+              <div className="text-xs text-muted">{authorLine(m, prospectName, channel)}</div>
+              <div
+                className={`flex flex-col gap-2 rounded-2xl px-4 py-3 text-sm ${
+                  fromProspect
+                    ? "rounded-tl-md bg-surface text-foreground shadow-surface"
+                    : fromAgent
+                      ? `rounded-tr-md ${pending ? "border border-dashed border-agent/50 bg-agent-soft/60" : "bg-agent-soft"} text-foreground`
+                      : "rounded-tr-md bg-accent-soft text-foreground"
+                }`}
+              >
+                {pending && (
+                  <div className="text-xs font-medium text-agent-soft-foreground">
+                    Brouillon · pas encore validé
+                  </div>
+                )}
+                {draft?.status && !pending && (
+                  <div className="text-xs font-medium text-muted">
+                    {label(DRAFT_STATUS, draft.status)}
+                    {draft.edited ? " (modifié par un conseiller)" : ""}
+                    {draft.reason ? ` — motif : ${draft.reason}` : ""}
+                  </div>
+                )}
+                <div className={`whitespace-pre-wrap ${dead ? "line-through decoration-muted/60" : ""}`}>{m.content}</div>
+                {Array.isArray(sources) && sources.length > 0 && (
+                  <div className="text-xs text-muted">Sources : {sources.join(" ; ")}</div>
+                )}
+              </div>
+              {fromProspect && <div className="text-xs text-muted">Reçu</div>}
+              {line && (
+                <div className={`text-xs ${DELIVERY_TONE[String(m.metadata.delivery)] ?? "text-muted"}`}>{line}</div>
               )}
             </div>
-            {m.role === "prospect" && (
-              <div className="bubble-delivery">Reçu</div>
-            )}
-            {(() => {
-              const line = deliveryLine(
-                m.metadata.delivery,
-                m.metadata.delivery_info as DeliveryInfo | undefined,
-              );
-              return line ? (
-                <div
-                  className={`bubble-delivery delivery-${m.metadata.delivery}`}
-                >
-                  {line}
-                </div>
-              ) : null;
-            })()}
           </article>
         );
       })}

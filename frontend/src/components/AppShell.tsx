@@ -424,7 +424,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
           <main
             id="main-content"
-            className={`page-content ${pathname === "/conversations" ? "workspace-page" : ""}`}
+            className="page-content"
           >
             {children}
           </main>
@@ -446,8 +446,9 @@ function AccountMenu({
   onLogout: () => void;
 }) {
   const hasUnsentReplies = useHasUnsentReplies();
+  const [open, setOpen] = useState(false);
   return (
-    <Dropdown>
+    <Dropdown isOpen={open} onOpenChange={setOpen}>
       <Button
         variant="ghost"
         className="h-10 gap-2 px-1.5 sm:px-2"
@@ -470,15 +471,22 @@ function AccountMenu({
         <Dropdown.Menu
           aria-label="Compte"
           onAction={(key) => {
-            if (key === "account") onAccount();
-            if (key === "logout" && confirmLogoutWithDrafts(hasUnsentReplies())) onLogout();
+            if (key === "account") {
+                  setOpen(false);
+                  onAccount();
+                }
+            // Déconnexion annulée : le menu reste ouvert, comme la saisie.
+                if (key === "logout" && confirmLogoutWithDrafts(hasUnsentReplies())) {
+                  setOpen(false);
+                  onLogout();
+                }
           }}
         >
           <Dropdown.Item id="account" textValue="Mon compte">
             <UserRound className="size-4 text-muted" aria-hidden="true" />
             <Label>Mon compte</Label>
           </Dropdown.Item>
-          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
+          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger" shouldCloseOnSelect={false}>
             <LogOut className="size-4" aria-hidden="true" />
             <Label>Déconnexion</Label>
           </Dropdown.Item>
