@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
   CHANNELS,
@@ -1260,7 +1260,7 @@ function Todo() {
 
 export default function TodoPageRoute() {
   return (
-    <Suspense fallback={<p className="muted">Chargement…</p>}>
+    <Suspense fallback={<Skeleton shape="rows" />}>
       <Todo />
     </Suspense>
   );

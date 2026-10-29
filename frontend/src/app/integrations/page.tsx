@@ -163,6 +163,7 @@ function Catalog() {
 
       <Loading
         loading={loading}
+        shape="cards"
         error={failed}
         onRetry={() => {
           email.reload();

@@ -446,3 +446,13 @@ opération couvre les deux. Agenda, Zoom et jetons de service réutilisent leurs
 leur en-tête, déjà porté par le panneau. Les couleurs d'état viennent des variables de `:root` (`err`
 ajouté pour l'erreur de relève). L'état d'une carte décrit la configuration, pas une connexion vérifiée : seul
 un test dans le panneau le confirme.
+
+## 22. États de chargement : squelettes
+
+Le texte « Chargement… » est remplacé par une **silhouette du contenu à venir** (`Skeleton` dans
+`components/ui.tsx`) : lignes de texte par défaut, lignes de liste avec pastille pour les listes (prospects,
+conversations, campagnes, équipe, rendez-vous, files d'attente) et cartes pour le catalogue des intégrations.
+`Loading` accepte une propriété `shape` (`lines`, `rows`, `cards`) ; les replis `Suspense` des pages
+utilisent les mêmes lignes. La région reste annoncée (`role="status"`, `aria-busy`, texte « Chargement… »
+réservé aux lecteurs d'écran). Le balayage lumineux s'arrête avec `prefers-reduced-motion`, ce qui laisse
+des blocs gris fixes.

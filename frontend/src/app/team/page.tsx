@@ -295,6 +295,7 @@ export default function TeamPage() {
           loading={members.loading && !members.data}
           error={members.error}
           onRetry={members.reload}
+          shape="rows"
         />
         {members.data && (
           <Section

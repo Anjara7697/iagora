@@ -7,7 +7,7 @@ import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";
 import { notifyWorkQueueChanged } from "@/lib/workQueue";
-import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
   CHANNELS,
@@ -604,6 +604,7 @@ function Inbox() {
             loading={list.loading}
             error={list.error}
             onRetry={list.reload}
+            shape="rows"
           />
           {list.data && items.length === 0 && (
             <p className="muted inbox-empty">
@@ -673,7 +674,7 @@ function Inbox() {
 
 export default function ConversationsPage() {
   return (
-    <Suspense fallback={<p className="muted">Chargement…</p>}>
+    <Suspense fallback={<Skeleton shape="rows" />}>
       <Inbox />
     </Suspense>
   );
