@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const summary = {
   agent_mode: "assisted",
@@ -124,6 +125,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
   await expect(
     page.getByRole("button", { name: "Tout (5)", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await auditA11y(page, "accueil");
 });
 
 test("accueil : salutation, familles à traiter, signaux forts, activité, relances et entonnoir", async ({

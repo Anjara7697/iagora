@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 test.use({ timezoneId: "Europe/Paris" });
 
@@ -63,6 +64,7 @@ test("conseiller : rendez-vous personnels, liens et navigation active", async ({
   await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("link", { name: "Rendez-vous", exact: true })).toHaveAttribute("aria-current", "page");
   expect(calls.queries.at(-1)?.get("advisor_id")).toBe("7");
   expect(calls.writes).toEqual([]);
+  await auditA11y(page, "rendez-vous");
 });
 
 test("filtres combinés, pagination, actualisation et retour navigateur", async ({ page }) => {

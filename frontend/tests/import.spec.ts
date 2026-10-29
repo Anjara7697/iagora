@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const report = (dry: boolean) => ({
   dry_run: dry,
@@ -67,4 +68,5 @@ test("import CSV : aperçu obligatoire puis import", async ({ page }) => {
     page.getByRole("region", { name: "Résultat de l’import" }),
   ).toBeVisible();
   expect(calls).toEqual(["preview", "import"]);
+  await auditA11y(page, "import CSV");
 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 async function mockApi(
   page: Page,
@@ -99,6 +100,7 @@ test("retour de Google : agenda connecté, puis déconnexion", async ({
   page.once("dialog", (d) => void d.accept());
   await section.getByRole("button", { name: "Déconnecter" }).click();
   await expect.poll(() => calls).toContain("delete");
+  await auditA11y(page, "mon compte");
 });
 
 test("agenda pas encore branché par l'administrateur", async ({ page }) => {
