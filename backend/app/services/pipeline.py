@@ -7,9 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CampaignProspect, CampaignSource, ScoreEvent, StageEvent, User
 from app.models.enums import ConversionStage
-from app.schemas.pipeline import HistoryRead, MembershipUpdate, ScoreEventRead, StageEventRead
+from app.schemas.pipeline import (
+    EnrollmentConfirmation,
+    HistoryRead,
+    MembershipUpdate,
+    ScoreEventRead,
+    StageEventRead,
+)
 from app.services import campaign_ownership, follow_ups
-from app.services.errors import NotFoundError, ValidationFailure
+from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +52,9 @@ async def update_membership(
     if membership is None:
         raise NotFoundError(f"Rattachement {membership_id} introuvable")
 
+    if data.conversion_stage is ConversionStage.CONVERTED:
+        raise ValidationFailure("Utilisez la confirmation d'inscription avec une preuve vérifiée")
+
     if assignment_change and campaign is not None:
         advisor_id = (
             await campaign_ownership.inherited_id(session, campaign)
@@ -79,6 +88,36 @@ async def update_membership(
 
     if membership.conversion_stage in follow_ups.TERMINAL_STAGES:
         await follow_ups.cancel_for_membership(session, membership.id)
+    await session.commit()
+    return membership
+
+
+async def confirm_enrollment(
+    session: AsyncSession,
+    membership_id: int,
+    evidence: EnrollmentConfirmation,
+    *,
+    actor: User,
+) -> CampaignProspect:
+    """Confirme une inscription après vérification humaine, une fois par parcours."""
+    membership = await session.scalar(
+        select(CampaignProspect)
+        .where(CampaignProspect.id == membership_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if membership is None:
+        raise NotFoundError(f"Rattachement {membership_id} introuvable")
+    if membership.conversion_stage is not ConversionStage.APPLIED:
+        raise ConflictError("Confirmez d'abord la réception de la candidature sur ce parcours")
+    reason = (
+        f"Inscription confirmée ; preuve : {evidence.evidence_type} ; "
+        f"référence : {evidence.evidence_reference.strip()}"
+    )
+    if evidence.note and evidence.note.strip():
+        reason += f" ; note : {evidence.note.strip()}"
+    _apply_stage(session, membership, ConversionStage.CONVERTED, reason, actor.id)
+    await follow_ups.cancel_for_membership(session, membership.id)
     await session.commit()
     return membership
 

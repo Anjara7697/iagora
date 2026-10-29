@@ -307,10 +307,24 @@ async def test_terminal_stage_cancels_pending_reminders_atomically(
 ):
     pid, mid, cid = await silent_prospect(client, session_factory)
     if via_api:
-        response = await client.patch(
-            f"{API}/campaign-prospects/{mid}",
-            json={"conversion_stage": stage, "reason": "Fin du parcours"},
-        )
+        endpoint = f"{API}/campaign-prospects/{mid}"
+        if stage == "converted":
+            applied = await client.patch(
+                endpoint,
+                json={"conversion_stage": "applied", "reason": "Dossier reçu"},
+            )
+            assert applied.status_code == 200
+            response = await client.post(
+                f"{endpoint}/confirm-enrollment",
+                json={
+                    "evidence_type": "school_email",
+                    "evidence_reference": "confirmation école du 27 octobre",
+                },
+            )
+        else:
+            response = await client.patch(
+                endpoint, json={"conversion_stage": stage, "reason": "Fin du parcours"}
+            )
         assert response.status_code == 200, response.text
     else:
         async with session_factory() as s:

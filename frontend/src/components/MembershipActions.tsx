@@ -23,6 +23,9 @@ export default function MembershipActions({
   const [advisor, setAdvisor] = useState(String(m.assigned_advisor_id ?? ""));
   const [stage, setStage] = useState(m.conversion_stage);
   const [reason, setReason] = useState("");
+  const [evidenceType, setEvidenceType] = useState("school_email");
+  const [evidenceReference, setEvidenceReference] = useState("");
+  const [evidenceNote, setEvidenceNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -47,6 +50,28 @@ export default function MembershipActions({
       setError(
         err instanceof ApiError ? err.message : "Modification impossible",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEnrollment() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await api(`/campaign-prospects/${m.id}/confirm-enrollment`, {
+        method: "POST",
+        body: {
+          evidence_type: evidenceType,
+          evidence_reference: evidenceReference.trim(),
+          note: evidenceNote.trim() || null,
+        },
+      });
+      setNotice("Inscription confirmée et historisée.");
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Confirmation impossible");
     } finally {
       setBusy(false);
     }
@@ -172,11 +197,13 @@ export default function MembershipActions({
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
             >
-              {Object.entries(STAGES).map(([value, text]) => (
-                <option key={value} value={value}>
-                  {text}
-                </option>
-              ))}
+              {Object.entries(STAGES)
+                .filter(([value]) => value !== "converted" || m.conversion_stage === "converted")
+                .map(([value, text]) => (
+                  <option key={value} value={value}>
+                    {text}
+                  </option>
+                ))}
             </select>
           </label>
           <label>
@@ -193,6 +220,54 @@ export default function MembershipActions({
             disabled={busy || stage === m.conversion_stage || !reason.trim()}
           >
             Enregistrer l’étape
+          </button>
+        </form>
+      )}
+      {canWrite && m.conversion_stage === "applied" && (
+        <form
+          aria-label={`Confirmation de l'inscription du parcours ${m.id}`}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirmEnrollment();
+          }}
+        >
+          <h3>Confirmer l’inscription</h3>
+          <p className="muted">
+            Vérifiez la confirmation de l’école avant de passer ce parcours à « Converti ».
+            La déclaration du candidat ou son dossier ne suffisent pas.
+          </p>
+          <label>
+            Preuve vérifiée
+            <select value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+              <option value="school_email">Email de confirmation de l’école</option>
+              <option value="admissions_system">Système d’admission</option>
+              <option value="signed_document">Document signé</option>
+              <option value="other">Autre preuve vérifiée</option>
+            </select>
+          </label>
+          <label>
+            Référence de la preuve
+            <input
+              value={evidenceReference}
+              onChange={(e) => setEvidenceReference(e.target.value)}
+              disabled={busy}
+              required
+              minLength={10}
+              maxLength={300}
+              placeholder="Ex. email du service admissions du 27/10"
+            />
+          </label>
+          <label>
+            Note complémentaire (facultative)
+            <textarea
+              value={evidenceNote}
+              onChange={(e) => setEvidenceNote(e.target.value)}
+              disabled={busy}
+              maxLength={1000}
+            />
+          </label>
+          <button disabled={busy || evidenceReference.trim().length < 10}>
+            Confirmer l’inscription
           </button>
         </form>
       )}

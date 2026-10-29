@@ -152,7 +152,7 @@ test("suivi : affectation administrative, étape justifiée et historique actual
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
-  let current = { ...member };
+  let current = { ...member, conversion_stage: "applied" };
   const changes: unknown[] = [];
   await page.route("**/api/v1/advisors?**", (route) =>
     route.fulfill({ json: pageOf([{ id: 8, username: "Nadia" }]) }),
@@ -166,6 +166,12 @@ test("suivi : affectation administrative, étape justifiée et historique actual
     current = { ...current, ...body };
     return route.fulfill({ json: current });
   });
+  await page.route("**/api/v1/campaign-prospects/11/confirm-enrollment", (route) => {
+    const body = route.request().postDataJSON();
+    changes.push({ confirmation: body });
+    current = { ...current, conversion_stage: "converted" };
+    return route.fulfill({ json: current });
+  });
   await page.route("**/api/v1/campaign-prospects/11/history", (route) =>
     route.fulfill({
       json: {
@@ -175,9 +181,9 @@ test("suivi : affectation administrative, étape justifiée et historique actual
             ? [
                 {
                   id: 1,
-                  from_stage: "qualified",
+                  from_stage: "applied",
                   to_stage: "converted",
-                  reason: "Inscription confirmée",
+                  reason: "Inscription confirmée ; preuve : school_email ; référence : email admissions du 27 octobre",
                   created_at: "2026-10-15T12:00:00Z",
                 },
               ]
@@ -201,21 +207,20 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await expect(
     follow.getByText("Nadia", { exact: true }).first(),
   ).toBeVisible();
-  const stage = follow.getByRole("form", { name: "Étape du parcours 11" });
-  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  const confirmation = follow.getByRole("form", { name: "Confirmation de l'inscription du parcours 11" });
   await expect(
-    stage.getByRole("button", { name: "Enregistrer l’étape" }),
+    confirmation.getByRole("button", { name: "Confirmer l’inscription" }),
   ).toBeDisabled();
-  await stage.getByLabel("Motif du changement").fill("Inscription confirmée");
-  await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
+  await confirmation.getByLabel("Référence de la preuve").fill("email admissions du 27 octobre");
+  await confirmation.getByRole("button", { name: "Confirmer l’inscription" }).click();
   await expect(
     page.getByText("Converti", { exact: true }).first(),
   ).toBeVisible();
   await page.getByText("Historique du parcours 1", { exact: true }).click();
-  await expect(page.getByText(/\(Inscription confirmée\)/)).toBeVisible();
+  await expect(page.getByText(/email admissions du 27 octobre/)).toBeVisible();
   expect(changes).toEqual([
     { assigned_advisor_id: 8 },
-    { conversion_stage: "converted", reason: "Inscription confirmée" },
+    { confirmation: { evidence_type: "school_email", evidence_reference: "email admissions du 27 octobre", note: null } },
   ]);
   expect(
     await page.evaluate(
@@ -244,7 +249,7 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
     name: "Étape du parcours 11",
     exact: true,
   });
-  await stage.getByLabel("Nouvelle étape").selectOption("converted");
+  await stage.getByLabel("Nouvelle étape").selectOption("applied");
   await stage.getByLabel("Motif du changement").fill("Justification conservée");
   await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
   await expect(

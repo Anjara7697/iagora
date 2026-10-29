@@ -1,7 +1,7 @@
 """Lecture d'un email reçu : expéditeur, texte utile, détection des messages automatiques.
 
-Le contenu d'un email est une donnée NON FIABLE (hameçonnage, injection d'instructions) : on
-n'en extrait que du texte, borné en taille, jamais de pièce jointe ni de lien suivi.
+Le contenu d'un email est une donnée NON FIABLE (hameçonnage, injection d'instructions) :
+le texte et les pièces prises en charge sont bornés en taille ; aucun lien n'est suivi.
 """
 
 import hashlib
@@ -122,7 +122,7 @@ def parse_inbound(uid: str, raw: bytes, *, now: datetime | None = None) -> Inbou
             break
         filename = (part.get_filename() or "document")[:120]
         kind = part.get_content_type()
-        if kind not in {"application/pdf", "text/plain"}:
+        if kind not in {"application/pdf", "text/plain", "image/png", "image/jpeg"}:
             continue
         payload = part.get_payload(decode=True)
         if isinstance(payload, bytes) and len(payload) <= MAX_ATTACHMENT_BYTES:

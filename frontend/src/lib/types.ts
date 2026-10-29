@@ -115,6 +115,7 @@ export type HandoffSheet = {
   summary: string;
   pending_question: string | null;
   recommended_action: string;
+  evidence_reference?: string | null;
   score: Record<string, unknown>;
   qualification: Record<string, unknown>;
 };
@@ -200,7 +201,13 @@ export type History = {
 
 export type AgentMode = "assisted" | "auto" | "manual";
 
-export type TodoKind = "validation" | "escalation" | "kb_gap" | "incident" | "application";
+export type TodoKind =
+  | "validation"
+  | "escalation"
+  | "kb_gap"
+  | "incident"
+  | "application"
+  | "enrollment";
 export type Priority = "critical" | "high" | "medium" | "low";
 
 export type TodoItem = {

@@ -101,7 +101,7 @@ class DbGateway:
         membership = row[0] if row else None
         advisor_id = membership.assigned_advisor_id if membership else None
         advisor = await session.get(User, advisor_id) if advisor_id is not None else None
-        messages = doc.get("messages", [])
+        messages = drafts.live_messages(doc.get("messages", []))
         return ProspectContext(
             prospect_id=prospect_id,
             conversation_id=conversation_id,

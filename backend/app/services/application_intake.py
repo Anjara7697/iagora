@@ -3,10 +3,15 @@
 Les indices suggèrent un examen humain ; ils ne constituent jamais une admission.
 """
 
+import asyncio
 import io
 import re
+import shutil
+import subprocess
+import tempfile
 import unicodedata
 from dataclasses import dataclass
+from pathlib import Path
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
@@ -19,6 +24,8 @@ from app.models.enums import CampaignStatus
 
 MAX_PAGES = 5
 MAX_DOCUMENT_TEXT = 10_000
+OCR_TIMEOUT_SECONDS = 15
+OCR_IMAGE_SIZE = 1600
 APPLICATION = re.compile(
     r"\b(?:candidature|dossier\s+d['’ ]?inscription|formulaire\s+d['’ ]?inscription|"
     r"depose\s+(?:mon|un)\s+dossier|envoye\s+(?:mon|un)\s+dossier)\b"
@@ -37,25 +44,99 @@ class DocumentEvidence:
     note: str
 
 
+def _ocr_image(payload: bytes) -> str:
+    executable = shutil.which("tesseract")
+    if executable is None:
+        return ""
+    result = subprocess.run(  # noqa: S603 - chemin du binaire résolu, sans shell
+        [executable, "stdin", "stdout", "-l", "fra+eng"],
+        input=payload,
+        capture_output=True,
+        timeout=OCR_TIMEOUT_SECONDS,
+        check=False,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.decode("utf-8", "replace")[:MAX_DOCUMENT_TEXT]
+
+
+def _ocr_pdf_page(pdf: Path, page_number: int, directory: Path) -> str:
+    executable = shutil.which("pdftoppm")
+    if executable is None:
+        return ""
+    output = directory / f"page-{page_number}"
+    result = subprocess.run(  # noqa: S603 - chemin du binaire résolu, sans shell
+        [
+            executable,
+            "-f",
+            str(page_number),
+            "-l",
+            str(page_number),
+            "-singlefile",
+            "-scale-to",
+            str(OCR_IMAGE_SIZE),
+            "-png",
+            str(pdf),
+            str(output),
+        ],
+        capture_output=True,
+        timeout=OCR_TIMEOUT_SECONDS,
+        check=False,
+    )
+    image = output.with_suffix(".png")
+    if result.returncode != 0 or not image.exists():
+        return ""
+    try:
+        return _ocr_image(image.read_bytes())
+    finally:
+        image.unlink(missing_ok=True)
+
+
 def document_evidence(mail: InboundEmail) -> list[DocumentEvidence]:
-    """N'extrait que le texte des PDF lisibles et fichiers texte de taille bornée."""
+    """Lit les pièces bornées ; les résultats OCR restent des indices à vérifier."""
     found = []
     for name, kind, payload in mail.attachments:
         if kind == "text/plain":
             content = payload.decode("utf-8", "replace")[:MAX_DOCUMENT_TEXT]
             found.append(DocumentEvidence(name, content, "Texte lu"))
+        elif kind in {"image/png", "image/jpeg"}:
+            try:
+                content = _ocr_image(payload)
+            except (OSError, subprocess.TimeoutExpired):
+                content = ""
+            note = "OCR à vérifier" if content.strip() else "Image non lue : à vérifier"
+            found.append(DocumentEvidence(name, content, note))
         elif kind == "application/pdf":
             try:
                 reader = PdfReader(io.BytesIO(payload), strict=False)
                 if reader.is_encrypted:
                     found.append(DocumentEvidence(name, "", "PDF protégé : à vérifier"))
                     continue
-                content = "\n".join(page.extract_text() or "" for page in reader.pages[:MAX_PAGES])
+                pages = [
+                    (index, page.extract_text() or "")
+                    for index, page in enumerate(reader.pages[:MAX_PAGES], 1)
+                ]
+                used_ocr = False
+                if any(not page_text.strip() for _, page_text in pages):
+                    try:
+                        with tempfile.TemporaryDirectory(prefix="iagora-ocr-") as directory:
+                            root = Path(directory)
+                            pdf = root / "document.pdf"
+                            pdf.write_bytes(payload)
+                            for position, (index, page_text) in enumerate(pages):
+                                if not page_text.strip():
+                                    pages[position] = (index, _ocr_pdf_page(pdf, index, root))
+                                    used_ocr |= bool(pages[position][1].strip())
+                    except (OSError, subprocess.TimeoutExpired):
+                        pass
+                content = "\n".join(page_text for _, page_text in pages)
                 found.append(
                     DocumentEvidence(
                         name,
                         content[:MAX_DOCUMENT_TEXT],
-                        "Texte lu" if content.strip() else "PDF sans texte : à vérifier",
+                        ("OCR à vérifier" if used_ocr else "Texte lu")
+                        if content.strip()
+                        else "PDF sans texte : à vérifier",
                     )
                 )
             except (PdfReadError, ValueError, OSError, KeyError):
@@ -82,10 +163,15 @@ async def suggest_campaigns(session: AsyncSession, text: str) -> list[str]:
     )
 
 
-async def review_sheet(session: AsyncSession, mail: InboundEmail) -> dict[str, str] | None:
+async def review_sheet(
+    session: AsyncSession,
+    mail: InboundEmail,
+    evidence: list[DocumentEvidence] | None = None,
+) -> dict[str, str] | None:
     if mail.suspect:
         return None
-    evidence = document_evidence(mail)
+    if evidence is None:
+        evidence = await asyncio.to_thread(document_evidence, mail)
     text = "\n".join([mail.subject, mail.text, *(d.text for d in evidence)])
     if not APPLICATION.search(normalized(text)):
         return None

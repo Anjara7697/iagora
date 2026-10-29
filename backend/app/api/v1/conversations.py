@@ -17,6 +17,7 @@ from app.api.dependencies import (
 )
 from app.graph import policy
 from app.models.enums import ConversationStatus, SenderType
+from app.schemas.application_review import ApplicationResolution, EnrollmentEmailResolution
 from app.schemas.common import Page
 from app.schemas.conversation import (
     ConversationCreate,
@@ -27,7 +28,7 @@ from app.schemas.conversation import (
     MessageCreate,
     MessageResult,
 )
-from app.services import agent_events, drafts, follow_ups, inbox
+from app.services import agent_events, application_review, drafts, follow_ups, inbox
 from app.services import conversations as service
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
@@ -150,6 +151,48 @@ async def update_conversation(
     if conversation.status is ConversationStatus.CLOSED:
         await drafts.cancel_pending_for_conversation(db, conversation_id)
     return conversation
+
+
+@router.post(
+    "/conversations/{conversation_id}/resolve-application",
+    response_model=ConversationRead,
+    dependencies=[CAN_WRITE],
+)
+async def resolve_application(
+    conversation_id: str,
+    payload: ApplicationResolution,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> ConversationRead:
+    """Termine la revue d'un dossier déjà confirmé sur le parcours choisi."""
+    return await application_review.resolve(
+        session, db, conversation_id, payload.membership_id, actor=user
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/confirm-enrollment-email",
+    response_model=ConversationRead,
+    dependencies=[CAN_WRITE],
+)
+async def confirm_enrollment_email(
+    conversation_id: str,
+    payload: EnrollmentEmailResolution,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> ConversationRead:
+    """Confirme après contrôle humain d'une preuve d'inscription reçue par email."""
+    return await application_review.confirm_enrollment(
+        session,
+        db,
+        conversation_id,
+        payload.membership_id,
+        payload.evidence_reference,
+        payload.note,
+        actor=user,
+    )
 
 
 @router.post(

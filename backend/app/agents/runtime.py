@@ -120,7 +120,8 @@ async def _run_agent(
     if doc.get("simulation") and not simulation:
         raise ConflictError("Utiliser le parcours guidé pour cette conversation simulée")
 
-    inputs = [m for m in doc.get("messages", []) if m["role"] == "prospect"]
+    messages = drafts.live_messages(doc.get("messages", []))
+    inputs = [m for m in messages if m["role"] == "prospect"]
     input_key = f"{conv_id}:{inputs[-1]['id'] if inputs else 'first'}"
     if event_id is not None:
         if event_id != input_key:
@@ -142,7 +143,6 @@ async def _run_agent(
         raise ConflictError("Conversation transférée à un conseiller : l'agent n'intervient plus")
     if not await commercial_context.memberships(session, [pid]):
         raise ConflictError("Attribuer une campagne et une source avant de lancer l'agent")
-    messages = drafts.live_messages(doc.get("messages", []))
     if follow_up:
         await follow_ups.eligible_membership(session, pid, follow_up_membership_id)
         if not messages or drafts.is_pending(messages[-1]):

@@ -187,8 +187,16 @@ async def test_multisource_campaign_counts_one_prospect_and_keeps_source_counts(
     )
     await client.patch(
         f"{API}/campaign-prospects/{last}",
-        json={"conversion_stage": "converted", "reason": "Inscription confirmée"},
+        json={"conversion_stage": "applied", "reason": "Dossier reçu"},
     )
+    confirmed = await client.post(
+        f"{API}/campaign-prospects/{last}/confirm-enrollment",
+        json={
+            "evidence_type": "school_email",
+            "evidence_reference": "confirmation admissions du 27 octobre",
+        },
+    )
+    assert confirmed.status_code == 200
     stats = (await client.get(f"{API}/campaigns/{campaign['id']}/stats")).json()
     assert stats["prospects"] == 1 and stats["converted"] == 1
     assert stats["by_stage"] == {"converted": 1}

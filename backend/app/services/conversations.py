@@ -281,7 +281,8 @@ async def add_message(
         )
 
     await _ensure_journal(session, doc, message, data.role)
-    if created and data.role is SenderType.PROSPECT:
+    evidence_only = bool(((message.get("metadata") or {}).get("email") or {}).get("evidence_only"))
+    if created and data.role is SenderType.PROSPECT and not evidence_only:
         await follow_ups.cancel_pending(session, doc["prospect_id"])  # il répond : plus de relance
     if data.role is SenderType.PROSPECT and not message.get("inbound_processed"):
         # Centralisé ici : premier message, ajout, email et rejeu après une panne SQL/Mongo.

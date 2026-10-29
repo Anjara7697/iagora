@@ -1,9 +1,11 @@
 """Connecteur email : lecture des messages reçus, envoi des messages validés, garde-fous."""
 
 import asyncio
+import io
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from app.agents import auto
@@ -12,9 +14,18 @@ from app.config import Settings, get_settings
 from app.integrations.email.base import InboundEmail
 from app.integrations.email.parsing import parse_inbound, strip_quoted
 from app.main import app
-from app.models import Campaign, CampaignTarget, Prospect, Target
-from app.models.enums import CampaignStatus, ConsentStatus, UserRole
+from app.models import (
+    Campaign,
+    CampaignProspect,
+    CampaignSource,
+    CampaignTarget,
+    Prospect,
+    Source,
+    Target,
+)
+from app.models.enums import CampaignStatus, ConsentStatus, ConversionStage, UserRole
 from app.services import application_intake, conversations, drafts, email_sync, todo
+from pypdf import PdfWriter
 from sqlalchemy import select
 
 from .fakes import FakeEmailClient
@@ -131,8 +142,12 @@ def test_parse_inbound_keeps_small_supported_attachments_only():
     msg.add_attachment(
         b"MZignored", maintype="application", subtype="octet-stream", filename="run.exe"
     )
+    msg.add_attachment(b"fake image", maintype="image", subtype="png", filename="dossier.png")
     parsed = parse_inbound("1", msg.as_bytes())
-    assert parsed.attachments == [("dossier.txt", "text/plain", b"Candidature eBIHAR")]
+    assert parsed.attachments == [
+        ("dossier.txt", "text/plain", b"Candidature eBIHAR"),
+        ("dossier.png", "image/png", b"fake image"),
+    ]
 
 
 def test_pdf_application_text_is_read_with_document_evidence():
@@ -145,6 +160,35 @@ def test_pdf_application_text_is_read_with_document_evidence():
     assert "autre@demo.example.com" in evidence[0].text
     broken = mail(92, attachments=[("dossier.pdf", "application/pdf", b"broken")])
     assert application_intake.document_evidence(broken)[0].note == "PDF illisible : à vérifier"
+
+
+def test_scanned_pdf_is_ocr_read_and_marked_for_review():
+    pdf = PdfWriter()
+    pdf.add_blank_page(width=595, height=842)
+    stream = io.BytesIO()
+    pdf.write(stream)
+    scanned = mail(93, attachments=[("scan.pdf", "application/pdf", stream.getvalue())])
+    with patch.object(
+        application_intake, "_ocr_pdf_page", return_value="Candidature eBIHAR"
+    ) as ocr:
+        evidence = application_intake.document_evidence(scanned)
+    ocr.assert_called_once()
+    assert evidence == [
+        application_intake.DocumentEvidence("scan.pdf", "Candidature eBIHAR", "OCR à vérifier")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_scanned_image_can_trigger_application_review(env):
+    image = mail(
+        94, text="Bonjour, voir la pièce jointe.", attachments=[("scan.png", "image/png", b"image")]
+    )
+    with patch.object(application_intake, "_ocr_image", return_value="Candidature eBIHAR"):
+        report = await env.receive(FakeEmailClient([image]))
+    assert report.received == 1
+    doc = await env.conversation()
+    assert doc["handoff"]["reason"] == "candidature_a_verifier"
+    assert "scan.png (OCR à vérifier)" in doc["handoff"]["summary"]
 
 
 @pytest.mark.asyncio
@@ -194,6 +238,67 @@ async def test_direct_application_creates_review_without_advancing_stage(env):
         assert queue.total == 1
         assert queue.items[0].prospect.email == "direct@demo.example.com"
         assert queue.items[0].prospect.stage is None
+
+
+@pytest.mark.asyncio
+async def test_admissions_email_is_attached_to_unique_applied_candidate(env):
+    async with env.factory() as session:
+        candidate = Prospect(email="candidate@demo.example.com")
+        campaign = Campaign(name="eBIHAR octobre", status=CampaignStatus.ACTIVE)
+        source = Source(name="Dossier", type="email", platform="email")
+        session.add_all([candidate, campaign, source])
+        await session.flush()
+        campaign_source = CampaignSource(campaign_id=campaign.id, source_id=source.id)
+        session.add(campaign_source)
+        await session.flush()
+        session.add(
+            CampaignProspect(
+                prospect_id=candidate.id,
+                campaign_source_id=campaign_source.id,
+                conversion_stage=ConversionStage.APPLIED,
+            )
+        )
+        await session.commit()
+        candidate_id = candidate.id
+
+    incoming = mail(
+        83,
+        sender="admissions@school.example.com",
+        text=("L'admission est confirmée pour candidate@demo.example.com au programme eBIHAR."),
+        subject="Admission confirmée",
+        is_automatic=True,
+    )
+    report = await env.receive(FakeEmailClient([incoming]))
+    assert report.received == 1
+    assert env.replied == []
+    doc = await env.conversation()
+    assert doc["prospect_id"] == candidate_id
+    assert doc["handoff"]["reason"] == "inscription_a_verifier"
+    assert doc["messages"][0]["metadata"]["email"]["evidence_only"] is True
+    assert drafts.live_messages(doc["messages"]) == []
+    async with env.factory() as session:
+        prospects = list(await session.scalars(select(Prospect)))
+        queue = await todo.list_todo(session, env.db, kind="enrollment", limit=25, offset=0)
+    assert [prospect.email for prospect in prospects] == ["candidate@demo.example.com"]
+    assert queue.total == 1
+    assert queue.items[0].prospect.email == "candidate@demo.example.com"
+
+
+@pytest.mark.asyncio
+async def test_unmatched_admission_email_does_not_create_or_trigger_reply(env):
+    incoming = mail(
+        84,
+        sender="admissions@school.example.com",
+        text="L'admission est confirmée pour unknown@demo.example.com.",
+        subject="Admission confirmée",
+    )
+    report = await env.receive(FakeEmailClient([incoming]))
+    assert report.skipped == 1 and report.received == 0
+    assert "non rattachée" in report.notes[0]
+    assert env.replied == []
+    assert await env.conversation() is None
+    async with env.factory() as session:
+        assert list(await session.scalars(select(Prospect))) == []
 
 
 def test_automatic_messages_and_failed_authentication_are_flagged():

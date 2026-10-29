@@ -36,8 +36,13 @@ def is_pending(message: dict[str, Any]) -> bool:
 
 
 def live_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Fil sans les brouillons refusés, remplacés ou annulés."""
-    return [m for m in messages if not is_dead(m)]
+    """Fil destiné à l'agent, sans brouillons morts ni preuve externe à interpréter."""
+    return [
+        message
+        for message in messages
+        if not is_dead(message)
+        and not ((message.get("metadata") or {}).get("email") or {}).get("evidence_only")
+    ]
 
 
 async def _pending(db: Any, conversation_id: str, message_id: str) -> dict[str, Any]:
