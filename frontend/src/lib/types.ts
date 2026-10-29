@@ -447,6 +447,10 @@ export type RuntimeSettings = {
   follow_up_weekdays_only: boolean;
   follow_up_max_per_silence: number;
   email_footer: string;
+  email_ai_notice: string;
+  email_brand_name: string;
+  email_brand_color: string;
+  email_logo_url: string;
   email_create_unknown_senders: boolean;
   email_poll_seconds: number;
   calendar_timezone: string;
@@ -488,7 +492,12 @@ export type ImportReport = {
 
 export type Appointment = {
   id: number;
-  prospect: { id: number; first_name: string | null; last_name: string | null; email: string | null };
+  prospect: {
+    id: number;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  };
   advisor_id: number | null;
   advisor_name: string | null;
   start_at: string;

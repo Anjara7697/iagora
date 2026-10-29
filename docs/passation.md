@@ -59,7 +59,6 @@ Vue technique : [architecture.md](architecture.md).
 | Sujet | Raison ou prochaine action |
 |---|---|
 | Connecteurs LinkedIn et Meta | Accès API non obtenus |
-| Mention IA dans chaque email | À ajouter au pied de message ([conformite-rgpd.md](conformite-rgpd.md)) |
 | Effacement / anonymisation RGPD d'un prospect | Non développé |
 | Écrans Dashboard, Analytics | Affichés « À venir » dans le menu |
 | Gestion des rendez-vous | Liste de consultation disponible ; modification, annulation et synchronisation externe restent à développer |

@@ -11,6 +11,11 @@ const current = {
   follow_up_weekdays_only: true,
   follow_up_max_per_silence: 3,
   email_footer: "Répondez STOP.",
+  email_ai_notice:
+    "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_brand_name: "DATUM Academy",
+  email_brand_color: "#1f4fd8",
+  email_logo_url: "",
   email_create_unknown_senders: true,
   email_poll_seconds: 60,
   calendar_timezone: "Europe/Paris",
@@ -44,6 +49,9 @@ async function mockApi(page: Page, calls: unknown[], role = "ADMIN") {
     else if (path === "/settings/llm/test") {
       calls.push({ test: request.postDataJSON() });
       body = { ok: true, model: "gemini-2.5-flash", detail: "ok" };
+    } else if (path === "/settings/email/preview") {
+      calls.push({ preview: request.postDataJSON() });
+      body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
@@ -94,6 +102,43 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
     calendar_work_start_hour: 10,
   });
   expect(put.put).not.toHaveProperty("gemini_api_key_set");
+});
+
+test("régler la mise en page des emails et voir un aperçu", async ({
+  page,
+}) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings");
+  const emails = page.getByRole("region", { name: "Emails" });
+  const notice = emails.getByLabel("Mention « message rédigé avec une IA »");
+  await expect(notice).toHaveValue(/assistant virtuel/);
+  await notice.fill("Message préparé par notre assistant IA.");
+  await emails.getByLabel("Nom affiché en tête d’email").fill("École test");
+  await emails.getByLabel("Couleur principale des emails").fill("#0a7a4b");
+  await emails
+    .getByLabel("Logo (adresse https, facultatif)")
+    .fill("https://exemple.test/logo.png");
+  await emails.getByRole("button", { name: "Voir un exemple d’email" }).click();
+  await expect(
+    page
+      .frameLocator("iframe[title='Aperçu de l’email']")
+      .getByText("Exemple IAGORA"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Enregistrer les paramètres" })
+    .click();
+  await expect(page.getByText(/Paramètres enregistrés/)).toBeVisible();
+  const put = calls.find((c) => (c as { put?: unknown }).put) as {
+    put: Record<string, unknown>;
+  };
+  expect(put.put).toMatchObject({
+    email_ai_notice: "Message préparé par notre assistant IA.",
+    email_brand_name: "École test",
+    email_brand_color: "#0a7a4b",
+    email_logo_url: "https://exemple.test/logo.png",
+  });
 });
 
 test("l’observateur n’accède pas aux paramètres", async ({ page }) => {

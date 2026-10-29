@@ -61,6 +61,30 @@ est réclamé de façon atomique avant l'envoi : jamais deux envois. Jamais vers
 Cycle de vie : `not_sent → sending → sent | failed | blocked`. Un refus du serveur est retenté
 (3 essais), puis le message passe à `failed` et reste visible dans la console.
 
+## Mise en page et mention IA
+
+Chaque email part en deux versions du même contenu : **texte brut** (version de référence) et **HTML**
+mis en page (liseré et nom, ou logo, de l'école ; paragraphes, listes à puces, liens cliquables). Le corps
+écrit par l'agent est toujours échappé : aucun HTML venu d'un modèle ou d'un prospect n'atteint le message.
+Le rendu est fait par `services/email_format.py` ; les clients qui n'affichent pas le HTML montrent le texte.
+
+Le **pied de message** est ajouté à l'envoi, après le corps :
+
+1. la **mention IA** (« Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy. »),
+   pour tout message rédigé par l'agent, qu'un conseiller l'ait validé ou non (AI Act, art. 50). Un message
+   écrit à la main par un conseiller ne la porte pas ;
+2. la phrase de **désinscription** (réponse STOP).
+
+La mention IA ne peut pas être supprimée : sa formulation se règle dans **Paramètres → Emails** (minimum 10
+caractères) et, si elle est vidée, la formulation par défaut est utilisée. Le même écran règle le **nom
+affiché**, la **couleur principale** et le **logo** (adresse `https` d'une image publique, hauteur 36 px ;
+sans logo, le nom est affiché). « Voir un exemple d'email » rend un message avec les valeurs saisies, avant
+enregistrement, par le même code que l'envoi.
+
+Limites : les couleurs par défaut sont provisoires tant que la charte graphique de DATUM n'est pas
+fournie ; le logo est chargé depuis son adresse par le client mail du destinataire (certains clients le
+masquent par défaut) ; pas de pièces jointes ni d'images intégrées.
+
 ## Refaire un essai sans tout effacer
 
 `python -m app.cli reset-prospect <adresse> [--unread]` supprime **un seul** prospect de test avec ses
@@ -97,4 +121,4 @@ docker compose exec backend python -m app.cli email-sync
 - Un message resté `sending` après un arrêt brutal du serveur n'est pas repris automatiquement
   (on préfère ne rien renvoyer que d'envoyer deux fois) : à vérifier à la main.
 - Plusieurs emails rapprochés du même prospect reçoivent une réponse chacun.
-- Pas encore de gestion des pièces jointes ni du texte HTML riche en sortie (texte brut).
+- Pas de pièces jointes en sortie ; l'HTML est une mise en page simple (voir ci-dessus), sans images intégrées.
