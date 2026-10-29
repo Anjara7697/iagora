@@ -1,6 +1,9 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
+import { Btn, Check, ErrorText, Field, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
+import { ActionsBar } from "@/components/ds/settings";
 import { PLATFORMS, SOURCE_TYPES } from "@/lib/labels";
 import type { Target } from "@/lib/types";
 
@@ -77,96 +80,77 @@ export default function CampaignForm({
 
   return (
     <form
-      className="card campaign-form"
+      data-ui="v2"
+      className="card card--default gap-5 p-5"
+      aria-label="Campagne"
       onSubmit={(e) => {
         e.preventDefault();
         if (valid) onSubmit(v);
       }}
     >
-      <label>
-        Nom de la campagne
-        <input
-          aria-label="Nom de la campagne"
+      <Field label="Nom de la campagne">
+        <TextInput
           value={v.name}
           maxLength={200}
           onChange={(e) => set("name", e.target.value)}
           required
+          placeholder="ex. Rentrée 2027"
         />
-      </label>
-      <label>
-        Description
-        <textarea
-          aria-label="Description"
-          value={v.description}
-          onChange={(e) => set("description", e.target.value)}
-        />
-      </label>
-      <div className="form-row">
-        <label>
-          Statut
-          <select
-            aria-label="Statut"
-            value={v.status}
-            onChange={(e) => set("status", e.target.value)}
-          >
+      </Field>
+      <Field label="Description" hint="Visible par l’équipe ; l’agent ne l’envoie jamais au prospect.">
+        <TextBox value={v.description} onChange={(e) => set("description", e.target.value)} />
+      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field label="Statut">
+          <NativeSelect value={v.status} onChange={(e) => set("status", e.target.value)}>
             <option value="draft">Brouillon</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
-        </label>
-        <label>
-          Début
-          <input
-            type="date"
-            aria-label="Date de début"
-            value={v.start_date}
-            onChange={(e) => set("start_date", e.target.value)}
-          />
-        </label>
-        <label>
-          Fin
-          <input
-            type="date"
-            aria-label="Date de fin"
-            value={v.end_date}
-            onChange={(e) => set("end_date", e.target.value)}
-          />
-        </label>
+          </NativeSelect>
+        </Field>
+        <Field label="Date de début">
+          <TextInput type="date" value={v.start_date} onChange={(e) => set("start_date", e.target.value)} />
+        </Field>
+        <Field label="Date de fin">
+          <TextInput type="date" value={v.end_date} onChange={(e) => set("end_date", e.target.value)} />
+        </Field>
       </div>
-      {datesInvalid && (
-        <p className="error" role="alert">
-          La date de fin doit être postérieure à la date de début.
-        </p>
-      )}
+      {datesInvalid && <ErrorText>La date de fin doit être postérieure à la date de début.</ErrorText>}
 
-      <fieldset>
-        <legend>Programmes visés</legend>
-        <div className="checks">
+      <fieldset className="flex flex-col gap-3 border-t border-separator pt-4">
+        <legend className="float-left mb-3 w-full text-[13px] font-medium text-foreground">Programmes visés</legend>
+        <div className="clear-both grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {targets.map((t) => (
-            <label key={t.code} className="check">
-              <input
-                type="checkbox"
-                checked={v.target_codes.includes(t.code)}
-                onChange={() => toggleTarget(t.code)}
-              />
+            <Check
+              key={t.code}
+              checked={v.target_codes.includes(t.code)}
+              onChange={() => toggleTarget(t.code)}
+              className="rounded-xl border border-border px-3 py-2.5"
+            >
               {t.name}
-            </label>
+            </Check>
           ))}
         </div>
       </fieldset>
 
       {withSources && (
-        <fieldset>
-          <legend>Sources de prospects</legend>
+        <fieldset className="flex flex-col gap-3 border-t border-separator pt-4">
+          <legend className="float-left mb-1 w-full text-[13px] font-medium text-foreground">Sources de prospects</legend>
+          <p className="clear-both text-xs text-muted">
+            D’où viennent les personnes : une publicité, un formulaire, un salon… Vous pourrez en ajouter plus tard.
+          </p>
           {v.sources.map((s, i) => (
-            <div key={i} className="source-row">
-              <input
+            <div
+              key={i}
+              className="grid grid-cols-1 gap-2 rounded-xl bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
+            >
+              <TextInput
                 aria-label={`Nom de la source ${i + 1}`}
                 placeholder="Nom (ex. LinkedIn Ads)"
                 value={s.name}
                 onChange={(e) => setSource(i, { name: e.target.value })}
               />
-              <select
+              <NativeSelect
                 aria-label={`Type de la source ${i + 1}`}
                 value={s.type}
                 onChange={(e) => setSource(i, { type: e.target.value })}
@@ -176,8 +160,8 @@ export default function CampaignForm({
                     {label}
                   </option>
                 ))}
-              </select>
-              <select
+              </NativeSelect>
+              <NativeSelect
                 aria-label={`Plateforme de la source ${i + 1}`}
                 value={s.platform}
                 onChange={(e) => setSource(i, { platform: e.target.value })}
@@ -187,9 +171,10 @@ export default function CampaignForm({
                     {label}
                   </option>
                 ))}
-              </select>
-              <button
-                type="button"
+              </NativeSelect>
+              <Btn
+                variant="ghost"
+                size="sm"
                 onClick={() =>
                   set(
                     "sources",
@@ -197,12 +182,15 @@ export default function CampaignForm({
                   )
                 }
               >
+                <X className="size-4" aria-hidden="true" />
                 Retirer
-              </button>
+              </Btn>
             </div>
           ))}
-          <button
-            type="button"
+          <Btn
+            variant="outline"
+            size="sm"
+            className="w-fit"
             onClick={() =>
               set("sources", [
                 ...v.sources,
@@ -215,24 +203,21 @@ export default function CampaignForm({
               ])
             }
           >
+            <Plus className="size-4" aria-hidden="true" />
             Ajouter une source
-          </button>
+          </Btn>
         </fieldset>
       )}
 
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="row">
-        <button className="primary" disabled={busy || !valid}>
+      {error && <ErrorText>{error}</ErrorText>}
+      <ActionsBar className="border-t border-separator pt-4">
+        <Btn variant="primary" type="submit" disabled={busy || !valid}>
           {busy ? "Enregistrement…" : submitLabel}
-        </button>
-        <button type="button" disabled={busy} onClick={onCancel}>
+        </Btn>
+        <Btn disabled={busy} onClick={onCancel}>
           Annuler
-        </button>
-      </div>
+        </Btn>
+      </ActionsBar>
     </form>
   );
 }

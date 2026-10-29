@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
+import { Toaster } from "@/components/ds/Toaster";
+import "./heroui.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,9 +11,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" data-theme="light">
       <body>
         <AppShell>{children}</AppShell>
+        <Toaster />
       </body>
     </html>
   );

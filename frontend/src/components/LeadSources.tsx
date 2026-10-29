@@ -66,7 +66,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
   const active = tokens.filter((t) => !t.revoked_at);
   return (
     <section
-      className={embedded ? undefined : "card integ-card"}
+      className={embedded ? undefined : "ui-card integ-card"}
       aria-label="Formulaire et outils"
     >
       <div className="integ-main settings-stack">
@@ -74,7 +74,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
           <>
             <div className="section-head">
               <h2>Formulaire du site et outils (n8n…)</h2>
-              <span className={`badge integ-${active.length ? "ok" : "off"}`}>
+              <span className={`ui-badge integ-${active.length ? "ok" : "off"}`}>
                 {active.length
                   ? `${active.length} jeton(s) actif(s)`
                   : "Aucun jeton"}
@@ -148,7 +148,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
                 </span>
                 <span className="item-actions">
                   {t.revoked_at ? (
-                    <span className="badge warn">Révoqué</span>
+                    <span className="ui-badge warn">Révoqué</span>
                   ) : (
                     <button onClick={() => revoke(t)}>Révoquer</button>
                   )}

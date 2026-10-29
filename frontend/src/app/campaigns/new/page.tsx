@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, {
@@ -8,6 +7,8 @@ import CampaignForm, {
   type CampaignValues,
 } from "@/components/CampaignForm";
 import { useCurrentUser } from "@/components/AppShell";
+import { TextLink } from "@/components/ds/controls";
+import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
@@ -24,11 +25,10 @@ export default function NewCampaignPage() {
 
   if (user && user.role !== "ADMIN") {
     return (
-      <>
-        <h1>Nouvelle campagne</h1>
-        <p>La création de campagnes est réservée aux administrateurs.</p>
-        <Link href="/campaigns">← Retour aux campagnes</Link>
-      </>
+      <Screen className="max-w-[960px]">
+        <PageHeader title="Nouvelle campagne" subtitle="La création de campagnes est réservée aux administrateurs." />
+        <TextLink href="/campaigns" className="w-fit">← Retour aux campagnes</TextLink>
+      </Screen>
     );
   }
 
@@ -63,13 +63,8 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Travail · Campagnes</span>
-          <h1>Nouvelle campagne</h1>
-        </div>
-      </div>
+    <Screen className="max-w-[960px]">
+      <PageHeader eyebrow="Pilotage · Campagnes" title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
       <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
         <CampaignForm
@@ -83,6 +78,6 @@ export default function NewCampaignPage() {
           onCancel={() => router.push("/campaigns")}
         />
       )}
-    </>
+    </Screen>
   );
 }

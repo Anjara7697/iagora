@@ -298,3 +298,11 @@ export const EXECUTION: Record<string, string> = {
 export const APPOINTMENT_STATUS: Record<string, string> = {
   proposed: "Proposé", scheduled: "Planifié", done: "Réalisé", cancelled: "Annulé", no_show: "Absent",
 };
+
+/** Monogramme d'une plateforme de source (pastilles décoratives des campagnes). */
+export const PLATFORM_MARK: Record<string, string> = {
+  linkedin: "in",
+  meta: "f",
+  web: "www",
+  email: "@",
+};

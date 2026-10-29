@@ -90,7 +90,7 @@ function Settings() {
         <TestingAccess />
       </>
     ) : (
-      <p className="card warnbox" role="alert">
+      <p className="ui-card warnbox" role="alert">
         Cette page est réservée aux administrateurs.
       </p>
     );

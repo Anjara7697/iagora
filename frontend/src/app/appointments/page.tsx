@@ -82,7 +82,7 @@ function Appointments() {
           {!list.loading && list.data ? `${list.data.total} rendez-vous` : ""}
         </span>
       </div>
-      <form className="filters card" onSubmit={event => event.preventDefault()}>
+      <form className="filters ui-card" onSubmit={event => event.preventDefault()}>
         <div className="filter-field">
           <label htmlFor="appointment-advisor">Conseiller</label>
           <select id="appointment-advisor" value={advisor} onChange={event => update({ advisor: event.target.value })}>
@@ -155,7 +155,7 @@ function Appointments() {
                             : "Non affecté")}
                       </span>
                       <span
-                        className={`badge ${TONES[appointment.status] ?? ""}`}
+                        className={`ui-badge ${TONES[appointment.status] ?? ""}`}
                       >
                         {label(APPOINTMENT_STATUS, appointment.status)}
                       </span>
@@ -182,7 +182,7 @@ function Appointments() {
               })}
             </ul>
           ) : (
-            <section className="empty-state">
+            <section className="ui-empty-state">
               <h2>{list.data.total > 0 ? "Aucun rendez-vous sur cette page" : "Aucun rendez-vous pour cette sélection"}</h2>
               <p className="muted">{list.data.total > 0 ? "La liste a pu évoluer. Revenez à la première page." : "Essayez une autre période ou un autre filtre. Les créneaux proposés dans les conversations ne sont pas des réservations."}</p>
               {offset > 0 && <button onClick={() => update({ offset: "" })}>Revenir à la première page</button>}

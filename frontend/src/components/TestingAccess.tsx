@@ -34,7 +34,7 @@ export default function TestingAccess({
     );
   return (
     <section
-      className="card testing-access"
+      className="ui-card testing-access"
       aria-label="Tests et démonstration"
     >
       <div>

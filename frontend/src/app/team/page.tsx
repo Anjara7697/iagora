@@ -74,10 +74,10 @@ function MemberRow({
   }
 
   const state = !member.is_active
-    ? { label: "Désactivé", cls: "badge integ-off" }
+    ? { label: "Désactivé", cls: "ui-badge integ-off" }
     : member.must_change_password
-      ? { label: "Mot de passe à choisir", cls: "badge integ-warn" }
-      : { label: "Actif", cls: "badge integ-ok" };
+      ? { label: "Mot de passe à choisir", cls: "ui-badge integ-warn" }
+      : { label: "Actif", cls: "ui-badge integ-ok" };
 
   return (
     <div
@@ -184,7 +184,7 @@ export default function TeamPage() {
 
   if (user && !isAdmin)
     return (
-      <p className="card warnbox" role="alert">
+      <p className="ui-card warnbox" role="alert">
         Cette page est réservée aux administrateurs.
       </p>
     );

@@ -64,7 +64,7 @@ export default function AccountPage() {
       </div>
       <div className="settings-stack">
         {user.must_change_password && (
-          <p className="card warnbox" role="alert">
+          <p className="ui-card warnbox" role="alert">
             Votre mot de passe est temporaire : choisissez le vôtre pour accéder
             à la console.
           </p>

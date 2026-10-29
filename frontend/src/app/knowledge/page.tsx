@@ -73,7 +73,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
   }
 
   return (
-    <section className="card kb-tester" aria-label="Tester une question">
+    <section className="ui-card kb-tester" aria-label="Tester une question">
       <h2>Tester une question</h2>
       <p className="muted">
         Vérifiez quelles sources l’agent peut utiliser avant de répondre à un
@@ -133,7 +133,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
           <li key={i} className={hit.retained ? "retained" : "dropped"}>
             <div className="row">
               <strong>{hit.source}</strong>
-              <span className={`badge ${hit.retained ? "risk-low" : ""}`}>
+              <span className={`ui-badge ${hit.retained ? "risk-low" : ""}`}>
                 {hit.retained ? "Retenu" : "Écarté (sous le seuil)"}
               </span>
               <span className="mono">{hit.score.toFixed(3)}</span>
@@ -186,7 +186,7 @@ function Editor({
   }
 
   return (
-    <section className="card kb-editor-panel" aria-label="Éditeur de document">
+    <section className="ui-card kb-editor-panel" aria-label="Éditeur de document">
       <h2>
         {initial.locked
           ? `Modifier « ${initial.slug} »`
@@ -261,7 +261,7 @@ function DocumentDetail({
   );
   const d = detail.data;
   return (
-    <section className="card" aria-label={`Document ${slug}`}>
+    <section className="ui-card" aria-label={`Document ${slug}`}>
       <Loading
         loading={detail.loading}
         error={detail.error}
@@ -388,7 +388,7 @@ export default function KnowledgePage() {
         onRetry={status.reload}
       />
       {gapCount > 0 && (
-        <div className="card kb-gap" role="status">
+        <div className="ui-card kb-gap" role="status">
           <div>
             <strong>
               {gapCount} demande{gapCount > 1 ? "s nécessitent" : " nécessite"}{" "}
@@ -405,7 +405,7 @@ export default function KnowledgePage() {
         </div>
       )}
       {status.data && !status.data.configured && (
-        <p className="card warnbox" role="alert">
+        <p className="ui-card warnbox" role="alert">
           La recherche et l’ajout de documents sont indisponibles : le service
           de recherche n’est pas configuré. L’agent transmet les questions
           factuelles à un conseiller.{" "}
@@ -417,7 +417,7 @@ export default function KnowledgePage() {
         </p>
       )}
       {needsReindex && (
-        <p className="card warnbox" role="alert">
+        <p className="ui-card warnbox" role="alert">
           Certains documents doivent être actualisés avant de pouvoir être
           utilisés par l’agent.{" "}
           {isAdmin ? (
@@ -534,7 +534,7 @@ export default function KnowledgePage() {
                   <tr key={d.slug}>
                     <td>
                       <button
-                        className="link"
+                        className="ui-link"
                         onClick={() =>
                           setSelected(d.slug === selected ? null : d.slug)
                         }
@@ -544,7 +544,7 @@ export default function KnowledgePage() {
                       <div className="muted">
                         {d.slug}{" "}
                         {d.is_demo && (
-                          <span className="badge warn">Fictif</span>
+                          <span className="ui-badge warn">Fictif</span>
                         )}{" "}
                       </div>
                     </td>
@@ -555,7 +555,7 @@ export default function KnowledgePage() {
                     <td>{formatDate(d.updated_at)}</td>
                     <td>
                       <span
-                        className={`badge ${d.needs_reindex ? "integ-warn" : "integ-ok"}`}
+                        className={`ui-badge ${d.needs_reindex ? "integ-warn" : "integ-ok"}`}
                       >
                         {d.needs_reindex ? "À recalculer" : "À jour"}
                       </span>
@@ -576,7 +576,7 @@ export default function KnowledgePage() {
                         <>
                           Aucun document ne correspond à ces critères.{" "}
                           <button
-                            className="link"
+                            className="ui-link"
                             onClick={() => {
                               setQuery("");
                               setProgramme(null);

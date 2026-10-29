@@ -8,7 +8,7 @@ import { DELIVERY, formatDate, label } from "@/lib/labels";
 import type { EmailCheck, EmailStatus, Tone } from "@/lib/types";
 
 function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return <span className={`badge integ-${tone}`}>{children}</span>;
+  return <span className={`ui-badge integ-${tone}`}>{children}</span>;
 }
 
 /** Messagerie : « Vue d'ensemble » (état, actions sur la boîte enregistrée) puis « Configuration ». */

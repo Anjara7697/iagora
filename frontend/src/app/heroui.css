@@ -1,0 +1,147 @@
+/* Socle IAGORA 2026 : Tailwind CSS v4 + HeroUI v3 et le thème IAGORA.
+   Source des valeurs : design system « IAGORA » (tokens.json). Les écrans historiques gardent
+   globalslimité par @scope aux éléments qui ne sont pas des composants HeroUI. */
+@layer theme, base, components, utilities;
+
+/* Pas de preflight Tailwind global : il remettrait à zéro les marges des écrans existants.
+   Une remise à zéro équivalente est appliquée plus bas aux seuls composants HeroUI. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+@import "@heroui/styles/base/base.css" layer(base);
+@import "@heroui/styles/components/index.css" layer(components);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+@source "../";
+
+/* == Thème IAGORA (light) == */
+:root,
+[data-theme="light"] {
+  --background: #f7f7f8;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --surface-secondary: #f4f4f5;
+  --surface-tertiary: #ececee;
+  --overlay: #ffffff;
+  --muted: #66666f;
+  --default: #efeff1;
+  --default-foreground: #18181b;
+  --border: #e4e4e7;
+  --separator: #ececee;
+  --field-background: #ffffff;
+  --field-foreground: #18181b;
+  --field-placeholder: var(--muted);
+  --field-border: #8b8b94;
+  --segment: #ffffff;
+  --focus: var(--accent);
+  --link: var(--accent);
+  --accent: #1f4fd8;
+  --accent-foreground: #ffffff;
+  --accent-soft: #edf1fd;
+  --accent-soft-foreground: #1c45bd;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --success-soft: #e8f5ec;
+  --success-soft-foreground: #166534;
+  --warning: #f5a524;
+  --warning-foreground: #18181b;
+  --warning-soft: #fef4e2;
+  --warning-soft-foreground: #8a4b07;
+  --danger: #d92d20;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fdeceb;
+  --danger-soft-foreground: #b42318;
+  --agent: #7a3df0;
+  --agent-foreground: #ffffff;
+  --agent-soft: #f3eefe;
+  --agent-soft-foreground: #5b28c2;
+  --level-cold: #94a3b8;
+  --level-warm: #fdba74;
+  --level-hot: #f97316;
+  --level-very-hot: #c2410c;
+  --level-very-hot-foreground: #ffffff;
+  --backdrop: rgba(24, 24, 27, 0.4);
+  --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
+  --field-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
+}
+:root {
+  --radius: 4px;
+  --field-radius: 12px;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* Champs : bordure visible de 1 px (3:1 sur blanc). */
+  --field-border-width: 1px;
+}
+
+@theme inline {
+  --color-agent: var(--agent);
+  --color-agent-foreground: var(--agent-foreground);
+  --color-agent-soft: var(--agent-soft);
+  --color-agent-soft-foreground: var(--agent-soft-foreground);
+  --color-level-cold: var(--level-cold);
+  --color-level-warm: var(--level-warm);
+  --color-level-hot: var(--level-hot);
+  --color-level-very-hot: var(--level-very-hot);
+  --color-level-very-hot-foreground: var(--level-very-hot-foreground);
+}
+
+/* Remise à zéro (équivalent du preflight Tailwind) limitée aux composants HeroUI, aux écrans
+   refaits (data-ui="v2") et à leur contenu. */
+@layer base {
+  /* L'attribut hidden l'emporte sur les utilitaires d'affichage (comme le preflight Tailwind). */
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]),
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) *,
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"])::before,
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"])::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) :is(button, input, select, textarea),
+  :where(button, input, select, textarea):where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) {
+    font: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background-color: transparent;
+    border-radius: 0;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) :is(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) :is(ol, ul, menu) {
+    list-style: none;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) :is(img, svg, video) {
+    display: block;
+    vertical-align: middle;
+  }
+  :where(.accordion, .alert, .autocomplete, .avatar, .avatar-group, .badge, .badge-anchor, .breadcrumbs, .button, .button-group, .calendar, .card, .checkbox, .checkbox-group, .chip, .close-button, .color-area, .color-field, .color-input-group, .color-picker, .color-slider, .color-swatch, .color-swatch-picker, .combo-box, .date-field, .date-input-group, .date-picker, .date-range-picker, .description, .disclosure, .disclosure-group, .dropdown, .empty-state, .error-message, .field-error, .fieldset, .header, .input, .input-group, .input-otp, .kbd, .label, .link, .list-box, .list-box-item, .list-box-section, .menu, .menu-item, .menu-section, .meter, .number-field, .pagination, .popover, .progress-bar, .progress-circle, .radio, .radio-group, .range-calendar, .scroll-shadow, .search-field, .select, .separator, .skeleton, .slider, .spinner, .surface, .switch, .switch-group, .table-root, .tabs, .tag, .tag-group, .textarea, .textfield, .time-field, .toast, .toast-region, .toggle-button, .toggle-button-group, .toolbar, .tooltip, .typography, .typography-prose, [class*="__"], [data-rac], [data-ui="v2"]) table {
+    border-collapse: collapse;
+    text-indent: 0;
+  }
+}
+
+@layer components {
+  /* Étapes portées par l’agent (« En conversation », « Qualifié »). */
+  .chip--agent.chip--soft {
+    background: var(--agent-soft);
+    color: var(--agent-soft-foreground);
+  }
+  /* « Très chaud » : seule puce pleine de l’échelle d’intérêt. */
+  .chip--very-hot.chip--primary {
+    background: var(--level-very-hot);
+    color: var(--level-very-hot-foreground);
+  }
+}

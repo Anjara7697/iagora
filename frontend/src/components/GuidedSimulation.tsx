@@ -121,7 +121,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
         </p>
       )}
       {!session && (
-        <section className="card">
+        <section className="ui-card">
           <h2>Premier parcours</h2>
           <p>
             Présentez votre besoin, précisez votre profil, exprimez une
@@ -153,7 +153,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
       )}
       {session && (
         <>
-          <section className="card" aria-label="Guide du parcours">
+          <section className="ui-card" aria-label="Guide du parcours">
             <h2>Messages suggérés</h2>
             <p>
               Adaptez-les aux réponses de l’agent ; un clic prépare le message
@@ -175,7 +175,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
               Voir le prospect fictif et son suivi
             </Link>
           </section>
-          <section className="card" aria-label="Échange opérateur">
+          <section className="ui-card" aria-label="Échange opérateur">
             <h2>Échange et brouillons</h2>
             <ConversationView
               messages={conversation?.messages ?? []}
@@ -274,7 +274,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
               </button>
             </div>
           </section>
-          <section className="card" aria-label="Boîte du prospect">
+          <section className="ui-card" aria-label="Boîte du prospect">
             <h2>Ce que voit le prospect simulé</h2>
             {!report?.exchange.messages.length && <p>Aucun message reçu.</p>}
             {report?.exchange.messages.map((m) => (
@@ -286,7 +286,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
               </p>
             ))}
           </section>
-          <section className="card" aria-label="Bilan du parcours">
+          <section className="ui-card" aria-label="Bilan du parcours">
             <h2>Bilan observé</h2>
             <h3>Informations mémorisées</h3>
             {Object.keys(prospect?.profile ?? {}).length ? (

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { Btn, ErrorText, Field, NativeSelect, Notice, TextBox, TextInput } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { STAGES } from "@/lib/labels";
@@ -77,19 +78,23 @@ export default function MembershipActions({
     }
   }
 
+  const formClass = "flex flex-col gap-3 rounded-xl border border-separator p-4";
   return (
     <section
-      className="membership-actions"
+      data-ui="v2"
+      className="flex flex-col gap-3 pt-3"
       aria-label={`Suivi du parcours ${m.id}`}
     >
-      <p>
-        Conseiller affecté : <strong>{currentName}</strong>
-      </p>
-      <p className="muted">
-        {m.assignment_is_override
-          ? "Exception individuelle à la règle de campagne."
-          : "Affectation selon la règle de campagne."}
-      </p>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm text-foreground">
+          Conseiller affecté : <strong className="font-semibold">{currentName}</strong>
+        </p>
+        <p className="text-xs text-muted">
+          {m.assignment_is_override
+            ? "Exception individuelle à la règle de campagne."
+            : "Affectation selon la règle de campagne."}
+        </p>
+      </div>
       <Loading
         loading={advisors.loading}
         error={advisors.error}
@@ -97,6 +102,7 @@ export default function MembershipActions({
       />
       {user?.role === "ADMIN" && (
         <form
+          className={formClass}
           aria-label={`Affectation du parcours ${m.id}`}
           onSubmit={(e) => {
             e.preventDefault();
@@ -106,13 +112,12 @@ export default function MembershipActions({
             );
           }}
         >
-          <p className="muted">
+          <p className="text-xs text-muted">
             Une modification ici crée une exception pour ce prospect dans cette
             campagne, sur toutes ses sources.
           </p>
-          <label>
-            Conseiller responsable
-            <select
+          <Field label="Conseiller responsable">
+            <NativeSelect
               value={advisor}
               disabled={busy || advisors.loading || !!advisors.error}
               onChange={(e) => setAdvisor(e.target.value)}
@@ -129,58 +134,66 @@ export default function MembershipActions({
                   {a.username}
                 </option>
               ))}
-            </select>
-          </label>
+            </NativeSelect>
+          </Field>
           {advisors.data && advisors.data.total > 50 && (
-            <div className="row">
-              <button
-                type="button"
+            <div className="flex items-center justify-between gap-2">
+              <Btn
+                size="sm"
+                variant="ghost"
                 disabled={busy || offset === 0}
                 onClick={() => setOffset(offset - 50)}
               >
                 Conseillers précédents
-              </button>
-              <span>
+              </Btn>
+              <span className="font-mono text-xs text-muted tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>
-              <button
-                type="button"
+              <Btn
+                size="sm"
+                variant="ghost"
                 disabled={busy || offset + 50 >= advisors.data.total}
                 onClick={() => setOffset(offset + 50)}
               >
                 Conseillers suivants
-              </button>
+              </Btn>
             </div>
           )}
-          <button
-            disabled={
-              busy ||
-              advisors.loading ||
-              !!advisors.error ||
-              advisor === String(m.assigned_advisor_id ?? "")
-            }
-          >
-            Enregistrer l’affectation
-          </button>
-          {m.assignment_is_override && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void save(
-                  { inherit_campaign_advisor: true },
-                  "Règle de campagne rétablie.",
-                )
+          <div className="flex flex-wrap gap-2">
+            <Btn
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={
+                busy ||
+                advisors.loading ||
+                !!advisors.error ||
+                advisor === String(m.assigned_advisor_id ?? "")
               }
             >
-              Suivre le responsable de campagne
-            </button>
-          )}
+              Enregistrer l’affectation
+            </Btn>
+            {m.assignment_is_override && (
+              <Btn
+                size="sm"
+                disabled={busy}
+                onClick={() =>
+                  void save(
+                    { inherit_campaign_advisor: true },
+                    "Règle de campagne rétablie.",
+                  )
+                }
+              >
+                Suivre le responsable de campagne
+              </Btn>
+            )}
+          </div>
         </form>
       )}
       {canWrite && (
         <form
+          className={formClass}
           aria-label={`Étape du parcours ${m.id}`}
           onSubmit={(e) => {
             e.preventDefault();
@@ -190,9 +203,8 @@ export default function MembershipActions({
             );
           }}
         >
-          <label>
-            Nouvelle étape
-            <select
+          <Field label="Nouvelle étape">
+            <NativeSelect
               value={stage}
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
@@ -204,50 +216,55 @@ export default function MembershipActions({
                     {text}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label>
-            Motif du changement
-            <textarea
+            </NativeSelect>
+          </Field>
+          <Field label="Motif du changement">
+            <TextBox
               value={reason}
               disabled={busy}
               required
               maxLength={2000}
               onChange={(e) => setReason(e.target.value)}
             />
-          </label>
-          <button
-            disabled={busy || stage === m.conversion_stage || !reason.trim()}
-          >
-            Enregistrer l’étape
-          </button>
+          </Field>
+          <div>
+            <Btn
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={busy || stage === m.conversion_stage || !reason.trim()}
+            >
+              Enregistrer l’étape
+            </Btn>
+          </div>
         </form>
       )}
       {canWrite && m.conversion_stage === "applied" && (
         <form
+          className={formClass}
           aria-label={`Confirmation de l'inscription du parcours ${m.id}`}
           onSubmit={(event) => {
             event.preventDefault();
             void confirmEnrollment();
           }}
         >
-          <h3>Confirmer l’inscription</h3>
-          <p className="muted">
-            Vérifiez la confirmation de l’école avant de passer ce parcours à « Converti ».
-            La déclaration du candidat ou son dossier ne suffisent pas.
-          </p>
-          <label>
-            Preuve vérifiée
-            <select value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-sm font-semibold text-foreground">Confirmer l’inscription</h3>
+            <p className="text-xs text-muted">
+              Vérifiez la confirmation de l’école avant de passer ce parcours à « Converti ».
+              La déclaration du candidat ou son dossier ne suffisent pas.
+            </p>
+          </div>
+          <Field label="Preuve vérifiée">
+            <NativeSelect value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
               <option value="school_email">Email de confirmation de l’école</option>
               <option value="admissions_system">Système d’admission</option>
               <option value="signed_document">Document signé</option>
               <option value="other">Autre preuve vérifiée</option>
-            </select>
-          </label>
-          <label>
-            Référence de la preuve
-            <input
+            </NativeSelect>
+          </Field>
+          <Field label="Référence de la preuve">
+            <TextInput
               value={evidenceReference}
               onChange={(e) => setEvidenceReference(e.target.value)}
               disabled={busy}
@@ -256,27 +273,24 @@ export default function MembershipActions({
               maxLength={300}
               placeholder="Ex. email du service admissions du 27/10"
             />
-          </label>
-          <label>
-            Note complémentaire (facultative)
-            <textarea
+          </Field>
+          <Field label="Note complémentaire (facultative)">
+            <TextBox
               value={evidenceNote}
               onChange={(e) => setEvidenceNote(e.target.value)}
               disabled={busy}
               maxLength={1000}
             />
-          </label>
-          <button disabled={busy || evidenceReference.trim().length < 10}>
-            Confirmer l’inscription
-          </button>
+          </Field>
+          <div>
+            <Btn type="submit" variant="primary" size="sm" disabled={busy || evidenceReference.trim().length < 10}>
+              Confirmer l’inscription
+            </Btn>
+          </div>
         </form>
       )}
-      {notice && <p role="status">{notice}</p>}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {notice && <Notice>{notice}</Notice>}
+      {error && <ErrorText>{error}</ErrorText>}
     </section>
   );
 }

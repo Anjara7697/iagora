@@ -49,7 +49,7 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
   if (!cfg)
     return (
       <section
-        className={embedded ? undefined : "card integ-card"}
+        className={embedded ? undefined : "ui-card integ-card"}
         aria-label="Meta Lead Ads"
       >
         {error ? <p className="error">{error}</p> : "Chargement…"}
@@ -150,14 +150,14 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      className={embedded ? undefined : "card integ-card"}
+      className={embedded ? undefined : "ui-card integ-card"}
       aria-label="Meta Lead Ads"
     >
       <div className="integ-main settings-stack">
         {!embedded && (
           <div className="section-head">
             <h2>Meta Lead Ads</h2>
-            <span className={`badge integ-${tone}`}>{status}</span>
+            <span className={`ui-badge integ-${tone}`}>{status}</span>
           </div>
         )}
         {!embedded && (
