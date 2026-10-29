@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const campaign = (over: Record<string, unknown> = {}) => ({
   id: 1,
@@ -179,6 +180,7 @@ test("responsable : choix explicite du sort des prospects et mise à jour de la 
       .first(),
   ).toBeVisible();
   expect(payload).toEqual({ advisor_id: 9, existing_prospects: "keep" });
+  await auditA11y(page, "campagnes");
 });
 
 test("responsable : erreur conservée, aucun contrôle d'affectation pour un conseiller", async ({

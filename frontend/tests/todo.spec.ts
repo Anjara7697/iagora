@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const prospect = {
   id: 1,
@@ -130,6 +131,7 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   );
   expect(stagePatch).toMatchObject({ conversion_stage: "applied" });
   expect(resolved).toBe(true);
+  await auditA11y(page, "À traiter");
 });
 
 test("email d'admission : le conseiller confirme le bon parcours avec la preuve", async ({

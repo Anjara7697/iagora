@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const current = {
   llm_provider: "gemini",
@@ -111,6 +112,7 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
     calendar_work_start_hour: 10,
   });
   expect(put.put).not.toHaveProperty("gemini_api_key_set");
+  await auditA11y(page, "paramètres");
 });
 
 test("régler la mise en page des emails et voir un aperçu", async ({
@@ -149,6 +151,8 @@ test("régler la mise en page des emails et voir un aperçu", async ({
     email_brand_color: "#0a7a4b",
     email_logo_url: "https://exemple.test/logo.png",
   });
+  // L'aperçu d'email est un document isolé (iframe sans script), hors de l'interface.
+  await auditA11y(page, "paramètres (emails)", [".email-preview"]);
 });
 
 test("l’observateur n’accède pas aux paramètres", async ({ page }) => {

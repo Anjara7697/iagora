@@ -467,3 +467,18 @@ conversations, campagnes, équipe, rendez-vous, files d'attente) et cartes pour 
 utilisent les mêmes lignes. La région reste annoncée (`role="status"`, `aria-busy`, texte « Chargement… »
 réservé aux lecteurs d'écran). Le balayage lumineux s'arrête avec `prefers-reduced-motion`, ce qui laisse
 des blocs gris fixes.
+
+## 23. Accessibilité : audit automatisé
+
+Les tests navigateur passent désormais l'écran affiché à **axe-core** (`@axe-core/playwright`,
+dépendance de test uniquement) selon les règles WCAG 2 A et AA, avec le mouvement réduit pour ne pas fausser
+les contrastes. Le test échoue sur toute violation **grave ou critique**. Écrans couverts : connexion
+(bureau et mobile), accueil, À traiter, prospects, conversations, campagnes, rendez-vous, base de
+connaissances, intégrations (catalogue et panneau de la messagerie), paramètres (dont l'onglet Emails),
+équipe, import CSV et Mon compte. Au premier passage, aucune violation n'a été relevée.
+
+Limites : un audit automatique ne détecte qu'une partie des problèmes (en général moins de la moitié) ; il ne
+remplace ni la navigation au clavier ni un essai avec un lecteur d'écran. L'aperçu d'email des paramètres
+(iframe isolée) est exclu de l'audit : le contenu des emails relève de `services/email_format.py`.
+Pour ajouter un écran : appeler `auditA11y(page, "nom")` (`tests/a11y.ts`) à la fin d'un test qui l'affiche
+dans son état normal.

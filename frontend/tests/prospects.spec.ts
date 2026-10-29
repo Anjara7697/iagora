@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const member: Record<string, unknown> = {
   id: 11,
@@ -145,6 +146,7 @@ test("campagne et source : seuls les parcours filtrés apparaissent, export iden
     .click();
   await expect(page.getByLabel("Source", { exact: true })).toHaveValue("");
   await expect(page.getByLabel("Source", { exact: true })).toBeDisabled();
+  await auditA11y(page, "prospects");
 });
 
 test("suivi : affectation administrative, étape justifiée et historique actualisé", async ({

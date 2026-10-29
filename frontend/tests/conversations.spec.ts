@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const prospect = {
   id: 1,
@@ -161,6 +162,7 @@ test("mobile : lire le détail puis revenir à la liste sans débordement", asyn
     .click();
   await expect(list).toBeVisible();
   expect(calls.posts).toHaveLength(0);
+  await auditA11y(page, "conversations");
 });
 
 test("lien direct : ouvrir une conversation hors de la page puis afficher une erreur explicite", async ({

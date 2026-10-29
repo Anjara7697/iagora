@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const status = (over: Record<string, unknown> = {}) => ({
   configured: true,
@@ -249,6 +250,7 @@ test("le catalogue résume l'état de chaque connecteur sans aucun secret", asyn
     page.getByRole("article", { name: "LinkedIn Lead Gen" }).getByText("Bientôt"),
   ).toBeVisible();
   await expect(page.getByText("iag_")).toHaveCount(0);
+  await auditA11y(page, "intégrations (catalogue)");
 });
 
 test("l'état détaillé de la boîte email est dans son panneau", async ({
@@ -263,6 +265,7 @@ test("l'état détaillé de la boîte email est dans son panneau", async ({
   await expect(drawer.getByText(/n’écrit qu’à moi@example.com/)).toBeVisible();
   await expect(drawer.getByText("Prêt à envoyer")).toBeVisible();
   await expect(drawer.getByText("À tester", { exact: true })).toBeVisible();
+  await auditA11y(page, "intégrations (panneau messagerie)");
 });
 
 test("un seul onglet de la messagerie est affiché à la fois", async ({
