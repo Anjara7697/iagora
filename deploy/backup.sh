@@ -5,10 +5,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE=(docker compose -f "$ROOT/deploy/compose.prod.yml" --env-file "$ROOT/deploy/.env")
-set -a; . "$ROOT/deploy/.env"; set +a
+ENV_FILE="$ROOT/deploy/.env"
+. "$ROOT/deploy/env.sh"
+POSTGRES_USER="$(env_get POSTGRES_USER iagora)"
+POSTGRES_DB="$(env_get POSTGRES_DB iagora)"
+MONGO_USER="$(env_get MONGO_USER iagora)"
+MONGO_DB="$(env_get MONGO_DB iagora)"
+MONGO_PASSWORD="$(env_get MONGO_PASSWORD)"
+[ -n "$MONGO_PASSWORD" ] || { echo "MONGO_PASSWORD absent de deploy/.env"; exit 1; }
 
-DIR="${BACKUP_DIR:-/var/backups/iagora}"
-KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
+DIR="${BACKUP_DIR:-$(env_get BACKUP_DIR /var/backups/iagora)}"
+KEEP_DAYS="${BACKUP_KEEP_DAYS:-$(env_get BACKUP_KEEP_DAYS 14)}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$DIR"
 umask 077

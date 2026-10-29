@@ -52,8 +52,10 @@ Premier démarrage :
 deploy/deploy.sh dev          # branche à déployer (dev pour l'environnement d'essai)
 ```
 
-Le script : récupère le code (fast-forward uniquement), sauvegarde, construit les images, applique les
-migrations (service `migrate`), démarre, puis attend `/api/v1/health/ready`.
+Le script : récupère le code (fast-forward uniquement), sauvegarde (sauf à la première installation,
+quand les bases n'existent pas encore), construit les images, applique les migrations (service
+`migrate`), démarre, puis attend `/api/v1/health/ready`. Sans droits sur `/var/backups`, renseigner
+`BACKUP_DIR` dans `deploy/.env` (dossier de l'utilisateur de déploiement).
 
 ## 4. Reverse proxy (Caddy)
 
