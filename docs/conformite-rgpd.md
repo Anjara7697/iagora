@@ -45,6 +45,7 @@ déjà protégé dans le code et de ce que DATUM doit encore décider.
 | Transparence | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain | `prompts.py::IDENTITY` |
 | Pas de scraping (S-08) | Uniquement les API officielles | [decisions.md](decisions.md) D-11 |
 | Sécurité | JWT, rôles, argon2, limitation des connexions, garde-fous de production, bases non exposées, secrets hors Git | [architecture.md](architecture.md) |
+| Droit à l'effacement | Effacement définitif par un administrateur (fiche, échanges, rendez-vous, relances, conversation et traces de l'agent), liste de suppression par empreinte pour ne pas recontacter ; commande de purge par durée, sans exécution automatique | `services/erasure.py`, [effacement-rgpd.md](effacement-rgpd.md) |
 | Données de test | Domaine réservé `@demo.example.com`, jamais d'envoi réel, purge possible, refus en production | [demo-mode.md](demo-mode.md) |
 
 ## 3. Écarts à corriger avant une mise en production réelle
@@ -64,13 +65,15 @@ Pour ne plus recevoir de messages de notre part, répondez simplement STOP à ce
 Puis ajouter un test qui vérifie la présence de la mention dans un email envoyé, et faire valider la
 formulation par DATUM.
 
-### 3.2 Droit à l'effacement et durée de conservation
+### 3.2 Droit à l'effacement et durée de conservation : effacement fait, durée à décider
 
-- Pas d'action pour **supprimer ou anonymiser** un prospect réel avec ses conversations MongoDB, ses
-  traces et ses rendez-vous. (`reset-prospect` existe mais est réservé aux adresses de test et refusé en
-  production.) Les clés étrangères `ON DELETE CASCADE` depuis `prospects` facilitent la partie SQL ; la
-  partie MongoDB reste à écrire.
-- Pas de **purge automatique** des prospects inactifs ni des conversations anciennes.
+- **Effacement** : fait. Un administrateur efface un prospect réel avec ses conversations MongoDB, ses
+  traces, ses rendez-vous et ses relances. Seule une trace sans donnée lisible est gardée, plus l'empreinte
+  de l'adresse pour une personne désinscrite ou ayant demandé l'effacement. Reste à la main : emails de la
+  boîte, événements Google / Zoom, sauvegardes. Procédure : [effacement-rgpd.md](effacement-rgpd.md).
+- **Durée de conservation** : l'outil existe (`purge-inactive`, aperçu par défaut), pas la décision.
+  Aucune purge automatique : DATUM doit fixer la durée (§4).
+- `reset-prospect` reste un outil de recette, réservé aux adresses de test et refusé en production.
 
 ### 3.3 Authentification des emails
 
@@ -82,7 +85,7 @@ voulu. Les pièces jointes ne sont pas lues.
 | Sujet | État actuel | À décider |
 |---|---|---|
 | Premier contact avec un consentement « inconnu » | Autorisé | Base légale (intérêt légitime ? consentement ?) selon le canal |
-| Durée de conservation | Illimitée | Durée pour un prospect inactif, pour les conversations, pour les traces |
+| Durée de conservation | Illimitée (la commande `purge-inactive` est prête, non planifiée) | Durée pour un prospect inactif, pour les conversations, pour les traces ; puis planification |
 | Registre des traitements | — | Ajouter le traitement « prospection assistée par IA » |
 | Information des personnes | — | Mention d'information (politique de confidentialité, lien dans les emails) |
 | Clé Gemini | À confirmer | Offre payante : les conditions de l'offre gratuite peuvent permettre à Google d'utiliser les données envoyées |

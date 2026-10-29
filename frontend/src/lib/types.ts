@@ -463,6 +463,21 @@ export type RuntimeSettings = {
   embedding_model?: string;
 };
 
+export type ErasureReport = {
+  prospect_id: number;
+  conversations: number;
+  interactions: number;
+  appointments: number;
+  suppressed: boolean;
+  external_events: {
+    start_at: string;
+    advisor: string | null;
+    calendar_event_id: string | null;
+    zoom_meeting_id: string | null;
+    meeting_url: string | null;
+  }[];
+};
+
 export type ServiceToken = {
   id: string;
   name: string;
@@ -488,7 +503,12 @@ export type ImportReport = {
 
 export type Appointment = {
   id: number;
-  prospect: { id: number; first_name: string | null; last_name: string | null; email: string | null };
+  prospect: {
+    id: number;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+  };
   advisor_id: number | null;
   advisor_name: string | null;
   start_at: string;

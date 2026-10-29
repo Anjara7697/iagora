@@ -29,7 +29,7 @@ from app.models.enums import (
     FollowUpStatus,
 )
 from app.schemas.prospect import ProspectIngest, ProspectUpdate
-from app.services import campaign_ownership, commercial_context, references
+from app.services import campaign_ownership, commercial_context, erasure, references
 from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
@@ -189,6 +189,12 @@ async def ingest_prospect(
             if prospect is None:
                 raise ConflictError("Conflit lors de la création du prospect") from None
             created = False
+
+    if created and await erasure.is_suppressed(session, email=data.email, phone=data.phone):
+        # Personne désinscrite ou ayant demandé son effacement : jamais recontactée par un import.
+        await _record_consent(
+            session, prospect, ConsentEventType.WITHDRAWN, "liste de suppression (effacement)"
+        )
 
     if not created:
         # Sérialiser les réceptions d'une même fiche, même depuis plusieurs processus.

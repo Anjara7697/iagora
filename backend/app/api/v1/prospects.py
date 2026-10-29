@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Response, 
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import (
+    ADMIN_ONLY,
     ANY_ROLE,
     CAN_WRITE,
     CalendarDep,
@@ -21,6 +22,7 @@ from app.api.v1.conversations import trigger_agent
 from app.models import CampaignProspect, Prospect
 from app.models.enums import ConsentStatus, Direction, InterestLevel, UserRole
 from app.schemas.common import Page
+from app.schemas.erasure import ErasureReport, ErasureRequest
 from app.schemas.interaction import InteractionCreate, InteractionRead
 from app.schemas.prospect import (
     CampaignAttribution,
@@ -32,7 +34,7 @@ from app.schemas.prospect import (
     ProspectIngestResult,
     ProspectUpdate,
 )
-from app.services import commercial_context, drafts, intake
+from app.services import commercial_context, drafts, erasure, intake
 from app.services import inbound as inbound_service
 from app.services import interactions as interaction_service
 from app.services import prospects as service
@@ -277,6 +279,30 @@ async def grant_consent(
         )
     prospect = await service.grant_consent(session, prospect_id, payload.source, payload.channel)
     return await _detail(session, prospect)
+
+
+@router.post("/{prospect_id}/erase", response_model=ErasureReport, dependencies=[ADMIN_ONLY])
+async def erase_prospect(
+    prospect_id: int,
+    payload: ErasureRequest,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> ErasureReport:
+    """Efface définitivement un prospect et ses données (RGPD, art. 17) ; irréversible.
+
+    La confirmation doit reprendre l'adresse email du prospect (son numéro de fiche s'il n'en a
+    pas). Le rapport liste les événements d'agenda et de visio à supprimer à la main."""
+    prospect = await service.get_prospect(session, prospect_id)
+    expected = (prospect.email or str(prospect.id)).strip().lower()
+    if payload.confirm.strip().lower() != expected:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La confirmation ne correspond pas à l'adresse email du prospect",
+        )
+    return await erasure.erase_prospect(
+        session, db, prospect_id, reason=payload.reason, actor_id=user.id
+    )
 
 
 @router.post(
