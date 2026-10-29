@@ -17,6 +17,7 @@ import {
   label,
   relativeTime,
   EXECUTION,
+  STAGES,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import { notifyWorkQueueChanged } from "@/lib/workQueue";
@@ -27,6 +28,7 @@ import type {
   TreatedItem,
   TreatedPage,
   Prospect,
+  Membership,
 } from "@/lib/types";
 
 type KindFilter = "" | TodoKind;
@@ -289,6 +291,22 @@ function DraftPanel({
   );
 }
 
+const PRE_APPLICATION_STAGES = [
+  "new",
+  "to_qualify",
+  "contacted",
+  "in_conversation",
+  "qualified",
+  "meeting_proposed",
+  "meeting_scheduled",
+  "meeting_done",
+  "to_follow_up",
+];
+
+function membershipLabel(m: Membership): string {
+  return `${m.campaign_name ?? "Campagne sans nom"} · ${m.source_name ?? "source inconnue"}`;
+}
+
 function ApplicationReview({
   item,
   onDone,
@@ -301,18 +319,39 @@ function ApplicationReview({
     item.prospect ? `/prospects/${item.prospect.id}` : null,
   );
   const [membershipId, setMembershipId] = useState("");
+  const [checked, setChecked] = useState(false);
+  const [reason, setReason] = useState(
+    `Dossier de candidature reçu le ${formatDate(item.created_at)}, vérifié dans la boîte email.`,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const eligible = prospect.data?.campaigns.filter((m) =>
+  const memberships = prospect.data?.campaigns ?? [];
+  // Parcours déjà à « Candidature déposée » : il suffit de terminer la revue.
+  const applied = memberships.filter((m) =>
     ["applied", "converted"].includes(m.conversion_stage),
-  ) ?? [];
-  const selected = eligible.find((m) => String(m.id) === membershipId);
+  );
+  // Sinon, le conseiller passe le bon parcours à « Candidature déposée » d'ici.
+  const open = memberships.filter((m) =>
+    PRE_APPLICATION_STAGES.includes(m.conversion_stage),
+  );
+  const choices = applied.length > 0 ? applied : open;
+  const selected =
+    choices.find((m) => String(m.id) === membershipId) ??
+    (choices.length === 1 ? choices[0] : undefined);
+  const needsStage = !!selected && !applied.includes(selected);
+  const canFinish =
+    !!selected && checked && (!needsStage || reason.trim().length > 0);
 
   async function finish() {
-    if (!selected) return;
+    if (!selected || !canFinish) return;
     setBusy(true);
     setError(null);
     try {
+      if (needsStage)
+        await api(`/campaign-prospects/${selected.id}`, {
+          method: "PATCH",
+          body: { conversion_stage: "applied", reason: reason.trim() },
+        });
       await api(`/conversations/${item.conversation_id}/resolve-application`, {
         method: "POST",
         body: { membership_id: selected.id },
@@ -320,55 +359,106 @@ function ApplicationReview({
       notifyWorkQueueChanged();
       onDone({
         prospectName: itemName(item),
-        message: "Candidature vérifiée sur le parcours choisi. La demande a quitté la file.",
+        message: needsStage
+          ? "Parcours passé à « Candidature déposée ». La demande a quitté la file."
+          : "Candidature vérifiée sur le parcours choisi. La demande a quitté la file.",
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Vérification impossible");
+      prospect.reload();
+      setError(
+        err instanceof ApiError ? err.message : "Vérification impossible",
+      );
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="card" aria-label="Terminer la vérification de la candidature">
-      <h3>Terminer la vérification</h3>
-      <ol>
-        <li>Contrôlez le dossier original dans la boîte email.</li>
-        <li>Sur la fiche prospect, vérifiez la campagne et la source du bon parcours.</li>
-        <li>Confirmez l’étape « Candidature déposée » avec un motif.</li>
-      </ol>
-      <p className="muted">La fiche prospect s’ouvre avec le bouton en haut de cette demande.</p>
-      <Loading loading={prospect.loading} error={prospect.error} onRetry={prospect.reload} />
+    <section className="card review-form" aria-label="Confirmer la candidature">
+      <h3>Confirmer la candidature</h3>
+      <Loading
+        loading={prospect.loading}
+        error={prospect.error}
+        onRetry={prospect.reload}
+      />
       {user?.role === "VIEWER" ? (
-        <p className="muted">Un conseiller ou administrateur peut terminer cette vérification.</p>
+        <p className="muted">
+          Un conseiller ou administrateur peut confirmer cette candidature.
+        </p>
       ) : (
-        <>
-          <button type="button" disabled={prospect.loading} onClick={prospect.reload}>
-            Actualiser les parcours
-          </button>
-          {prospect.data && eligible.length === 0 && (
-            <p className="muted">
-              Aucun parcours n’est encore à l’étape « Candidature déposée ». La demande reste à traiter.
-            </p>
-          )}
-          {eligible.length > 0 && (
-            <label>
-              Parcours dont le dossier a été vérifié
-              <select value={membershipId} onChange={(e) => setMembershipId(e.target.value)}>
-                <option value="">Choisir le bon parcours</option>
-                {eligible.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.campaign_name ?? `Campagne #${m.campaign_id ?? "?"}`} · {m.source_name ?? "Source inconnue"} · parcours {m.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {error && <p className="error" role="alert">{error}</p>}
-          <button className="primary" disabled={!selected || busy} onClick={() => void finish()}>
-            {busy ? "Vérification en cours…" : "Terminer la vérification"}
-          </button>
-        </>
+        prospect.data && (
+          <>
+            {choices.length === 0 ? (
+              <p className="muted">
+                Aucun parcours ouvert pour ce prospect. Attribuez d’abord une
+                campagne depuis sa fiche.
+              </p>
+            ) : (
+              <>
+                <label className="check-line">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => setChecked(e.target.checked)}
+                  />
+                  J’ai contrôlé le dossier original dans la boîte email
+                </label>
+                <label>
+                  Parcours concerné
+                  <select
+                    value={selected ? String(selected.id) : ""}
+                    onChange={(e) => setMembershipId(e.target.value)}
+                  >
+                    {choices.length > 1 && (
+                      <option value="">Choisir le parcours</option>
+                    )}
+                    {choices.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {membershipLabel(m)} · étape actuelle :{" "}
+                        {label(STAGES, m.conversion_stage)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {needsStage && (
+                  <label>
+                    Motif enregistré dans l’historique
+                    <textarea
+                      value={reason}
+                      maxLength={2000}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </label>
+                )}
+              </>
+            )}
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            {choices.length > 0 && (
+              <div className="review-actions">
+                <button
+                  className="primary"
+                  disabled={!canFinish || busy}
+                  onClick={() => void finish()}
+                >
+                  {busy
+                    ? "Enregistrement…"
+                    : needsStage
+                      ? "Passer à « Candidature déposée » et terminer"
+                      : "Terminer la vérification"}
+                </button>
+                <span className="muted">
+                  {checked
+                    ? "La demande quittera la file."
+                    : "Cochez le contrôle du dossier pour continuer."}
+                </span>
+              </div>
+            )}
+          </>
+        )
       )}
     </section>
   );
@@ -427,11 +517,11 @@ function EnrollmentReview({
   }
 
   return (
-    <section className="card" aria-label="Confirmer l'inscription depuis la preuve reçue">
-      <h3>Confirmer après vérification</h3>
-      <p>
-        Ouvrez l’email original, contrôlez l’identité et le programme, puis choisissez
-        le parcours correspondant. La confirmation passe ce parcours à « Converti ».
+    <section className="card review-form" aria-label="Confirmer l'inscription depuis la preuve reçue">
+      <h3>Confirmer l’inscription</h3>
+      <p className="muted">
+        Ouvrez l’email original, contrôlez l’identité et le programme. Le parcours
+        choisi passe à « Converti ».
       </p>
       <Loading
         loading={prospect.loading}
@@ -444,9 +534,6 @@ function EnrollmentReview({
         </p>
       ) : (
         <>
-          <button type="button" disabled={prospect.loading} onClick={prospect.reload}>
-            Actualiser les parcours
-          </button>
           {prospect.data && eligible.length === 0 && (
             <p className="muted">
               Aucun parcours n’est à l’étape « Candidature déposée ». La demande reste ouverte.
@@ -462,16 +549,14 @@ function EnrollmentReview({
                 <option value="">Choisir le bon parcours</option>
                 {eligible.map((membership) => (
                   <option key={membership.id} value={membership.id}>
-                    {membership.campaign_name ??
-                      `Campagne #${membership.campaign_id ?? "?"}`} ·{" "}
-                    {membership.source_name ?? "Source inconnue"} · parcours {membership.id}
+                    {membershipLabel(membership)}
                   </option>
                 ))}
               </select>
             </label>
           )}
           <label>
-            Référence de la preuve vérifiée
+            Référence de la preuve
             <input
               value={reference}
               maxLength={300}
@@ -491,13 +576,23 @@ function EnrollmentReview({
               {error}
             </p>
           )}
-          <button
-            className="primary"
-            disabled={!selected || reference.trim().length < 10 || busy}
-            onClick={() => void confirm()}
-          >
-            {busy ? "Confirmation en cours…" : "Confirmer l'inscription"}
-          </button>
+          <div className="review-actions">
+            <button
+              className="primary"
+              disabled={!selected || reference.trim().length < 10 || busy}
+              onClick={() => void confirm()}
+            >
+              {busy ? "Confirmation en cours…" : "Confirmer l'inscription"}
+            </button>
+            <button
+              type="button"
+              className="link"
+              disabled={prospect.loading}
+              onClick={prospect.reload}
+            >
+              Actualiser les parcours
+            </button>
+          </div>
         </>
       )}
     </section>
@@ -523,7 +618,6 @@ function Detail({
         </span>
         <div className="inbox-detail-title">
           <h2>{name}</h2>
-          <DemoBadge email={item.prospect?.email} />
           <div className="row">
             <span className={`badge kind-${item.kind}`}>
               {TASK_LABELS[item.kind]}
@@ -535,6 +629,7 @@ function Detail({
             {!rec && item.prospect?.total_score != null && (
               <ScoreBadge total={item.prospect.total_score} level={item.prospect.level} />
             )}
+            <DemoBadge email={item.prospect?.email} />
           </div>
         </div>
         {item.prospect && (
@@ -577,7 +672,28 @@ function Detail({
             Prochaine action recommandée
           </div>
           <h3>{rec.action}</h3>
-          {rec.reason && <p className="decision-reason">{rec.reason}</p>}
+          {(() => {
+            // Recommandation et fiche de transfert se recoupent souvent : on
+            // n'affiche qu'une fois le texte le plus complet.
+            const reason = rec.reason ?? "";
+            const summary = item.handoff?.summary ?? "";
+            const merged = summary.includes(reason) ? summary : reason;
+            const extra =
+              summary && !summary.includes(reason) && !reason.includes(summary);
+            return (
+              <>
+                {merged && <p className="decision-reason">{merged}</p>}
+                {extra && item.handoff && (
+                  <p className="decision-reason">
+                    <span className="muted">
+                      {label(HANDOFF_REASONS, item.handoff.reason)} :
+                    </span>{" "}
+                    {summary}
+                  </p>
+                )}
+              </>
+            );
+          })()}
           <div className="decision-signals">
             <span className={`badge risk-${rec.risk}`}>
               Risque : {label(RISKS, rec.risk).toLowerCase()}
@@ -641,7 +757,15 @@ function Detail({
         <EnrollmentReview item={item} onDone={onDone} />
       )}
 
-      {item.handoff && (
+      {item.handoff && rec && (
+        <p className="handoff-link">
+          <Link href={`/conversations?id=${item.conversation_id}`}>
+            Répondre dans la conversation →
+          </Link>
+        </p>
+      )}
+
+      {item.handoff && !rec && (
         <div className="card warnbox">
           <strong>Fiche de transfert</strong> —{" "}
           {label(HANDOFF_REASONS, item.handoff.reason)}
@@ -769,6 +893,7 @@ function Todo() {
   const router = useRouter();
   const params = useSearchParams();
   const selectedId = params.get("id");
+  const [showAllKinds, setShowAllKinds] = useState(false);
   const kind: KindFilter = KIND_ORDER.includes(params.get("kind") as TodoKind)
     ? (params.get("kind") as TodoKind)
     : "";
@@ -948,7 +1073,9 @@ function Todo() {
               >
                 Tout ({total})
               </button>
-              {KIND_ORDER.map((k) => (
+              {KIND_ORDER.filter(
+                (k) => showAllKinds || kind === k || (counts[k] ?? 0) > 0,
+              ).map((k) => (
                 <button
                   key={k}
                   aria-pressed={kind === k}
@@ -960,6 +1087,16 @@ function Todo() {
                   {TASK_LABELS[k]} ({counts[k] ?? 0})
                 </button>
               ))}
+              {KIND_ORDER.some((k) => (counts[k] ?? 0) === 0 && kind !== k) && (
+                <button
+                  type="button"
+                  className="chips-more"
+                  aria-expanded={showAllKinds}
+                  onClick={() => setShowAllKinds(!showAllKinds)}
+                >
+                  {showAllKinds ? "Masquer les types vides" : "Autres types"}
+                </button>
+              )}
             </div>
           </div>
           {tab === "todo" && (

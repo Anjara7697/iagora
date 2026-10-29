@@ -24,14 +24,14 @@ const BUCKETS = [
   },
   {
     kind: "kb_gap",
-    title: "Lacunes KB",
+    title: "Questions sans réponse",
     hint: "Réponses bloquées",
     tone: "ai",
   },
   {
     kind: "incident",
     title: "Incidents",
-    hint: "Ingestion ou envoi interrompu",
+    hint: "Réception ou envoi interrompu",
     tone: "err",
   },
 ] as const;

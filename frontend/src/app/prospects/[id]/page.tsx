@@ -511,8 +511,8 @@ export default function ProspectPage() {
                           );
                       }}
                     >
-                      <summary>
-                        Suivi du parcours {m.id} · Affectation et étape
+                      <summary data-membership={m.id}>
+                        Modifier l’affectation ou l’étape
                       </summary>
                       <MembershipActions
                         key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}

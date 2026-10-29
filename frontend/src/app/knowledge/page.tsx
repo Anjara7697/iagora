@@ -248,10 +248,13 @@ function DocumentDetail({
   slug,
   canEdit,
   onEdit,
+  onDelete,
 }: {
   slug: string;
   canEdit: boolean;
   onEdit: (d: KnowledgeDocumentDetail) => void;
+  /** Suppression réservée à l'administrateur, depuis le détail uniquement. */
+  onDelete?: (d: KnowledgeDocumentDetail) => void;
 }) {
   const detail = useApi<KnowledgeDocumentDetail>(
     `/knowledge/documents/${slug}`,
@@ -271,6 +274,11 @@ function DocumentDetail({
             <span className="spacer" />
             {canEdit && d.source_text !== null && (
               <button onClick={() => onEdit(d)}>Modifier</button>
+            )}
+            {onDelete && (
+              <button className="danger" onClick={() => onDelete(d)}>
+                Supprimer
+              </button>
             )}
           </div>
           <p className="muted">
@@ -519,7 +527,6 @@ export default function KnowledgePage() {
                   <th>Extraits</th>
                   <th>Mis à jour</th>
                   <th>Statut</th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -553,35 +560,11 @@ export default function KnowledgePage() {
                         {d.needs_reindex ? "À recalculer" : "À jour"}
                       </span>
                     </td>
-                    <td>
-                      {isAdmin && (
-                        <button
-                          className="danger"
-                          disabled={busy}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Supprimer « ${d.title} » ? L'agent ne pourra plus s'en servir.`,
-                              )
-                            )
-                              act(
-                                () =>
-                                  api(`/knowledge/documents/${d.slug}`, {
-                                    method: "DELETE",
-                                  }),
-                                "Document supprimé.",
-                              );
-                          }}
-                        >
-                          Supprimer
-                        </button>
-                      )}
-                    </td>
                   </tr>
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="muted">
+                    <td colSpan={5} className="muted">
                       {docs.data.length === 0 ? (
                         <>
                           Aucun document.{" "}
@@ -628,6 +611,23 @@ export default function KnowledgePage() {
               content: d.source_text ?? "",
               locked: true,
             })
+          }
+          onDelete={
+            isAdmin && !busy
+              ? (d) => {
+                  if (
+                    window.confirm(
+                      `Supprimer « ${d.title} » ? L'agent ne pourra plus s'en servir.`,
+                    )
+                  )
+                    act(async () => {
+                      await api(`/knowledge/documents/${d.slug}`, {
+                        method: "DELETE",
+                      });
+                      setSelected(null);
+                    }, "Document supprimé.");
+                }
+              : undefined
           }
         />
       )}

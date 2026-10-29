@@ -245,7 +245,6 @@ export default function SimulatorPage() {
       </SimulationNotice>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">Paramètres · Tests et démonstration</span>
           <h1>Simulateur de prospect</h1>
           <p className="muted">
             Jouez un prospect <b>fictif</b> (adresse @demo.example.com) : mêmes
