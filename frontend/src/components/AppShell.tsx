@@ -1,6 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import {
+  BookOpen,
+  CalendarDays,
+  ListChecks,
+  Megaphone,
+  MessageSquare,
+  Plug,
+  Settings,
+  Sun,
+  Users,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
@@ -21,6 +34,8 @@ const ROLE_LABELS = {
 type NavItem = {
   href?: string;
   label: string;
+  /** Pictogramme Lucide, décoratif : le libellé porte le sens. */
+  icon?: LucideIcon;
   badge?: boolean;
   /** Écran prévu par la maquette, pas encore développé : affiché grisé, sans lien. */
   soon?: boolean;
@@ -30,17 +45,17 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
   {
     name: "Travail",
     items: [
-      { href: "/", label: "Aujourd’hui" },
-      { href: "/todo", label: "À traiter", badge: true },
-      { href: "/conversations", label: "Conversations" },
-      { href: "/appointments", label: "Rendez-vous" },
-      { href: "/prospects", label: "Prospects" },
+      { href: "/", label: "Aujourd’hui", icon: Sun },
+      { href: "/todo", label: "À traiter", icon: ListChecks, badge: true },
+      { href: "/conversations", label: "Conversations", icon: MessageSquare },
+      { href: "/appointments", label: "Rendez-vous", icon: CalendarDays },
+      { href: "/prospects", label: "Prospects", icon: Users },
     ],
   },
   {
     name: "Pilotage",
     items: [
-      { href: "/campaigns", label: "Campagnes" },
+      { href: "/campaigns", label: "Campagnes", icon: Megaphone },
       { label: "Dashboard", soon: true },
       { label: "Analytics", soon: true },
     ],
@@ -49,15 +64,15 @@ const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
     name: "Intelligence",
     items: [
       { label: "Agent", soon: true },
-      { href: "/knowledge", label: "Knowledge Base" },
+      { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
     ],
   },
   {
     name: "Administration",
     items: [
-      { href: "/team", label: "Équipe", adminOnly: true },
-      { href: "/integrations", label: "Intégrations", adminOnly: true },
-      { href: "/settings", label: "Paramètres" },
+      { href: "/team", label: "Équipe", icon: UsersRound, adminOnly: true },
+      { href: "/integrations", label: "Intégrations", icon: Plug, adminOnly: true },
+      { href: "/settings", label: "Paramètres", icon: Settings },
     ],
   },
 ];
@@ -183,7 +198,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!user)
     return (
       <main className="center">
-        <div className="card" role={error ? "alert" : "status"}>
+        <div className="ui-card" role={error ? "alert" : "status"}>
           {error ? (
             <>
               <p className="error">{error}</p>
@@ -260,6 +275,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       className={`nav-item ${active ? "active" : ""}`}
                       onClick={() => setNavOpen(false)}
                     >
+                      {link.icon && <link.icon size={16} aria-hidden="true" />}
                       {link.label}
                       {link.badge && waiting ? (
                         <span

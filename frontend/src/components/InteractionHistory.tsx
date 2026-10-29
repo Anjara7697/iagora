@@ -32,7 +32,7 @@ export default function InteractionHistory({ id }: { id: number }) {
     `/prospects/${id}/interactions?limit=${LIMIT}&offset=${offset}`,
   );
   return (
-    <section className="card" aria-label="Historique des interactions">
+    <section className="ui-card" aria-label="Historique des interactions">
       <h2>Interactions</h2>
       <Loading
         loading={history.loading}

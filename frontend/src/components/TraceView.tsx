@@ -9,7 +9,7 @@ export default function RunView({ run }: { run: AgentRun }) {
       <div className="run-head">
         <strong>{label(ACTIONS, run.action)}</strong>
         {run.handoff_reason && (
-          <span className="badge warn">{label(HANDOFF_REASONS, run.handoff_reason)}</span>
+          <span className="ui-badge warn">{label(HANDOFF_REASONS, run.handoff_reason)}</span>
         )}
         {run.stage_after && <StageBadge stage={run.stage_after} />}
         {run.scores.total !== undefined && (

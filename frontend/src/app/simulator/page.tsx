@@ -254,7 +254,7 @@ export default function SimulatorPage() {
         </div>
       </div>
 
-      <section className="card">
+      <section className="ui-card">
         <h2>Tester un parcours complet</h2>
         <p>
           Qualification, objection et réservation dans un calendrier fictif,
@@ -279,7 +279,7 @@ export default function SimulatorPage() {
       )}
 
       {isAdmin && (
-        <section className="card" aria-label="Données fictives">
+        <section className="ui-card" aria-label="Données fictives">
           <div className="row">
             <span>
               Données fictives en base :{" "}
@@ -327,7 +327,7 @@ export default function SimulatorPage() {
       <div className="sim">
         <aside className="sim-side" aria-label="Prospect simulé">
           {!session ? (
-            <div className="card">
+            <div className="ui-card">
               <h2>Nouveau prospect fictif</h2>
               <Loading
                 loading={campaigns.loading}
@@ -385,7 +385,7 @@ export default function SimulatorPage() {
               )}
             </div>
           ) : (
-            <div className="card">
+            <div className="ui-card">
               <div className="row">
                 <strong>{session.name}</strong>
                 <span className="spacer" />
@@ -411,7 +411,7 @@ export default function SimulatorPage() {
                   />
                 )}
                 {prospect && (
-                  <span className="badge">
+                  <span className="ui-badge">
                     {label(CONSENT, prospect.consent_status)}
                   </span>
                 )}
@@ -425,7 +425,7 @@ export default function SimulatorPage() {
           )}
 
           {session && (
-            <div className="card">
+            <div className="ui-card">
               <h3>Messages types</h3>
               <p className="muted">
                 Cliquez pour préparer le message, puis envoyez-le.
@@ -447,7 +447,7 @@ export default function SimulatorPage() {
 
         <section className="sim-main" aria-label="Conversation simulée">
           {!session && (
-            <div className="card inbox-placeholder">
+            <div className="ui-card inbox-placeholder">
               <p className="muted">
                 Créez un prospect fictif pour commencer l&apos;échange.
               </p>
@@ -457,7 +457,7 @@ export default function SimulatorPage() {
             <>
               <ConversationView messages={messages} />
               {draft && (
-                <div className="card warnbox" role="status">
+                <div className="ui-card warnbox" role="status">
                   Brouillon de l&apos;agent en attente de validation.
                   <div className="row">
                     <button
@@ -520,7 +520,7 @@ export default function SimulatorPage() {
         </section>
 
         <aside className="sim-side" aria-label="Décision de l'agent">
-          <div className="card">
+          <div className="ui-card">
             <h3>Décision de l&apos;agent</h3>
             {!current && (
               <p className="muted">

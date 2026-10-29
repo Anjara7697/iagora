@@ -1,5 +1,6 @@
 "use client";
 
+import { Switch } from "@heroui/react";
 import {
   cloneElement,
   isValidElement,
@@ -78,7 +79,7 @@ export function Field({
   );
 }
 
-/** Case à cocher avec titre et explication. */
+/** Réglage activé ou non : titre et conséquence à gauche, interrupteur HeroUI à droite. */
 export function Toggle({
   checked,
   onChange,
@@ -91,17 +92,19 @@ export function Toggle({
   note?: ReactNode;
 }) {
   return (
-    <label className="toggle-row">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>
-        <strong>{title}</strong>
-        {note && <span className="field-note">{note}</span>}
-      </span>
-    </label>
+    <div className="toggle-row">
+      <Switch isSelected={checked} onChange={onChange} className="w-full">
+        <Switch.Content className="flex w-full items-start justify-between gap-6">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-[13.5px] font-medium text-foreground">{title}</span>
+            {note && <span className="text-[12.5px]/[18px] font-normal text-muted">{note}</span>}
+          </span>
+          <Switch.Control className="mt-0.5 shrink-0">
+            <Switch.Thumb />
+          </Switch.Control>
+        </Switch.Content>
+      </Switch>
+    </div>
   );
 }
 

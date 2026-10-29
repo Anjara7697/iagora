@@ -42,7 +42,7 @@ const FILTERS: [Filter, string][] = [
 ];
 
 function Pill({ view }: { view: ConnectorView }) {
-  return <span className={`badge integ-${view.tone}`}>{view.label}</span>;
+  return <span className={`ui-badge integ-${view.tone}`}>{view.label}</span>;
 }
 
 const SOON_TEXT: Partial<Record<ConnectorId, string[]>> = {
@@ -81,7 +81,7 @@ function Catalog() {
 
   if (user && !isAdmin)
     return (
-      <p className="card warnbox" role="alert">
+      <p className="ui-card warnbox" role="alert">
         Cette page est réservée aux administrateurs.
       </p>
     );

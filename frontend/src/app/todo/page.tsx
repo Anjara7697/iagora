@@ -182,7 +182,7 @@ function DraftPanel({
           Réponse proposée — {label(CHANNELS, item.channel)}
           {draft.subject ? ` · objet : ${draft.subject}` : ""}
         </strong>
-        <span className="badge kind-validation">À relire avant validation</span>
+        <span className="ui-badge kind-validation">À relire avant validation</span>
       </header>
       {editing ? (
         <textarea
@@ -374,7 +374,7 @@ function ApplicationReview({
   }
 
   return (
-    <section className="card review-form" aria-label="Confirmer la candidature">
+    <section className="ui-card review-form" aria-label="Confirmer la candidature">
       <h3>Confirmer la candidature</h3>
       <Loading
         loading={prospect.loading}
@@ -517,7 +517,7 @@ function EnrollmentReview({
   }
 
   return (
-    <section className="card review-form" aria-label="Confirmer l'inscription depuis la preuve reçue">
+    <section className="ui-card review-form" aria-label="Confirmer l'inscription depuis la preuve reçue">
       <h3>Confirmer l’inscription</h3>
       <p className="muted">
         Ouvrez l’email original, contrôlez l’identité et le programme. Le parcours
@@ -586,7 +586,7 @@ function EnrollmentReview({
             </button>
             <button
               type="button"
-              className="link"
+              className="ui-link"
               disabled={prospect.loading}
               onClick={prospect.reload}
             >
@@ -619,10 +619,10 @@ function Detail({
         <div className="inbox-detail-title">
           <h2>{name}</h2>
           <div className="row">
-            <span className={`badge kind-${item.kind}`}>
+            <span className={`ui-badge kind-${item.kind}`}>
               {TASK_LABELS[item.kind]}
             </span>
-            <span className={`badge priority-${item.priority}`}>
+            <span className={`ui-badge priority-${item.priority}`}>
               Priorité {label(PRIORITIES, item.priority).toLowerCase()}
             </span>
             {!rec && item.prospect?.stage && <StageBadge stage={item.prospect.stage} />}
@@ -695,7 +695,7 @@ function Detail({
             );
           })()}
           <div className="decision-signals">
-            <span className={`badge risk-${rec.risk}`}>
+            <span className={`ui-badge risk-${rec.risk}`}>
               Risque : {label(RISKS, rec.risk).toLowerCase()}
             </span>
             {rec.sources.length === 0 && (
@@ -724,7 +724,7 @@ function Detail({
                   <>
                     <span className="eyebrow">Exécution</span>
                     <p>
-                      <span className="badge integ-warn">
+                      <span className="ui-badge integ-warn">
                         {label(EXECUTION, "pending")}
                       </span>
                     </p>
@@ -766,7 +766,7 @@ function Detail({
       )}
 
       {item.handoff && !rec && (
-        <div className="card warnbox">
+        <div className="ui-card warnbox">
           <strong>Fiche de transfert</strong> —{" "}
           {label(HANDOFF_REASONS, item.handoff.reason)}
           <p>{item.handoff.summary}</p>
@@ -834,7 +834,7 @@ function TreatedDetail({
           <DemoBadge email={item.prospect?.email} />
           <div className="row">
             <span
-              className={`badge ${item.decision === "approved" ? "integ-ok" : "integ-off"}`}
+              className={`ui-badge ${item.decision === "approved" ? "integ-ok" : "integ-off"}`}
             >
               {item.decision === "approved" ? "Validé" : "Refusé"}
               {item.edited ? " (modifié)" : ""}
@@ -1046,11 +1046,11 @@ function Todo() {
                           </span>
                           <span className="row">
                             <span
-                              className={`badge ${t.decision === "approved" ? "integ-ok" : "integ-off"}`}
+                              className={`ui-badge ${t.decision === "approved" ? "integ-ok" : "integ-off"}`}
                             >
                               {t.decision === "approved" ? "Validé" : "Refusé"}
                             </span>
-                            <span className="badge">
+                            <span className="ui-badge">
                               {label(EXECUTION, t.execution)}
                             </span>
                           </span>

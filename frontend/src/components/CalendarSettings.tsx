@@ -41,7 +41,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section className="card integ-card" aria-label="Agenda">
+      <section className="ui-card integ-card" aria-label="Agenda">
         {error ? <p className="error">{error}</p> : "Chargement…"}
       </section>
     );
@@ -76,7 +76,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      className={embedded ? undefined : "card integ-card"}
+      className={embedded ? undefined : "ui-card integ-card"}
       aria-label="Agenda"
     >
       <div className="integ-main settings-stack">
@@ -84,7 +84,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
           <>
             <div className="section-head">
               <h2>Agenda des conseillers</h2>
-              <span className={`badge integ-${tone}`}>{badge}</span>
+              <span className={`ui-badge integ-${tone}`}>{badge}</span>
             </div>
             <span className="eyebrow">Agenda</span>
           </>

@@ -11,7 +11,7 @@ export default function TestingPage() {
     return (
       <>
         <h1>Tests et démonstration</h1>
-        <p className="card warnbox" role="alert">
+        <p className="ui-card warnbox" role="alert">
           {!SIMULATOR_ENABLED
             ? "Le simulateur est désactivé sur cet environnement."
             : "Cet espace est réservé aux conseillers et aux administrateurs."}
@@ -42,7 +42,7 @@ export default function TestingPage() {
         </p>
       </div>
       <section
-        className="card testing-tool"
+        className="ui-card testing-tool"
         aria-label="Simulateur de conversation"
       >
         <span className="eyebrow">Essayer l’agent</span>

@@ -175,7 +175,7 @@ export default function ProspectPage() {
               <h1>{fullName(p)}</h1>
               <div className="row">
                 <DemoBadge email={p.email} />
-                <span className={`badge consent-${p.consent_status}`}>
+                <span className={`ui-badge consent-${p.consent_status}`}>
                   {label(CONSENT, p.consent_status)}
                 </span>
                 {current && (
@@ -188,10 +188,10 @@ export default function ProspectPage() {
                   </>
                 )}
                 {current?.campaign_name && (
-                  <span className="badge">{current.campaign_name}</span>
+                  <span className="ui-badge">{current.campaign_name}</span>
                 )}
                 {current?.source_name && (
-                  <span className="badge">{current.source_name}</span>
+                  <span className="ui-badge">{current.source_name}</span>
                 )}
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function ProspectPage() {
             </p>
           )}
           {p.consent_status === "opted_out" && (
-            <div className="card warnbox">
+            <div className="ui-card warnbox">
               Ce prospect est désinscrit. Les communications sortantes sont
               bloquées.
             </div>
@@ -282,7 +282,7 @@ export default function ProspectPage() {
                 </section>
               )}
               <section
-                className="card profile-card"
+                className="ui-card profile-card"
                 aria-label="Profil collecté"
               >
                 <h2>Profil collecté</h2>
@@ -304,14 +304,14 @@ export default function ProspectPage() {
                 )}
               </section>
               <section
-                className="card profile-card"
+                className="ui-card profile-card"
                 aria-label="Conversation du prospect"
               >
                 <div className="row">
                   <h2>Conversation</h2>
                   <span className="spacer" />
                   {conv && (
-                    <span className="badge">
+                    <span className="ui-badge">
                       {label(CHANNELS, conv.channel)}
                     </span>
                   )}
@@ -331,7 +331,7 @@ export default function ProspectPage() {
                 {conv && (
                   <>
                     <div className="row">
-                      <span className={`badge conv-${conv.status}`}>
+                      <span className={`ui-badge conv-${conv.status}`}>
                         {label(CONVERSATION_STATUS, conv.status)}
                       </span>
                       <span className="spacer" />
@@ -380,7 +380,7 @@ export default function ProspectPage() {
             </div>
             <div className="profile-column">
               <section
-                className="card profile-card"
+                className="ui-card profile-card"
                 aria-label="Identité et consentement"
               >
                 <h2>Identité et origine</h2>
@@ -436,7 +436,7 @@ export default function ProspectPage() {
                 </div>
               </section>
               <section
-                className="card profile-card"
+                className="ui-card profile-card"
                 aria-label="Parcours commercial"
               >
                 <h2>Parcours commercial</h2>
@@ -478,7 +478,7 @@ export default function ProspectPage() {
                     )}
                     <div className="row">
                       {m.id === p.current_membership_id && (
-                        <span className="badge">Contexte de l’agent</span>
+                        <span className="ui-badge">Contexte de l’agent</span>
                       )}
                       <StageBadge stage={m.conversion_stage} />
                       <ScoreBadge
@@ -532,7 +532,7 @@ export default function ProspectPage() {
                 </p>
               </section>
               <section
-                className="card profile-card"
+                className="ui-card profile-card"
                 aria-label="Décisions de l’agent"
               >
                 <h2>Décisions de l&apos;agent</h2>

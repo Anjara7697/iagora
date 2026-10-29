@@ -35,7 +35,7 @@ export default function ImportPage() {
 
   if (user?.role === "VIEWER")
     return (
-      <p className="card warnbox" role="alert">
+      <p className="ui-card warnbox" role="alert">
         L’import est réservé aux conseillers et administrateurs.
       </p>
     );

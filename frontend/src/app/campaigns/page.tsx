@@ -142,7 +142,7 @@ export default function CampaignsPage() {
         shape="rows"
       />
       {list.data && items.length === 0 && (
-        <p className="card muted">
+        <p className="ui-card muted">
           Aucune campagne{status ? " dans ce statut" : ""}.{" "}
           {user?.role === "ADMIN" && !status
             ? "Créez la première avec « Nouvelle campagne »."
@@ -151,7 +151,7 @@ export default function CampaignsPage() {
       )}
       {items.length > 0 && (
         <div
-          className="card campaign-table"
+          className="ui-card campaign-table"
           role="table"
           aria-label="Liste des campagnes"
         >
@@ -187,7 +187,7 @@ export default function CampaignsPage() {
                   </span>
                 </span>
                 <span>
-                  <span className={`badge campaign-${c.status}`}>
+                  <span className={`ui-badge campaign-${c.status}`}>
                     {label(CAMPAIGN_STATUS, c.status)}
                   </span>
                 </span>

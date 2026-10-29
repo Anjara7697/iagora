@@ -72,7 +72,7 @@ function Funnel({ stats }: { stats: CampaignStats }) {
   }));
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
-    <section className="card" aria-label="Entonnoir">
+    <section className="ui-card" aria-label="Entonnoir">
       <h3>Entonnoir</h3>
       {stats.prospects === 0 ? (
         <p className="muted">Aucun prospect pour l&apos;instant.</p>
@@ -87,7 +87,7 @@ function Levels({ stats }: { stats: CampaignStats }) {
   const order = ["very_hot", "hot", "warm", "cold", "none"];
   const max = Math.max(1, ...order.map((k) => stats.by_level[k] ?? 0));
   return (
-    <section className="card" aria-label="Niveaux d'intérêt">
+    <section className="ui-card" aria-label="Niveaux d'intérêt">
       <h3>Niveaux d&apos;intérêt</h3>
       {order.map((k) => (
         <Bar
@@ -139,7 +139,7 @@ function Sources({
   }
 
   return (
-    <section className="card" aria-label="Sources">
+    <section className="ui-card" aria-label="Sources">
       <h3>Sources de prospects</h3>
       {campaign.sources.length === 0 ? (
         <p className="muted">
@@ -265,7 +265,7 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
   );
   const items = list.data?.items ?? [];
   return (
-    <section className="card" aria-label="Prospects de la campagne">
+    <section className="ui-card" aria-label="Prospects de la campagne">
       <div className="row">
         <h3>Prospects de la campagne</h3>
         <span className="spacer" />
@@ -422,7 +422,7 @@ export default function CampaignPage() {
               <span className="eyebrow">Travail · Campagne</span>
               <h1>{c.name}</h1>
               <div className="row">
-                <span className={`badge campaign-${c.status}`}>
+                <span className={`ui-badge campaign-${c.status}`}>
                   {label(CAMPAIGN_STATUS, c.status)}
                 </span>
                 <span className="muted">
@@ -538,11 +538,11 @@ export default function CampaignPage() {
               campaign={c}
               onDone={campaign.reload}
             />
-            <section className="card" aria-label="Programmes visés">
+            <section className="ui-card" aria-label="Programmes visés">
               <h3>Programmes visés</h3>
               <div className="row">
                 {c.targets.map((t) => (
-                  <span key={t.code} className="badge">
+                  <span key={t.code} className="ui-badge">
                     {label(TARGETS, t.code)}
                   </span>
                 ))}
@@ -560,7 +560,7 @@ export default function CampaignPage() {
               onChanged={reload}
             />
             {canEdit && (
-              <section className="card campaign-status" aria-label="Statut">
+              <section className="ui-card campaign-status" aria-label="Statut">
                 <div>
                   <h3>Statut</h3>
                   <p className="muted">

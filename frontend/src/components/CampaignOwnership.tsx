@@ -28,7 +28,7 @@ export default function CampaignOwnership({
   const [error, setError] = useState<string | null>(null);
   return (
     <section
-      className="card membership-actions"
+      className="ui-card membership-actions"
       aria-label="Responsable de campagne"
     >
       <h2>Responsable de campagne</h2>

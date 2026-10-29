@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { firstNameOf, useCurrentUser } from "@/components/AppShell";
-import { Loading } from "@/components/ui";
-import { FUNNEL, LEVELS, STAGES, formatDate, label } from "@/lib/labels";
+import { LevelBadge, Loading } from "@/components/ui";
+import { FUNNEL, STAGES, formatDate, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { DashboardSummary, Page, TodoItem } from "@/lib/types";
 
@@ -48,7 +48,7 @@ function Card({
   label: string;
 }) {
   return (
-    <section className="card today-card" aria-label={aria}>
+    <section className="ui-card today-card" aria-label={aria}>
       <header className="today-card-head">
         <h2>{title}</h2>
         {action}
@@ -114,7 +114,7 @@ export default function Home() {
           <Link
             key={b.kind}
             href={`/todo?kind=${b.kind}`}
-            className="card bucket"
+            className="ui-card bucket"
           >
             <span className="bucket-title">
               <span className={`dot tone-${b.tone}`} aria-hidden="true" />
@@ -157,9 +157,7 @@ export default function Home() {
                   <span className="row">
                     <strong>{p.name}</strong>
                     {p.level && (
-                      <span className={`badge level-${p.level}`}>
-                        {label(LEVELS, p.level)}
-                      </span>
+                      <LevelBadge level={p.level} />
                     )}
                   </span>
                   <span className="muted today-row-meta">

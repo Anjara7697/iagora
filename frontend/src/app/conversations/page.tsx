@@ -117,15 +117,15 @@ function InboxRow({
             <span className="time">{relativeTime(c.last_message_at)}</span>
           </span>
           <span className="row">
-            <span className="badge">{label(CHANNELS, c.channel)}</span>
+            <span className="ui-badge">{label(CHANNELS, c.channel)}</span>
             {c.status === "handed_off" && (
-              <span className="badge warn">
+              <span className="ui-badge warn">
                 {c.handoff
                   ? label(HANDOFF_REASONS, c.handoff.reason)
                   : "Transfert"}
               </span>
             )}
-            {c.status === "closed" && <span className="badge">Clôturée</span>}
+            {c.status === "closed" && <span className="ui-badge">Clôturée</span>}
           </span>
           <span className="inbox-preview">
             {c.last_message_preview
@@ -241,10 +241,10 @@ function Detail({
         <div className="inbox-detail-title">
           <h2>{name}</h2>
           <div className="row">
-            <span className={`badge conv-${summary.status}`}>
+            <span className={`ui-badge conv-${summary.status}`}>
               {label(CONVERSATION_STATUS, summary.status)}
             </span>
-            <span className="badge">{label(CHANNELS, summary.channel)}</span>
+            <span className="ui-badge">{label(CHANNELS, summary.channel)}</span>
           </div>
         </div>
         <Link
@@ -275,7 +275,7 @@ function Detail({
         <section className="handoff-brief" aria-label="Fiche de transfert">
           <div className="handoff-brief-heading">
             <h3>Fiche de transfert</h3>
-            <span className="badge warn">{label(HANDOFF_REASONS, conv.handoff.reason)}</span>
+            <span className="ui-badge warn">{label(HANDOFF_REASONS, conv.handoff.reason)}</span>
           </div>
           {conv.handoff.pending_question ? (
             <blockquote>
@@ -377,7 +377,7 @@ function Detail({
               .
             </p>
           </div>
-          <span className="badge kind-validation">Validation requise</span>
+          <span className="ui-badge kind-validation">Validation requise</span>
         </div>
       )}
       {conv && (

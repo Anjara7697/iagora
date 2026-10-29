@@ -309,13 +309,13 @@ function Prospects() {
         </span>
       </div>
       {pendingCampaign && (
-        <p className="card warnbox">
+        <p className="ui-card warnbox">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche
           pour les attribuer ; l’agent attend cette attribution avant de
           répondre automatiquement.
         </p>
       )}
-      <form className="filters card" onSubmit={(e) => e.preventDefault()}>
+      <form className="filters ui-card" onSubmit={(e) => e.preventDefault()}>
         <label>
           Rechercher
           <input
@@ -473,7 +473,7 @@ function Prospects() {
       {!loading && data && (
         <>
           {data.items.length === 0 ? (
-            <section className="empty-state">
+            <section className="ui-empty-state">
               <h2>Aucun prospect ne correspond</h2>
               <p className="muted">
                 Essayez une autre recherche ou réinitialisez les filtres.
@@ -539,7 +539,7 @@ function Prospects() {
                                     </span>
                                   ))}
                                 <span
-                                  className={`badge consent-${p.consent_status}`}
+                                  className={`ui-badge consent-${p.consent_status}`}
                                 >
                                   {label(CONSENT, p.consent_status)}
                                 </span>
@@ -614,7 +614,7 @@ function Prospects() {
                           </td>
                           <td>
                             <span
-                              className={`badge consent-${p.consent_status}`}
+                              className={`ui-badge consent-${p.consent_status}`}
                             >
                               {label(CONSENT, p.consent_status)}
                             </span>

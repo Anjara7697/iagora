@@ -35,7 +35,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
 
   if (!cfg)
     return (
-      <section className="card integ-card" aria-label="Zoom">
+      <section className="ui-card integ-card" aria-label="Zoom">
         {error ? <p className="error">{error}</p> : "Chargement…"}
       </section>
     );
@@ -70,7 +70,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
 
   return (
     <section
-      className={embedded ? undefined : "card integ-card"}
+      className={embedded ? undefined : "ui-card integ-card"}
       aria-label="Zoom"
     >
       <div className="integ-main settings-stack">
@@ -78,7 +78,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
           <>
             <div className="section-head">
               <h2>Zoom</h2>
-              <span className={`badge integ-${tone}`}>{badge}</span>
+              <span className={`ui-badge integ-${tone}`}>{badge}</span>
             </div>
             <span className="eyebrow">Visioconférence</span>
           </>

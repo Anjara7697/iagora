@@ -77,7 +77,7 @@ export default function CampaignForm({
 
   return (
     <form
-      className="card campaign-form"
+      className="ui-card campaign-form"
       onSubmit={(e) => {
         e.preventDefault();
         if (valid) onSubmit(v);

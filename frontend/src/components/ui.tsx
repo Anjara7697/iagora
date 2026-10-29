@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ApiError } from "@/lib/api";
-import { LEVELS, STAGES, isDemoEmail, label } from "@/lib/labels";
+import { isDemoEmail } from "@/lib/labels";
+import { DemoChip } from "./ds/badges";
 
 export type SkeletonShape = "lines" | "rows" | "cards";
 
@@ -9,7 +10,7 @@ export function Skeleton({ shape = "lines" }: { shape?: SkeletonShape }) {
   const count = shape === "lines" ? 3 : shape === "rows" ? 5 : 4;
   return (
     <div
-      className={`skeleton skeleton-${shape}`}
+      className={`ui-skeleton skeleton-${shape}`}
       role="status"
       aria-busy="true"
     >
@@ -56,34 +57,10 @@ export function Loading({
 }
 
 export function DemoBadge({ email }: { email: string | null | undefined }) {
-  return isDemoEmail(email) ? (
-    <span
-      className="badge demo-badge"
-      title="Prospect fictif : aucun message réel ne lui est envoyé"
-    >
-      Fictif
-    </span>
-  ) : null;
+  return isDemoEmail(email) ? <DemoChip /> : null;
 }
 
-export function StageBadge({ stage }: { stage: string }) {
-  return <span className={`badge stage-${stage}`}>{label(STAGES, stage)}</span>;
-}
-
-export function ScoreBadge({
-  total,
-  level,
-}: {
-  total: number;
-  level?: string | null;
-}) {
-  return (
-    <span className={`badge level-${level ?? "cold"}`}>
-      {total}
-      {level ? ` · ${label(LEVELS, level)}` : ""}
-    </span>
-  );
-}
+export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./ds/badges";
 
 export function ProspectLink({
   id,
