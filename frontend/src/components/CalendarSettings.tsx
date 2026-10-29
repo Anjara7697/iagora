@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
+import { calendarBadge } from "@/lib/connectors";
 import type { CalendarSettings as Settings, Page } from "@/lib/types";
 import { Feedback, Field } from "./forms";
 
@@ -12,8 +13,9 @@ const MODES: Record<Settings["provider"], string> = {
   google: "Google Agenda de chaque conseiller",
 };
 
-/** Agenda des conseillers, réglé par l'administrateur : aucune variable `.env`. */
-export function CalendarSettings() {
+/** Agenda des conseillers, réglé par l'administrateur : aucune variable `.env`.
+ *  `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
+export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
   const [cfg, setCfg] = useState<Settings | null>(null);
   const [secret, setSecret] = useState("");
   const [advisors, setAdvisors] = useState<{ id: number; username: string }[]>(
@@ -70,23 +72,23 @@ export function CalendarSettings() {
   }
 
   const connected = cfg.connections.length;
-  const tone =
-    cfg.provider === "none" ? "off" : cfg.provider === "demo" ? "warn" : "ok";
-  const badge =
-    cfg.provider === "none"
-      ? "Non branché"
-      : cfg.provider === "demo"
-        ? "Démonstration"
-        : `${connected} agenda(s) connecté(s)`;
+  const { tone, label: badge } = calendarBadge(cfg);
 
   return (
-    <section className="card integ-card" aria-label="Agenda">
+    <section
+      className={embedded ? undefined : "card integ-card"}
+      aria-label="Agenda"
+    >
       <div className="integ-main settings-stack">
-        <div className="section-head">
-          <h2>Agenda des conseillers</h2>
-          <span className={`badge integ-${tone}`}>{badge}</span>
-        </div>
-        <span className="eyebrow">Agenda</span>
+        {!embedded && (
+          <>
+            <div className="section-head">
+              <h2>Agenda des conseillers</h2>
+              <span className={`badge integ-${tone}`}>{badge}</span>
+            </div>
+            <span className="eyebrow">Agenda</span>
+          </>
+        )}
         <p className="section-intro">
           Sert à proposer uniquement des créneaux réellement libres et à
           réserver le rendez-vous dans l’agenda du conseiller.
