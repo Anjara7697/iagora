@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Chip, Input, TextArea } from "@heroui/react";
+import { Button, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { cloneElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
@@ -80,7 +80,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cx(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
         size === "sm" ? "h-8 px-3 text-sm" : "h-9 px-4 text-sm",
         LINK_VARIANT[variant],
         className,
@@ -123,24 +123,26 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className={cx("inline-flex gap-0.5 rounded-xl bg-surface-tertiary p-[3px]", className)}>
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={on}
-            onClick={() => onChange(o.value)}
-            className={cx(
-              "inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
-              on ? "bg-segment text-foreground shadow-surface" : "text-muted hover:text-foreground",
-            )}
-          >
-            {o.text}
-          </button>
-        );
-      })}
+    <div
+      role="group"
+      aria-label={label}
+      className={cx("inline-flex gap-0.5 rounded-lg bg-surface-tertiary p-[3px]", className)}
+    >
+      {options.map((o) => (
+        <ToggleButton
+          key={o.value}
+          isSelected={o.value === value}
+          onChange={() => onChange(o.value)}
+          className={cx(
+            "h-8 min-w-0 flex-1 rounded-md border-0 px-3 text-[13px] whitespace-nowrap",
+            o.value === value
+              ? "bg-segment text-foreground shadow-surface"
+              : "bg-transparent text-muted shadow-none hover:text-foreground",
+          )}
+        >
+          {o.text}
+        </ToggleButton>
+      ))}
     </div>
   );
 }
@@ -158,20 +160,19 @@ export function FilterChip({
   "aria-expanded"?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={rest["aria-expanded"] === undefined ? pressed : undefined}
-      onClick={onClick}
+    <ToggleButton
+      isSelected={pressed}
+      onChange={() => onClick()}
       {...rest}
       className={cx(
-        "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
+        "h-8 gap-1.5 rounded-lg px-3 text-[13px] whitespace-nowrap",
         pressed
-          ? "border-transparent bg-accent-soft text-accent-soft-foreground"
-          : "border-border bg-surface text-foreground hover:bg-surface-secondary",
+          ? "bg-accent-soft text-accent-soft-foreground"
+          : "bg-surface text-foreground",
       )}
     >
       {children}
-    </button>
+    </ToggleButton>
   );
 }
 
@@ -218,6 +219,62 @@ export function TextBox({ className, ...props }: Omit<ComponentProps<typeof Text
   return <TextArea {...props} className={cx("min-h-24 w-full", className)} />;
 }
 
+type SelectChoice = { value: string; label: string };
+const EMPTY_SELECT_KEY = "__iagora_empty__";
+
+/** Liste de choix HeroUI, avec libellé et popover accessibles. */
+export function SelectInput({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+  className,
+  id,
+}: {
+  label: string;
+  value: string;
+  options: SelectChoice[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  className?: string;
+  id?: string;
+}) {
+  const items = options.map((option) => ({
+    id: option.value || EMPTY_SELECT_KEY,
+    ...option,
+  }));
+  const selectedKey = value || EMPTY_SELECT_KEY;
+  return (
+    <Select<(typeof items)[number]>
+      aria-label={label}
+      className={cx("flex min-w-0 flex-col gap-1.5", className)}
+      fullWidth
+      isDisabled={disabled}
+      selectedKey={selectedKey}
+      onSelectionChange={(key) =>
+        onChange(String(key) === EMPTY_SELECT_KEY ? "" : String(key))
+      }
+    >
+      <Label className="text-[13px] font-medium text-foreground">{label}</Label>
+      <Select.Trigger id={id} className="rounded-lg" data-value={value}>
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox items={items}>
+          {(item) => (
+            <ListBox.Item id={item.id} textValue={item.label} data-value={item.value}>
+              <Label>{item.label}</Label>
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          )}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  );
+}
+
 /** Liste de choix native, à l'apparence des champs HeroUI (clavier et mobile natifs). */
 export function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
   return (
@@ -250,19 +307,22 @@ export function Check({
   className?: string;
 }) {
   return (
-    <label className={cx("flex cursor-pointer items-start gap-2.5 text-sm text-foreground", disabled && "cursor-not-allowed opacity-60", className)}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 cursor-pointer accent-[var(--accent)]"
-      />
-      <span className="flex flex-col gap-0.5">
-        <span>{children}</span>
-        {hint && <span className="text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
+    <Checkbox
+      isSelected={checked}
+      isDisabled={disabled}
+      onChange={onChange}
+      className={cx("rounded-lg", className)}
+    >
+      <Checkbox.Content>
+        <Checkbox.Control>
+          <Checkbox.Indicator />
+        </Checkbox.Control>
+        <span className="flex flex-col gap-0.5 text-sm text-foreground">
+          <span>{children}</span>
+          {hint && <span className="text-xs text-muted">{hint}</span>}
+        </span>
+      </Checkbox.Content>
+    </Checkbox>
   );
 }
 
@@ -308,7 +368,7 @@ export function Notice({
     <p
       role="status"
       className={cx(
-        "rounded-xl px-3 py-2 text-[13px]",
+        "rounded-lg px-3 py-2 text-[13px]",
         tone === "success" && "bg-success-soft text-success-soft-foreground",
         tone === "info" && "bg-accent-soft text-accent-soft-foreground",
         tone === "warning" && "bg-warning-soft text-warning-soft-foreground",
@@ -323,7 +383,7 @@ export function Notice({
 /** Message d'erreur sous une action (le texte reste lisible, sans bouton). */
 export function ErrorText({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p role="alert" className={cx("rounded-xl bg-danger-soft px-3 py-2 text-[13px] text-danger-soft-foreground", className)}>
+    <p role="alert" className={cx("rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-soft-foreground", className)}>
       {children}
     </p>
   );

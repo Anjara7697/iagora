@@ -125,7 +125,7 @@ export default function CampaignForm({
               key={t.code}
               checked={v.target_codes.includes(t.code)}
               onChange={() => toggleTarget(t.code)}
-              className="rounded-xl border border-border px-3 py-2.5"
+              className="rounded-lg border border-border px-3 py-2.5"
             >
               {t.name}
             </Check>
@@ -142,7 +142,7 @@ export default function CampaignForm({
           {v.sources.map((s, i) => (
             <div
               key={i}
-              className="grid grid-cols-1 gap-2 rounded-xl bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
+              className="grid grid-cols-1 gap-2 rounded-lg bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
             >
               <TextInput
                 aria-label={`Nom de la source ${i + 1}`}

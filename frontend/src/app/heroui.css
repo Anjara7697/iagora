@@ -93,8 +93,8 @@
   --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
 }
 :root {
-  --radius: 12px;
-  --field-radius: 12px;
+  --radius: 8px;
+  --field-radius: 8px;
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   /* Champs : bordure visible de 1 px (3:1 sur blanc). */

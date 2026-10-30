@@ -350,7 +350,7 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
   await card.getByLabel("Campagne").selectOption("4");
   await card.getByLabel("Source").selectOption("9");
   await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
-  await card.getByLabel("Activer la réception des leads Meta").check();
+  await card.getByLabel("Activer la réception des leads Meta").press("Space");
   await card.getByRole("button", { name: "Enregistrer Meta" }).click();
   await expect(card.getByText("Configuration Meta enregistrée.")).toBeVisible();
   expect(saved[0]).toMatchObject({

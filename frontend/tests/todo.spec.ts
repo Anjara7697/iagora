@@ -124,7 +124,7 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   });
   await expect(page.getByLabel("Parcours concerné")).toHaveValue("17");
   await expect(finish).toBeDisabled();
-  await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").check();
+  await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").press("Space");
   await finish.click();
   await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText(
     "Candidature déposée",
