@@ -18,7 +18,7 @@ export function Screen({ children, className, wide }: { children: ReactNode; cla
 
 /** Ligne mono en capitales « Groupe · Page ». */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cx("font-mono text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
+  return <span className={cx("text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
 }
 
 /** En-tête d'écran : sur-titre, titre, sous-titre d'une phrase, actions à droite. */
@@ -146,7 +146,7 @@ export function KpiCard({
       {pending ? (
         <span className="text-sm text-muted">Pas encore mesuré</span>
       ) : (
-        <span className="font-mono text-[28px]/8 tracking-[-0.02em] text-foreground tabular-nums">{value}</span>
+        <span className="text-[28px]/8 tracking-[-0.02em] text-foreground tabular-nums">{value}</span>
       )}
       {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
     </>
@@ -189,7 +189,7 @@ export function BarList({
               style={{ width: `${Math.round((r.value / max) * 100)}%` }}
             />
           </span>
-          <span className="text-right font-mono text-[13px] text-foreground tabular-nums">{r.value}</span>
+          <span className="text-right text-[13px] text-foreground tabular-nums">{r.value}</span>
         </div>
       ))}
     </div>

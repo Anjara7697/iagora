@@ -166,7 +166,7 @@ export default function CampaignsPage() {
                     {c.sources.slice(0, 3).map((s) => (
                       <span
                         key={s.id}
-                        className="inline-flex size-6 items-center justify-center rounded-full bg-foreground font-mono text-[9px] font-medium text-background ring-2 ring-surface"
+                        className="inline-flex size-6 items-center justify-center rounded-full bg-foreground text-[9px] font-medium text-background ring-2 ring-surface"
                         aria-hidden="true"
                         title={s.name}
                       >
@@ -186,7 +186,7 @@ export default function CampaignsPage() {
                       </span>
                     </span>
                   </span>
-                  <strong className="font-mono text-[13px] font-medium text-foreground tabular-nums">
+                  <strong className="text-[13px] font-medium text-foreground tabular-nums">
                     {leads} · {qualified} · {converted}
                   </strong>
                 </span>

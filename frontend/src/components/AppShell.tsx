@@ -282,7 +282,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <nav aria-label="Navigation principale" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1">
             {groups.map((group) => (
               <div key={group.name} className="flex flex-col gap-0.5">
-                <p className="px-2 pb-1 font-mono text-xs tracking-[0.06em] text-muted uppercase">
+                <p className="px-2 pb-1 text-xs tracking-[0.06em] text-muted uppercase">
                   {group.name === "Administration" && !isAdmin
                     ? "Réglages"
                     : group.name}
@@ -307,7 +307,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <span className="flex-1">{link.label}</span>
                       {link.badge && waiting ? (
                         <span
-                          className={`rounded-md px-1.5 font-mono text-[11px] tabular-nums ${active ? "bg-accent text-accent-foreground" : "bg-warning-soft text-warning-soft-foreground"}`}
+                          className={`rounded-md px-1.5 text-[11px] tabular-nums ${active ? "bg-accent text-accent-foreground" : "bg-warning-soft text-warning-soft-foreground"}`}
                           aria-label={`${waiting} en attente`}
                         >
                           {waiting}
@@ -322,7 +322,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <details className="group rounded-lg border-t border-separator pt-2">
                 <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-sm text-muted hover:bg-surface-secondary [&::-webkit-details-marker]:hidden">
                   <span className="flex-1">À venir</span>
-                  <span className="rounded-md bg-surface-secondary px-1.5 font-mono text-[11px]">{upcoming.length}</span>
+                  <span className="rounded-md bg-surface-secondary px-1.5 text-[11px]">{upcoming.length}</span>
                   <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
                 </summary>
                 <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">

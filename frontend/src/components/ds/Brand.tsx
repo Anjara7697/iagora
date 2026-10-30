@@ -9,7 +9,7 @@ export function Brand() {
         ▪
       </span>
       IAGORA
-      <span className="rounded-sm border border-border px-1.5 font-mono text-[11px] font-normal text-muted">
+      <span className="rounded-sm border border-border px-1.5 text-[11px] font-normal text-muted">
         2.0
       </span>
     </span>

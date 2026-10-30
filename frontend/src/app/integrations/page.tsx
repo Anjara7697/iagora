@@ -218,7 +218,7 @@ function Catalog() {
                     </div>
                     <p className="flex-1 text-[13px]/[20px] text-muted">{c.description}</p>
                     <div className="flex items-center gap-3 border-t border-separator pt-3">
-                      <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted">{v.meta ?? " "}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-muted">{v.meta ?? " "}</span>
                       {c.href ? (
                         <LinkButton href={c.href} size="sm" variant="outline" aria-label={`${cta} ${c.name}`}>
                           {cta}

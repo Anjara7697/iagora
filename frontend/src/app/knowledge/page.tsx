@@ -149,7 +149,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
                 <Tag tone={hit.retained ? "success" : "neutral"}>
                   {hit.retained ? "Retenu" : "Écarté (sous le seuil)"}
                 </Tag>
-                <span className="font-mono text-xs text-muted tabular-nums">{hit.score.toFixed(3)}</span>
+                <span className="text-xs text-muted tabular-nums">{hit.score.toFixed(3)}</span>
               </div>
               <ScoreBar score={hit.score} threshold={result.threshold} retained={hit.retained} />
               <p className="text-[13px]/[20px] text-muted">{hit.text}</p>
@@ -321,7 +321,7 @@ function DocumentDetail({
           <ol className="flex flex-col gap-3">
             {d.sections.map((s, i) => (
               <li key={i} className="flex gap-3 border-t border-separator pt-3 first:border-t-0 first:pt-0">
-                <span className="mt-0.5 font-mono text-xs text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                <span className="mt-0.5 text-xs text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
                 <span className="flex flex-col gap-1">
                   <strong className="text-sm font-semibold text-foreground">{s.heading ?? "Introduction"}</strong>
                   <p className="text-[13px]/[20px] whitespace-pre-wrap text-muted">{s.text}</p>
@@ -493,7 +493,7 @@ export default function KnowledgePage() {
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="flex-1 text-base font-semibold text-foreground">Documents disponibles</h2>
               {docs.data && (
-                <span className="font-mono text-[13px] text-muted tabular-nums" role="status">
+                <span className="text-[13px] text-muted tabular-nums" role="status">
                   {shown.length} document{shown.length > 1 ? "s" : ""}
                   {programme !== null || query ? " affiché(s)" : ""}
                 </span>
@@ -567,7 +567,7 @@ export default function KnowledgePage() {
                                 >
                                   {d.title}
                                 </button>
-                                <span className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted">
+                                <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
                                   {d.slug}
                                   {d.is_demo && <DemoChip />}
                                 </span>
@@ -577,8 +577,8 @@ export default function KnowledgePage() {
                           <td className={`${TD} whitespace-nowrap text-muted`}>
                             {d.target_code ? label(TARGETS, d.target_code) : "Tous"}
                           </td>
-                          <td className={`${TD} text-right font-mono tabular-nums`}>{d.chunks}</td>
-                          <td className={`${TD} font-mono text-xs whitespace-nowrap text-muted tabular-nums`}>{formatDate(d.updated_at)}</td>
+                          <td className={`${TD} text-right tabular-nums`}>{d.chunks}</td>
+                          <td className={`${TD} text-xs whitespace-nowrap text-muted tabular-nums`}>{formatDate(d.updated_at)}</td>
                           <td className={TD}>
                             <Tag tone={d.needs_reindex ? "warning" : "success"}>
                               {d.needs_reindex ? "À recalculer" : "À jour"}

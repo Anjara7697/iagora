@@ -98,7 +98,7 @@ export function Stats({
     <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4" aria-label={label}>
       {items.map((i) => (
         <span key={i.caption} className="flex flex-col gap-1 rounded-xl bg-surface-secondary px-4 py-3">
-          <span className="font-mono text-xl text-foreground tabular-nums">{i.value}</span>
+          <span className="text-xl text-foreground tabular-nums">{i.value}</span>
           <span className="text-[13px]/[18px] text-muted">{i.caption}</span>
         </span>
       ))}
