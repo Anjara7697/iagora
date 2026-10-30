@@ -29,7 +29,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
-import { pageSubtitle, pageTitle } from "@/lib/labels";
+import { pageTitle } from "@/lib/labels";
 import { Avatar, Button, Card, Chip, Dropdown, Label, SearchField, Spinner } from "@heroui/react";
 import AgentModeCard from "./AgentModeCard";
 import { Brand } from "./ds/Brand";
@@ -230,10 +230,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Écrans prévus mais pas encore développés : regroupés dans une seule ligne repliée.
   const upcoming = NAV_GROUPS.flatMap((g) => g.items.filter((i) => i.soon));
   const title = pageTitle(pathname);
-  const subtitle =
-    pathname === "/settings" && !isAdmin && canUseSimulator(user.role)
-      ? "Tests et démonstration"
-      : pageSubtitle(pathname);
   const commands: Command[] = [
     ...groups.flatMap((g) =>
       g.items.map((i) => ({
@@ -275,7 +271,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <aside
          
           id="app-navigation"
-          className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col gap-4 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
+          className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col gap-3 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
         >
           <div className="px-2 pt-2">
             <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -351,7 +347,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header
            
-            className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md lg:px-8"
+            className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur-md lg:px-7"
           >
             <Button
               variant="ghost"
@@ -364,15 +360,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
-            <div className="flex min-w-0 items-baseline gap-3">
-              <strong className="truncate text-base font-semibold text-foreground">{title}</strong>
-              {subtitle && (
-                <span className="hidden truncate text-sm text-muted md:inline">{subtitle}</span>
-              )}
-            </div>
+            <strong className="min-w-0 truncate text-base font-semibold text-foreground lg:hidden">
+              {title}
+            </strong>
             <span className="flex-1" />
             <form
-              className="hidden w-full max-w-[300px] md:block"
+              className="hidden w-full max-w-[320px] md:block"
               role="search"
               onSubmit={(e) => e.preventDefault()}
             >
@@ -429,7 +422,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </header>
           <main
             id="main-content"
-            className="min-w-0 flex-1 px-4 pt-5 pb-12 min-[601px]:px-6 min-[601px]:pt-6 min-[601px]:pb-16"
+            className="min-w-0 flex-1 px-4 pt-5 pb-12 min-[601px]:px-6 min-[601px]:pt-7 min-[601px]:pb-16 lg:px-7"
           >
             {blocked ? (
               <p className="mx-auto max-w-[560px] rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="status">
