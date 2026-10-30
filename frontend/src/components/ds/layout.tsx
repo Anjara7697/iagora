@@ -77,7 +77,7 @@ export function Panel({
 /** Erreur de chargement lisible, avec nouvelle tentative. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground">
       <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
       <span className="flex-1">{message}</span>
       {onRetry && (
@@ -109,7 +109,7 @@ export function EmptyPanel({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-      <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-surface-secondary text-muted" aria-hidden="true">
+      <span className="inline-flex size-12 items-center justify-center rounded-lg bg-surface-secondary text-muted" aria-hidden="true">
         <Icon className="size-5" />
       </span>
       <div className="flex max-w-sm flex-col gap-1">
@@ -151,7 +151,7 @@ export function KpiCard({
       {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
     </>
   );
-  const cls = "flex flex-col gap-1.5 rounded-xl bg-surface p-4 shadow-surface";
+  const cls = "flex flex-col gap-1.5 rounded-lg bg-surface p-4 shadow-surface";
   if (pending) return <div className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</div>;
   if (href)
     return (

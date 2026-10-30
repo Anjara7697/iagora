@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Download, SearchX, SlidersHorizontal, Upload
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Btn, Check, ErrorText, Field, LinkButton, NativeSelect, Segmented, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, Field, FilterChip, LinkButton, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import {
@@ -134,21 +134,6 @@ function PipelineScroller({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToggleButton({ pressed, onClick, children }: { pressed: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus ${
-        pressed ? "bg-accent-soft text-accent-soft-foreground" : "bg-default text-foreground hover:bg-default-hover"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 function Prospects() {
   const params = useSearchParams();
   const state = readProspectResults(params);
@@ -210,6 +195,17 @@ function Prospects() {
     },
   ];
   const activeAdvanced = advanced.filter((f) => f.value);
+  const activeFilterCount = [
+    q,
+    stage,
+    campaign,
+    sourceFilter,
+    targetCode,
+    levelFilter,
+    channelFilter,
+    consentFilter,
+    hideDemo ? "demo" : "",
+  ].filter(Boolean).length;
   const [moreOpen, setMoreOpen] = useState(false);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
     `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
@@ -263,18 +259,31 @@ function Prospects() {
           )
         }
       />
-      <div className="flex flex-wrap items-center gap-2">
+      <section
+        className="card card--default flex-row flex-wrap items-center gap-2 p-3"
+        aria-label="Affichage et périmètre des prospects"
+      >
+        <Segmented
+          label="Affichage des prospects"
+          value={view}
+          onChange={(v) => update({ view: v })}
+          options={[
+            { value: "pipeline", text: "Pipeline" },
+            { value: "table", text: "Table" },
+          ]}
+        />
+        <span className="mx-1 hidden h-6 w-px bg-separator sm:block" aria-hidden="true" />
         {user && user.role !== "VIEWER" && (
-          <ToggleButton
+          <FilterChip
             pressed={mine}
             onClick={() => {
               update({ mine: !mine });
             }}
           >
             Mes prospects
-          </ToggleButton>
+          </FilterChip>
         )}
-        <ToggleButton
+        <FilterChip
           pressed={pendingCampaign}
           onClick={() => {
             update({
@@ -286,20 +295,16 @@ function Prospects() {
           }}
         >
           À attribuer{pending.data ? ` (${pending.data.total})` : ""}
-        </ToggleButton>
-
-        <Segmented
-          label="Affichage des prospects"
-          value={view}
-          onChange={(v) => update({ view: v })}
-          options={[
-            { value: "pipeline", text: "Pipeline" },
-            { value: "table", text: "Table" },
-          ]}
-        />
+        </FilterChip>
         <span className="flex-1" />
+        <span className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
+          {!loading && data
+            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
+            : "Chargement…"}
+        </span>
         {user && user.role !== "VIEWER" && (
           <Btn
+            size="sm"
             variant="outline"
             onClick={async () => {
               setExportError(null);
@@ -319,20 +324,27 @@ function Prospects() {
             Exporter en CSV (Excel)
           </Btn>
         )}
-        <span className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
-          {!loading && data
-            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
-            : "Chargement…"}
-        </span>
-      </div>
+      </section>
       {pendingCampaign && (
-        <p className="rounded-xl bg-warning-soft px-5 py-3.5 text-sm text-warning-soft-foreground">
+        <p className="rounded-lg bg-warning-soft px-5 py-3.5 text-sm text-warning-soft-foreground">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche
           pour les attribuer ; l’agent attend cette attribution avant de
           répondre automatiquement.
         </p>
       )}
       <form className="card card--default gap-4 p-4" onSubmit={(e) => e.preventDefault()}>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
+          {activeFilterCount > 0 && (
+            <Tag tone="accent">
+              {activeFilterCount} actif{activeFilterCount > 1 ? "s" : ""}
+            </Tag>
+          )}
+          <span className="flex-1" />
+          <Btn variant="ghost" size="sm" onClick={reset} className="text-link">
+            Réinitialiser
+          </Btn>
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Rechercher" className="min-w-[200px] flex-[2_1_200px]">
             <TextInput
@@ -344,60 +356,46 @@ function Prospects() {
               }}
             />
           </Field>
-          <Field label="Étape" className="min-w-[160px] flex-[1_1_160px]">
-            <NativeSelect
-              id="stage-filter"
-              value={stage}
-              onChange={(e) => {
-                update({ stage: e.target.value });
-              }}
-            >
-              <option value="">Toutes les étapes</option>
-              {Object.entries(STAGES).map(([key, text]) => (
-                <option key={key} value={key}>
-                  {text}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Campagne" className="min-w-[160px] flex-[1_1_160px]">
-            <NativeSelect
-              id="campaign-filter"
-              value={campaign}
-              disabled={campaigns.loading || !!campaigns.error}
-              onChange={(e) => {
-                update({ campaign: e.target.value, sourceFilter: "" });
-              }}
-            >
-              <option value="">Toutes</option>
-              {campaigns.data?.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Source" className="min-w-[160px] flex-[1_1_160px]">
-            <NativeSelect
-              id="source-filter"
-              value={sourceFilter}
-              disabled={!campaign || campaigns.loading || !!campaigns.error}
-              onChange={(e) => {
-                update({ sourceFilter: e.target.value });
-              }}
-            >
-              <option value="">
-                {campaign ? "Toutes" : "Campagne d’abord"}
-              </option>
-              {campaigns.data?.items
+          <SelectInput
+            id="stage-filter"
+            label="Étape"
+            className="min-w-[160px] flex-[1_1_160px]"
+            value={stage}
+            onChange={(value) => update({ stage: value })}
+            options={[
+              { value: "", label: "Toutes les étapes" },
+              ...Object.entries(STAGES).map(([value, text]) => ({ value, label: text })),
+            ]}
+          />
+          <SelectInput
+            id="campaign-filter"
+            label="Campagne"
+            className="min-w-[160px] flex-[1_1_160px]"
+            value={campaign}
+            disabled={campaigns.loading || !!campaigns.error}
+            onChange={(value) => update({ campaign: value, sourceFilter: "" })}
+            options={[
+              { value: "", label: "Toutes" },
+              ...(campaigns.data?.items.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+              })) ?? []),
+            ]}
+          />
+          <SelectInput
+            id="source-filter"
+            label="Source"
+            className="min-w-[160px] flex-[1_1_160px]"
+            value={sourceFilter}
+            disabled={!campaign || campaigns.loading || !!campaigns.error}
+            onChange={(value) => update({ sourceFilter: value })}
+            options={[
+              { value: "", label: campaign ? "Toutes" : "Campagne d’abord" },
+              ...(campaigns.data?.items
                 .find((c) => c.id === Number(campaign))
-                ?.sources?.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </NativeSelect>
-          </Field>
+                ?.sources?.map((s) => ({ value: String(s.id), label: s.name })) ?? []),
+            ]}
+          />
           <Btn
             aria-expanded={moreOpen}
             aria-controls="more-filters"
@@ -425,30 +423,24 @@ function Prospects() {
           >
             Masquer les prospects fictifs
           </Check>
-          <span className="flex-1" />
-          <Btn variant="ghost" size="sm" onClick={reset} className="text-link">
-            Réinitialiser
-          </Btn>
         </div>
         {moreOpen && (
           <div className="grid grid-cols-1 gap-3 border-t border-separator pt-4 sm:grid-cols-2 xl:grid-cols-4" id="more-filters">
             {advanced.map((f) => (
-              <Field label={f.title} key={f.id}>
-                <NativeSelect
-                  id={f.id}
-                  value={f.value}
-                  onChange={(e) => {
-                    f.set(e.target.value);
-                  }}
-                >
-                  <option value="">{f.all}</option>
-                  {Object.entries(f.options).map(([key, text]) => (
-                    <option key={key} value={key}>
-                      {text}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </Field>
+              <SelectInput
+                key={f.id}
+                id={f.id}
+                label={f.title}
+                value={f.value}
+                onChange={f.set}
+                options={[
+                  { value: "", label: f.all },
+                  ...Object.entries(f.options).map(([value, text]) => ({
+                    value,
+                    label: text,
+                  })),
+                ]}
+              />
             ))}
           </div>
         )}
@@ -498,11 +490,9 @@ function Prospects() {
                 <>
                   <p className="text-[13px] text-muted">
                     {data.total > data.items.length
-                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total} : affinez les filtres ou passez en vue Table pour tout parcourir.`
+                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total}. Affinez les filtres ou utilisez la vue Table pour parcourir l’ensemble.`
                       : `${data.total} prospect${data.total > 1 ? "s" : ""}.`}{" "}
-                    Un prospect suivi dans plusieurs campagnes apparaît dans
-                    chaque colonne concernée. Faites défiler vers la droite pour
-                    voir toutes les étapes.
+                    Faites défiler horizontalement pour parcourir les étapes.
                   </p>
                   <PipelineScroller>
                     {columns.map((column) => {
@@ -512,7 +502,7 @@ function Prospects() {
                       );
                       return (
                         <section
-                          className={`flex w-[272px] shrink-0 snap-start flex-col gap-2 rounded-2xl p-2 ${key === "exit" ? "bg-surface-tertiary/60" : "bg-surface-secondary"}`}
+                          className={`flex w-[272px] shrink-0 snap-start flex-col gap-2 rounded-lg p-2 ${key === "exit" ? "bg-surface-tertiary/60" : "bg-surface-secondary"}`}
                           key={key}
                           aria-label={title}
                         >
@@ -522,7 +512,7 @@ function Prospects() {
                           </header>
                           {items.map((p) => (
                             <Link
-                              className="pipeline-card flex flex-col gap-2 rounded-xl bg-surface p-3 shadow-surface outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus"
+                              className="pipeline-card flex flex-col gap-2 rounded-lg bg-surface p-3 shadow-surface outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus"
                               key={p.id}
                               href={profileHref(p.id)}
                             >
@@ -542,12 +532,17 @@ function Prospects() {
                                     column.stages.includes(m.conversion_stage),
                                   )
                                   .map((m) => (
-                                    <span key={m.id} className="flex flex-wrap gap-1.5">
-                                      <StageBadge stage={m.conversion_stage} />
-                                      <ScoreBadge
-                                        total={m.total_score}
-                                        level={level(m.total_score)}
-                                      />
+                                    <span key={m.id} className="flex min-w-0 flex-col gap-1">
+                                      <span className="truncate text-xs font-medium text-foreground">
+                                        {m.campaign_name ?? "Campagne"}
+                                      </span>
+                                      <span className="flex flex-wrap gap-1.5">
+                                        <StageBadge stage={m.conversion_stage} />
+                                        <ScoreBadge
+                                          total={m.total_score}
+                                          level={level(m.total_score)}
+                                        />
+                                      </span>
                                     </span>
                                   ))}
                                 <ConsentTag status={p.consent_status} />
@@ -559,7 +554,7 @@ function Prospects() {
                           ))}
                           {!items.length && (
                             <p
-                              className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted"
+                              className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted"
                               title={
                                 data.total > data.items.length
                                   ? "Aucun parmi les prospects affichés sur cette page"
@@ -575,12 +570,12 @@ function Prospects() {
                   </PipelineScroller>
                 </>
               ) : (
-                <div className="overflow-x-auto rounded-xl bg-surface shadow-surface" role="region" tabIndex={0} aria-label="Tableau des prospects">
+                <div className="overflow-x-auto rounded-lg bg-surface shadow-surface" role="region" tabIndex={0} aria-label="Tableau des prospects">
                   <table className="w-full min-w-[720px] border-collapse text-sm">
                     <caption className="sr-only">
                       Prospects et rattachements aux campagnes
                     </caption>
-                    <thead className="bg-surface-secondary text-left text-xs font-medium text-muted">
+                    <thead className="sticky top-0 z-10 bg-surface-secondary text-left text-xs font-medium text-muted">
                       <tr>
                         <th scope="col" className="px-4 py-2.5 font-medium">Prospect</th>
                         <th scope="col" className="px-4 py-2.5 font-medium">Étapes et scores</th>
@@ -611,12 +606,17 @@ function Prospects() {
                             {membershipsOf(p).length ? (
                               <div className="flex flex-col gap-1.5">
                                 {membershipsOf(p).map((m) => (
-                                  <div key={m.id} className="flex flex-wrap gap-1.5">
-                                    <StageBadge stage={m.conversion_stage} />
-                                    <ScoreBadge
-                                      total={m.total_score}
-                                      level={level(m.total_score)}
-                                    />
+                                  <div key={m.id} className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-foreground">
+                                      {m.campaign_name ?? "Campagne"}
+                                    </span>
+                                    <span className="flex flex-wrap gap-1.5">
+                                      <StageBadge stage={m.conversion_stage} />
+                                      <ScoreBadge
+                                        total={m.total_score}
+                                        level={level(m.total_score)}
+                                      />
+                                    </span>
                                   </div>
                                 ))}
                               </div>
