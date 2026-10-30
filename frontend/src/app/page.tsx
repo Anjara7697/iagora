@@ -1,13 +1,14 @@
 "use client";
 
 import { Avatar, Chip } from "@heroui/react";
-import { AlertTriangle, ArrowRight, CalendarClock, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { firstNameOf, useCurrentUser } from "@/components/AppShell";
 import {
   BarList,
   EmptyText,
   ErrorState,
+  Eyebrow,
   KpiCard,
   PageHeader,
   Panel,
@@ -15,7 +16,7 @@ import {
   initialsOf,
 } from "@/components/ds/layout";
 import { LevelBadge } from "@/components/ui";
-import { FUNNEL, STAGES, formatDate, label } from "@/lib/labels";
+import { FUNNEL, PRIORITIES, STAGES, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { DashboardSummary, Page, TodoItem } from "@/lib/types";
 
@@ -27,6 +28,15 @@ const BUCKETS = [
   { kind: "kb_gap", title: "Questions sans réponse", hint: "Réponses bloquées", dot: "bg-agent" },
   { kind: "incident", title: "Incidents", hint: "Réception ou envoi interrompu", dot: "bg-danger" },
 ] as const;
+
+const TASK_LABELS: Record<TodoItem["kind"], string> = {
+  enrollment: "Confirmer une inscription",
+  application: "Vérifier une candidature",
+  validation: "Relire une réponse",
+  escalation: "Prendre le relais",
+  kb_gap: "Compléter une réponse",
+  incident: "Résoudre un incident",
+};
 
 const linkButton =
   "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-default px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-default-hover focus-visible:ring-2 focus-visible:ring-focus";
@@ -41,6 +51,7 @@ export default function Home() {
   const waiting = todo.data?.total;
   const s = summary.data;
   const incident = incidents.data?.items[0];
+  const next = todo.data?.items[0];
   const firstName = user?.username ? firstNameOf(user.username) : "";
   const error = summary.error ?? todo.error;
   const retry = () => {
@@ -85,32 +96,74 @@ export default function Home() {
               : ""}
           </>
         }
-        actions={
-          waiting ? (
-            <Link
-              href="/todo"
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground outline-none hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              Commencer à traiter
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          ) : null
-        }
       />
 
       {error && <ErrorState message={error.message} onRetry={retry} />}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {BUCKETS.map((b) => (
-          <KpiCard
-            key={b.kind}
-            href={`/todo?kind=${b.kind}`}
-            label={b.title}
-            dot={b.dot}
-            value={todo.error ? "—" : (counts[b.kind] ?? (todo.data ? 0 : "…"))}
-            hint={b.hint}
-          />
-        ))}
+      {waiting !== undefined && (
+        <section
+          aria-label="Prochaine action"
+          className={`overflow-hidden rounded-2xl border bg-surface shadow-surface ${waiting > 0 ? "border-accent/25" : "border-success/20"}`}
+        >
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <span
+              className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl ${waiting > 0 ? "bg-accent-soft text-accent" : "bg-success-soft text-success-soft-foreground"}`}
+              aria-hidden="true"
+            >
+              {waiting > 0 ? <Sparkles className="size-5" /> : <CircleCheck className="size-5" />}
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <Eyebrow>{waiting > 0 ? "Prochaine action" : "File à jour"}</Eyebrow>
+              <h2 className="text-lg font-semibold text-foreground">
+                {next
+                  ? TASK_LABELS[next.kind]
+                  : waiting > 0
+                    ? `${waiting} élément${waiting > 1 ? "s" : ""} à traiter`
+                    : "Aucune action urgente pour le moment"}
+              </h2>
+              {next ? (
+                <p className="text-sm text-muted">
+                  <span className="font-medium text-foreground">
+                    {next.prospect ? fullName(next.prospect) : next.title}
+                  </span>
+                  {` · priorité ${label(PRIORITIES, next.priority).toLowerCase()}`}
+                  {next.detail ? ` · ${next.detail}` : ""}
+                </p>
+              ) : (
+                <p className="text-sm text-muted">
+                  {waiting > 0
+                    ? "Ouvrez la file pour commencer par l’élément le plus prioritaire."
+                    : "L’agent continue de surveiller les nouveaux échanges et incidents."}
+                </p>
+              )}
+            </div>
+            {waiting > 0 && (
+              <Link
+                href={next ? `/todo?id=${encodeURIComponent(next.id)}` : "/todo"}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground outline-none hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                Traiter maintenant
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      <div className="flex flex-col gap-3">
+        <Eyebrow>Vue rapide de la file</Eyebrow>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {BUCKETS.map((b) => (
+            <KpiCard
+              key={b.kind}
+              href={`/todo?kind=${b.kind}`}
+              label={b.title}
+              dot={b.dot}
+              value={todo.error ? "—" : (counts[b.kind] ?? (todo.data ? 0 : "…"))}
+              hint={b.hint}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 2xl:grid-cols-3">

@@ -36,10 +36,10 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-4", className)}>
+    <header className={cx("flex flex-wrap items-end gap-3", className)}>
       <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="text-[28px]/[34px] font-semibold tracking-[-0.02em] text-foreground">{title}</h1>
+        <h1 className="text-[26px]/[32px] font-semibold tracking-[-0.02em] text-foreground sm:text-[28px]/[34px]">{title}</h1>
         {subtitle && <p className="max-w-[72ch] text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -65,7 +65,7 @@ export function Panel({
 }) {
   return (
     <section aria-label={label} className={cx("card card--default gap-0 p-0", className)}>
-      <div className="flex min-h-14 items-center gap-3 border-b border-separator px-5 py-3">
+      <div className="flex min-h-13 items-center gap-3 border-b border-separator px-5 py-3">
         <h2 className="flex-1 text-base font-semibold text-foreground">{title}</h2>
         {action}
       </div>
@@ -151,7 +151,7 @@ export function KpiCard({
       {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
     </>
   );
-  const cls = "flex flex-col gap-2 rounded-xl bg-surface p-5 shadow-surface";
+  const cls = "flex flex-col gap-1.5 rounded-xl bg-surface p-4 shadow-surface";
   if (pending) return <div className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</div>;
   if (href)
     return (

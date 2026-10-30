@@ -82,7 +82,27 @@ async function mockApi(
               counts: {},
             }
           : {
-              items: [],
+              items: [
+                {
+                  id: "validation:42",
+                  kind: "validation",
+                  priority: "high",
+                  conversation_id: "c-42",
+                  prospect: {
+                    id: 42,
+                    first_name: "Marie",
+                    last_name: "Martin",
+                    email: "marie@example.com",
+                  },
+                  channel: "email",
+                  title: "Réponse à relire",
+                  detail: "La réponse attend votre validation.",
+                  created_at: "2026-10-29T09:00:00Z",
+                  draft: null,
+                  handoff: null,
+                  recommendation: null,
+                },
+              ],
               total: 5,
               limit: 1,
               offset: 0,
@@ -140,6 +160,12 @@ test("accueil : salutation, familles à traiter, signaux forts, activité, relan
   await expect(
     page.getByText("l’agent a préparé 3 brouillons en 24 h"),
   ).toBeVisible();
+  const next = page.getByRole("region", { name: "Prochaine action" });
+  await expect(next.getByText("Relire une réponse")).toBeVisible();
+  await expect(next.getByText(/Marie Martin/)).toBeVisible();
+  await expect(
+    next.getByRole("link", { name: "Traiter maintenant" }),
+  ).toHaveAttribute("href", "/todo?id=validation%3A42");
   await expect(page.getByRole("link", { name: /Validations/ })).toContainText(
     "2",
   );
@@ -190,4 +216,23 @@ test("accueil : panne de l'API, message clair et nouvelle tentative", async ({
     }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
+});
+
+test("accueil mobile : la priorité reste lisible sans débordement", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await open(page);
+  const next = page.getByRole("region", { name: "Prochaine action" });
+  await expect(next.getByText("Relire une réponse")).toBeVisible();
+  await expect(
+    next.getByRole("link", { name: "Traiter maintenant" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await auditA11y(page, "accueil mobile");
 });
