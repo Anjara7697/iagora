@@ -38,6 +38,7 @@ Vue technique : [architecture.md](architecture.md).
 | Réglages sans `.env` : boîte email, agenda, Zoom, IA et relances, jetons de service ([parametres.md](parametres.md), [sources-leads.md](sources-leads.md)) | Tests API et navigateur |
 | Email de bout en bout sur une boîte de test : réception, brouillon, validation, envoi | Recette manuelle ([recette-locale.md](recette-locale.md)) |
 | Parcours complet avec Gemini jusqu'à un rendez-vous fictif | Recette locale déclarée par l'auteur ([n8n/README.md](n8n/README.md)) |
+| Meta Lead Ads : configuration chiffrée, webhook signé, mapping formulaire/campagne, déduplication et simulateur local | Tests API et navigateur, [sources-leads.md](sources-leads.md) |
 
 ### Codé, mais non vérifié en conditions réelles
 
@@ -48,6 +49,7 @@ Vue technique : [architecture.md](architecture.md).
 | Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement (29/10) ; reste la production, la copie des sauvegardes hors serveur et un test de restauration |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
+| Meta Lead Ads | Application, permissions, page et formulaire réels à fournir puis tester avec l'outil Meta |
 
 ### Simulé aujourd'hui
 
@@ -59,7 +61,7 @@ Vue technique : [architecture.md](architecture.md).
 
 | Sujet | Raison ou prochaine action |
 |---|---|
-| Connecteurs LinkedIn et Meta | Accès API non obtenus |
+| Connecteur LinkedIn | Accès API non obtenu ; le socle générique d'ingestion existe |
 | Écrans Dashboard, Analytics | Affichés « À venir » dans le menu |
 | Gestion des rendez-vous | Liste de consultation disponible ; modification, annulation et synchronisation externe restent à développer |
 | Rappel avant rendez-vous | Non développé |

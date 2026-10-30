@@ -1,15 +1,13 @@
 "use client";
 
+import { Avatar as HeroAvatar } from "@heroui/react";
+import { ChevronLeft, ChevronRight, Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import {
-  DemoBadge,
-  Loading,
-  Pager,
-  ScoreBadge,
-  StageBadge,
-} from "@/components/ui";
+import { Btn, Check, ErrorText, Field, FilterChip, LinkButton, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
+import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
+import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import {
   formatDate,
   fullName,
@@ -54,17 +52,29 @@ const PIPELINE_COLUMNS = [
 ];
 const level = (t: number) =>
   t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold";
-function Avatar({ prospect }: { prospect: Prospect }) {
+function Avatar({ prospect, size = "sm" }: { prospect: Prospect; size?: "sm" | "md" }) {
   return (
-    <span className="prospect-avatar" aria-hidden="true">
-      {[prospect.first_name, prospect.last_name]
-        .filter(Boolean)
-        .map((s) => s![0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "?"}
-    </span>
+    <HeroAvatar size={size} variant="soft" color="accent" aria-hidden="true">
+      <HeroAvatar.Fallback>
+        {[prospect.first_name, prospect.last_name]
+          .filter(Boolean)
+          .map((s) => s![0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase() || "?"}
+      </HeroAvatar.Fallback>
+    </HeroAvatar>
   );
+}
+
+const CONSENT_TONE: Record<string, "success" | "danger" | "neutral" | "warning"> = {
+  granted: "success",
+  opted_out: "danger",
+  pending: "warning",
+};
+
+function ConsentTag({ status }: { status: string }) {
+  return <Tag tone={CONSENT_TONE[status] ?? "neutral"}>{label(CONSENT, status)}</Tag>;
 }
 
 /** Pipeline défilant : indique qu'il reste des colonnes à droite (ou à gauche). */
@@ -90,12 +100,10 @@ function PipelineScroller({ children }: { children: React.ReactNode }) {
   const scroll = (direction: 1 | -1) =>
     ref.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
   return (
-    <div
-      className={`pipeline-scroller ${edges.left ? "more-left" : ""} ${edges.right ? "more-right" : ""}`}
-    >
+    <div className="relative">
       <div
         ref={ref}
-        className="pipeline"
+        className="flex snap-x gap-4 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-focus"
         tabIndex={0}
         role="region"
         aria-label="Pipeline des prospects, défilement horizontal"
@@ -105,21 +113,21 @@ function PipelineScroller({ children }: { children: React.ReactNode }) {
       {edges.left && (
         <button
           type="button"
-          className="pipeline-nav prev"
+          className="absolute top-3 left-2 inline-flex size-9 items-center justify-center rounded-full bg-overlay text-foreground shadow-overlay outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
           aria-label="Étapes précédentes"
           onClick={() => scroll(-1)}
         >
-          ‹
+          <ChevronLeft className="size-4" aria-hidden="true" />
         </button>
       )}
       {edges.right && (
         <button
           type="button"
-          className="pipeline-nav next"
+          className="absolute top-3 right-2 inline-flex size-9 items-center justify-center rounded-full bg-overlay text-foreground shadow-overlay outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
           aria-label="Étapes suivantes"
           onClick={() => scroll(1)}
         >
-          ›
+          <ChevronRight className="size-4" aria-hidden="true" />
         </button>
       )}
     </div>
@@ -187,6 +195,17 @@ function Prospects() {
     },
   ];
   const activeAdvanced = advanced.filter((f) => f.value);
+  const activeFilterCount = [
+    q,
+    stage,
+    campaign,
+    sourceFilter,
+    targetCode,
+    levelFilter,
+    channelFilter,
+    consentFilter,
+    hideDemo ? "demo" : "",
+  ].filter(Boolean).length;
   const [moreOpen, setMoreOpen] = useState(false);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
     `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
@@ -225,35 +244,47 @@ function Prospects() {
     );
   }
   return (
-    <>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Travail · Suivi commercial</span>
-          <h1>Prospects</h1>
-          <p className="muted">
-            Un parcours, des échanges et une prochaine étape pour chaque
-            prospect.
-          </p>
-        </div>
+    <Screen>
+      <PageHeader
+        eyebrow="Travail · Suivi commercial"
+        title="Prospects"
+        subtitle="Un parcours, des échanges et une prochaine étape pour chaque prospect."
+        actions={
+          user &&
+          user.role !== "VIEWER" && (
+            <LinkButton href="/prospects/import" variant="primary">
+              <Upload className="size-4" aria-hidden="true" />
+              Importer un CSV
+            </LinkButton>
+          )
+        }
+      />
+      <section
+        className="card card--default flex-row flex-wrap items-center gap-2 p-3"
+        aria-label="Affichage et périmètre des prospects"
+      >
+        <Segmented
+          label="Affichage des prospects"
+          value={view}
+          onChange={(v) => update({ view: v })}
+          options={[
+            { value: "pipeline", text: "Pipeline" },
+            { value: "table", text: "Table" },
+          ]}
+        />
+        <span className="mx-1 hidden h-6 w-px bg-separator sm:block" aria-hidden="true" />
         {user && user.role !== "VIEWER" && (
-          <Link href="/prospects/import" className="primary-link">
-            Importer un CSV
-          </Link>
-        )}
-      </div>
-      <div className="view-toolbar">
-        {user && user.role !== "VIEWER" && (
-          <button
-            aria-pressed={mine}
+          <FilterChip
+            pressed={mine}
             onClick={() => {
               update({ mine: !mine });
             }}
           >
             Mes prospects
-          </button>
+          </FilterChip>
         )}
-        <button
-          aria-pressed={pendingCampaign}
+        <FilterChip
+          pressed={pendingCampaign}
           onClick={() => {
             update({
               pendingCampaign: !pendingCampaign,
@@ -264,33 +295,17 @@ function Prospects() {
           }}
         >
           À attribuer{pending.data ? ` (${pending.data.total})` : ""}
-        </button>
-
-        <div
-          className="view-switch"
-          role="group"
-          aria-label="Affichage des prospects"
-        >
-          <button
-            aria-pressed={view === "pipeline"}
-            onClick={() => {
-              update({ view: "pipeline" });
-            }}
-          >
-            Pipeline
-          </button>
-          <button
-            aria-pressed={view === "table"}
-            onClick={() => {
-              update({ view: "table" });
-            }}
-          >
-            Table
-          </button>
-        </div>
-        <span className="spacer" />
+        </FilterChip>
+        <span className="flex-1" />
+        <span className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
+          {!loading && data
+            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
+            : "Chargement…"}
+        </span>
         {user && user.role !== "VIEWER" && (
-          <button
+          <Btn
+            size="sm"
+            variant="outline"
             onClick={async () => {
               setExportError(null);
               try {
@@ -305,198 +320,179 @@ function Prospects() {
               }
             }}
           >
+            <Download className="size-4" aria-hidden="true" />
             Exporter en CSV (Excel)
-          </button>
+          </Btn>
         )}
-        <span className="muted" aria-live="polite">
-          {!loading && data
-            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
-            : "Chargement…"}
-        </span>
-      </div>
+      </section>
       {pendingCampaign && (
-        <p className="card warnbox">
+        <p className="rounded-lg bg-warning-soft px-5 py-3.5 text-sm text-warning-soft-foreground">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche
           pour les attribuer ; l’agent attend cette attribution avant de
           répondre automatiquement.
         </p>
       )}
-      <form className="filters card" onSubmit={(e) => e.preventDefault()}>
-        <label>
-          Rechercher
-          <input
-            type="search"
-            placeholder="Nom, email…"
-            value={q}
-            onChange={(e) => {
-              update({ q: e.target.value }, true);
-            }}
-          />
-        </label>
-        <div className="filter-field">
-          <label htmlFor="stage-filter">Étape</label>
-          <select
-            id="stage-filter"
-            value={stage}
-            onChange={(e) => {
-              update({ stage: e.target.value });
-            }}
-          >
-            <option value="">Toutes les étapes</option>
-            {Object.entries(STAGES).map(([key, text]) => (
-              <option key={key} value={key}>
-                {text}
-              </option>
-            ))}
-          </select>
+      <form className="card card--default gap-4 p-4" onSubmit={(e) => e.preventDefault()}>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
+          {activeFilterCount > 0 && (
+            <Tag tone="accent">
+              {activeFilterCount} actif{activeFilterCount > 1 ? "s" : ""}
+            </Tag>
+          )}
+          <span className="flex-1" />
+          <Btn variant="ghost" size="sm" onClick={reset} className="text-link">
+            Réinitialiser
+          </Btn>
         </div>
-        <div className="filter-field">
-          <label htmlFor="campaign-filter">Campagne</label>
-          <select
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Rechercher" className="min-w-[200px] flex-[2_1_200px]">
+            <TextInput
+              type="search"
+              placeholder="Nom, email…"
+              value={q}
+              onChange={(e) => {
+                update({ q: e.target.value }, true);
+              }}
+            />
+          </Field>
+          <SelectInput
+            id="stage-filter"
+            label="Étape"
+            className="min-w-[160px] flex-[1_1_160px]"
+            value={stage}
+            onChange={(value) => update({ stage: value })}
+            options={[
+              { value: "", label: "Toutes les étapes" },
+              ...Object.entries(STAGES).map(([value, text]) => ({ value, label: text })),
+            ]}
+          />
+          <SelectInput
             id="campaign-filter"
+            label="Campagne"
+            className="min-w-[160px] flex-[1_1_160px]"
             value={campaign}
             disabled={campaigns.loading || !!campaigns.error}
-            onChange={(e) => {
-              update({ campaign: e.target.value, sourceFilter: "" });
-            }}
-          >
-            <option value="">Toutes les campagnes</option>
-            {campaigns.data?.items.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-field">
-          <label htmlFor="source-filter">Source</label>
-          <select
+            onChange={(value) => update({ campaign: value, sourceFilter: "" })}
+            options={[
+              { value: "", label: "Toutes" },
+              ...(campaigns.data?.items.map((c) => ({
+                value: String(c.id),
+                label: c.name,
+              })) ?? []),
+            ]}
+          />
+          <SelectInput
             id="source-filter"
+            label="Source"
+            className="min-w-[160px] flex-[1_1_160px]"
             value={sourceFilter}
             disabled={!campaign || campaigns.loading || !!campaigns.error}
-            onChange={(e) => {
-              update({ sourceFilter: e.target.value });
+            onChange={(value) => update({ sourceFilter: value })}
+            options={[
+              { value: "", label: campaign ? "Toutes" : "Campagne d’abord" },
+              ...(campaigns.data?.items
+                .find((c) => c.id === Number(campaign))
+                ?.sources?.map((s) => ({ value: String(s.id), label: s.name })) ?? []),
+            ]}
+          />
+          <Btn
+            aria-expanded={moreOpen}
+            aria-controls="more-filters"
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={moreOpen ? "bg-accent-soft text-accent-soft-foreground" : undefined}
+          >
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Plus de filtres
+            {activeAdvanced.length > 0 && (
+              <span
+                className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-medium text-accent-foreground"
+                aria-label={`${activeAdvanced.length} actif${activeAdvanced.length > 1 ? "s" : ""}`}
+              >
+                {activeAdvanced.length}
+              </span>
+            )}
+          </Btn>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Check
+            checked={hideDemo}
+            onChange={(value) => {
+              update({ hideDemo: value });
             }}
           >
-            <option value="">
-              {campaign ? "Toutes les sources" : "Choisir d’abord une campagne"}
-            </option>
-            {campaigns.data?.items
-              .find((c) => c.id === Number(campaign))
-              ?.sources?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-          </select>
+            Masquer les prospects fictifs
+          </Check>
         </div>
-        <button
-          type="button"
-          className="filters-more"
-          aria-expanded={moreOpen}
-          aria-controls="more-filters"
-          onClick={() => setMoreOpen(!moreOpen)}
-        >
-          Plus de filtres
-          {activeAdvanced.length > 0 && (
-            <span
-              className="filters-count"
-              aria-label={`${activeAdvanced.length} actif${activeAdvanced.length > 1 ? "s" : ""}`}
-            >
-              {activeAdvanced.length}
-            </span>
-          )}
-        </button>
-        <label className="inline-field">
-          <input
-            type="checkbox"
-            checked={hideDemo}
-            onChange={(e) => {
-              update({ hideDemo: e.target.checked });
-            }}
-          />
-          Masquer les prospects fictifs
-        </label>
-        <button type="button" className="filters-reset" onClick={reset}>
-          Réinitialiser
-        </button>
         {moreOpen && (
-          <div className="filters-advanced" id="more-filters">
+          <div className="grid grid-cols-1 gap-3 border-t border-separator pt-4 sm:grid-cols-2 xl:grid-cols-4" id="more-filters">
             {advanced.map((f) => (
-              <div className="filter-field" key={f.id}>
-                <label htmlFor={f.id}>{f.title}</label>
-                <select
-                  id={f.id}
-                  value={f.value}
-                  onChange={(e) => {
-                    f.set(e.target.value);
-                  }}
-                >
-                  <option value="">{f.all}</option>
-                  {Object.entries(f.options).map(([key, text]) => (
-                    <option key={key} value={key}>
-                      {text}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <SelectInput
+                key={f.id}
+                id={f.id}
+                label={f.title}
+                value={f.value}
+                onChange={f.set}
+                options={[
+                  { value: "", label: f.all },
+                  ...Object.entries(f.options).map(([value, text]) => ({
+                    value,
+                    label: text,
+                  })),
+                ]}
+              />
             ))}
           </div>
         )}
         {!moreOpen && activeAdvanced.length > 0 && (
-          <div className="filters-chips" aria-label="Filtres actifs">
+          <div className="flex flex-wrap gap-2" aria-label="Filtres actifs">
             {activeAdvanced.map((f) => (
               <button
                 type="button"
                 key={f.id}
-                className="filter-chip"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-default pr-2 pl-3 text-[13px] font-medium text-foreground outline-none hover:bg-default-hover focus-visible:ring-2 focus-visible:ring-focus"
                 aria-label={`Retirer le filtre ${f.title}`}
                 onClick={() => {
                   f.set("");
                 }}
               >
                 {f.title} : {label(f.options, f.value)}
-                <span aria-hidden="true">×</span>
+                <X className="size-3.5 text-muted" aria-hidden="true" />
               </button>
             ))}
           </div>
         )}
       </form>
-      {exportError && (
-        <p className="error" role="alert">
-          {exportError}
-        </p>
-      )}
+      {exportError && <ErrorText>{exportError}</ErrorText>}
       {campaigns.error && (
-        <div className="row">
-          <p role="alert" className="error">
+        <div className="flex flex-wrap items-center gap-3">
+          <p role="alert" className="text-sm text-danger-soft-foreground">
             Filtre campagnes indisponible : {campaigns.error.message}
           </p>
-          <button onClick={campaigns.reload}>Réessayer les campagnes</button>
+          <Btn size="sm" onClick={campaigns.reload}>Réessayer les campagnes</Btn>
         </div>
       )}
-      <Loading loading={loading} error={error} onRetry={reload} />
+      <Loading loading={loading} error={error} onRetry={reload} shape="rows" />
       {!loading && data && (
         <>
           {data.items.length === 0 ? (
-            <section className="empty-state">
-              <h2>Aucun prospect ne correspond</h2>
-              <p className="muted">
-                Essayez une autre recherche ou réinitialisez les filtres.
-              </p>
-              <button onClick={reset}>Réinitialiser les filtres</button>
+            <section className="card card--default p-0">
+              <EmptyPanel
+                icon={SearchX}
+                title="Aucun prospect ne correspond"
+                description="Essayez une autre recherche ou réinitialisez les filtres."
+                action={<Btn onClick={reset}>Réinitialiser les filtres</Btn>}
+              />
             </section>
           ) : (
             <>
               {view === "pipeline" ? (
                 <>
-                  <p className="muted pipeline-note">
+                  <p className="text-[13px] text-muted">
                     {data.total > data.items.length
-                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total} : affinez les filtres ou passez en vue Table pour tout parcourir.`
+                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total}. Affinez les filtres ou utilisez la vue Table pour parcourir l’ensemble.`
                       : `${data.total} prospect${data.total > 1 ? "s" : ""}.`}{" "}
-                    Un prospect suivi dans plusieurs campagnes apparaît dans
-                    chaque colonne concernée. Faites défiler vers la droite pour
-                    voir toutes les étapes.
+                    Faites défiler horizontalement pour parcourir les étapes.
                   </p>
                   <PipelineScroller>
                     {columns.map((column) => {
@@ -506,60 +502,66 @@ function Prospects() {
                       );
                       return (
                         <section
-                          className={`pipeline-column ${key === "exit" ? "exits" : ""}`}
+                          className={`flex w-[272px] shrink-0 snap-start flex-col gap-2 rounded-lg p-2 ${key === "exit" ? "bg-surface-tertiary/60" : "bg-surface-secondary"}`}
                           key={key}
                           aria-label={title}
                         >
-                          <header>
-                            <h2>{title}</h2>
-                            <span className="mono">{items.length}</span>
+                          <header className="flex items-center gap-2 px-2 py-1.5">
+                            <h2 className="flex-1 text-sm font-semibold text-foreground">{title}</h2>
+                            <span className="rounded-md bg-surface px-1.5 font-mono text-xs text-muted tabular-nums">{items.length}</span>
                           </header>
                           {items.map((p) => (
                             <Link
-                              className="pipeline-card"
+                              className="pipeline-card flex flex-col gap-2 rounded-lg bg-surface p-3 shadow-surface outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus"
                               key={p.id}
                               href={profileHref(p.id)}
                             >
-                              <div className="row">
+                              <div className="flex items-center gap-2">
                                 <Avatar prospect={p} />
-                                <strong>{fullName(p)}</strong>
+                                <strong className="min-w-0 flex-1 text-[13px] font-semibold break-words text-foreground">{fullName(p)}</strong>
                                 <DemoBadge email={p.email} />
                               </div>
-                              <span className="muted">
+                              <span className="text-xs break-all text-muted">
                                 {p.email ||
                                   p.phone ||
                                   "Coordonnées non renseignées"}
                               </span>
-                              <div className="row">
+                              <div className="flex flex-wrap gap-1.5">
                                 {membershipsOf(p)
                                   .filter((m) =>
                                     column.stages.includes(m.conversion_stage),
                                   )
                                   .map((m) => (
-                                    <span key={m.id} className="row">
-                                      <StageBadge stage={m.conversion_stage} />
-                                      <ScoreBadge
-                                        total={m.total_score}
-                                        level={level(m.total_score)}
-                                      />
+                                    <span key={m.id} className="flex min-w-0 flex-col gap-1">
+                                      <span className="truncate text-xs font-medium text-foreground">
+                                        {m.campaign_name ?? "Campagne"}
+                                      </span>
+                                      <span className="flex flex-wrap gap-1.5">
+                                        <StageBadge stage={m.conversion_stage} />
+                                        <ScoreBadge
+                                          total={m.total_score}
+                                          level={level(m.total_score)}
+                                        />
+                                      </span>
                                     </span>
                                   ))}
-                                <span
-                                  className={`badge consent-${p.consent_status}`}
-                                >
-                                  {label(CONSENT, p.consent_status)}
-                                </span>
+                                <ConsentTag status={p.consent_status} />
                               </div>
-                              <span className="mono muted">
+                              <span className="text-xs text-muted">
                                 Créé le {formatDate(p.created_at)}
                               </span>
                             </Link>
                           ))}
                           {!items.length && (
-                            <p className="muted pipeline-empty">
-                              {data.total > data.items.length
-                                ? "Aucun parmi les prospects affichés."
-                                : "Aucun prospect à cette étape."}
+                            <p
+                              className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted"
+                              title={
+                                data.total > data.items.length
+                                  ? "Aucun parmi les prospects affichés sur cette page"
+                                  : "Aucun prospect à cette étape"
+                              }
+                            >
+                              Aucun
                             </p>
                           )}
                         </section>
@@ -568,59 +570,64 @@ function Prospects() {
                   </PipelineScroller>
                 </>
               ) : (
-                <div className="table-wrap">
-                  <table>
+                <div className="overflow-x-auto rounded-lg bg-surface shadow-surface" role="region" tabIndex={0} aria-label="Tableau des prospects">
+                  <table className="w-full min-w-[720px] border-collapse text-sm">
                     <caption className="sr-only">
                       Prospects et rattachements aux campagnes
                     </caption>
-                    <thead>
+                    <thead className="sticky top-0 z-10 bg-surface-secondary text-left text-xs font-medium text-muted">
                       <tr>
-                        <th scope="col">Prospect</th>
-                        <th scope="col">Étapes et scores</th>
-                        <th scope="col">Consentement</th>
-                        <th scope="col">Créé le</th>
+                        <th scope="col" className="px-4 py-2.5 font-medium">Prospect</th>
+                        <th scope="col" className="px-4 py-2.5 font-medium">Étapes et scores</th>
+                        <th scope="col" className="px-4 py-2.5 font-medium">Consentement</th>
+                        <th scope="col" className="px-4 py-2.5 font-medium">Créé le</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.items.map((p) => (
-                        <tr key={p.id}>
-                          <td>
-                            <div className="row">
+                        <tr key={p.id} className="border-t border-separator transition-colors hover:bg-surface-secondary/60">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
                               <Avatar prospect={p} />
-                              <div>
-                                <Link href={profileHref(p.id)}>
-                                  {fullName(p)}
-                                </Link>{" "}
-                                <DemoBadge email={p.email} />
-                                <div className="muted">
+                              <div className="flex min-w-0 flex-col">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <Link href={profileHref(p.id)} className="rounded font-semibold text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
+                                    {fullName(p)}
+                                  </Link>
+                                  <DemoBadge email={p.email} />
+                                </span>
+                                <span className="text-xs text-muted">
                                   {p.email || p.phone || "—"}
-                                </div>
+                                </span>
                               </div>
                             </div>
                           </td>
-                          <td>
+                          <td className="px-4 py-3">
                             {membershipsOf(p).length ? (
-                              membershipsOf(p).map((m) => (
-                                <div key={m.id} className="row">
-                                  <StageBadge stage={m.conversion_stage} />
-                                  <ScoreBadge
-                                    total={m.total_score}
-                                    level={level(m.total_score)}
-                                  />
-                                </div>
-                              ))
+                              <div className="flex flex-col gap-1.5">
+                                {membershipsOf(p).map((m) => (
+                                  <div key={m.id} className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-foreground">
+                                      {m.campaign_name ?? "Campagne"}
+                                    </span>
+                                    <span className="flex flex-wrap gap-1.5">
+                                      <StageBadge stage={m.conversion_stage} />
+                                      <ScoreBadge
+                                        total={m.total_score}
+                                        level={level(m.total_score)}
+                                      />
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             ) : (
-                              <span className="muted">Sans campagne</span>
+                              <span className="text-[13px] text-muted">Sans campagne</span>
                             )}
                           </td>
-                          <td>
-                            <span
-                              className={`badge consent-${p.consent_status}`}
-                            >
-                              {label(CONSENT, p.consent_status)}
-                            </span>
+                          <td className="px-4 py-3">
+                            <ConsentTag status={p.consent_status} />
                           </td>
-                          <td className="mono muted">
+                          <td className="px-4 py-3 font-mono text-xs text-muted tabular-nums">
                             {formatDate(p.created_at)}
                           </td>
                         </tr>
@@ -639,13 +646,13 @@ function Prospects() {
           />
         </>
       )}
-    </>
+    </Screen>
   );
 }
 
 export default function ProspectsPage() {
   return (
-    <Suspense fallback={<p className="muted">Chargement…</p>}>
+    <Suspense fallback={<Skeleton shape="rows" />}>
       <Prospects />
     </Suspense>
   );

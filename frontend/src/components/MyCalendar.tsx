@@ -1,6 +1,10 @@
 "use client";
 
+import { CalendarDays } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Btn, ErrorText, Notice, Tag } from "./ds/controls";
+import { Eyebrow } from "./ds/layout";
+import { ActionsBar } from "./ds/settings";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MyCalendar as Status } from "@/lib/types";
@@ -69,61 +73,70 @@ export function MyCalendar() {
     }
   }
 
+  const connectedTag = status?.available ? (
+    status.connected ? (
+      status.last_error ? <Tag tone="danger">À reconnecter</Tag> : <Tag tone="success">Connecté</Tag>
+    ) : (
+      <Tag>Non connecté</Tag>
+    )
+  ) : null;
+
   return (
-    <section className="section-card" aria-label="Mon agenda">
-      <span className="section-label">Mon agenda</span>
-      {result && (
-        <p role="status" className="status-text status-ok">
-          {result}
-        </p>
-      )}
+    <section className="card card--default gap-4 p-5" aria-label="Mon agenda">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
+          <CalendarDays className="size-5" />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Eyebrow>Mon agenda</Eyebrow>
+          <h2 className="text-base font-semibold text-foreground">Google Agenda</h2>
+        </div>
+        {connectedTag}
+      </div>
+      {result && <Notice>{result}</Notice>}
       {status && !status.available && (
-        <p className="muted">
+        <p className="text-[13px]/[20px] text-muted">
           Google Agenda n’est pas encore branché par l’administrateur
           (Intégrations → Agenda).
         </p>
       )}
       {status?.available && status.connected && (
         <>
-          <p>
+          <p className="text-[13px]/[20px] text-foreground">
             Connecté à{" "}
             <strong>{status.account_email ?? "Google Agenda"}</strong> depuis le{" "}
             {formatDate(status.connected_at)}. L’agent propose vos créneaux
             libres et réserve les rendez-vous dans cet agenda.
           </p>
           {status.last_error && (
-            <p className="error" role="alert">
+            <p className="text-[13px] text-danger" role="alert">
               L’autorisation a été révoquée : reconnectez votre agenda.
             </p>
           )}
-          <div className="row">
+          <ActionsBar>
             {status.last_error && (
-              <button className="primary" onClick={connect} disabled={busy}>
+              <Btn variant="primary" onClick={connect} disabled={busy}>
                 Reconnecter mon agenda Google
-              </button>
+              </Btn>
             )}
-            <button onClick={disconnect} disabled={busy}>
+            <Btn variant="outline" onClick={disconnect} disabled={busy}>
               Déconnecter
-            </button>
-          </div>
+            </Btn>
+          </ActionsBar>
         </>
       )}
       {status?.available && !status.connected && (
         <>
-          <p className="muted">
+          <p className="text-[13px]/[20px] text-muted">
             Connectez votre Google Agenda pour que l’agent propose vos créneaux
             réellement libres et y réserve les rendez-vous.
           </p>
-          <button className="primary" onClick={connect} disabled={busy}>
+          <Btn variant="primary" onClick={connect} disabled={busy}>
             Connecter mon agenda Google
-          </button>
+          </Btn>
         </>
       )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <ErrorText>{error}</ErrorText>}
     </section>
   );
 }

@@ -13,7 +13,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
 | P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
-| P2 | LinkedIn et Meta non branchés (accès API non obtenus) ; en attendant : formulaire externe, jeton de service ou import CSV | [sources-leads.md](sources-leads.md) |
+| P2 | Meta Lead Ads : webhook, sécurité, mapping et simulation livrés ; recette réelle en attente des accès et permissions. LinkedIn non branché | [sources-leads.md](sources-leads.md) |
 | P2 | Le RAG cherche avec le dernier message seul : une question courte (« et le prix ? ») manque de contexte | [rag.md](rag.md) |
 | P2 | Plusieurs emails rapprochés du même prospect reçoivent chacun une réponse | [email.md](email.md) |
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |

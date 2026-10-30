@@ -26,37 +26,53 @@ Elles viennent de `AGENTS.md` et ne se discutent pas :
 
 ## 2. Système visuel
 
-Tout est dans `frontend/src/app/globals.css`. Le bloc `:root` en tête de fichier
-est **la seule source des couleurs** : n’ajoutez pas de code hexadécimal dans
-les règles, utilisez une variable (ou ajoutez-en une dans `:root`).
+Depuis la branche `feat/ui-heroui-v3`, la console repose sur **HeroUI v3** (React Aria,
+Tailwind CSS v4, icônes Lucide) avec le thème IAGORA, décrit dans le design system
+« IAGORA » (artefact Claude, `tokens.json`). Une seule feuille de style,
+`frontend/src/app/heroui.css`, importée par `app/layout.tsx` : preflight et utilitaires
+Tailwind, HeroUI, polices locales, puis le **thème IAGORA** (`:root` déclare les
+variables lues par HeroUI : `--background`, `--surface`, `--accent`, `--agent`,
+`--level-cold`…). C'est la seule source des couleurs, rayons et ombres.
 
-| Rôle | Variables |
+Les écrans sont écrits en composants HeroUI et en classes Tailwind ; les briques
+communes sont dans `frontend/src/components/ds/` (`layout.tsx` : `Screen`, `PageHeader`,
+`Panel`, `KpiCard`, `EmptyPanel`… ; `controls.tsx` : `Btn`, `LinkButton`, `Field`,
+`TextInput`, `NativeSelect`, `Check`, `Tag`, `Segmented`, `FilterChip`… ; `settings.tsx`,
+`badges.tsx`). Ne pas écrire de code hexadécimal dans un écran : utiliser une classe
+du thème (`bg-surface`, `text-muted`, `bg-agent-soft`…).
+
+| Rôle | Variables du thème |
 |---|---|
-| Texte | `--fg` (encre), `--ink-2` (texte secondaire), `--muted` (légendes), `--faint` |
-| Fonds | `--bg` (page), `--card` (cartes), `--surface-1/2/3` (du plus clair au plus foncé) |
-| Bordures | `--line` (fine), `--line-strong` (champs, boutons) |
-| Action | `--accent`, `--accent-hover`, `--accent-bg`, `--accent-line` |
-| Identité | `--violet`, `--violet-bg`, `--violet-soft`, `--violet-line`, `--violet-strong` (avatar, recommandations de l’agent) |
-| États | `--ok*`, `--warn*`, `--err*` (chaque famille : texte, `-bg`, `-line`) |
-| Intérêt | `--level-cold*`, `--level-warm*`, `--level-hot*`, `--level-very-hot*`, et `--level-*-bar` pour les barres |
+| Texte | `--foreground`, `--muted` |
+| Fonds | `--background`, `--surface`, `--surface-secondary/tertiary`, `--overlay` |
+| Bordures | `--border`, `--separator`, `--field-border` (3:1) |
+| Action | `--accent`, `--accent-soft`, `--accent-soft-foreground` |
+| Agent | `--agent`, `--agent-soft`, `--agent-soft-foreground` |
+| États | `--success*`, `--warning*`, `--danger*` (plein, `-soft`, `-soft-foreground`) |
+| Intérêt | `--level-cold`, `--level-warm`, `--level-hot`, `--level-very-hot` (remplissages) |
+| Ombres | `--surface-shadow`, `--field-shadow`, `--overlay-shadow` |
 
 Règles de sens :
 
-- **Le rouge (`--err`) est réservé** à ce qui bloque ou interdit : désinscription,
-  erreur, incident, arrêt d’urgence, suppression. Jamais pour « très chaud ».
-- Les niveaux d’intérêt vont du bleu-gris (froid) à l’orange plein (très chaud) :
-  classes `badge level-cold|warm|hot|very_hot`, barres `bar bar-level-…`.
-- Le violet signale ce qui vient de l’agent (recommandation, lacune de la base).
+- **Le rouge (`danger`) est réservé** à ce qui bloque ou interdit : désinscription,
+  erreur, incident, arrêt d’urgence, suppression. Jamais pour « très chaud » ni pour un
+  chiffre en baisse.
+- L’intérêt a sa propre échelle de chaleur, distincte de l’avertissement : jauge à
+  quatre barres (`HeatMeter`) et mot (« Chaud »). Seul « Très chaud » est une puce pleine.
+- Le violet (`agent`) signale ce qui vient de l’agent (recommandation, lacune de la base) ;
+  il n’est jamais la couleur d’un bouton.
 
-Typographie : Instrument Sans (texte), IBM Plex Mono (chiffres, libellés en
-capitales, identifiants), servies localement depuis `public/fonts`.
+Typographie : Instrument Sans (texte), IBM Plex Mono (chiffres, scores, identifiants,
+libellés en capitales), servies localement depuis `public/fonts`. Six tailles :
+28 (titre de page), 20, 16, 14 (texte), 13, 12. Rayons : 12 px pour boutons, champs et
+cartes, 8 px pour les puces. Icônes : Lucide (`lucide-react`), décoratives (`aria-hidden`).
 
 Composants et classes à réutiliser :
 
 | Besoin | Classe ou composant |
 |---|---|
 | En-tête de page | `.page-heading` > `.eyebrow` (« Travail · … ») + `h1` + `p.muted`, actions à droite |
-| Carte | `.card` (padding 20 px, rayon 10 px) |
+| Carte | `.ui-card` (padding 20 px, rayon 12 px, ombre de repos) ; nouveau code : `Card` HeroUI |
 | Chiffres clés | `.kpis.kpis-wide` > `.kpi` |
 | Barres de répartition | `.bar-row` > `span` + `.bar > div` + `.mono` |
 | Bouton principal | `button.primary`, lien `a.button-link.primary-link` |
@@ -66,7 +82,8 @@ Composants et classes à réutiliser :
 | Vue Pipeline / Table | `.view-switch` |
 | Filtres repliables | `.filters` + `.filters-more` + `.filters-advanced` + `.filters-chips` (voir `prospects/page.tsx`) |
 | Tableau large | l’envelopper dans `div.table-scroll` (`role="region"`, `tabIndex={0}`, `aria-label`) |
-| États | `Loading`, `Pager`, `StageBadge`, `ScoreBadge`, `DemoBadge` dans `components/ui.tsx` |
+| États | `Loading`, `Pager`, `StageBadge`, `ScoreBadge`, `LevelBadge`, `DemoBadge` dans `components/ui.tsx` (puces HeroUI dans `components/ds/badges.tsx`) |
+| Notification après une action | `toast` de `@heroui/react` (zone montée une fois par `components/ds/Toaster.tsx`) |
 | Formulaires de réglages | `Section`, `Field`, `Toggle`, `Feedback` dans `components/forms.tsx` |
 | Erreurs | `ApiError.message` est déjà lisible (voir `humanError` dans `lib/api.ts`) |
 
@@ -198,11 +215,8 @@ Le mode Automatique reste réservé à l’administrateur et désactivé par dé
 
 ## 7. Dette connue
 
-- 22 couleurs encore écrites en dur dans `globals.css` (surtout du blanc sur
-  bouton plein et quelques teintes uniques) : à remplacer au fil de l’eau.
-- `globals.css` garde la trace des étapes successives (sections « Alignement
-  maquette », « Réglages »…). Ne pas ajouter de troisième couche : modifier la
-  règle existante.
+- La page de connexion garde deux teintes propres (fond sombre et halos) écrites dans
+  ses classes : à reprendre si le thème sombre arrive.
 - Les tests Playwright tournent sur bureau ; quelques scénarios ne sont pas
   prévus pour 390 px (liste des campagnes, pagination des prospects).
 
@@ -446,3 +460,39 @@ opération couvre les deux. Agenda, Zoom et jetons de service réutilisent leurs
 leur en-tête, déjà porté par le panneau. Les couleurs d'état viennent des variables de `:root` (`err`
 ajouté pour l'erreur de relève). L'état d'une carte décrit la configuration, pas une connexion vérifiée : seul
 un test dans le panneau le confirme.
+
+## 21. Accueil : alignement et lisibilité des dates
+
+Sur l'accueil, les trois colonnes partent du même alignement (les cartes enfants directes de la grille
+n'ont plus la marge par défaut des cartes) et « Activité de l'agent » s'affiche en grille de deux colonnes au
+lieu d'une pile de chiffres : le conflit venait d'un nom de classe partagé avec le composant `Stats` des
+écrans d'import et d'intégrations, l'accueil utilise désormais `today-stats`.
+
+Les dates et temps relatifs destinés à la lecture (« il y a 2 h », « 27/10/2026 09:00 ») utilisent la
+classe `time` : police du texte, chiffres de largeur fixe, couleur atténuée. La police mono reste réservée
+aux identifiants, scores et valeurs chiffrées (`mono`).
+
+## 22. États de chargement : squelettes
+
+Le texte « Chargement… » est remplacé par une **silhouette du contenu à venir** (`Skeleton` dans
+`components/ui.tsx`) : lignes de texte par défaut, lignes de liste avec pastille pour les listes (prospects,
+conversations, campagnes, équipe, rendez-vous, files d'attente) et cartes pour le catalogue des intégrations.
+`Loading` accepte une propriété `shape` (`lines`, `rows`, `cards`) ; les replis `Suspense` des pages
+utilisent les mêmes lignes. La région reste annoncée (`role="status"`, `aria-busy`, texte « Chargement… »
+réservé aux lecteurs d'écran). Le balayage lumineux s'arrête avec `prefers-reduced-motion`, ce qui laisse
+des blocs gris fixes.
+
+## 23. Accessibilité : audit automatisé
+
+Les tests navigateur passent désormais l'écran affiché à **axe-core** (`@axe-core/playwright`,
+dépendance de test uniquement) selon les règles WCAG 2 A et AA, avec le mouvement réduit pour ne pas fausser
+les contrastes. Le test échoue sur toute violation **grave ou critique**. Écrans couverts : connexion
+(bureau et mobile), accueil, À traiter, prospects, conversations, campagnes, rendez-vous, base de
+connaissances, intégrations (catalogue et panneau de la messagerie), paramètres (dont l'onglet Emails),
+équipe, import CSV et Mon compte. Au premier passage, aucune violation n'a été relevée.
+
+Limites : un audit automatique ne détecte qu'une partie des problèmes (en général moins de la moitié) ; il ne
+remplace ni la navigation au clavier ni un essai avec un lecteur d'écran. L'aperçu d'email des paramètres
+(iframe isolée) est exclu de l'audit : le contenu des emails relève de `services/email_format.py`.
+Pour ajouter un écran : appeler `auditA11y(page, "nom")` (`tests/a11y.ts`) à la fin d'un test qui l'affiche
+dans son état normal.

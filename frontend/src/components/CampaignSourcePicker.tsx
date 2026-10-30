@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Field, NativeSelect } from "@/components/ds/controls";
 import { api } from "@/lib/api";
 import type { Campaign, Page } from "@/lib/types";
 
@@ -24,9 +25,8 @@ export function CampaignSourcePicker({
   const campaign = campaigns.find((c) => c.id === value.campaign_id);
   return (
     <>
-      <label>
-        Campagne
-        <select
+      <Field label="Campagne" className="min-w-0 flex-1 basis-48">
+        <NativeSelect
           value={value.campaign_id ?? ""}
           onChange={(e) => {
             const id = e.target.value ? Number(e.target.value) : null;
@@ -40,12 +40,11 @@ export function CampaignSourcePicker({
               {c.name}
             </option>
           ))}
-        </select>
-      </label>
+        </NativeSelect>
+      </Field>
       {campaign && (
-        <label>
-          Source
-          <select
+        <Field label="Source" className="min-w-0 flex-1 basis-40">
+          <NativeSelect
             value={value.source_id ?? ""}
             onChange={(e) =>
               onChange({
@@ -59,8 +58,8 @@ export function CampaignSourcePicker({
                 {s.name}
               </option>
             ))}
-          </select>
-        </label>
+          </NativeSelect>
+        </Field>
       )}
     </>
   );

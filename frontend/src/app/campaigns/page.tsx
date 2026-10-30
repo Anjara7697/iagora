@@ -1,10 +1,13 @@
 "use client";
 
+import { ChevronRight, Megaphone, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { FilterChip, LinkButton, Tag, type Tone } from "@/components/ds/controls";
+import { EmptyPanel, ErrorState, KpiCard, PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
-import { CAMPAIGN_STATUS, TARGETS, formatDay, label } from "@/lib/labels";
+import { CAMPAIGN_STATUS, PLATFORM_MARK, TARGETS, formatDay, label } from "@/lib/labels";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
@@ -15,13 +18,6 @@ const FILTERS = [
   { value: "draft", text: "Brouillons" },
   { value: "inactive", text: "Inactives" },
 ];
-
-const PLATFORM_MARK: Record<string, string> = {
-  linkedin: "in",
-  meta: "f",
-  web: "www",
-  email: "@",
-};
 
 export default function CampaignsPage() {
   const user = useCurrentUser();
@@ -54,84 +50,60 @@ export default function CampaignsPage() {
   );
   const kpiReady = !!everything.data && !!overview.data;
 
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Pilotage · Campagnes</span>
-          <h1>Campagnes</h1>
-          <p className="muted">
-            Une campagne regroupe une ou plusieurs sources ; l’agent répond
-            individuellement aux personnes qu’elle amène.
-          </p>
-        </div>
-        <span className="spacer" />
-        {user?.role === "ADMIN" && (
-          <Link className="button-link primary-link" href="/campaigns/new">
-            Nouvelle campagne
-          </Link>
-        )}
-      </div>
+  const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
 
-      <section className="kpi-strip" aria-label="Chiffres clés">
-        <div>
-          <span className="eyebrow">Campagnes actives</span>
-          <strong>
-            {kpiReady
-              ? `${all.filter((c) => c.status === "active").length} / ${all.length}`
-              : "…"}
-          </strong>
-          <span className="muted">
-            {kpiReady
-              ? `${all.filter((c) => c.status === "draft").length} brouillon(s)`
-              : ""}
-          </span>
-        </div>
-        <div>
-          <span className="eyebrow">Leads</span>
-          <strong>{kpiReady ? totals.leads : "…"}</strong>
-          <span className="muted">au total, prospects fictifs exclus</span>
-        </div>
-        <div>
-          <span className="eyebrow">Taux de qualification</span>
-          <strong>
-            {kpiReady ? `${pct(totals.qualified, totals.leads)} %` : "…"}
-          </strong>
-          <span className="muted">
-            {kpiReady ? `${totals.qualified} qualifié(s)` : ""}
-          </span>
-        </div>
-        <div>
-          <span className="eyebrow">Inscrits</span>
-          <strong>{kpiReady ? totals.converted : "…"}</strong>
-          <span className="muted">
-            {kpiReady
-              ? `${pct(totals.converted, totals.leads)} % des leads`
-              : ""}
-          </span>
-        </div>
+  return (
+    <Screen>
+      <PageHeader
+        eyebrow="Pilotage · Campagnes"
+        title="Campagnes"
+        subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
+        actions={
+          user?.role === "ADMIN" && (
+            <LinkButton variant="primary" href="/campaigns/new">
+              <Plus className="size-4" aria-hidden="true" />
+              Nouvelle campagne
+            </LinkButton>
+          )
+        }
+      />
+
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Chiffres clés">
+        <KpiCard
+          label="Campagnes actives"
+          value={kpiReady ? `${all.filter((c) => c.status === "active").length} / ${all.length}` : "…"}
+          hint={kpiReady ? `${all.filter((c) => c.status === "draft").length} brouillon(s)` : undefined}
+        />
+        <KpiCard label="Leads" value={kpiReady ? totals.leads : "…"} hint="au total, prospects fictifs exclus" />
+        <KpiCard
+          label="Taux de qualification"
+          value={kpiReady ? `${pct(totals.qualified, totals.leads)} %` : "…"}
+          hint={kpiReady ? `${totals.qualified} qualifié(s)` : undefined}
+        />
+        <KpiCard
+          label="Inscrits"
+          value={kpiReady ? totals.converted : "…"}
+          hint={kpiReady ? `${pct(totals.converted, totals.leads)} % des leads` : undefined}
+        />
       </section>
       {overview.error && (
-        <p className="error" role="alert">
-          Chiffres indisponibles : {overview.error.message}{" "}
-          <button onClick={overview.reload}>Réessayer</button>
-        </p>
+        <ErrorState message={`Chiffres indisponibles : ${overview.error.message}`} onRetry={overview.reload} />
       )}
 
-      <div className="chips" role="group" aria-label="Statut">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Statut">
         {user && user.role !== "VIEWER" && (
-          <button aria-pressed={mine} onClick={() => setMine(!mine)}>
+          <FilterChip pressed={mine} onClick={() => setMine(!mine)}>
             Mes campagnes
-          </button>
+          </FilterChip>
         )}
         {FILTERS.map((f) => (
-          <button
+          <FilterChip
             key={f.value}
-            aria-pressed={status === f.value}
+            pressed={status === f.value}
             onClick={() => setStatus(f.value)}
           >
             {f.text}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
@@ -139,22 +111,23 @@ export default function CampaignsPage() {
         loading={list.loading && !list.data}
         error={list.error}
         onRetry={list.reload}
+        shape="rows"
       />
       {list.data && items.length === 0 && (
-        <p className="card muted">
-          Aucune campagne{status ? " dans ce statut" : ""}.{" "}
-          {user?.role === "ADMIN" && !status
-            ? "Créez la première avec « Nouvelle campagne »."
-            : ""}
-        </p>
+        <section className="card card--default p-0">
+          <EmptyPanel
+            icon={Megaphone}
+            title={`Aucune campagne${status ? " dans ce statut" : ""}`}
+            description={user?.role === "ADMIN" && !status ? "Créez la première avec « Nouvelle campagne »." : undefined}
+          />
+        </section>
       )}
       {items.length > 0 && (
-        <div
-          className="card campaign-table"
-          role="table"
-          aria-label="Liste des campagnes"
-        >
-          <div className="campaign-row head" aria-hidden="true">
+        <div className="card card--default gap-0 overflow-hidden p-0" role="table" aria-label="Liste des campagnes">
+          <div
+            className="hidden grid-cols-[minmax(200px,2fr)_120px_minmax(140px,1.2fr)_minmax(200px,1.6fr)_20px] gap-4 bg-surface-secondary px-5 py-2.5 text-xs font-medium text-muted md:grid"
+            aria-hidden="true"
+          >
             <span>Campagne</span>
             <span>Statut</span>
             <span>Sources</span>
@@ -170,14 +143,14 @@ export default function CampaignsPage() {
               <Link
                 key={c.id}
                 href={`/campaigns/${c.id}`}
-                className="campaign-row"
+                className="grid grid-cols-1 items-center gap-3 border-t border-separator px-5 py-4 outline-none transition-colors first:border-t-0 hover:bg-surface-secondary/60 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset md:grid-cols-[minmax(200px,2fr)_120px_minmax(140px,1.2fr)_minmax(200px,1.6fr)_20px] md:gap-4 md:[&:nth-child(2)]:border-t-0"
               >
-                <span>
-                  <strong>{c.name}</strong>
-                  <span className="muted campaign-sub">
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <strong className="text-sm font-semibold text-foreground">{c.name}</strong>
+                  <span className="text-xs text-muted">
                     Responsable : {c.responsible_advisor_name ?? "Non affecté"}
                   </span>
-                  <span className="muted campaign-sub">
+                  <span className="text-xs text-muted">
                     {c.targets.map((t) => label(TARGETS, t.code)).join(", ") ||
                       "Aucun programme"}
                     {c.start_date || c.end_date
@@ -186,54 +159,43 @@ export default function CampaignsPage() {
                   </span>
                 </span>
                 <span>
-                  <span className={`badge campaign-${c.status}`}>
-                    {label(CAMPAIGN_STATUS, c.status)}
-                  </span>
+                  <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
                 </span>
-                <span className="row">
-                  {c.sources.slice(0, 3).map((s) => (
-                    <span
-                      key={s.id}
-                      className="source-mark"
-                      aria-hidden="true"
-                      title={s.name}
-                    >
-                      {PLATFORM_MARK[s.platform ?? ""] ?? "•"}
-                    </span>
-                  ))}
-                  <span className="muted">
+                <span className="flex items-center gap-2">
+                  <span className="flex -space-x-1.5">
+                    {c.sources.slice(0, 3).map((s) => (
+                      <span
+                        key={s.id}
+                        className="inline-flex size-6 items-center justify-center rounded-full bg-foreground font-mono text-[9px] font-medium text-background ring-2 ring-surface"
+                        aria-hidden="true"
+                        title={s.name}
+                      >
+                        {PLATFORM_MARK[s.platform ?? ""] ?? "•"}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="text-[13px] text-muted">
                     {c.sources.length} source{c.sources.length > 1 ? "s" : ""}
                   </span>
                 </span>
-                <span className="campaign-bar">
-                  <span className="funnel-bar" aria-hidden="true">
-                    <span
-                      className="fb-leads"
-                      style={{ width: `${(leads / maxLeads) * 100}%` }}
-                    >
-                      <span
-                        className="fb-qualified"
-                        style={{ width: `${pct(qualified, leads)}%` }}
-                      >
-                        <span
-                          className="fb-converted"
-                          style={{ width: `${pct(converted, qualified)}%` }}
-                        />
+                <span className="flex flex-col gap-1.5">
+                  <span className="h-2 overflow-hidden rounded-full bg-surface-tertiary" aria-hidden="true">
+                    <span className="block h-full rounded-full bg-accent/35" style={{ width: `${(leads / maxLeads) * 100}%` }}>
+                      <span className="block h-full rounded-full bg-accent/70" style={{ width: `${pct(qualified, leads)}%` }}>
+                        <span className="block h-full rounded-full bg-accent" style={{ width: `${pct(converted, qualified)}%` }} />
                       </span>
                     </span>
                   </span>
-                  <strong>
+                  <strong className="font-mono text-[13px] font-medium text-foreground tabular-nums">
                     {leads} · {qualified} · {converted}
                   </strong>
                 </span>
-                <span aria-hidden="true" className="muted">
-                  ›
-                </span>
+                <ChevronRight aria-hidden="true" className="hidden size-4 text-muted md:block" />
               </Link>
             );
           })}
         </div>
       )}
-    </>
+    </Screen>
   );
 }

@@ -43,6 +43,17 @@ export function useReplyDraft(id: string) {
   return [context.drafts[id] ?? "", (value: DraftUpdate) => context.update(id, value)] as const;
 }
 
+/** Vrai si une réponse non envoyée est en cours de saisie quelque part dans l'application. */
+export function useHasUnsentReplies() {
+  const context = useContext(Context);
+  return () => Object.values(context?.drafts ?? {}).some((text) => text.trim());
+}
+
+/** Déconnexion avec confirmation quand des réponses non envoyées seraient perdues. */
+export function confirmLogoutWithDrafts(hasDrafts: boolean) {
+  return !hasDrafts || window.confirm("Vous avez des réponses non envoyées. Se déconnecter les effacera. Continuer ?");
+}
+
 export function ReplyLogoutButton({ onLogout }: { onLogout: () => void }) {
   const context = useContext(Context);
   return (

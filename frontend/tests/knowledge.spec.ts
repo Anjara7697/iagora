@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const doc = (over: Record<string, unknown> = {}) => ({
   slug: "ebihar",
@@ -128,6 +129,7 @@ test("liste des documents, détail et marque « Fictif »", async ({ page }) => 
   await page.getByRole("button", { name: "Programme eBIHAR" }).click();
   const detail = page.getByRole("region", { name: "Document ebihar" });
   await expect(detail.getByText("Le programme dure 18 mois.")).toBeVisible();
+  await auditA11y(page, "base de connaissances");
 });
 
 test("tester une question affiche les scores et le verdict du seuil", async ({
@@ -180,6 +182,9 @@ test("l'administrateur ajoute un document", async ({ page }) => {
 test("la suppression demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
+  // La suppression se fait depuis le détail du document.
+  await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
   page.once("dialog", (dialog) => dialog.dismiss());
   await page.getByRole("button", { name: "Supprimer" }).click();
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);

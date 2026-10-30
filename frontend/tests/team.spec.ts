@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const members = [
   {
@@ -98,6 +99,7 @@ test("l'administrateur ajoute un conseiller et voit son mot de passe temporaire 
     .getByRole("button", { name: "J’ai transmis le mot de passe" })
     .click();
   await expect(page.getByText("Abcd2345Efgh6789")).toHaveCount(0);
+  await auditA11y(page, "équipe");
 });
 
 test("réinitialiser, changer le rôle et désactiver un membre", async ({

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const current = {
   llm_provider: "gemini",
@@ -111,6 +112,7 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
     calendar_work_start_hour: 10,
   });
   expect(put.put).not.toHaveProperty("gemini_api_key_set");
+  await auditA11y(page, "paramètres");
 });
 
 test("régler la mise en page des emails et voir un aperçu", async ({
@@ -149,6 +151,8 @@ test("régler la mise en page des emails et voir un aperçu", async ({
     email_brand_color: "#0a7a4b",
     email_logo_url: "https://exemple.test/logo.png",
   });
+  // L'aperçu d'email est un document isolé (iframe sans script), hors de l'interface.
+  await auditA11y(page, "paramètres (emails)", [".email-preview"]);
 });
 
 test("l’observateur n’accède pas aux paramètres", async ({ page }) => {
@@ -194,7 +198,10 @@ test.describe("navigation du simulateur", () => {
         ).toHaveCount(0);
       if (allowed) {
         await page
-          .getByRole("link", { name: "Ouvrir l’espace de test" })
+          .getByRole("link", {
+            name: /Ouvrir l’espace de test|Tests et démonstration/,
+          })
+          .first()
           .click();
         await expect(page).toHaveURL(/\/settings\/testing$/);
         await expect(
@@ -324,14 +331,17 @@ test("les paramètres s'affichent par catégorie, sans perdre les saisies", asyn
   ).toBeVisible();
 });
 
-test("paramètres sur mobile : catégories en bandeau, sans défilement horizontal", async ({
+test("paramètres sur mobile : catégorie choisie dans une liste, sans défilement horizontal", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page, []);
   await login(page);
   await page.goto("/settings");
-  await goSection(page, "Emails");
+  await page
+    .getByRole("combobox", { name: "Catégorie", exact: true })
+    .selectOption("emails");
+  await expect(page).toHaveURL(/section=emails/);
   await expect(page.getByRole("region", { name: "Emails" })).toBeVisible();
   expect(
     await page.evaluate(

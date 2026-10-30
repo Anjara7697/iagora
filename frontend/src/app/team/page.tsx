@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import {
-  Feedback,
-  Field,
-  SecretOnce,
-  Section,
-  initials,
-} from "@/components/forms";
+import { KeyRound, Pencil, UserPlus } from "lucide-react";
+import { Btn, Field, NativeSelect, Tag, TextInput } from "@/components/ds/controls";
+import { PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
+import { ActionsBar, Feedback, SecretOnce, SettingsCard as Section } from "@/components/ds/settings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
@@ -74,94 +71,96 @@ function MemberRow({
   }
 
   const state = !member.is_active
-    ? { label: "Désactivé", cls: "badge integ-off" }
+    ? { label: "Désactivé", tone: "neutral" as const }
     : member.must_change_password
-      ? { label: "Mot de passe à choisir", cls: "badge integ-warn" }
-      : { label: "Actif", cls: "badge integ-ok" };
+      ? { label: "Mot de passe à choisir", tone: "warning" as const }
+      : { label: "Actif", tone: "success" as const };
 
   return (
     <div
-      className="item-row"
+      className="flex flex-wrap items-start gap-4 border-t border-separator py-4 first:border-t-0 first:pt-0 last:pb-0"
       role="listitem"
       aria-label={`Membre ${member.username}`}
     >
-      <span className={`avatar-36 ${member.is_active ? "" : "off"}`}>
+      <span
+        className={cx(
+          "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
+          member.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
+        )}
+        aria-hidden="true"
+      >
         {initials(member.username)}
       </span>
-      <span className="item-main">
+      <span className="flex min-w-[240px] flex-1 flex-col gap-2">
         {editing ? (
-          <span className="field-inline">
-            <input
-              aria-label="Nom d’utilisateur"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <input
-              aria-label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <span className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <TextInput aria-label="Nom d’utilisateur" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <TextInput aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </span>
         ) : (
-          <>
-            <strong>
+          <span className="flex flex-col">
+            <strong className="text-sm font-semibold text-foreground">
               {member.username}
-              {self && <span className="status-text"> · vous</span>}
+              {self && <span className="font-normal text-muted"> · vous</span>}
             </strong>
-            <span className="item-meta">{member.email}</span>
-          </>
+            <span className="text-[13px] text-muted">{member.email}</span>
+          </span>
         )}
-        <span className="row">
-          <select
+        <span className="flex flex-wrap items-center gap-2">
+          <NativeSelect
             aria-label={`Rôle de ${member.username}`}
             value={member.role}
             disabled={self}
             onChange={(e) => patch({ role: e.target.value })}
+            className="w-44"
           >
             {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}
               </option>
             ))}
-          </select>
-          <span className={state.cls}>{state.label}</span>
-          <span className="status-text">
-            Membre depuis le {formatDate(member.created_at ?? null)}
-          </span>
+          </NativeSelect>
+          <Tag tone={state.tone}>{state.label}</Tag>
+          <span className="text-xs text-muted">Membre depuis le {formatDate(member.created_at ?? null)}</span>
         </span>
         {error && (
-          <span className="error" role="alert">
+          <span className="text-[13px] text-danger" role="alert">
             {error}
           </span>
         )}
       </span>
-      <span className="item-actions">
+      <ActionsBar className="justify-end">
         {editing ? (
           <>
-            <button
-              className="primary"
-              onClick={() => patch({ username, email })}
-            >
+            <Btn size="sm" variant="primary" onClick={() => patch({ username, email })}>
               Enregistrer
-            </button>
-            <button onClick={() => setEditing(false)}>Annuler</button>
+            </Btn>
+            <Btn size="sm" onClick={() => setEditing(false)}>
+              Annuler
+            </Btn>
           </>
         ) : (
-          <button onClick={() => setEditing(true)}>Modifier</button>
+          <Btn size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Pencil className="size-3.5" aria-hidden="true" />
+            Modifier
+          </Btn>
         )}
         {!self && (
           <>
-            <button onClick={reset}>Réinitialiser le mot de passe</button>
-            <button
-              className={member.is_active ? "danger" : ""}
+            <Btn size="sm" variant="ghost" onClick={reset}>
+              <KeyRound className="size-3.5" aria-hidden="true" />
+              Réinitialiser le mot de passe
+            </Btn>
+            <Btn
+              size="sm"
+              variant={member.is_active ? "danger-soft" : "outline"}
               onClick={() => patch({ is_active: !member.is_active })}
             >
               {member.is_active ? "Désactiver" : "Réactiver"}
-            </button>
+            </Btn>
           </>
         )}
-      </span>
+      </ActionsBar>
     </div>
   );
 }
@@ -184,9 +183,11 @@ export default function TeamPage() {
 
   if (user && !isAdmin)
     return (
-      <p className="card warnbox" role="alert">
-        Cette page est réservée aux administrateurs.
-      </p>
+      <Screen>
+        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
+          Cette page est réservée aux administrateurs.
+        </p>
+      </Screen>
     );
 
   async function create(e: React.FormEvent) {
@@ -217,104 +218,90 @@ export default function TeamPage() {
   const active = members.data?.items.filter((m) => m.is_active).length ?? 0;
 
   return (
-    <>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Administration · Équipe</span>
-          <h1>Équipe</h1>
-          <p className="muted">
-            Les conseillers s’ajoutent ici, sans passer par le serveur. Chaque
-            nouveau membre reçoit un mot de passe temporaire et choisit le sien
-            à la première connexion.
-          </p>
-        </div>
-      </div>
+    <Screen className="max-w-[1100px]">
+      <PageHeader
+        eyebrow="Administration · Équipe"
+        title="Équipe"
+        subtitle="Les conseillers s’ajoutent ici, sans passer par le serveur. Chaque nouveau membre reçoit un mot de passe temporaire et choisit le sien à la première connexion."
+      />
 
-      <div className="settings-stack">
-        {secret && (
-          <SecretOnce
-            label="Mot de passe temporaire"
-            intro={
-              <>
-                Mot de passe temporaire de <strong>{secret.who}</strong>, à
-                transmettre par un canal sûr :
-              </>
-            }
-            secret={secret.password}
-            doneLabel="J’ai transmis le mot de passe"
-            onDone={() => setSecret(null)}
+      {secret && (
+        <SecretOnce
+          label="Mot de passe temporaire"
+          intro={
+            <>
+              Mot de passe temporaire de <strong>{secret.who}</strong>, à
+              transmettre par un canal sûr :
+            </>
+          }
+          secret={secret.password}
+          doneLabel="J’ai transmis le mot de passe"
+          onDone={() => setSecret(null)}
+        />
+      )}
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
+          <Loading
+            loading={members.loading && !members.data}
+            error={members.error}
+            onRetry={members.reload}
+            shape="rows"
           />
-        )}
+          {members.data && (
+            <Section
+              region="Membres de l’équipe"
+              label="Membres"
+              title={`${active} actif(s) sur ${members.data.total}`}
+            >
+              <div role="list" className="flex flex-col border-t border-separator pt-4">
+                {members.data.items.map((m) => (
+                  <MemberRow
+                    key={`${m.id}-${m.username}-${m.email}-${m.role}-${m.is_active}`}
+                    member={m}
+                    self={m.id === user?.id}
+                    onChanged={members.reload}
+                    onPassword={(who, password) => setSecret({ who, password })}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
+        </div>
 
         <Section
           region="Ajouter un membre"
-          label="Ajouter un membre"
+          label="Nouveau membre"
+          title="Ajouter un membre"
           intro="Trois rôles : Administrateur (accès complet), Conseiller (file, conversations, prospects), Observateur (consultation seule)."
+          className="order-1 xl:sticky xl:top-24 xl:order-2"
         >
-          <form onSubmit={create} className="settings-stack">
-            <Field label="Nom d’utilisateur" note="3 caractères minimum.">
-              <input
-                value={username}
-                minLength={3}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+          <form onSubmit={create} className="flex flex-col gap-4 border-t border-separator pt-4">
+            <Field label="Nom d’utilisateur" hint="3 caractères minimum.">
+              <TextInput value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
             </Field>
-            <Field label="Email" note="Sert aussi d’identifiant de connexion.">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            <Field label="Email" hint="Sert aussi d’identifiant de connexion.">
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
             <Field label="Rôle">
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
+              <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]} — {ROLE_HELP[r]}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </Field>
-            <div className="actions-bar">
-              <button
-                className="primary"
-                type="submit"
-                disabled={busy || username.trim().length < 3 || !email}
-              >
+            <ActionsBar className="border-t border-separator pt-4">
+              <Btn variant="primary" type="submit" disabled={busy || username.trim().length < 3 || !email}>
+                <UserPlus className="size-4" aria-hidden="true" />
                 Créer le membre
-              </button>
-              <Feedback error={error} />
-            </div>
+              </Btn>
+            </ActionsBar>
+            <Feedback error={error} />
           </form>
         </Section>
-
-        <Loading
-          loading={members.loading && !members.data}
-          error={members.error}
-          onRetry={members.reload}
-        />
-        {members.data && (
-          <Section
-            region="Membres de l’équipe"
-            label={`Membres · ${active} actif(s) sur ${members.data.total}`}
-          >
-            <div role="list">
-              {members.data.items.map((m) => (
-                <MemberRow
-                  key={`${m.id}-${m.username}-${m.email}-${m.role}-${m.is_active}`}
-                  member={m}
-                  self={m.id === user?.id}
-                  onChanged={members.reload}
-                  onPassword={(who, password) => setSecret({ who, password })}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
       </div>
-    </>
+    </Screen>
   );
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const prospect = {
   id: 1,
@@ -111,14 +112,26 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   await expect(page.getByText("Campagne suggérée : eBIHAR.").first()).toBeVisible();
   await expect(page.getByText("Vérifier le document original.")).toBeVisible();
   await expect(page.getByRole("link", { name: /Ouvrir la fiche/ })).toHaveAttribute("href", /\/prospects\/42/);
-  const finish = page.getByRole("button", { name: "Terminer la vérification", exact: true });
+  // Le parcours n'est pas encore à « Candidature déposée » : on le change d'ici.
+  let stagePatch: unknown = null;
+  await page.route("**/api/v1/campaign-prospects/17", async (route) => {
+    stagePatch = route.request().postDataJSON();
+    stage = "applied";
+    await route.fulfill({ json: { id: 17, conversion_stage: "applied" } });
+  });
+  const finish = page.getByRole("button", {
+    name: "Passer à « Candidature déposée » et terminer",
+  });
+  await expect(page.getByLabel("Parcours concerné")).toHaveValue("17");
   await expect(finish).toBeDisabled();
-  stage = "applied";
-  await page.getByRole("button", { name: "Actualiser les parcours" }).click();
-  await page.getByLabel("Parcours dont le dossier a été vérifié").selectOption("17");
+  await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").press("Space");
   await finish.click();
-  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText("Candidature vérifiée");
+  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText(
+    "Candidature déposée",
+  );
+  expect(stagePatch).toMatchObject({ conversion_stage: "applied" });
   expect(resolved).toBe(true);
+  await auditA11y(page, "À traiter");
 });
 
 test("email d'admission : le conseiller confirme le bon parcours avec la preuve", async ({

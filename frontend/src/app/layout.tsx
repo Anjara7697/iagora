@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
-import "./globals.css";
+import { Toaster } from "@/components/ds/Toaster";
+import "./heroui.css";
 
 export const metadata: Metadata = {
   title: "Commercial 2.0 - DATUM Academy",
@@ -9,9 +10,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" data-theme="light">
       <body>
         <AppShell>{children}</AppShell>
+        <Toaster />
       </body>
     </html>
   );

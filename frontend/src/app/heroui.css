@@ -1,0 +1,162 @@
+/* Socle IAGORA 2026 : Tailwind CSS v4 + HeroUI v3 et le thème IAGORA.
+   Source des valeurs : design system « IAGORA » (tokens.json). */
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+@import "@heroui/styles/base/base.css" layer(base);
+@import "@heroui/styles/components/index.css" layer(components);
+@import "@heroui/styles/themes/default" layer(theme);
+@import "@heroui/styles/utilities";
+@import "@heroui/styles/variants";
+
+@source "../";
+
+/* Polices auto-hébergées (aucun appel à un service tiers). */
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/instrument-sans-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020-2027,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin.woff2") format("woff2");
+}
+
+/* == Thème IAGORA (light) == */
+:root,
+[data-theme="light"] {
+  --background: #f7f7f8;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --surface-secondary: #f4f4f5;
+  --surface-tertiary: #ececee;
+  --overlay: #ffffff;
+  --muted: #66666f;
+  --default: #efeff1;
+  --default-foreground: #18181b;
+  --border: #e4e4e7;
+  --separator: #ececee;
+  --field-background: #ffffff;
+  --field-foreground: #18181b;
+  --field-placeholder: var(--muted);
+  --field-border: #8b8b94;
+  --segment: #ffffff;
+  --focus: var(--accent);
+  --link: var(--accent);
+  --accent: #1f4fd8;
+  --accent-foreground: #ffffff;
+  --accent-soft: #edf1fd;
+  --accent-soft-foreground: #1c45bd;
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --success-soft: #e8f5ec;
+  --success-soft-foreground: #166534;
+  --warning: #f5a524;
+  --warning-foreground: #18181b;
+  --warning-soft: #fef4e2;
+  --warning-soft-foreground: #8a4b07;
+  --danger: #d92d20;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fdeceb;
+  --danger-soft-foreground: #b42318;
+  --agent: #7a3df0;
+  --agent-foreground: #ffffff;
+  --agent-soft: #f3eefe;
+  --agent-soft-foreground: #5b28c2;
+  --level-cold: #94a3b8;
+  --level-warm: #fdba74;
+  --level-hot: #f97316;
+  --level-very-hot: #c2410c;
+  --level-very-hot-foreground: #ffffff;
+  --backdrop: rgba(24, 24, 27, 0.4);
+  --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
+  --field-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
+}
+:root {
+  --radius: 8px;
+  --field-radius: 8px;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* Champs : bordure visible de 1 px (3:1 sur blanc). */
+  --field-border-width: 1px;
+}
+
+@theme inline {
+  --color-agent: var(--agent);
+  --color-agent-foreground: var(--agent-foreground);
+  --color-agent-soft: var(--agent-soft);
+  --color-agent-soft-foreground: var(--agent-soft-foreground);
+  --color-level-cold: var(--level-cold);
+  --color-level-warm: var(--level-warm);
+  --color-level-hot: var(--level-hot);
+  --color-level-very-hot: var(--level-very-hot);
+  --color-level-very-hot-foreground: var(--level-very-hot-foreground);
+}
+
+@layer base {
+  /* L'attribut hidden l'emporte sur les utilitaires d'affichage. */
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+  :root {
+    /* Un élément amené à l’écran (focus, ancre, défilement) garde une marge sous lui. */
+    scroll-padding-bottom: 12px;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--foreground);
+    background: var(--background);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Interrupteur éteint : piste visible sur fond blanc. */
+  .switch {
+    --switch-control-bg: #a1a1aa;
+  }
+
+  /* Étapes portées par l’agent (« En conversation », « Qualifié »). */
+  .chip--agent.chip--soft {
+    background: var(--agent-soft);
+    color: var(--agent-soft-foreground);
+  }
+  /* « Très chaud » : seule puce pleine de l’échelle d’intérêt. */
+  .chip--very-hot.chip--primary {
+    background: var(--level-very-hot);
+    color: var(--level-very-hot-foreground);
+  }
+}

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 const campaign = (over: Record<string, unknown> = {}) => ({
   id: 1,
@@ -179,6 +180,7 @@ test("responsable : choix explicite du sort des prospects et mise à jour de la 
       .first(),
   ).toBeVisible();
   expect(payload).toEqual({ advisor_id: 9, existing_prospects: "keep" });
+  await auditA11y(page, "campagnes");
 });
 
 test("responsable : erreur conservée, aucun contrôle d'affectation pour un conseiller", async ({
@@ -284,7 +286,7 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
   await login(page, "/campaigns/new");
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
   await page.getByLabel("Statut").selectOption("active");
-  await page.getByLabel("Compagnons", { exact: false }).check();
+  await page.getByLabel("Compagnons", { exact: false }).press("Space");
   await page.getByRole("button", { name: "Ajouter une source" }).click();
   await page.getByLabel("Nom de la source 1").fill("Webinaire");
   await page.getByLabel("Type de la source 1").selectOption("webinar");
@@ -372,7 +374,7 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
     });
 
   await page.getByRole("button", { name: "Modifier la campagne" }).click();
-  await page.getByLabel("Compagnons", { exact: false }).check();
+  await page.getByLabel("Compagnons", { exact: false }).press("Space");
   await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect
     .poll(() =>

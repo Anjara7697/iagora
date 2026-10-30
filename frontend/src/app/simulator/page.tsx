@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Check, Database, MessagesSquare, Route, Send, Sparkles, Trash2, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import SimulationNotice from "@/components/SimulationNotice";
@@ -8,7 +8,9 @@ import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Loading, ProspectLink, ScoreBadge, StageBadge } from "@/components/ui";
+import { Btn, ErrorText, Field, FilterChip, NativeSelect, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
+import { PageHeader, Screen, initialsOf } from "@/components/ds/layout";
+import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, SIMULATOR_ENABLED } from "@/lib/api";
 import { ACTIONS, CONSENT, STAGES, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
@@ -94,14 +96,16 @@ export default function SimulatorPage() {
 
   if (!allowed) {
     return (
-      <>
-        <h1>Simulateur</h1>
-        <p>
-          {SIMULATOR_ENABLED
-            ? "Le simulateur est réservé aux conseillers et aux administrateurs."
-            : "Le simulateur est désactivé sur cet environnement."}
-        </p>
-      </>
+      <Screen>
+        <PageHeader
+          title="Simulateur"
+          subtitle={
+            SIMULATOR_ENABLED
+              ? "Le simulateur est réservé aux conseillers et aux administrateurs."
+              : "Le simulateur est désactivé sur cet environnement."
+          }
+        />
+      </Screen>
     );
   }
 
@@ -237,115 +241,127 @@ export default function SimulatorPage() {
       : null;
 
   return (
-    <>
+    <Screen wide className="max-w-[1600px]">
       <SimulationNotice>
         Prospects fictifs en @demo.example.com : aucun message n’est envoyé à
         l’extérieur. Les données de démonstration peuvent être supprimées
         séparément des vraies données.
       </SimulationNotice>
-      <div className="page-heading">
-        <div>
-          <span className="eyebrow">Paramètres · Tests et démonstration</span>
-          <h1>Simulateur de prospect</h1>
-          <p className="muted">
-            Jouez un prospect <b>fictif</b> (adresse @demo.example.com) : mêmes
+      <PageHeader
+        eyebrow="Tests · Simulateur libre"
+        title="Simulateur de prospect"
+        subtitle={
+          <>
+            Jouez un prospect <b className="font-semibold text-foreground">fictif</b> (adresse @demo.example.com) : mêmes
             règles, même base de connaissances et même modèle que pour un vrai
             prospect.
-          </p>
-        </div>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="card card--default flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+            <Route className="size-4" />
+          </span>
+          <div className="flex min-w-[200px] flex-1 flex-col gap-1">
+            <h2 className="text-sm font-semibold text-foreground">Tester un parcours complet</h2>
+            <p className="text-[13px]/[20px] text-muted">
+              Qualification, objection et réservation dans un calendrier fictif,
+              avec le vrai agent.
+            </p>
+          </div>
+          <Btn variant="outline" size="sm" onClick={() => setGuided(true)}>
+            Ouvrir le parcours guidé
+          </Btn>
+        </section>
+        {isAdmin && (
+          <section className="card card--default gap-3 p-5" aria-label="Données fictives">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
+                <Database className="size-4" />
+              </span>
+              <span className="min-w-[180px] flex-1 text-[13px]/[20px] text-muted">
+                Données fictives en base :{" "}
+                <b className="font-semibold text-foreground">
+                  {demoData.data
+                    ? `${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`
+                    : demoData.error
+                      ? "indisponible"
+                      : "…"}
+                </b>
+              </span>
+              <Btn
+                variant="danger-soft"
+                size="sm"
+                disabled={busy || !demoData.data || demoData.data.prospects === 0}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Supprimer tous les prospects fictifs (@demo.example.com) et leurs conversations ? Les vraies données ne sont pas touchées.",
+                    )
+                  )
+                    return;
+                  void guard(async () => {
+                    const r = await api<{
+                      prospects: number;
+                      conversations: number;
+                    }>("/demo/data", { method: "DELETE" });
+                    setSession(null);
+                    setMessages([]);
+                    setRuns([]);
+                    setPurgeNotice(
+                      `${r.prospects} prospect(s) fictif(s) et ${r.conversations} conversation(s) supprimés.`,
+                    );
+                    demoData.reload();
+                  });
+                }}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Supprimer les données fictives
+              </Btn>
+            </div>
+            {purgeNotice && <Notice>{purgeNotice}</Notice>}
+          </section>
+        )}
       </div>
 
-      <section className="card">
-        <h2>Tester un parcours complet</h2>
-        <p>
-          Qualification, objection et réservation dans un calendrier fictif,
-          avec le vrai agent.
-        </p>
-        <button onClick={() => setGuided(true)}>
-          Ouvrir le parcours guidé
-        </button>
-      </section>
-
       {mode.data?.mode === "assisted" && (
-        <p className="muted">
-          Mode assisté : la réponse de l&apos;agent est un <b>brouillon</b> à
-          valider (ici ou dans <Link href="/todo">À traiter</Link>).
+        <p className="flex items-center gap-2 text-[13px] text-muted">
+          <Sparkles className="size-4 text-agent" aria-hidden="true" />
+          <span>
+            Mode assisté : la réponse de l&apos;agent est un <b className="font-semibold text-foreground">brouillon</b> à
+            valider (ici ou dans <TextLink href="/todo" className="text-[13px]">À traiter</TextLink>).
+          </span>
         </p>
       )}
       {mode.data?.mode === "manual" && (
-        <p className="error">
+        <ErrorText>
           Arrêt d&apos;urgence actif : l&apos;agent ne répondra pas. Reprenez le
           mode assisté dans le menu.
-        </p>
+        </ErrorText>
       )}
 
-      {isAdmin && (
-        <section className="card" aria-label="Données fictives">
-          <div className="row">
-            <span>
-              Données fictives en base :{" "}
-              <b>
-                {demoData.data
-                  ? `${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`
-                  : demoData.error
-                    ? "indisponible"
-                    : "…"}
-              </b>
-            </span>
-            <span className="spacer" />
-            <button
-              className="danger"
-              disabled={busy || !demoData.data || demoData.data.prospects === 0}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    "Supprimer tous les prospects fictifs (@demo.example.com) et leurs conversations ? Les vraies données ne sont pas touchées.",
-                  )
-                )
-                  return;
-                void guard(async () => {
-                  const r = await api<{
-                    prospects: number;
-                    conversations: number;
-                  }>("/demo/data", { method: "DELETE" });
-                  setSession(null);
-                  setMessages([]);
-                  setRuns([]);
-                  setPurgeNotice(
-                    `${r.prospects} prospect(s) fictif(s) et ${r.conversations} conversation(s) supprimés.`,
-                  );
-                  demoData.reload();
-                });
-              }}
-            >
-              Supprimer les données fictives
-            </button>
-          </div>
-          {purgeNotice && <p role="status">{purgeNotice}</p>}
-        </section>
-      )}
-
-      <div className="sim">
-        <aside className="sim-side" aria-label="Prospect simulé">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+        <aside className="flex flex-col gap-4" aria-label="Prospect simulé">
           {!session ? (
-            <div className="card">
-              <h2>Nouveau prospect fictif</h2>
+            <section className="card card--default gap-4 p-5">
+              <h2 className="text-base font-semibold text-foreground">Nouveau prospect fictif</h2>
               <Loading
                 loading={campaigns.loading}
                 error={campaigns.error}
                 onRetry={campaigns.reload}
               />
               {campaigns.data && campaigns.data.items.length === 0 && (
-                <p>
+                <p className="text-[13px]/[20px] text-muted">
                   Aucune campagne. Lancez{" "}
-                  <code>python -m app.cli seed-demo</code> ou créez-en une.
+                  <code className="rounded bg-surface-secondary px-1 font-mono text-xs">python -m app.cli seed-demo</code> ou créez-en une.
                 </p>
               )}
               {campaign && (
-                <div className="form">
-                  <label>
-                    Campagne
-                    <select
+                <div className="flex flex-col gap-4">
+                  <Field label="Campagne">
+                    <NativeSelect
                       value={campaign.id}
                       onChange={(e) => {
                         setCampaignId(Number(e.target.value));
@@ -357,11 +373,10 @@ export default function SimulatorPage() {
                           {c.name}
                         </option>
                       ))}
-                    </select>
-                  </label>
-                  <label>
-                    Programme visé
-                    <select
+                    </NativeSelect>
+                  </Field>
+                  <Field label="Programme visé">
+                    <NativeSelect
                       value={targetCode || campaign.targets[0]?.code}
                       onChange={(e) => setTargetCode(e.target.value)}
                     >
@@ -370,27 +385,34 @@ export default function SimulatorPage() {
                           {t.name}
                         </option>
                       ))}
-                    </select>
-                  </label>
-                  <label>
-                    Prénom du prospect
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </label>
-                  <button className="primary" disabled={busy} onClick={start}>
+                    </NativeSelect>
+                  </Field>
+                  <Field label="Prénom du prospect">
+                    <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+                  </Field>
+                  <Btn variant="primary" fullWidth disabled={busy} onClick={start}>
+                    <UserPlus className="size-4" aria-hidden="true" />
                     Créer un prospect fictif
-                  </button>
+                  </Btn>
                 </div>
               )}
-            </div>
+            </section>
           ) : (
-            <div className="card">
-              <div className="row">
-                <strong>{session.name}</strong>
-                <span className="spacer" />
-                <button
+            <section className="card card--default gap-3 p-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-sm font-semibold text-foreground"
+                  aria-hidden="true"
+                >
+                  {initialsOf(session.name)}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <strong className="truncate text-sm font-semibold text-foreground">{session.name}</strong>
+                  <span className="text-xs text-muted">Prospect fictif</span>
+                </span>
+                <Btn
+                  size="sm"
+                  variant="ghost"
                   onClick={() => {
                     setSession(null);
                     setMessages([]);
@@ -399,9 +421,9 @@ export default function SimulatorPage() {
                   }}
                 >
                   Nouveau prospect
-                </button>
+                </Btn>
               </div>
-              <div className="row">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {membership && (
                   <StageBadge stage={membership.conversion_stage} />
                 )}
@@ -412,169 +434,183 @@ export default function SimulatorPage() {
                   />
                 )}
                 {prospect && (
-                  <span className="badge">
-                    {label(CONSENT, prospect.consent_status)}
-                  </span>
+                  <Tag>{label(CONSENT, prospect.consent_status)}</Tag>
                 )}
               </div>
-              <p>
-                <ProspectLink id={session.prospectId}>
-                  Voir la fiche complète →
-                </ProspectLink>
-              </p>
-            </div>
+              <TextLink href={`/prospects/${session.prospectId}`} className="w-fit text-[13px]">
+                Voir la fiche complète →
+              </TextLink>
+            </section>
           )}
 
           {session && (
-            <div className="card">
-              <h3>Messages types</h3>
-              <p className="muted">
-                Cliquez pour préparer le message, puis envoyez-le.
-              </p>
-              <div className="chips" role="group" aria-label="Messages types">
+            <section className="card card--default gap-3 p-5">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-foreground">Messages types</h3>
+                <p className="text-xs text-muted">
+                  Cliquez pour préparer le message, puis envoyez-le.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Messages types">
                 {SCENARIOS.map((s) => (
                   <button
                     key={s.title}
+                    type="button"
                     disabled={busy || closed}
                     onClick={() => setText(s.message)}
+                    className="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-foreground outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {s.title}
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </aside>
 
-        <section className="sim-main" aria-label="Conversation simulée">
+        <section className="card card--default min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
+          <div className="flex min-h-14 items-center gap-2 border-b border-separator px-5 py-3">
+            <MessagesSquare className="size-4 text-muted" aria-hidden="true" />
+            <h2 className="flex-1 text-base font-semibold text-foreground">Conversation</h2>
+            <Tag tone="agent">Simulation</Tag>
+          </div>
           {!session && (
-            <div className="card inbox-placeholder">
-              <p className="muted">
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+              <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-surface-secondary text-muted" aria-hidden="true">
+                <MessagesSquare className="size-5" />
+              </span>
+              <p className="text-sm text-muted">
                 Créez un prospect fictif pour commencer l&apos;échange.
               </p>
             </div>
           )}
           {session && (
             <>
-              <ConversationView messages={messages} />
-              {draft && (
-                <div className="card warnbox" role="status">
-                  Brouillon de l&apos;agent en attente de validation.
-                  <div className="row">
-                    <button
-                      className="primary"
-                      disabled={busy}
-                      onClick={() => decide(draft, "approve")}
-                    >
-                      Approuver
-                    </button>
-                    <button
-                      className="danger"
-                      disabled={busy}
-                      onClick={() => decide(draft, "reject")}
-                    >
-                      Refuser
-                    </button>
-                    <Link
-                      href={`/todo?id=${encodeURIComponent(`draft:${session.conversationId}:${draft.id}`)}`}
-                    >
-                      Traiter dans « À traiter »
-                    </Link>
+              <div className="flex flex-1 flex-col gap-4 bg-background/60 px-5 py-5">
+                <ConversationView messages={messages} prospectName={session.name} channel="email" />
+                {draft && (
+                  <div className="flex flex-col gap-3 rounded-xl border border-dashed border-agent/50 bg-agent-soft/60 px-4 py-3 text-sm text-foreground" role="status">
+                    Brouillon de l&apos;agent en attente de validation.
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Btn
+                        variant="primary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => decide(draft, "approve")}
+                      >
+                        <Check className="size-4" aria-hidden="true" />
+                        Approuver
+                      </Btn>
+                      <Btn
+                        variant="danger-soft"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => decide(draft, "reject")}
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                        Refuser
+                      </Btn>
+                      <TextLink
+                        className="text-[13px]"
+                        href={`/todo?id=${encodeURIComponent(`draft:${session.conversationId}:${draft.id}`)}`}
+                      >
+                        Traiter dans « À traiter »
+                      </TextLink>
+                    </div>
                   </div>
-                </div>
-              )}
-              {error && (
-                <p className="error" role="alert">
-                  {error}
-                </p>
-              )}
-              {closed && (
-                <p className="muted">
-                  Conversation terminée ({label(ACTIONS, lastRun?.action)}).
-                  Créez un nouveau prospect pour recommencer.
-                </p>
-              )}
-              <div className="composer">
-                <input
+                )}
+                {error && <ErrorText>{error}</ErrorText>}
+                {closed && (
+                  <p className="text-[13px] text-muted">
+                    Conversation terminée ({label(ACTIONS, lastRun?.action)}).
+                    Créez un nouveau prospect pour recommencer.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-separator px-5 py-4">
+                <TextInput
                   aria-label="Message du prospect"
                   placeholder="Écrivez comme le prospect…"
+                  className="min-w-[200px] flex-1"
                   value={text}
                   disabled={busy || closed}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                 />
-                <button
-                  className="primary"
+                <Btn
+                  variant="primary"
                   disabled={busy || closed || !text.trim()}
                   onClick={send}
                 >
+                  <Send className="size-4" aria-hidden="true" />
                   {busy ? "…" : "Envoyer"}
-                </button>
+                </Btn>
                 {messages.length === 0 && (
-                  <button disabled={busy} onClick={firstContact}>
+                  <Btn disabled={busy} onClick={firstContact}>
                     Premier contact par l&apos;agent
-                  </button>
+                  </Btn>
                 )}
               </div>
             </>
           )}
         </section>
 
-        <aside className="sim-side" aria-label="Décision de l'agent">
-          <div className="card">
-            <h3>Décision de l&apos;agent</h3>
-            {!current && (
-              <p className="muted">
-                La décision apparaîtra après le premier message.
-              </p>
-            )}
-            {current && (
-              <>
-                {runs.length > 1 && (
-                  <div className="chips" role="group" aria-label="Tours">
-                    {runs.map((_, i) => (
-                      <button
-                        key={i}
-                        aria-pressed={current === runs[i]}
-                        onClick={() => setShown(i)}
-                      >
-                        Tour {i + 1}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <RunView run={current} />
-                <dl className="sim-facts">
-                  <dt>Intérêt / adéquation</dt>
-                  <dd>
-                    {current.scores.interest ?? "-"} /{" "}
-                    {current.scores.fit ?? "-"}
-                  </dd>
-                  <dt>Étape</dt>
-                  <dd>
-                    {label(STAGES, current.stage_before)} →{" "}
-                    {label(STAGES, current.stage_after)}
-                  </dd>
-                  {current === lastRun && (
-                    <>
-                      <dt>Sources</dt>
-                      <dd>
-                        {sources.length > 0 ? sources.join(" ; ") : "aucune"}
-                      </dd>
-                      <dt>Confiance</dt>
-                      <dd>
-                        {confidence !== null
-                          ? `${Math.round(confidence * 100)} %`
-                          : "-"}
-                      </dd>
-                    </>
-                  )}
-                </dl>
-              </>
-            )}
+        <aside className="card card--default gap-4 p-5" aria-label="Décision de l'agent">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-agent" aria-hidden="true" />
+            <h3 className="text-base font-semibold text-foreground">Décision de l&apos;agent</h3>
           </div>
+          {!current && (
+            <p className="text-[13px] text-muted">
+              La décision apparaîtra après le premier message.
+            </p>
+          )}
+          {current && (
+            <>
+              {runs.length > 1 && (
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tours">
+                  {runs.map((_, i) => (
+                    <FilterChip
+                      key={i}
+                      pressed={current === runs[i]}
+                      onClick={() => setShown(i)}
+                    >
+                      Tour {i + 1}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
+              <RunView run={current} />
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 text-[13px]">
+                <dt className="text-muted">Intérêt / adéquation</dt>
+                <dd className="font-mono text-foreground tabular-nums">
+                  {current.scores.interest ?? "-"} /{" "}
+                  {current.scores.fit ?? "-"}
+                </dd>
+                <dt className="text-muted">Étape</dt>
+                <dd className="text-foreground">
+                  {label(STAGES, current.stage_before)} →{" "}
+                  {label(STAGES, current.stage_after)}
+                </dd>
+                {current === lastRun && (
+                  <>
+                    <dt className="text-muted">Sources</dt>
+                    <dd className="text-foreground">
+                      {sources.length > 0 ? sources.join(" ; ") : "aucune"}
+                    </dd>
+                    <dt className="text-muted">Confiance</dt>
+                    <dd className="font-mono text-foreground tabular-nums">
+                      {confidence !== null
+                        ? `${Math.round(confidence * 100)} %`
+                        : "-"}
+                    </dd>
+                  </>
+                )}
+              </dl>
+            </>
+          )}
         </aside>
       </div>
-    </>
+    </Screen>
   );
 }

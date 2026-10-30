@@ -1,15 +1,14 @@
 "use client";
 
+import { Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { EmailSettings } from "@/components/EmailSettings";
-import { Feedback, Stats } from "@/components/forms";
+import { Btn, ErrorText } from "@/components/ds/controls";
+import { cx } from "@/components/ds/layout";
+import { ActionsBar, Feedback, InfoRow, StatePill, Stats } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
 import { DELIVERY, formatDate, label } from "@/lib/labels";
 import type { EmailCheck, EmailStatus, Tone } from "@/lib/types";
-
-function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
-  return <span className={`badge integ-${tone}`}>{children}</span>;
-}
 
 /** Messagerie : « Vue d'ensemble » (état, actions sur la boîte enregistrée) puis « Configuration ». */
 export function EmailConnector({
@@ -82,14 +81,14 @@ export function EmailConnector({
         : "À tester";
 
   return (
-    <div className="settings-stack">
+    <div className="flex flex-col gap-4">
       {!s.configured && (
-        <p className="warnbox" role="alert">
+        <p className="rounded-xl bg-warning-soft px-4 py-3 text-[13px]/[20px] text-warning-soft-foreground" role="alert">
           Boîte non configurée : renseignez-la dans l’onglet « Configuration »
           (adresse et mot de passe, les serveurs sont détectés automatiquement).
         </p>
       )}
-      <div className="segmented" role="tablist" aria-label="Messagerie">
+      <div className="inline-flex w-fit gap-0.5 rounded-xl bg-surface-tertiary p-[3px]" role="tablist" aria-label="Messagerie">
         {(
           [
             ["overview", "Vue d’ensemble"],
@@ -98,11 +97,16 @@ export function EmailConnector({
         ).map(([id, text]) => (
           <button
             key={id}
+            type="button"
             role="tab"
             id={`email-tab-${id}`}
             aria-selected={tab === id}
             aria-controls={`email-panel-${id}`}
             onClick={() => setTab(id)}
+            className={cx(
+              "inline-flex h-8 items-center rounded-[9px] px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+              tab === id ? "bg-segment text-foreground shadow-surface" : "text-muted hover:text-foreground",
+            )}
           >
             {text}
           </button>
@@ -115,96 +119,90 @@ export function EmailConnector({
         aria-labelledby="email-tab-overview"
         aria-label="Messagerie"
         hidden={tab !== "overview"}
-        className="settings-stack"
+        className="flex flex-col gap-4"
       >
-        <div className="row">
-          <Pill tone={testTone}>{testLabel}</Pill>
-          <Pill tone={s.configured ? "ok" : "off"}>
-            {s.configured ? "Identifiants présents" : "Identifiants absents"}
-          </Pill>
-          <Pill tone={s.enabled ? "ok" : "warn"}>
-            {s.enabled ? "Réception active" : "Réception désactivée"}
-          </Pill>
-          <Pill tone={s.send_enabled ? "ok" : "warn"}>
-            {s.send_enabled ? "Envoi activé" : "Envoi désactivé"}
-          </Pill>
+        <div className="flex flex-col gap-3 rounded-2xl bg-surface-secondary px-4 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex-1 text-[13px] text-muted">Dernier test de la boîte</span>
+            <StatePill tone={testTone}>{testLabel}</StatePill>
+          </div>
+          <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="État de la messagerie">
+            {(
+              [
+                [s.configured, s.configured ? "Identifiants présents" : "Identifiants absents"],
+                [s.enabled, s.enabled ? "Réception active" : "Réception désactivée"],
+                [s.send_enabled, s.send_enabled ? "Envoi activé" : "Envoi désactivé"],
+              ] as const
+            ).map(([on, text]) => (
+              <li key={text} className="flex items-center gap-2 text-[13px] text-foreground">
+                <span className={cx("size-2 rounded-full", on ? "bg-success" : "bg-muted/40")} aria-hidden="true" />
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="actions-bar">
-          <button disabled={busy || !s.configured} onClick={() => run("check")}>
+        <ActionsBar>
+          <Btn variant="outline" disabled={busy || !s.configured} onClick={() => run("check")}>
+            <ShieldCheck className="size-4" aria-hidden="true" />
             Tester la boîte enregistrée
-          </button>
-          <button disabled={busy || !s.configured} onClick={() => run("sync")}>
+          </Btn>
+          <Btn variant="outline" disabled={busy || !s.configured} onClick={() => run("sync")}>
+            <RefreshCw className="size-4" aria-hidden="true" />
             Lancer un passage maintenant
-          </button>
-        </div>
-        <p className="section-intro integration-saved-note">
+          </Btn>
+        </ActionsBar>
+        <p className="text-xs/[18px] text-muted">
           Ces actions utilisent la boîte enregistrée. Pour essayer des
           modifications avant de les appliquer, utilisez « Tester ces paramètres
           » dans l’onglet Configuration.
         </p>
         <Feedback notice={notice} error={error} />
         {check && (
-          <ul className="plain" aria-label="Résultat du test">
-            <li>
+          <ul className="flex flex-col gap-1 rounded-xl border border-separator px-4 py-3 font-mono text-[13px]" aria-label="Résultat du test">
+            <li className={check.imap === "ok" ? "text-success" : "text-danger"}>
               IMAP : {check.imap === "ok" ? "✓ connecté" : `✗ ${check.imap}`}
             </li>
-            <li>
+            <li className={check.smtp === "ok" ? "text-success" : "text-danger"}>
               SMTP : {check.smtp === "ok" ? "✓ connecté" : `✗ ${check.smtp}`}
             </li>
           </ul>
         )}
-        {s.last_error && (
-          <p className="error" role="alert">
-            Dernière erreur : {s.last_error}
-          </p>
-        )}
-        <div className="field-row">
-          <span className="field-label">Réception</span>
-          <span className="field-control">
-            <span>
-              Relève IMAP <code>{s.imap_host}</code> · dernière relève{" "}
-              {formatDate(s.last_run_at)}
-            </span>
+        {s.last_error && <ErrorText>Dernière erreur : {s.last_error}</ErrorText>}
+        <InfoRow label="Réception">
+          <span>
+            Relève IMAP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.imap_host}</code> · dernière relève{" "}
+            {formatDate(s.last_run_at)}
           </span>
-        </div>
-        <div className="field-row">
-          <span className="field-label">Envoi</span>
-          <span className="field-control">
-            <span>
-              SMTP <code>{s.smtp_host}</code> · boîte {s.sender ?? "-"}
-            </span>
+        </InfoRow>
+        <InfoRow label="Envoi">
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <Mail className="size-3.5 text-muted" aria-hidden="true" />
+            SMTP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.smtp_host}</code> · boîte {s.sender ?? "-"}
           </span>
-        </div>
-        <div className="field-row">
-          <span className="field-label">Bac à sable</span>
-          <span className="field-control">
-            <span>
-              {s.sandbox_recipients.length > 0
-                ? `L’agent n’écrit qu’à ${s.sandbox_recipients.join(", ")}.`
-                : "Aucun : tout destinataire est autorisé si l’envoi est activé."}
-            </span>
-            <span className="field-note">
-              Réception et envoi, fil de conversation, détection de
-              désinscription. Les nouveaux messages arrivent à chaque relève.
-            </span>
+        </InfoRow>
+        <InfoRow
+          label="Bac à sable"
+          note="Réception et envoi, fil de conversation, détection de désinscription. Les nouveaux messages arrivent à chaque relève."
+        >
+          <span>
+            {s.sandbox_recipients.length > 0
+              ? `L’agent n’écrit qu’à ${s.sandbox_recipients.join(", ")}.`
+              : "Aucun : tout destinataire est autorisé si l’envoi est activé."}
           </span>
-        </div>
-        <div className="field-row">
-          <span className="field-label">Messages email par état</span>
-          <span className="field-control">
-            {Object.keys(s.outbox).length === 0 ? (
-              <span className="status-text">Aucun message.</span>
-            ) : (
-              <Stats
-                label="Messages email par état"
-                items={Object.entries(s.outbox).map(([k, n]) => ({
-                  value: n,
-                  caption: label(DELIVERY, k),
-                }))}
-              />
-            )}
-          </span>
-        </div>
+        </InfoRow>
+        <InfoRow label="Messages email par état">
+          {Object.keys(s.outbox).length === 0 ? (
+            <span className="text-muted">Aucun message.</span>
+          ) : (
+            <Stats
+              label="Messages email par état"
+              items={Object.entries(s.outbox).map(([k, n]) => ({
+                value: n,
+                caption: label(DELIVERY, k),
+              }))}
+            />
+          )}
+        </InfoRow>
       </section>
 
       <div

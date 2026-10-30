@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 test.use({ timezoneId: "Europe/Paris" });
 
@@ -63,6 +64,7 @@ test("conseiller : rendez-vous personnels, liens et navigation active", async ({
   await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByRole("link", { name: "Rendez-vous", exact: true })).toHaveAttribute("aria-current", "page");
   expect(calls.queries.at(-1)?.get("advisor_id")).toBe("7");
   expect(calls.writes).toEqual([]);
+  await auditA11y(page, "rendez-vous");
 });
 
 test("filtres combinés, pagination, actualisation et retour navigateur", async ({ page }) => {
@@ -79,7 +81,7 @@ test("filtres combinés, pagination, actualisation et retour navigateur", async 
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
   for (const [key, value] of Object.entries({ when: "past", status: "scheduled", advisor_id: "7", offset: "25" })) expect(calls.queries.at(-1)?.get(key)).toBe(value);
   await expect(page.getByText("Planifié", { exact: true }).last()).toBeVisible();
-  await page.getByLabel("Masquer les prospects fictifs").check();
+  await page.getByLabel("Masquer les prospects fictifs").press("Space");
   await expect(page.getByRole("heading", { name: "Aucun rendez-vous pour cette sélection" })).toBeVisible();
   expect(calls.queries.at(-1)?.get("offset")).toBe("0");
   await page.goBack();
