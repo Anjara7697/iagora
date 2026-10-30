@@ -95,6 +95,7 @@ async function login(page: Page) {
 async function selectFilter(page: Page, label: string, value: string) {
   await page.getByLabel(label, { exact: true }).click();
   await page.locator(`[role="option"][data-value="${value}"]`).click();
+  await expect(page.getByRole("listbox", { name: label })).toHaveCount(0);
 }
 
 test("campagne et source : seuls les parcours filtrés apparaissent, export identique", async ({

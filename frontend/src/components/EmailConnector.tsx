@@ -104,7 +104,7 @@ export function EmailConnector({
             aria-controls={`email-panel-${id}`}
             onClick={() => setTab(id)}
             className={cx(
-              "inline-flex h-8 items-center rounded-[9px] px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+              "inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
               tab === id ? "bg-segment text-foreground shadow-surface" : "text-muted hover:text-foreground",
             )}
           >
