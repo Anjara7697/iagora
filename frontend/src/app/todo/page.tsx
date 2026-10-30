@@ -34,7 +34,7 @@ import {
   TextLink,
   type Tone,
 } from "@/components/ds/controls";
-import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
+import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -79,14 +79,6 @@ const TASK_LABELS: Record<TodoKind, string> = {
   escalation: "Demandes de conseiller",
   kb_gap: "Réponses à compléter",
   incident: "Incidents",
-};
-const TASK_ACTIONS: Record<TodoKind, string> = {
-  enrollment: "Vérifier la preuve et confirmer l'inscription",
-  application: "Vérifier le dossier et la campagne",
-  validation: "Relire et valider la réponse",
-  escalation: "Prendre le relais de l’agent",
-  kb_gap: "Apporter une réponse vérifiée",
-  incident: "Examiner le problème",
 };
 const KIND_ORDER: TodoKind[] = [
   "enrollment",
@@ -159,7 +151,7 @@ function PersonMark({ name, incident }: { name: string; incident?: boolean }) {
 }
 
 const rowClass = (selected: boolean) =>
-  `flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
+  `flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
     selected ? "bg-accent-soft" : "hover:bg-surface-secondary"
   }`;
 
@@ -184,14 +176,13 @@ function Row({
           </span>
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
             <Tag tone={KIND_TONE[item.kind]}>{TASK_LABELS[item.kind]}</Tag>
-            <span>· {label(CHANNELS, item.channel)}</span>
+            <Tag tone={PRIORITY_TONE[item.priority] ?? "neutral"}>
+              {label(PRIORITIES, item.priority)}
+            </Tag>
+            <span>{label(CHANNELS, item.channel)}</span>
           </span>
           <span className="line-clamp-2 text-[13px]/[18px] text-foreground/80">
             {item.detail ? `« ${item.detail} »` : item.title}
-          </span>
-          <span className="flex items-center gap-2 text-xs text-muted">
-            <span className="flex-1">{TASK_ACTIONS[item.kind]}</span>
-            <Tag tone={PRIORITY_TONE[item.priority] ?? "neutral"}>{label(PRIORITIES, item.priority)}</Tag>
           </span>
         </span>
       </button>
@@ -241,7 +232,7 @@ function DraftPanel({
   }
 
   return (
-    <section className="draft-panel card card--default gap-0 overflow-hidden p-0" aria-label="Brouillon de l'agent">
+    <section className="draft-panel card card--default gap-0 p-0" aria-label="Brouillon de l'agent">
       <header className="flex flex-wrap items-center gap-2 border-b border-separator px-5 py-3.5">
         <strong className="flex-1 text-sm font-semibold text-foreground">
           Réponse proposée — {label(CHANNELS, item.channel)}
@@ -299,7 +290,7 @@ function DraftPanel({
           </div>
         </div>
       ) : (
-        <div className="draft-actions flex flex-wrap items-center gap-2 border-t border-separator bg-surface-secondary/60 px-5 py-3">
+        <div className="draft-actions sticky bottom-3 z-10 mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/95 px-3 py-3 shadow-overlay backdrop-blur-md">
           <div className="draft-decision flex flex-wrap gap-2 max-sm:w-full">
             <Btn
               variant="primary"
@@ -682,7 +673,7 @@ function Detail({
   const name = itemName(item);
   const rec = item.recommendation;
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-4" aria-label={`À traiter : ${name}`}>
+    <section className="mx-auto flex w-full max-w-[980px] min-w-0 flex-1 flex-col gap-4" aria-label={`À traiter : ${name}`}>
       <DetailHead
         name={name}
         incident={item.kind === "incident"}
@@ -906,7 +897,7 @@ function TreatedDetail({
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-4" aria-label={`Traité : ${name}`}>
+    <section className="mx-auto flex w-full max-w-[980px] min-w-0 flex-1 flex-col gap-4" aria-label={`Traité : ${name}`}>
       <DetailHead
         name={name}
         chips={
@@ -1046,7 +1037,11 @@ function Todo() {
 
   return (
     <Screen wide className="gap-4">
-      <h1 className="sr-only">À traiter</h1>
+      <PageHeader
+        eyebrow="Travail · Décisions"
+        title="À traiter"
+        subtitle="Examinez le contexte préparé par l’agent, puis validez la prochaine action."
+      />
       {notice && (
         <div
           ref={noticeRef}
@@ -1086,9 +1081,9 @@ function Todo() {
           </Btn>
         </div>
       )}
-      <div className="flex items-start gap-6">
+      <div className="flex items-start gap-5">
         <aside
-          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
           aria-label="Éléments à traiter"
         >
           <header className="flex items-center gap-2 px-2 pt-1">
