@@ -6,7 +6,6 @@ import {
   BookOpen,
   CalendarDays,
   ChevronDown,
-  ChevronRight,
   CircleDashed,
   FlaskConical,
   LogOut,
@@ -30,7 +29,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import { pageTitle } from "@/lib/labels";
-import { Avatar, Button, Card, Chip, Dropdown, Label, SearchField, Spinner } from "@heroui/react";
+import { Avatar, Button, Card, Chip, Disclosure, Dropdown, Label, SearchField, Spinner } from "@heroui/react";
 import AgentModeCard from "./AgentModeCard";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
@@ -51,7 +50,7 @@ type NavItem = {
   /** Pictogramme Lucide, décoratif : le libellé porte le sens. */
   icon?: LucideIcon;
   badge?: boolean;
-  /** Écran prévu par la maquette, pas encore développé : affiché grisé, sans lien. */
+  /** Écran prévu, pas encore développé : affiché grisé, sans lien. */
   soon?: boolean;
   adminOnly?: boolean;
 };
@@ -253,7 +252,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <UserContext.Provider value={user}>
       <ReplyDraftsProvider key={user.id}>
       <a
-       
         className="fixed top-[-80px] left-3 z-[100] rounded-xl bg-surface px-3 py-2 text-sm font-medium text-foreground shadow-overlay focus:top-3"
         href="#main-content"
       >
@@ -261,7 +259,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <div className="flex min-h-dvh bg-background">
         <button
-         
           className={`fixed inset-0 z-40 bg-backdrop transition-opacity duration-200 lg:hidden ${navOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
           aria-label="Fermer le menu"
           aria-hidden={!navOpen}
@@ -269,7 +266,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setNavOpen(false)}
         />
         <aside
-         
           id="app-navigation"
           className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col gap-3 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
         >
@@ -306,12 +302,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       {Icon && <Icon className={`size-4 shrink-0 ${active ? "text-accent" : "text-muted"}`} aria-hidden="true" />}
                       <span className="flex-1">{link.label}</span>
                       {link.badge && waiting ? (
-                        <span
-                          className={`rounded-md px-1.5 text-[11px] tabular-nums ${active ? "bg-accent text-accent-foreground" : "bg-warning-soft text-warning-soft-foreground"}`}
+                        <Chip
+                          size="sm"
+                          variant={active ? "primary" : "soft"}
+                          color={active ? "accent" : "warning"}
                           aria-label={`${waiting} en attente`}
                         >
-                          {waiting}
-                        </span>
+                          <Chip.Label>{waiting}</Chip.Label>
+                        </Chip>
                       ) : null}
                     </Link>
                   );
@@ -319,22 +317,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ))}
             {upcoming.length > 0 && (
-              <details className="group rounded-lg border-t border-separator pt-2">
-                <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-sm text-muted hover:bg-surface-secondary [&::-webkit-details-marker]:hidden">
-                  <span className="flex-1">À venir</span>
-                  <span className="rounded-md bg-surface-secondary px-1.5 text-[11px]">{upcoming.length}</span>
-                  <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
-                </summary>
-                <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">
-                  {upcoming.map((item) => (
-                    <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 text-sm text-muted">
-                      <CircleDashed className="size-4" aria-hidden="true" />
-                      <span>{item.label}</span>
-                      <span className="ms-auto text-[11px]" aria-hidden="true">Bientôt</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
+              <Disclosure className="border-t border-separator pt-2">
+                <Disclosure.Heading>
+                  <Disclosure.Trigger className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-muted outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus">
+                    <span className="flex-1 text-left">À venir</span>
+                    <Chip size="sm" variant="soft">
+                      <Chip.Label>{upcoming.length}</Chip.Label>
+                    </Chip>
+                    <Disclosure.Indicator>
+                      <ChevronDown className="size-3.5" aria-hidden="true" />
+                    </Disclosure.Indicator>
+                  </Disclosure.Trigger>
+                </Disclosure.Heading>
+                <Disclosure.Content>
+                  <Disclosure.Body>
+                    <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">
+                      {upcoming.map((item) => (
+                        <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 text-sm text-muted">
+                          <CircleDashed className="size-4" aria-hidden="true" />
+                          <span>{item.label}</span>
+                          <span className="ms-auto text-[11px]" aria-hidden="true">Bientôt</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Disclosure.Body>
+                </Disclosure.Content>
+              </Disclosure>
             )}
           </nav>
           {!mustChange && (
@@ -346,7 +354,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-           
             className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur-md lg:px-7"
           >
             <Button
