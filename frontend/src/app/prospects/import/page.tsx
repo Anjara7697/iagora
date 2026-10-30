@@ -105,7 +105,7 @@ export default function ImportPage() {
             >
               <span
                 className={cx(
-                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-xs",
+                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs",
                   current ? "bg-accent text-accent-foreground" : done ? "bg-success text-success-foreground" : "bg-surface-tertiary",
                 )}
                 aria-hidden="true"
@@ -137,7 +137,7 @@ export default function ImportPage() {
           <p className="flex items-center gap-2 text-[13px] text-foreground">
             <FileSpreadsheet className="size-4 text-success" aria-hidden="true" />
             <span className="font-medium">{file.name}</span>
-            <span className="font-mono text-xs text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
+            <span className="text-xs text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
           </p>
         )}
         <InfoRow label="Destination" note="Facultatif : les prospects sans campagne restent « à rattacher ».">

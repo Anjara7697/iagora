@@ -126,7 +126,7 @@ export default function CampaignOwnership({
               >
                 Conseillers précédents
               </Btn>
-              <span className="font-mono text-xs tabular-nums">
+              <span className="text-xs tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>

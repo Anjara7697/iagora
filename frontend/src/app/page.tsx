@@ -227,7 +227,7 @@ export default function Home() {
                       <strong className="font-medium">{f.prospect_name}</strong>
                     </Link>
                     <span className="flex-1" />
-                    <span className="font-mono text-xs text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
+                    <span className="text-xs text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
                   </span>
                   {f.reason && <span className="text-[13px] text-foreground">{f.reason}</span>}
                   <span className="text-xs text-muted">
@@ -268,7 +268,7 @@ export default function Home() {
                 ].map(([value, text]) => (
                   <div key={String(text)} className="flex flex-col-reverse gap-1">
                     <dt className="text-[13px]/[18px] text-muted">{text}</dt>
-                    <dd className="font-mono text-2xl text-foreground tabular-nums">{value}</dd>
+                    <dd className="text-2xl text-foreground tabular-nums">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -294,7 +294,7 @@ export default function Home() {
           {s && s.leads > 0 && (
             <div className="flex flex-col gap-4">
               <p className="text-[13px] text-muted">
-                <strong className="font-mono font-medium text-foreground">{s.leads}</strong> prospects arrivés sur la
+                <strong className="font-medium text-foreground">{s.leads}</strong> prospects arrivés sur la
                 période. Répartition par étape actuelle.
               </p>
               <BarList

@@ -173,7 +173,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                     onClick={() => setText(message)}
                     className="flex w-full items-start gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-[13px]/[19px] text-foreground outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <span className="mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-soft font-mono text-[11px] text-accent-soft-foreground" aria-hidden="true">
+                    <span className="mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] text-accent-soft-foreground" aria-hidden="true">
                       {i + 1}
                     </span>
                     <span>
@@ -341,7 +341,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                   <p className="text-[13px] text-muted">Aucune information de qualification enregistrée.</p>
                 )}
               </div>
-              <p className="font-mono text-xs text-muted tabular-nums">
+              <p className="text-xs text-muted tabular-nums">
                 Exécutions enregistrées : {runs.length} · Rendez-vous fictifs :{" "}
                 {report?.appointments.length ?? 0}
               </p>

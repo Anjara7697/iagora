@@ -83,7 +83,7 @@ export default function InteractionHistory({ id }: { id: number }) {
             >
               Interactions précédentes
             </Btn>
-            <span className="font-mono text-xs text-muted tabular-nums">
+            <span className="text-xs text-muted tabular-nums">
               {history.data.total === 0 ? 0 : offset + 1}–
               {Math.min(offset + LIMIT, history.data.total)} /{" "}
               {history.data.total}

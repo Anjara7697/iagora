@@ -133,7 +133,7 @@ function Confidence({ value }: { value: number | null }) {
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span className="font-mono text-[13px] text-foreground tabular-nums">{percent} %</span>
+      <span className="text-[13px] text-foreground tabular-nums">{percent} %</span>
     </div>
   );
 }
@@ -944,7 +944,7 @@ function TreatedDetail({
         <p className="text-sm text-foreground">{EXECUTION_HELP[item.execution]}</p>
         {item.reason && <p className="text-sm text-foreground">Motif du refus : {item.reason}</p>}
         {item.execution_detail && (
-          <p className="rounded-xl bg-surface-secondary px-3 py-2 font-mono text-xs text-muted">{item.execution_detail}</p>
+          <p className="rounded-xl bg-surface-secondary px-3 py-2 text-xs text-muted">{item.execution_detail}</p>
         )}
         {canRetry && (
           <div>
@@ -1089,7 +1089,7 @@ function Todo() {
           <header className="flex items-center gap-2 px-2 pt-1">
             <h2 className="flex-1 text-base font-semibold text-foreground">Votre file de travail</h2>
             <span className="text-[13px] text-muted" aria-label="Éléments en attente">
-              <strong className="font-mono font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
+              <strong className="font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
             </span>
           </header>
           <Segmented
@@ -1225,7 +1225,7 @@ function Todo() {
                 >
                   Éléments précédents
                 </Btn>
-                <span className="font-mono text-xs text-muted tabular-nums">
+                <span className="text-xs text-muted tabular-nums">
                   {offset + 1}–{Math.min(offset + 50, list.data.total)} /{" "}
                   {list.data.total}
                 </span>

@@ -464,7 +464,7 @@ export default function ProspectPage() {
                         level={m.interest_status}
                       />
                     </div>
-                    <p className="font-mono text-xs text-muted tabular-nums">
+                    <p className="text-xs text-muted tabular-nums">
                       Intérêt {m.interest_score} · Adéquation {m.fit_score}
                     </p>
                     <p className="text-[13px] text-foreground">
@@ -526,7 +526,7 @@ export default function ProspectPage() {
                 )}
                 {runs.data?.map((r) => (
                   <div key={r.run_id} className="flex flex-col gap-2 border-b border-separator py-4 last:border-b-0">
-                    <div className="font-mono text-xs text-muted tabular-nums">{formatDate(r.started_at)}</div>
+                    <div className="text-xs text-muted tabular-nums">{formatDate(r.started_at)}</div>
                     <RunView run={r} />
                     {r.reply && (
                       <blockquote className="rounded-xl border-l-2 border-agent/40 bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
@@ -560,7 +560,7 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
           <ul className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4 text-[13px] text-foreground">
             {history.data.stage_events.map((e) => (
               <li key={`s${e.id}`}>
-                <span className="font-mono text-xs text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
+                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
                 {label(STAGES, e.from_stage)} →{" "}
                 <b className="font-semibold">{label(STAGES, e.to_stage)}</b>{" "}
                 {e.reason ? `(${e.reason})` : ""}
@@ -568,7 +568,7 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
             ))}
             {history.data.score_events.map((e) => (
               <li key={`p${e.id}`}>
-                <span className="font-mono text-xs text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
+                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
                 {e.points >= 0 ? "+" : ""}
                 {e.points} → {e.new_value} ({e.reason})
               </li>
@@ -646,7 +646,7 @@ function CampaignAttribution({
           >
             Campagnes précédentes
           </Btn>
-          <span className="font-mono text-xs text-muted tabular-nums">
+          <span className="text-xs text-muted tabular-nums">
             {offset + 1}–{Math.min(offset + 50, campaigns.data.total)} /{" "}
             {campaigns.data.total}
           </span>

@@ -99,6 +99,7 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   /* Champs : bordure visible de 1 px (3:1 sur blanc). */
   --field-border-width: 1px;
+  --field-border: #8b8b95;
 }
 
 @theme inline {

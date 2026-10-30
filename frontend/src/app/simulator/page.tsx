@@ -583,7 +583,7 @@ export default function SimulatorPage() {
               <RunView run={current} />
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 text-[13px]">
                 <dt className="text-muted">Intérêt / adéquation</dt>
-                <dd className="font-mono text-foreground tabular-nums">
+                <dd className="text-foreground tabular-nums">
                   {current.scores.interest ?? "-"} /{" "}
                   {current.scores.fit ?? "-"}
                 </dd>
@@ -599,7 +599,7 @@ export default function SimulatorPage() {
                       {sources.length > 0 ? sources.join(" ; ") : "aucune"}
                     </dd>
                     <dt className="text-muted">Confiance</dt>
-                    <dd className="font-mono text-foreground tabular-nums">
+                    <dd className="text-foreground tabular-nums">
                       {confidence !== null
                         ? `${Math.round(confidence * 100)} %`
                         : "-"}

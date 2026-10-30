@@ -634,7 +634,7 @@ function Inbox() {
               >
                 <ChevronLeft className="size-4" />
               </Btn>
-              <span className="font-mono text-xs text-muted tabular-nums">
+              <span className="text-xs text-muted tabular-nums">
                 {offset + 1}-{Math.min(offset + LIMIT, list.data.total)} sur{" "}
                 {list.data.total}
               </span>

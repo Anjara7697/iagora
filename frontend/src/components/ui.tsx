@@ -104,7 +104,7 @@ export function Pager({
         <ChevronLeft className="size-4" aria-hidden="true" />
         Précédent
       </Btn>
-      <span className="font-mono text-[13px] text-muted tabular-nums">
+      <span className="text-[13px] text-muted tabular-nums">
         {from}-{to} sur {total}
       </span>
       <Btn size="sm" variant="ghost" disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>

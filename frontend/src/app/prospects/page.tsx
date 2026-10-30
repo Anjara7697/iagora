@@ -297,7 +297,7 @@ function Prospects() {
           À attribuer{pending.data ? ` (${pending.data.total})` : ""}
         </FilterChip>
         <span className="flex-1" />
-        <span className="font-mono text-[13px] text-muted tabular-nums" aria-live="polite">
+        <span className="text-[13px] text-muted tabular-nums" aria-live="polite">
           {!loading && data
             ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
             : "Chargement…"}
@@ -508,7 +508,7 @@ function Prospects() {
                         >
                           <header className="flex items-center gap-2 px-2 py-1.5">
                             <h2 className="flex-1 text-sm font-semibold text-foreground">{title}</h2>
-                            <span className="rounded-md bg-surface px-1.5 font-mono text-xs text-muted tabular-nums">{items.length}</span>
+                            <span className="rounded-md bg-surface px-1.5 text-xs text-muted tabular-nums">{items.length}</span>
                           </header>
                           {items.map((p) => (
                             <Link
@@ -627,7 +627,7 @@ function Prospects() {
                           <td className="px-4 py-3">
                             <ConsentTag status={p.consent_status} />
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-muted tabular-nums">
+                          <td className="px-4 py-3 text-xs text-muted tabular-nums">
                             {formatDate(p.created_at)}
                           </td>
                         </tr>

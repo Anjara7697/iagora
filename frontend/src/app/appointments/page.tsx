@@ -89,7 +89,7 @@ function Appointments() {
           onChange={(value) => update({ when: value })}
         />
         <span className="flex-1" />
-        <span className="font-mono text-[13px] text-muted tabular-nums" role="status">
+        <span className="text-[13px] text-muted tabular-nums" role="status">
           {!list.loading && list.data ? `${list.data.total} rendez-vous` : ""}
         </span>
       </div>
@@ -179,7 +179,7 @@ function Appointments() {
                     <li
                       className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t border-separator px-5 py-4 md:grid-cols-[110px_minmax(0,1.4fr)_minmax(0,1fr)_120px_auto] ${dead ? "opacity-70" : ""}`}
                     >
-                      <span className="flex flex-col font-mono text-[13px] tabular-nums">
+                      <span className="flex flex-col text-[13px] tabular-nums">
                         <time dateTime={appointment.start_at} className="text-base font-medium text-foreground">
                           {hour(appointment.start_at)}
                         </time>

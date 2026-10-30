@@ -162,7 +162,7 @@ function Sources({
                   <td className={`${TD} font-medium text-foreground`}>
                     <span className="flex items-center gap-2.5">
                       <span
-                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground font-mono text-[9px] font-medium text-background"
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-[9px] font-medium text-background"
                         aria-hidden="true"
                       >
                         {PLATFORM_MARK[s.platform ?? ""] ?? "•"}
@@ -172,7 +172,7 @@ function Sources({
                   </td>
                   <td className={`${TD} text-muted`}>{label(PLATFORMS, s.platform)}</td>
                   <td className={`${TD} text-muted`}>{label(SOURCE_TYPES, s.type)}</td>
-                  <td className={`${TD} text-right font-mono tabular-nums`}>{counts.get(s.id) ?? 0}</td>
+                  <td className={`${TD} text-right tabular-nums`}>{counts.get(s.id) ?? 0}</td>
                   <td className={`${TD} text-right`}>
                     {canEdit && (
                       <Btn
