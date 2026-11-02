@@ -33,6 +33,7 @@ import {
   TextInput,
   TextLink,
   type Tone,
+  RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
@@ -150,11 +151,6 @@ function PersonMark({ name, incident }: { name: string; incident?: boolean }) {
   );
 }
 
-const rowClass = (selected: boolean) =>
-  `flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
-    selected ? "bg-accent-soft" : "hover:bg-surface-secondary"
-  }`;
-
 function Row({
   item,
   selected,
@@ -167,7 +163,7 @@ function Row({
   const name = itemName(item);
   return (
     <li>
-      <button className={rowClass(selected)} aria-current={selected} onClick={onSelect}>
+      <RowButton selected={selected} onClick={onSelect} className="py-2.5">
         <PersonMark name={name} incident={item.kind === "incident"} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-baseline gap-2">
@@ -185,7 +181,7 @@ function Row({
             {item.detail ? `« ${item.detail} »` : item.title}
           </span>
         </span>
-      </button>
+      </RowButton>
     </li>
   );
 }
@@ -1122,9 +1118,9 @@ function Todo() {
                     : "Prospect";
                   return (
                     <li key={t.id}>
-                      <button
-                        className={rowClass(t.id === selectedId)}
-                        aria-current={t.id === selectedId ? "true" : undefined}
+                      <RowButton
+                        selected={t.id === selectedId}
+                        className="py-2.5"
                         onClick={() =>
                           router.replace(
                             `/todo?tab=treated&id=${encodeURIComponent(t.id)}`,
@@ -1147,7 +1143,7 @@ function Todo() {
                             <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
                           </span>
                         </span>
-                      </button>
+                      </RowButton>
                     </li>
                   );
                 })}

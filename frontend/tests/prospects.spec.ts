@@ -406,7 +406,7 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   ).toHaveCount(2);
   await page.getByRole("button", { name: "Table", exact: true }).click();
   await expect(
-    page.getByRole("table").getByText("Très chaud", { exact: false }),
+    page.getByRole("grid").getByText("Très chaud", { exact: false }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Alice Martin" }).click();
   await expect(
