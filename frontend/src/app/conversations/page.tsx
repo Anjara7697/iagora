@@ -22,6 +22,7 @@ import {
   RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -281,11 +282,11 @@ function Detail({
           )}
         </section>
       )}
-      <details className="card card--default group gap-0 p-0">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-5 py-3.5 text-sm font-medium text-foreground outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-          <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-          Contexte et règles d’envoi
-        </summary>
+      <Collapse
+  title="Contexte et règles d’envoi"
+  className="card card--default gap-0 p-0"
+  triggerClassName="w-full rounded-xl px-5 py-3.5 text-sm hover:bg-surface-secondary"
+>
         <div className="flex flex-col gap-3 border-t border-separator px-5 py-4 text-sm text-foreground">
           <p>
             Conseiller responsable :{" "}
@@ -349,7 +350,7 @@ function Detail({
             </div>
           </div>
         </div>
-      </details>
+</Collapse>
       {pendingDraft && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-agent-soft px-5 py-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -444,12 +445,12 @@ function Detail({
             </p>
           </div>
 
-          <details className="group border-t border-separator pt-3">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 text-[13px] font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-              <Settings2 className="size-4 text-muted" aria-hidden="true" />
-              Gestion de la conversation
-              <ChevronRight className="size-3.5 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-            </summary>
+          <Collapse
+  title="Gestion de la conversation"
+  icon={<Settings2 className="size-4 text-muted" aria-hidden="true" />}
+  className="border-t border-separator pt-3"
+  triggerClassName="w-fit py-1"
+>
             <div className="flex flex-wrap gap-2 pt-3">
               {conv.status === "open" ? (
                 <>
@@ -485,7 +486,7 @@ function Detail({
                 Clôturer
               </Btn>
             </div>
-          </details>
+</Collapse>
         </div>
       )}
     </section>

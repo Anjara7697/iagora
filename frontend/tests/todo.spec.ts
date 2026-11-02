@@ -388,8 +388,7 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Risque : faible", { exact: true })).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeHidden();
   const sources = detail.getByText("Sources, confiance et contexte", { exact: true });
-  await sources.focus();
-  await page.keyboard.press("Enter");
+  await sources.click();
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(

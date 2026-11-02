@@ -7,6 +7,7 @@ import { DemoChip } from "@/components/ds/badges";
 import { Btn, ErrorText, Field, FileInput, FilterChip, LinkButton, NativeSelect, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { EmptyText, PageHeader, Panel, Screen } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
+import { Collapse } from "@/components/ds/collapse";
 import { ActionsBar, Feedback, SettingsCard } from "@/components/ds/settings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -303,17 +304,18 @@ function DocumentDetail({
               )}
             </ActionsBar>
           </div>
-          <details className="group rounded-xl bg-surface-secondary px-4 py-2.5 text-[13px]">
-            <summary className="cursor-pointer font-medium text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus">
-              Informations techniques du document
-            </summary>
+          <Collapse
+  title="Informations techniques du document"
+  className="rounded-xl bg-surface-secondary px-4 py-2.5 text-[13px]"
+  triggerClassName="w-full text-muted hover:text-foreground"
+>
             <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
               <dt className="text-muted">Identifiant</dt>
               <dd className="font-mono">{d.slug}</dd>
               <dt className="text-muted">Modèle utilisé</dt>
               <dd className="font-mono">{d.embedding_model}</dd>
             </dl>
-          </details>
+</Collapse>
           <ol className="flex flex-col gap-3">
             {d.sections.map((s, i) => (
               <li key={i} className="flex gap-3 border-t border-separator pt-3 first:border-t-0 first:pt-0">
@@ -646,10 +648,11 @@ export default function KnowledgePage() {
         <aside className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-24">
           {status.data && <SearchTester status={status.data} />}
           {status.data && (
-            <details className="card card--default gap-0 px-5 py-4 text-[13px]">
-              <summary className="cursor-pointer text-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                Réglages techniques de la recherche
-              </summary>
+            <Collapse
+  title="Réglages techniques de la recherche"
+  className="card card--default gap-0 px-5 py-4 text-[13px]"
+  triggerClassName="w-full text-sm"
+>
               <p className="mt-2 text-muted">
                 Ces informations expliquent comment les extraits sont sélectionnés.
               </p>
@@ -661,7 +664,7 @@ export default function KnowledgePage() {
                 <dt className="text-muted">Extraits recherchés par défaut</dt>
                 <dd className="font-mono">{status.data.top_k}</dd>
               </dl>
-            </details>
+</Collapse>
           )}
         </aside>
       </div>
