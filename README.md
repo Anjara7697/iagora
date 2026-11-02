@@ -274,7 +274,8 @@ indicateurs pour les prospects présents dans plusieurs sources.
 Voir aussi [l'affectation par campagne](docs/campaign-ownership.md) : un responsable par campagne,
 héritage des nouveaux prospects, choix explicite pour les prospects existants et exceptions individuelles.
 
-### Conformité à la maquette
+### Interface et conformité
 
-Le [bilan de conformité](docs/frontend/prototype-conformity.md) distingue les corrections
-d'interface, les fonctionnalités encore absentes et les contradictions entre maquette et règles serveur.
+L'interface repose sur HeroUI : voir [docs/frontend/heroui.md](docs/frontend/heroui.md) (thème, composants du
+design system, conventions). L'ancien [bilan de conformité à la maquette](docs/frontend/prototype-conformity.md)
+est conservé comme historique : la maquette n'est plus la référence visuelle.
