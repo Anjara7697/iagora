@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Button, buttonVariants, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { cloneElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
@@ -53,13 +53,33 @@ export function Btn({
   );
 }
 
-const LINK_VARIANT: Record<"primary" | "tertiary" | "ghost" | "danger" | "outline", string> = {
-  primary: "bg-accent text-accent-foreground hover:bg-accent-hover",
-  tertiary: "bg-default text-foreground hover:bg-default-hover",
-  outline: "border border-border bg-surface text-foreground hover:bg-surface-secondary",
-  ghost: "text-foreground hover:bg-default",
-  danger: "bg-danger text-danger-foreground hover:bg-danger-hover",
-};
+/** Ligne cliquable d'une liste (file, conversations) : bouton HeroUI sur toute la largeur, `aria-current` si sélectionnée. */
+export function RowButton({
+  selected,
+  onClick,
+  children,
+  className,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      aria-current={selected ? "true" : undefined}
+      onPress={() => onClick()}
+      className={cx(
+        "h-auto w-full items-start justify-start gap-3 rounded-xl px-3 py-3 text-left font-normal whitespace-normal",
+        selected ? "bg-accent-soft" : "hover:bg-surface-secondary",
+        className,
+      )}
+    >
+      {children}
+    </Button>
+  );
+}
 
 /** Lien qui a l'apparence d'un bouton (navigation, pas action). */
 export function LinkButton({
@@ -71,22 +91,13 @@ export function LinkButton({
   ...rest
 }: {
   href: string;
-  variant?: keyof typeof LINK_VARIANT;
+  variant?: "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
   size?: "sm" | "md";
   className?: string;
   children: ReactNode;
 } & Omit<ComponentProps<typeof Link>, "href" | "className" | "children">) {
   return (
-    <Link
-      href={href}
-      className={cx(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
-        size === "sm" ? "h-8 px-3 text-sm" : "h-9 px-4 text-sm",
-        LINK_VARIANT[variant],
-        className,
-      )}
-      {...rest}
-    >
+    <Link href={href} className={buttonVariants({ variant, size, className })} {...rest}>
       {children}
     </Link>
   );

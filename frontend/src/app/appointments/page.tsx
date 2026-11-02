@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, Check, ErrorText, Field, NativeSelect, Segmented, Tag, type Tone } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, Field, LinkButton, NativeSelect, Segmented, Tag, type Tone } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { DemoBadge, Loading, Pager, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
@@ -217,16 +217,17 @@ function Appointments() {
                       </span>
                       <span className="col-span-2 md:col-span-1 md:justify-self-end">
                         {url ? (
-                          <a
-                            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-accent-soft px-3 text-[13px] font-medium text-accent-soft-foreground outline-none transition-colors hover:bg-accent-soft-hover focus-visible:ring-2 focus-visible:ring-focus"
+                          <LinkButton
                             href={url}
+                            variant="secondary"
+                            size="sm"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Ouvrir la visio de ${name} dans un nouvel onglet`}
                           >
                             <Video className="size-4" aria-hidden="true" />
                             Ouvrir la visio
-                          </a>
+                          </LinkButton>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
                             <VideoOff className="size-4" aria-hidden="true" />

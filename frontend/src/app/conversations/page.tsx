@@ -19,6 +19,7 @@ import {
   TextBox,
   TextInput,
   TextLink,
+  RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
@@ -85,13 +86,7 @@ function InboxRow({
   const name = rowName(c);
   return (
     <li>
-      <button
-        className={`flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
-          selected ? "bg-accent-soft" : "hover:bg-surface-secondary"
-        }`}
-        aria-current={selected}
-        onClick={onSelect}
-      >
+      <RowButton selected={selected} onClick={onSelect}>
         <Avatar size="sm" variant="soft" color="accent" aria-hidden="true">
           <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
         </Avatar>
@@ -118,7 +113,7 @@ function InboxRow({
               : "Aucun message."}
           </span>
         </span>
-      </button>
+      </RowButton>
     </li>
   );
 }
