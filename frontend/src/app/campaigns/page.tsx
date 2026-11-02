@@ -11,6 +11,7 @@ import { CAMPAIGN_STATUS, PLATFORM_MARK, TARGETS, formatDay, label } from "@/lib
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const FILTERS = [
   { value: "", text: "Toutes" },
@@ -114,16 +115,16 @@ export default function CampaignsPage() {
         shape="rows"
       />
       {list.data && items.length === 0 && (
-        <section className="card card--default p-0">
+        <Box as="section" className="p-0">
           <EmptyPanel
             icon={Megaphone}
             title={`Aucune campagne${status ? " dans ce statut" : ""}`}
             description={user?.role === "ADMIN" && !status ? "Créez la première avec « Nouvelle campagne »." : undefined}
           />
-        </section>
+        </Box>
       )}
       {items.length > 0 && (
-        <div className="card card--default gap-0 overflow-hidden p-0" role="table" aria-label="Liste des campagnes">
+        <Box as="div" className="gap-0 overflow-hidden p-0" role="table" aria-label="Liste des campagnes">
           <div
             className="hidden grid-cols-[minmax(200px,2fr)_120px_minmax(140px,1.2fr)_minmax(200px,1.6fr)_20px] gap-4 bg-surface-secondary px-5 py-2.5 text-xs font-medium text-muted md:grid"
             aria-hidden="true"
@@ -194,7 +195,7 @@ export default function CampaignsPage() {
               </Link>
             );
           })}
-        </div>
+        </Box>
       )}
     </Screen>
   );

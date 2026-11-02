@@ -19,6 +19,7 @@ import type {
   KnowledgeStatus,
   SearchResult,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const TEMPLATE = `---
 title: Titre du document
@@ -268,7 +269,7 @@ function DocumentDetail({
   );
   const d = detail.data;
   return (
-    <section className="card card--default gap-4 p-5" aria-label={`Document ${slug}`}>
+    <Box as="section" className="gap-4 p-5" aria-label={`Document ${slug}`}>
       <Loading
         loading={detail.loading}
         error={detail.error}
@@ -329,7 +330,7 @@ function DocumentDetail({
           </ol>
         </>
       )}
-    </section>
+    </Box>
   );
 }
 
@@ -487,7 +488,7 @@ export default function KnowledgePage() {
             error={docs.error}
             onRetry={docs.reload}
           />
-          <section className="card card--default gap-4 p-5" aria-label="Documents disponibles">
+          <Box as="section" className="gap-4 p-5" aria-label="Documents disponibles">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="flex-1 text-base font-semibold text-foreground">Documents disponibles</h2>
               {docs.data && (
@@ -611,7 +612,7 @@ export default function KnowledgePage() {
                 sont jamais utilisés en production.
               </p>
             )}
-          </section>
+          </Box>
           {selected && (
             <DocumentDetail
               key={selected}

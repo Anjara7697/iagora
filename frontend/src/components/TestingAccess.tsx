@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Btn, LinkButton } from "./ds/controls";
 import { useCurrentUser } from "./AppShell";
 import { canUseSimulator } from "@/lib/access";
+import { Box } from "@/components/ds/card";
 
 export default function TestingAccess({
   disabled = false,
@@ -42,9 +43,9 @@ export default function TestingAccess({
       </Link>
     );
   return (
-    <section
+    <Box as="section"
      
-      className="card card--default flex-row flex-wrap items-center gap-4 p-5"
+      className="flex-row flex-wrap items-center gap-4 p-5"
       aria-label="Tests et démonstration"
     >
       <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-agent-soft text-agent" aria-hidden="true">
@@ -69,6 +70,6 @@ export default function TestingAccess({
           Ouvrir l’espace de test →
         </LinkButton>
       )}
-    </section>
+    </Box>
   );
 }

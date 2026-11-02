@@ -7,6 +7,7 @@ import { Brand } from "@/components/ds/Brand";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { api, ApiError, setToken } from "@/lib/api";
+import { Box } from "@/components/ds/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function LoginPage() {
           <span className="lg:hidden">
             <Brand />
           </span>
-          <form className="card card--default gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
+          <Box as="form" className="gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
             <div className="flex flex-col gap-1">
               <Eyebrow>Votre espace de travail</Eyebrow>
               <h2 id="login-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
@@ -126,7 +127,7 @@ export default function LoginPage() {
                 </>
               )}
             </Btn>
-          </form>
+          </Box>
           <p className="text-center text-[13px] text-muted">Besoin d’un accès ? Contactez votre administrateur.</p>
         </div>
       </section>

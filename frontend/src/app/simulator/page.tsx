@@ -22,6 +22,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type Session = { prospectId: number; conversationId: string; name: string };
 
@@ -260,7 +261,7 @@ export default function SimulatorPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="card card--default flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
+        <Box as="section" className="flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
             <Route className="size-4" />
           </span>
@@ -274,9 +275,9 @@ export default function SimulatorPage() {
           <Btn variant="outline" size="sm" onClick={() => setGuided(true)}>
             Ouvrir le parcours guidé
           </Btn>
-        </section>
+        </Box>
         {isAdmin && (
-          <section className="card card--default gap-3 p-5" aria-label="Données fictives">
+          <Box as="section" className="gap-3 p-5" aria-label="Données fictives">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
                 <Database className="size-4" />
@@ -322,7 +323,7 @@ export default function SimulatorPage() {
               </Btn>
             </div>
             {purgeNotice && <Notice>{purgeNotice}</Notice>}
-          </section>
+          </Box>
         )}
       </div>
 
@@ -345,7 +346,7 @@ export default function SimulatorPage() {
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
         <aside className="flex flex-col gap-4" aria-label="Prospect simulé">
           {!session ? (
-            <section className="card card--default gap-4 p-5">
+            <Box as="section" className="gap-4 p-5">
               <h2 className="text-base font-semibold text-foreground">Nouveau prospect fictif</h2>
               <Loading
                 loading={campaigns.loading}
@@ -396,9 +397,9 @@ export default function SimulatorPage() {
                   </Btn>
                 </div>
               )}
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default gap-3 p-5">
+            <Box as="section" className="gap-3 p-5">
               <div className="flex items-center gap-3">
                 <span
                   className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-sm font-semibold text-foreground"
@@ -440,11 +441,11 @@ export default function SimulatorPage() {
               <TextLink href={`/prospects/${session.prospectId}`} className="w-fit text-[13px]">
                 Voir la fiche complète →
               </TextLink>
-            </section>
+            </Box>
           )}
 
           {session && (
-            <section className="card card--default gap-3 p-5">
+            <Box as="section" className="gap-3 p-5">
               <div className="flex flex-col gap-1">
                 <h3 className="text-sm font-semibold text-foreground">Messages types</h3>
                 <p className="text-xs text-muted">
@@ -464,11 +465,11 @@ export default function SimulatorPage() {
                   </Btn>
                 ))}
               </div>
-            </section>
+            </Box>
           )}
         </aside>
 
-        <section className="card card--default min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
+        <Box as="section" className="min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
           <div className="flex min-h-14 items-center gap-2 border-b border-separator px-5 py-3">
             <MessagesSquare className="size-4 text-muted" aria-hidden="true" />
             <h2 className="flex-1 text-base font-semibold text-foreground">Conversation</h2>
@@ -553,9 +554,9 @@ export default function SimulatorPage() {
               </div>
             </>
           )}
-        </section>
+        </Box>
 
-        <aside className="card card--default gap-4 p-5" aria-label="Décision de l'agent">
+        <Box as="aside" className="gap-4 p-5" aria-label="Décision de l'agent">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-agent" aria-hidden="true" />
             <h3 className="text-base font-semibold text-foreground">Décision de l&apos;agent</h3>
@@ -609,7 +610,7 @@ export default function SimulatorPage() {
               </dl>
             </>
           )}
-        </aside>
+        </Box>
       </div>
     </Screen>
   );

@@ -5,6 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { cloneElement, useId, useState, type ReactElement, type ReactNode } from "react";
 import { formatDate } from "@/lib/labels";
 import type { Tone as StateTone } from "@/lib/types";
+import { Box } from "./card";
 import { Btn, ErrorText, Notice, Tag, type Tone } from "./controls";
 import { Eyebrow, cx } from "./layout";
 
@@ -33,12 +34,7 @@ export function SettingsCard({
   className?: string;
 }) {
   return (
-    <section
-     
-      aria-label={region}
-      hidden={hidden}
-      className={cx("card card--default gap-4 p-5", className)}
-    >
+    <Box as="section" aria-label={region} hidden={hidden} className={cx("gap-4 p-5", className)}>
       {(label || title || aside || intro) && (
         <div className="flex flex-col gap-1">
           {label && <Eyebrow>{label}</Eyebrow>}
@@ -52,7 +48,7 @@ export function SettingsCard({
         </div>
       )}
       {children}
-    </section>
+    </Box>
   );
 }
 

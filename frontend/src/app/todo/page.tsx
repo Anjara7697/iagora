@@ -62,6 +62,7 @@ import type {
   Prospect,
   Membership,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type KindFilter = "" | TodoKind;
 type DecisionResult = { message: string; prospectName: string; treatedId?: string };
@@ -228,7 +229,7 @@ function DraftPanel({
   }
 
   return (
-    <section className="draft-panel card card--default gap-0 p-0" aria-label="Brouillon de l'agent">
+    <section className="draft-panel gap-0 p-0" aria-label="Brouillon de l'agent">
       <header className="flex flex-wrap items-center gap-2 border-b border-separator px-5 py-3.5">
         <strong className="flex-1 text-sm font-semibold text-foreground">
           Réponse proposée — {label(CHANNELS, item.channel)}
@@ -356,13 +357,13 @@ function membershipLabel(m: Membership): string {
 
 function ReviewCard({ label: aria, title, intro, children }: { label: string; title: string; intro?: string; children: React.ReactNode }) {
   return (
-    <section className="card card--default gap-4 p-5" aria-label={aria}>
+    <Box as="section" className="gap-4 p-5" aria-label={aria}>
       <div className="flex flex-col gap-1">
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         {intro && <p className="text-[13px] text-muted">{intro}</p>}
       </div>
       {children}
-    </section>
+    </Box>
   );
 }
 
@@ -703,7 +704,7 @@ function Detail({
         }
       />
 
-      <div className="card card--default gap-2 p-5">
+      <Box as="div" className="gap-2 p-5">
         <span className="sr-only">La demande à examiner</span>
         <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
         {item.detail && (
@@ -714,12 +715,12 @@ function Detail({
         <span className="text-xs text-muted">
           {label(CHANNELS, item.channel)} · {formatDate(item.created_at)}
         </span>
-      </div>
+      </Box>
 
       <div className="flex flex-col gap-4">
         {rec && (
-          <section
-            className="card card--default gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
+          <Box as="section"
+            className="gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
             aria-label="Éléments pour décider"
           >
             <div className="flex flex-col gap-3 bg-agent-soft px-5 py-4">
@@ -809,7 +810,7 @@ function Detail({
                 )}
               </div>
 </Collapse>
-          </section>
+          </Box>
         )}
 
         {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
@@ -911,7 +912,7 @@ function TreatedDetail({
           </LinkButton>
         }
       />
-      <section className="card card--default gap-3 p-5" aria-label="État d’envoi">
+      <Box as="section" className="gap-3 p-5" aria-label="État d’envoi">
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex flex-1 flex-col gap-1">
             <Eyebrow>État d’envoi</Eyebrow>
@@ -950,8 +951,8 @@ function TreatedDetail({
         )}
         {error && <ErrorText>{error}</ErrorText>}
         {notice && <Notice>{notice}</Notice>}
-      </section>
-      <section className="draft-panel card card--default gap-0 overflow-hidden p-0" aria-label="Message traité">
+      </Box>
+      <section className="draft-panel gap-0 overflow-hidden p-0" aria-label="Message traité">
         <header className="border-b border-separator px-5 py-3.5">
           <strong className="text-sm font-semibold text-foreground">Message — {label(CHANNELS, item.channel)}</strong>
         </header>
@@ -1077,8 +1078,9 @@ function Todo() {
         </div>
       )}
       <div className="flex items-start gap-5">
-        <aside
-          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+        <Box
+          as="aside"
+          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
           aria-label="Éléments à traiter"
         >
           <header className="flex items-center gap-2 px-2 pt-1">
@@ -1234,7 +1236,7 @@ function Todo() {
                 </Btn>
               </div>
             )}
-        </aside>
+        </Box>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {tab === "treated" && selectedTreated ? (
             <TreatedDetail
@@ -1244,8 +1246,8 @@ function Todo() {
               refreshing={treated.loading}
             />
           ) : tab === "treated" && selectedId ? (
-            <section
-              className="card card--default flex-1 gap-4 p-6"
+            <Box as="section"
+              className="flex-1 gap-4 p-6"
               aria-label="Décision recherchée"
             >
               <Loading
@@ -1268,7 +1270,7 @@ function Todo() {
                   </div>
                 </div>
               )}
-            </section>
+            </Box>
           ) : tab === "todo" && selected ? (
             <Detail
               key={selected.id}
@@ -1281,7 +1283,7 @@ function Todo() {
               }}
             />
           ) : tab === "todo" && selectedId ? (
-            <section className="card card--default flex-1 gap-4 p-6">
+            <Box as="section" className="flex-1 gap-4 p-6">
               <Loading
                 loading={direct.loading}
                 error={direct.error}
@@ -1290,9 +1292,9 @@ function Todo() {
               {direct.error?.status === 404 && (
                 <TextLink href="/conversations">Consulter les conversations</TextLink>
               )}
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default flex-1 p-0">
+            <Box as="section" className="flex-1 p-0">
               <EmptyPanel
                 icon={tab === "treated" ? History : ListChecks}
                 title={placeholderTitle}
@@ -1324,7 +1326,7 @@ function Todo() {
                   </>
                 }
               />
-            </section>
+            </Box>
           )}
         </div>
       </div>

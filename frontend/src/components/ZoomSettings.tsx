@@ -6,6 +6,7 @@ import { zoomBadge } from "@/lib/connectors";
 import type { ZoomMode, ZoomSettings as Settings } from "@/lib/types";
 import { Btn, NativeSelect, TextInput } from "./ds/controls";
 import { ActionsBar, CodeBlock, ConnectedAccounts, Feedback, InfoRow, SettingRow as Field, StatePill } from "./ds/settings";
+import { Box } from "@/components/ds/card";
 
 const MODES: Record<ZoomMode, string> = {
   none: "Aucun : rendez-vous sans lien de visioconférence",
@@ -77,9 +78,8 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
   const { tone, label: badge } = zoomBadge(cfg);
 
   return (
-    <section
-     
-      className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
+    <Box as="section"
+      className={embedded ? "gap-4 rounded-none bg-transparent p-0 shadow-none" : "gap-4 p-5"}
       aria-label="Zoom"
     >
       {!embedded && (
@@ -174,6 +174,6 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
         </Btn>
       </ActionsBar>
       <Feedback notice={notice} error={error} />
-    </section>
+    </Box>
   );
 }
