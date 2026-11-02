@@ -455,7 +455,7 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(delivery).toContainText("aucun envoi n’est encore confirmé");
   await expect(page.getByRole("region", { name: "Message traité" })).toContainText("Bonjour Marie, version relue.");
   expect(calls.posts).toHaveLength(1);
-  await page.getByRole("button", { name: "À traiter", exact: true }).click();
+  await page.getByRole("tab", { name: "À traiter", exact: true }).click();
   await page.getByRole("button", { name: "Examiner la première demande →" }).click();
   await expect(
     page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
@@ -660,7 +660,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("button", { name: "Traités (24 h) (2)" }).click();
+  await page.getByRole("tab", { name: "Traités (24 h) (2)" }).click();
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();

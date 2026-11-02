@@ -1,6 +1,6 @@
 "use client";
 
-import { Switch } from "@heroui/react";
+import { Card, Switch } from "@heroui/react";
 import { Check, Copy } from "lucide-react";
 import { cloneElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { formatDate } from "@/lib/labels";
@@ -34,20 +34,24 @@ export function SettingsCard({
   className?: string;
 }) {
   return (
-    <Box as="section" aria-label={region} hidden={hidden} className={cx("gap-4 p-5", className)}>
+    <Box as="section" aria-label={region} hidden={hidden} className={className}>
       {(label || title || aside || intro) && (
-        <div className="flex flex-col gap-1">
+        <Card.Header>
           {label && <Eyebrow>{label}</Eyebrow>}
           {(title || aside) && (
             <div className="flex flex-wrap items-center gap-3">
-              {title && <h2 className="min-w-[200px] flex-1 text-base font-semibold text-foreground">{title}</h2>}
+              {title && (
+                <Card.Title render={(props) => <h2 {...props} />} className="flex-1">
+                  {title}
+                </Card.Title>
+              )}
               {aside}
             </div>
           )}
-          {intro && <p className="max-w-[76ch] text-[13px]/[20px] text-muted">{intro}</p>}
-        </div>
+          {intro && <Card.Description>{intro}</Card.Description>}
+        </Card.Header>
       )}
-      {children}
+      <Card.Content>{children}</Card.Content>
     </Box>
   );
 }

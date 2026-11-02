@@ -71,14 +71,14 @@ test("conseiller : rendez-vous personnels, liens et navigation active", async ({
 test("filtres combinés, pagination, actualisation et retour navigateur", async ({ page }) => {
   const calls = await mockApi(page, "ADMIN");
   await open(page);
-  await page.getByRole("button", { name: "Passés", exact: true }).click();
+  await page.getByRole("tab", { name: "Passés", exact: true }).click();
   await choose(page.getByLabel("Conseiller", { exact: true }), "7");
   await choose(page.getByLabel("Statut", { exact: true }), "scheduled");
   await expect(page.getByText("1-25 sur 26", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Suivant" }).click();
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Passés", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tab", { name: "Passés", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
   for (const [key, value] of Object.entries({ when: "past", status: "scheduled", advisor_id: "7", offset: "25" })) expect(calls.queries.at(-1)?.get(key)).toBe(value);
   await expect(page.getByText("Planifié", { exact: true }).last()).toBeVisible();

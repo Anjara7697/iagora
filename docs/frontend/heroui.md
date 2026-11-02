@@ -12,7 +12,9 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   Ne pas fixer de rayon en pixels : utiliser l'échelle (`rounded-lg`, `rounded-xl`).
 - **Police mono** réservée au code, aux identifiants et aux valeurs techniques. Dates, compteurs et
   sur-titres sont en police sans-serif avec `tabular-nums`.
-- **Champs** : bordure grise `--field-border`, 1 px.
+- **Champs, listes, interrupteurs** : apparence HeroUI par défaut, sans surcharge du thème (pas de bordure ajoutée).
+- **Surcouches** : elles acceptent toutes les propriétés du composant HeroUI (`variant`, `size`, `color`…) et
+  n'ajoutent que des raccourcis ; ne pas y poser de styles qui changent l'apparence du composant.
 
 ## Couche design system (`frontend/src/components/ds/`)
 

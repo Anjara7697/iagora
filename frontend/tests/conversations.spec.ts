@@ -246,7 +246,7 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
 test("les filtres sont transmis à l'API", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await page.getByRole("button", { name: "En attente", exact: true }).click();
+  await page.getByRole("tab", { name: "En attente", exact: true }).click();
   await page.getByRole("button", { name: "Moi", exact: true }).click();
   await choose(page.getByLabel("Canal"), "facebook");
   await page.getByLabel("Rechercher une conversation").fill("marie");
@@ -431,7 +431,7 @@ test("consentement indisponible : erreur récupérable et réponse désactivée"
 test("rendre la main depuis En attente conserve la conversation sélectionnée et sa confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await page.getByRole("button", { name: "En attente", exact: true }).click();
+  await page.getByRole("tab", { name: "En attente", exact: true }).click();
   await expect.poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("status")).toBe("handed_off");
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   const detail = page.getByRole("region", { name: "Conversation avec Marie Dupont" });
