@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, buttonVariants, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Alert, Button, buttonVariants, Checkbox, Chip, Description, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
@@ -136,27 +136,12 @@ export function Segmented<T extends string>({
 export function FilterChip({
   pressed,
   onClick,
-  className,
   ...rest
-}: Omit<ComponentProps<typeof ToggleButton>, "isSelected" | "onChange" | "className"> & {
+}: Omit<ComponentProps<typeof ToggleButton>, "isSelected" | "onChange"> & {
   pressed: boolean;
   onClick?: () => void;
-  className?: string;
 }) {
-  return (
-    <ToggleButton
-      isSelected={pressed}
-      onChange={() => onClick?.()}
-      className={cx(
-        "h-8 gap-1.5 rounded-lg px-3 text-[13px] whitespace-nowrap",
-        pressed
-          ? "bg-accent-soft text-accent-soft-foreground"
-          : "border border-border bg-surface text-foreground",
-        className,
-      )}
-      {...rest}
-    />
-  );
+  return <ToggleButton size="sm" isSelected={pressed} onChange={() => onClick?.()} {...rest} />;
 }
 
 /**
@@ -180,18 +165,16 @@ export function Field({
   const labelId = `${id}-label`;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
-      <label id={labelId} htmlFor={id} className="text-[13px] font-medium text-foreground">
+      <Label id={labelId} htmlFor={id}>
         {label}
-      </label>
+      </Label>
       {cloneElement(children, {
         id,
         "aria-describedby": hintId ?? children.props["aria-describedby"],
         ...(children.type === SelectBox ? { "aria-labelledby": labelId } : {}),
       } as Record<string, string | undefined>)}
       {hint && (
-        <span id={hintId} className="text-xs/[16px] font-normal text-muted">
-          {hint}
-        </span>
+        <Description id={hintId}>{hint}</Description>
       )}
     </div>
   );
@@ -203,8 +186,8 @@ export function TextInput({ fullWidth = true, ...props }: ComponentProps<typeof 
 }
 
 /** Zone de texte HeroUI : toutes les propriétés de `TextArea`, pleine largeur par défaut. */
-export function TextBox({ fullWidth = true, className, ...props }: ComponentProps<typeof TextArea>) {
-  return <TextArea fullWidth={fullWidth} className={cx("min-h-24", typeof className === "string" ? className : undefined)} {...props} />;
+export function TextBox({ fullWidth = true, rows = 4, ...props }: ComponentProps<typeof TextArea>) {
+  return <TextArea fullWidth={fullWidth} rows={rows} {...props} />;
 }
 
 type SelectChoice = { value: string; label: string };
@@ -401,7 +384,7 @@ export function Check({
       isSelected={checked}
       isDisabled={rest.isDisabled ?? disabled}
       onChange={onChange}
-      className={cx("rounded-lg", typeof className === "string" ? className : undefined)}
+      className={className}
       {...rest}
     >
       <Checkbox.Content>
@@ -456,7 +439,7 @@ export function Notice({
   ...rest
 }: Omit<ComponentProps<typeof Alert>, "status"> & { tone?: "success" | "info" | "warning" }) {
   return (
-    <Alert role="status" status={tone === "info" ? "accent" : tone} className={cx("px-3 py-2 text-[13px]", typeof className === "string" ? className : undefined)} {...rest}>
+    <Alert role="status" status={tone === "info" ? "accent" : tone} className={className} {...rest}>
       <Alert.Content>{children}</Alert.Content>
     </Alert>
   );
@@ -465,7 +448,7 @@ export function Notice({
 /** Message d'erreur (`Alert` HeroUI danger, toutes ses propriétés). */
 export function ErrorText({ children, className, ...rest }: Omit<ComponentProps<typeof Alert>, "status">) {
   return (
-    <Alert role="alert" status="danger" className={cx("px-3 py-2 text-[13px]", typeof className === "string" ? className : undefined)} {...rest}>
+    <Alert role="alert" status="danger" className={className} {...rest}>
       <Alert.Content>{children}</Alert.Content>
     </Alert>
   );
