@@ -53,16 +53,3 @@ export function useHasUnsentReplies() {
 export function confirmLogoutWithDrafts(hasDrafts: boolean) {
   return !hasDrafts || window.confirm("Vous avez des réponses non envoyées. Se déconnecter les effacera. Continuer ?");
 }
-
-export function ReplyLogoutButton({ onLogout }: { onLogout: () => void }) {
-  const context = useContext(Context);
-  return (
-    <button role="menuitem" onClick={() => {
-      const hasDrafts = Object.values(context?.drafts ?? {}).some((text) => text.trim());
-      if (hasDrafts && !window.confirm("Vous avez des réponses non envoyées. Se déconnecter les effacera. Continuer ?")) return;
-      onLogout();
-    }}>
-      Déconnexion
-    </button>
-  );
-}

@@ -7,7 +7,7 @@ import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, LinkButton, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, FilterChip, LinkButton, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
@@ -522,23 +522,9 @@ function Settings() {
                 {DAYS.map((d, i) => {
                   const on = days.has(String(i + 1));
                   return (
-                    <label
-                      key={d}
-                      className={cx(
-                        "relative inline-flex h-9 min-w-12 cursor-pointer items-center justify-center rounded-lg border px-3 text-[13px] font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus",
-                        on
-                          ? "border-transparent bg-accent-soft text-accent-soft-foreground"
-                          : "border-border bg-surface text-muted hover:bg-surface-secondary",
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="absolute inset-0 cursor-pointer opacity-0"
-                        checked={on}
-                        onChange={() => toggleDay(i + 1)}
-                      />
+                    <FilterChip key={d} pressed={on} onClick={() => toggleDay(i + 1)}>
                       {d}
-                    </label>
+                    </FilterChip>
                   );
                 })}
               </div>

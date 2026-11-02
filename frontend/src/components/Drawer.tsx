@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@heroui/react";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -101,15 +102,9 @@ export function Drawer({
             <h2 className="truncate text-lg font-semibold text-foreground">{title}</h2>
           </div>
           {aside}
-          <button
-            ref={closeButton}
-            type="button"
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-muted outline-none transition-colors hover:bg-default hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus"
-            onClick={onClose}
-            aria-label="Fermer"
-          >
+          <Button ref={closeButton} variant="ghost" isIconOnly className="text-muted" onPress={onClose} aria-label="Fermer">
             <X className="size-5" aria-hidden="true" />
-          </button>
+          </Button>
         </header>
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">{children}</div>
       </div>
