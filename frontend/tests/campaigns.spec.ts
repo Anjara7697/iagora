@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const campaign = (over: Record<string, unknown> = {}) => ({
   id: 1,
@@ -160,13 +161,11 @@ test("responsable : choix explicite du sort des prospects et mise à jour de la 
   });
   await login(page, "/campaigns/1");
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
-  await form
-    .getByLabel("Conseiller responsable de la campagne")
-    .selectOption("9");
+  await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
   await expect(
     form.getByRole("button", { name: "Enregistrer le responsable" }),
   ).toBeDisabled();
-  await form.getByLabel("Prospects déjà présents").selectOption("keep");
+  await choose(form.getByLabel("Prospects déjà présents"), "keep");
   await expect(
     form.getByText(/Les affectations actuelles deviennent des exceptions/),
   ).toBeVisible();
@@ -192,19 +191,15 @@ test("responsable : erreur conservée, aucun contrôle d'affectation pour un con
   );
   await login(page, "/campaigns/1");
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
-  await form
-    .getByLabel("Conseiller responsable de la campagne")
-    .selectOption("9");
-  await form
-    .getByLabel("Prospects déjà présents")
-    .selectOption("transfer_inherited");
+  await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
+  await choose(form.getByLabel("Prospects déjà présents"), "transfer_inherited");
   await form
     .getByRole("button", { name: "Enregistrer le responsable" })
     .click();
   await expect(form.getByRole("alert")).toHaveText("Compte indisponible");
   await expect(
     form.getByLabel("Conseiller responsable de la campagne"),
-  ).toHaveValue("9");
+  ).toHaveAttribute("data-value", "9");
   await mockApi(page, { role: "ADVISOR" });
   await page.reload();
   await expect(
@@ -285,12 +280,12 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
   const calls = await mockApi(page);
   await login(page, "/campaigns/new");
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
-  await page.getByLabel("Statut").selectOption("active");
+  await choose(page.getByLabel("Statut"), "active");
   await page.getByLabel("Compagnons", { exact: false }).press("Space");
   await page.getByRole("button", { name: "Ajouter une source" }).click();
   await page.getByLabel("Nom de la source 1").fill("Webinaire");
-  await page.getByLabel("Type de la source 1").selectOption("webinar");
-  await page.getByLabel("Plateforme de la source 1").selectOption("web");
+  await choose(page.getByLabel("Type de la source 1"), "webinar");
+  await choose(page.getByLabel("Plateforme de la source 1"), "web");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
   await expect(page).toHaveURL(/\/campaigns\/7$/);
   await expect
@@ -473,7 +468,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
   await expect(row.getByText("alice@acme-corp.com")).toBeVisible();
   await expect(row.getByText("En conversation")).toBeVisible();
   await expect(row.getByText("Perdu")).toHaveCount(0);
-  await section.getByLabel("Étape").selectOption("qualified");
+  await choose(section.getByLabel("Étape"), "qualified");
   await expect
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);

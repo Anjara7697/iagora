@@ -13,7 +13,7 @@ import { ErasePanel, ErasureResult } from "@/components/ErasePanel";
 import MembershipActions from "@/components/MembershipActions";
 import InteractionHistory from "@/components/InteractionHistory";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, LinkButton, NativeSelect, Notice, Tag, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, LinkButton, SelectBox, Notice, Tag, TextLink } from "@/components/ds/controls";
 import { EmptyText, Eyebrow, Panel, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -659,7 +659,7 @@ function CampaignAttribution({
         </div>
       )}
       <Field label="Campagne d’attribution">
-        <NativeSelect
+        <SelectBox
           value={campaign}
           disabled={busy || campaigns.loading}
           onChange={(e) => {
@@ -673,10 +673,10 @@ function CampaignAttribution({
               {c.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       <Field label="Source d’attribution">
-        <NativeSelect
+        <SelectBox
           value={source}
           disabled={busy || !selected}
           onChange={(e) => setSource(e.target.value)}
@@ -687,7 +687,7 @@ function CampaignAttribution({
               {s.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       {selected?.sources?.length === 0 && (
         <p className="text-[13px] text-muted">

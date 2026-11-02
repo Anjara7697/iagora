@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 test.use({ timezoneId: "Europe/Paris" });
 
@@ -53,7 +54,7 @@ test("conseiller : rendez-vous personnels, liens et navigation active", async ({
   const calls = await mockApi(page);
   await open(page);
   await expect(page.getByRole("heading", { name: "Rendez-vous", exact: true })).toBeVisible();
-  await expect(page.getByLabel("Conseiller", { exact: true })).toHaveValue("me");
+  await expect(page.getByLabel("Conseiller", { exact: true })).toHaveAttribute("data-value", "me");
   const list = page.getByRole("list", { name: "Rendez-vous enregistrés" });
   await expect(list.getByRole("link", { name: "Alice Martin", exact: true })).toHaveAttribute("href", "/prospects/11");
   await expect(list.getByRole("link", { name: /Ouvrir la visio/ })).toHaveAttribute("href", scheduled.meeting_url);
@@ -71,8 +72,8 @@ test("filtres combinés, pagination, actualisation et retour navigateur", async 
   const calls = await mockApi(page, "ADMIN");
   await open(page);
   await page.getByRole("button", { name: "Passés", exact: true }).click();
-  await page.getByLabel("Conseiller", { exact: true }).selectOption("7");
-  await page.getByLabel("Statut", { exact: true }).selectOption("scheduled");
+  await choose(page.getByLabel("Conseiller", { exact: true }), "7");
+  await choose(page.getByLabel("Statut", { exact: true }), "scheduled");
   await expect(page.getByText("1-25 sur 26", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Suivant" }).click();
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();

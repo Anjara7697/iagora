@@ -24,7 +24,7 @@ import {
   Field,
   FilterChip,
   LinkButton,
-  NativeSelect,
+  SelectBox,
   Notice,
   Segmented,
   Tag,
@@ -458,7 +458,7 @@ function ApplicationReview({
                   J’ai contrôlé le dossier original dans la boîte email
                 </CheckBox>
                 <Field label="Parcours concerné">
-                  <NativeSelect
+                  <SelectBox
                     value={selected ? String(selected.id) : ""}
                     onChange={(e) => setMembershipId(e.target.value)}
                   >
@@ -471,7 +471,7 @@ function ApplicationReview({
                         {label(STAGES, m.conversion_stage)}
                       </option>
                     ))}
-                  </NativeSelect>
+                  </SelectBox>
                 </Field>
                 {needsStage && (
                   <Field label="Motif enregistré dans l’historique">
@@ -588,7 +588,7 @@ function EnrollmentReview({
           )}
           {eligible.length > 0 && (
             <Field label="Parcours confirmé par la preuve">
-              <NativeSelect
+              <SelectBox
                 value={membershipId}
                 onChange={(event) => setMembershipId(event.target.value)}
               >
@@ -598,7 +598,7 @@ function EnrollmentReview({
                     {membershipLabel(membership)}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
             </Field>
           )}
           <Field label="Référence de la preuve">

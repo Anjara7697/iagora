@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { KeyRound, Pencil, UserPlus } from "lucide-react";
-import { Btn, Field, NativeSelect, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, Field, SelectBox, Tag, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SecretOnce, SettingsCard as Section } from "@/components/ds/settings";
 import { Loading } from "@/components/ui";
@@ -107,7 +107,7 @@ function MemberRow({
           </span>
         )}
         <span className="flex flex-wrap items-center gap-2">
-          <NativeSelect
+          <SelectBox
             aria-label={`Rôle de ${member.username}`}
             value={member.role}
             disabled={self}
@@ -119,7 +119,7 @@ function MemberRow({
                 {ROLE_LABELS[r]}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
           <Tag tone={state.tone}>{state.label}</Tag>
           <span className="text-xs text-muted">Membre depuis le {formatDate(member.created_at ?? null)}</span>
         </span>
@@ -284,13 +284,13 @@ export default function TeamPage() {
               <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
             <Field label="Rôle">
-              <NativeSelect value={role} onChange={(e) => setRole(e.target.value as Role)}>
+              <SelectBox value={role} onChange={(e) => setRole(e.target.value as Role)}>
                 {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]} — {ROLE_HELP[r]}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
             </Field>
             <ActionsBar className="border-t border-separator pt-4">
               <Btn variant="primary" type="submit" disabled={busy || username.trim().length < 3 || !email}>

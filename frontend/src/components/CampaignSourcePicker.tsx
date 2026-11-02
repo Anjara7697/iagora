@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Field, NativeSelect } from "@/components/ds/controls";
+import { Field, SelectBox } from "@/components/ds/controls";
 import { api } from "@/lib/api";
 import type { Campaign, Page } from "@/lib/types";
 
@@ -26,7 +26,7 @@ export function CampaignSourcePicker({
   return (
     <>
       <Field label="Campagne" className="min-w-0 flex-1 basis-48">
-        <NativeSelect
+        <SelectBox
           value={value.campaign_id ?? ""}
           onChange={(e) => {
             const id = e.target.value ? Number(e.target.value) : null;
@@ -40,11 +40,11 @@ export function CampaignSourcePicker({
               {c.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       {campaign && (
         <Field label="Source" className="min-w-0 flex-1 basis-40">
-          <NativeSelect
+          <SelectBox
             value={value.source_id ?? ""}
             onChange={(e) =>
               onChange({
@@ -58,7 +58,7 @@ export function CampaignSourcePicker({
                 {s.name}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
       )}
     </>

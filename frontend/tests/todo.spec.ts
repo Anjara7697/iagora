@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const prospect = {
   id: 1,
@@ -122,7 +123,7 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   const finish = page.getByRole("button", {
     name: "Passer à « Candidature déposée » et terminer",
   });
-  await expect(page.getByLabel("Parcours concerné")).toHaveValue("17");
+  await expect(page.getByLabel("Parcours concerné")).toHaveAttribute("data-value", "17");
   await expect(finish).toBeDisabled();
   await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").press("Space");
   await finish.click();
@@ -207,7 +208,7 @@ test("email d'admission : le conseiller confirme le bon parcours avec la preuve"
     .getByRole("complementary", { name: "Éléments à traiter" })
     .getByRole("button", { name: /Lina Dupont/ })
     .click();
-  await page.getByLabel("Parcours confirmé par la preuve").selectOption("27");
+  await choose(page.getByLabel("Parcours confirmé par la preuve"), "27");
   await page.getByLabel("Note facultative").fill("Identité vérifiée");
   await page
     .getByRole("button", { name: "Confirmer l'inscription", exact: true })

@@ -1,9 +1,8 @@
 "use client";
 
-import { Button, buttonVariants, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
-import { ChevronDown } from "lucide-react";
+import { Alert, Button, buttonVariants, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
-import { cloneElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
@@ -205,12 +204,17 @@ export function Field({
   const auto = useId();
   const id = children.props.id ?? auto;
   const hintId = hint ? `${id}-hint` : undefined;
+  const labelId = `${id}-label`;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-[13px] font-medium text-foreground">
+      <label id={labelId} htmlFor={id} className="text-[13px] font-medium text-foreground">
         {label}
       </label>
-      {cloneElement(children, { id, "aria-describedby": hintId ?? children.props["aria-describedby"] })}
+      {cloneElement(children, {
+        id,
+        "aria-describedby": hintId ?? children.props["aria-describedby"],
+        ...(children.type === SelectBox ? { "aria-labelledby": labelId } : {}),
+      } as Record<string, string | undefined>)}
       {hint && (
         <span id={hintId} className="text-xs/[16px] font-normal text-muted">
           {hint}
@@ -286,18 +290,64 @@ export function SelectInput({
   );
 }
 
-/** Liste de choix native, à l'apparence des champs HeroUI (clavier et mobile natifs). */
-export function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
+/**
+ * Liste de choix HeroUI sans libellé visible (libellé externe via `id`, ou `aria-label`).
+ * Interface de `<select>` : `<option>` en enfants et `onChange` avec `e.target.value`.
+ */
+export function SelectBox({
+  value,
+  onChange,
+  disabled,
+  required,
+  className,
+  id,
+  "aria-label": ariaLabel,
+  "aria-labelledby": labelledBy,
+  children,
+}: {
+  value: string | number;
+  onChange: (e: { target: { value: string } }) => void;
+  disabled?: boolean;
+  required?: boolean;
+  className?: string;
+  id?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  children: ReactNode;
+}) {
+  const items = Children.toArray(children)
+    .filter((c): c is ReactElement<{ value?: string; children?: ReactNode }> => isValidElement(c))
+    .map((c) => {
+      const v = String(c.props.value ?? "");
+      return { id: v || EMPTY_SELECT_KEY, value: v, text: Children.toArray(c.props.children).join("") };
+    });
   return (
-    <span className={cx("relative inline-flex w-full", className)}>
-      <select
-        {...props}
-        className="h-9 w-full min-w-0 cursor-pointer appearance-none rounded-[var(--field-radius)] border border-field-border bg-field-background py-0 pr-9 pl-3 text-sm text-field-foreground shadow-field outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-    </span>
+    <Select<(typeof items)[number]>
+      aria-label={ariaLabel}
+      aria-labelledby={labelledBy}
+      className={cx("min-w-0", className)}
+      fullWidth
+      isDisabled={disabled}
+      isRequired={required}
+      selectedKey={String(value) || EMPTY_SELECT_KEY}
+      onSelectionChange={(key) => onChange({ target: { value: String(key) === EMPTY_SELECT_KEY ? "" : String(key) } })}
+    >
+      {ariaLabel && <Label className="sr-only">{ariaLabel}</Label>}
+      <Select.Trigger id={id} className="rounded-lg" data-value={String(value)}>
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox items={items}>
+          {(item) => (
+            <ListBox.Item id={item.id} textValue={item.text} data-value={item.value}>
+              <Label>{item.text}</Label>
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          )}
+        </ListBox>
+      </Select.Popover>
+    </Select>
   );
 }
 
@@ -418,26 +468,17 @@ export function Notice({
   className?: string;
 }) {
   return (
-    <p
-      role="status"
-      className={cx(
-        "rounded-lg px-3 py-2 text-[13px]",
-        tone === "success" && "bg-success-soft text-success-soft-foreground",
-        tone === "info" && "bg-accent-soft text-accent-soft-foreground",
-        tone === "warning" && "bg-warning-soft text-warning-soft-foreground",
-        className,
-      )}
-    >
-      {children}
-    </p>
+    <Alert role="status" status={tone === "info" ? "accent" : tone} className={cx("px-3 py-2 text-[13px]", className)}>
+      <Alert.Content>{children}</Alert.Content>
+    </Alert>
   );
 }
 
 /** Message d'erreur sous une action (le texte reste lisible, sans bouton). */
 export function ErrorText({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <p role="alert" className={cx("rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-soft-foreground", className)}>
-      {children}
-    </p>
+    <Alert role="alert" status="danger" className={cx("px-3 py-2 text-[13px]", className)}>
+      <Alert.Content>{children}</Alert.Content>
+    </Alert>
   );
 }

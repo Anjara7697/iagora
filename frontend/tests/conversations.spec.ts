@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const prospect = {
   id: 1,
@@ -247,7 +248,7 @@ test("les filtres sont transmis à l'API", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "En attente", exact: true }).click();
   await page.getByRole("button", { name: "Moi", exact: true }).click();
-  await page.getByLabel("Canal").selectOption("facebook");
+  await choose(page.getByLabel("Canal"), "facebook");
   await page.getByLabel("Rechercher une conversation").fill("marie");
   await expect
     .poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("q"))

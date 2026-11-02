@@ -7,7 +7,7 @@ import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
 import CampaignOwnership from "@/components/CampaignOwnership";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, ErrorText, LinkButton, NativeSelect, Tag, TextInput, TextLink, type Tone } from "@/components/ds/controls";
+import { Btn, ErrorText, LinkButton, SelectBox, Tag, TextInput, TextLink, type Tone } from "@/components/ds/controls";
 import { BarList, EmptyText, ErrorState, Eyebrow, KpiCard, Panel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
 import {
@@ -195,7 +195,7 @@ function Sources({
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-          <NativeSelect
+          <SelectBox
             aria-label="Type de la nouvelle source"
             value={draft.type}
             onChange={(e) => setDraft({ ...draft, type: e.target.value })}
@@ -205,8 +205,8 @@ function Sources({
                 {text}
               </option>
             ))}
-          </NativeSelect>
-          <NativeSelect
+          </SelectBox>
+          <SelectBox
             aria-label="Plateforme de la nouvelle source"
             value={draft.platform}
             onChange={(e) => setDraft({ ...draft, platform: e.target.value })}
@@ -216,7 +216,7 @@ function Sources({
                 {text}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
           <Btn
             variant="primary"
             disabled={busy || !draft.name.trim()}
@@ -262,11 +262,12 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
       bodyClassName="gap-4 px-5 py-4"
       action={
         <span className="flex items-center gap-2">
-          <label htmlFor="campaign-stage" className="text-[13px] text-muted">
+          <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
             Étape
           </label>
-          <NativeSelect
+          <SelectBox
             id="campaign-stage"
+            aria-labelledby="campaign-stage-label"
             className="w-44"
             value={stage}
             onChange={(e) => {
@@ -280,7 +281,7 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
                 {text}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </span>
       }
     >

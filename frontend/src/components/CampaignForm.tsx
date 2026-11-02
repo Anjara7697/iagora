@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import { Btn, Check, ErrorText, Field, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, Field, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ActionsBar } from "@/components/ds/settings";
 import { PLATFORMS, SOURCE_TYPES } from "@/lib/labels";
 import type { Target } from "@/lib/types";
@@ -103,11 +103,11 @@ export default function CampaignForm({
       </Field>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Statut">
-          <NativeSelect value={v.status} onChange={(e) => set("status", e.target.value)}>
+          <SelectBox value={v.status} onChange={(e) => set("status", e.target.value)}>
             <option value="draft">Brouillon</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Field label="Date de début">
           <TextInput type="date" value={v.start_date} onChange={(e) => set("start_date", e.target.value)} />
@@ -151,7 +151,7 @@ export default function CampaignForm({
                 value={s.name}
                 onChange={(e) => setSource(i, { name: e.target.value })}
               />
-              <NativeSelect
+              <SelectBox
                 aria-label={`Type de la source ${i + 1}`}
                 value={s.type}
                 onChange={(e) => setSource(i, { type: e.target.value })}
@@ -161,8 +161,8 @@ export default function CampaignForm({
                     {label}
                   </option>
                 ))}
-              </NativeSelect>
-              <NativeSelect
+              </SelectBox>
+              <SelectBox
                 aria-label={`Plateforme de la source ${i + 1}`}
                 value={s.platform}
                 onChange={(e) => setSource(i, { platform: e.target.value })}
@@ -172,7 +172,7 @@ export default function CampaignForm({
                     {label}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
               <Btn
                 variant="ghost"
                 size="sm"

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const doc = (over: Record<string, unknown> = {}) => ({
   slug: "ebihar",
@@ -345,9 +346,7 @@ test("changer de programme retire les résultats de la question précédente", a
     .fill("Combien de temps dure le programme ?");
   await page.getByRole("button", { name: "Tester", exact: true }).click();
   await expect(page.getByText("0.846", { exact: true })).toBeVisible();
-  await page
-    .getByLabel("Programme du prospect")
-    .selectOption("master_candidates");
+  await choose(page.getByLabel("Programme du prospect"), "master_candidates");
   await expect(page.getByText("0.846", { exact: true })).toHaveCount(0);
 });
 
