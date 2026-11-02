@@ -1,5 +1,10 @@
 # Maquette finale de la console et guide d’intégration
 
+> **Document historique.** Depuis la migration vers HeroUI, la maquette n'est plus la
+> référence visuelle de la console. Ce document reste utile pour le contenu fonctionnel des
+> écrans, pas pour leur apparence. Le système d'interface actuel est décrit dans
+> [heroui.md](heroui.md).
+
 Ce document accompagne la page **« Maquette finale »** du dossier interface
 (artefact Claude « IAGORA — Dossier interface »). Il est écrit pour qu’une
 personne ou un autre assistant de code puisse terminer l’intégration **sans

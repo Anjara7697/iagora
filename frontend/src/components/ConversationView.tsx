@@ -23,7 +23,7 @@ function deliveryLine(
   return detail ? `${base} — ${detail}` : base;
 }
 
-/** Qui parle, et dans quel état : le fil à trois auteurs de la maquette. */
+/** Qui parle, et dans quel état : le fil à trois auteurs (prospect, agent, conseiller). */
 function authorLine(
   m: Message,
   prospectName: string,
