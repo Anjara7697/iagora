@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, buttonVariants, Checkbox, Chip, Description, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Alert, Button, buttonVariants, Checkbox, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
@@ -42,14 +42,10 @@ export function RowButton({
 }: Omit<ButtonProps, "onClick" | "variant"> & { selected: boolean; onClick?: () => void }) {
   return (
     <Button
-      variant="ghost"
+      variant={selected ? "secondary" : "ghost"}
       aria-current={selected ? "true" : undefined}
       onPress={onClick || onPress ? (e) => { onPress?.(e); onClick?.(); } : undefined}
-      className={cx(
-        "h-auto w-full items-start justify-start gap-3 rounded-xl px-3 py-3 text-left font-normal whitespace-normal",
-        selected ? "bg-accent-soft" : "hover:bg-surface-secondary",
-        typeof className === "string" ? className : undefined,
-      )}
+      className={cx("h-auto w-full items-start justify-start text-left whitespace-normal", typeof className === "string" ? className : undefined)}
       {...rest}
     />
   );
@@ -77,58 +73,45 @@ export function LinkButton({
   );
 }
 
-/** Lien de texte (accent). */
-export function TextLink({ className, ...props }: ComponentProps<typeof Link>) {
-  return (
-    <Link
-      {...props}
-      className={cx(
-        "rounded text-sm font-medium text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus",
-        className,
-      )}
-    />
-  );
+/** Lien de texte : `Link` HeroUI (toutes ses propriétés), navigation côté client via le `RouterProvider` de l'application. */
+export function TextLink(props: ComponentProps<typeof HeroLink>) {
+  return <HeroLink {...props} />;
 }
 
 /**
- * Choix exclusif sur une ligne (onglets d'affichage) : boutons natifs `aria-pressed`,
- * présentés comme un contrôle segmenté HeroUI.
+ * Choix exclusif sur une ligne : `Tabs` HeroUI (panneaux vides et masqués : le contenu est géré par l'écran). Accepte les propriétés de `Tabs`
+ * (variant, orientation…) ; `label` nomme la liste, `onChange` reçoit la valeur choisie.
  */
 export function Segmented<T extends string>({
   label,
   value,
   options,
   onChange,
-  className,
-}: {
+  ...rest
+}: Omit<ComponentProps<typeof Tabs>, "children" | "selectedKey" | "onSelectionChange" | "aria-label"> & {
   label: string;
   value: T;
   options: { value: T; text: ReactNode }[];
   onChange: (value: T) => void;
-  className?: string;
 }) {
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className={cx("inline-flex gap-0.5 rounded-lg bg-surface-tertiary p-[3px]", className)}
-    >
+    <Tabs selectedKey={value} onSelectionChange={(key) => onChange(String(key) as T)} {...rest}>
+      <Tabs.ListContainer>
+        <Tabs.List aria-label={label}>
+          {options.map((o) => (
+            <Tabs.Tab key={o.value} id={o.value}>
+              {o.text}
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs.ListContainer>
       {options.map((o) => (
-        <ToggleButton
-          key={o.value}
-          isSelected={o.value === value}
-          onChange={() => onChange(o.value)}
-          className={cx(
-            "h-8 min-w-0 flex-1 rounded-md border-0 px-3 text-[13px] whitespace-nowrap",
-            o.value === value
-              ? "bg-segment text-foreground shadow-surface"
-              : "bg-transparent text-muted shadow-none hover:text-foreground",
-          )}
-        >
-          {o.text}
-        </ToggleButton>
+        <Tabs.Panel key={o.value} id={o.value} className="hidden">
+          <></>
+        </Tabs.Panel>
       ))}
-    </div>
+    </Tabs>
   );
 }
 

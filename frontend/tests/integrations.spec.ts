@@ -292,11 +292,11 @@ test("rechercher et filtrer les connecteurs", async ({ page }) => {
   await page.getByLabel("Rechercher un connecteur").fill("introuvable");
   await expect(page.getByText(/Aucun connecteur ne correspond/)).toBeVisible();
   await page.getByLabel("Rechercher un connecteur").fill("");
-  await page.getByRole("button", { name: "Bientôt", exact: true }).click();
+  await page.getByRole("tab", { name: "Bientôt", exact: true }).click();
   await expect(cards).toHaveCount(1);
-  await page.getByRole("button", { name: "Configurés", exact: true }).click();
+  await page.getByRole("tab", { name: "Configurés", exact: true }).click();
   await expect(cards).toHaveCount(2); // messagerie + import CSV
-  await page.getByRole("button", { name: "À configurer", exact: true }).click();
+  await page.getByRole("tab", { name: "À configurer", exact: true }).click();
   await expect(cards).toHaveCount(4); // agenda, Zoom, jetons, Meta
 });
 

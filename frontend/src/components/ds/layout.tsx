@@ -48,7 +48,7 @@ export function PageHeader({
   );
 }
 
-/** Carte titrée et nommée (région accessible) : titre, action à droite, contenu. */
+/** Carte titrée et nommée (région accessible) : `Card` HeroUI avec `Card.Header`, `Card.Title` (h2) et `Card.Content`. */
 export function Panel({
   title,
   label,
@@ -65,14 +65,14 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <Box as="section" aria-label={label} className={cx("gap-0 p-0", className)}>
-      <Card.Header className="flex min-h-13 flex-row items-center gap-3 border-b border-separator px-5 py-3">
-        <Card.Title render={(props) => <h2 {...props} />} className="flex-1 text-base font-semibold text-foreground">
+    <Box as="section" aria-label={label} className={className}>
+      <Card.Header className="flex-row items-center gap-3">
+        <Card.Title render={(props) => <h2 {...props} />} className="flex-1">
           {title}
         </Card.Title>
         {action}
       </Card.Header>
-      <Card.Content className={cx("flex flex-col", bodyClassName ?? "px-5 py-4")}>{children}</Card.Content>
+      <Card.Content className={bodyClassName}>{children}</Card.Content>
     </Box>
   );
 }
@@ -124,7 +124,7 @@ export function EmptyPanel({
   );
 }
 
-/** Chiffre clé : libellé mono, valeur en chiffres tabulaires, indication. Lien si `href`. */
+/** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
   label,
   value,
@@ -142,32 +142,27 @@ export function KpiCard({
 }) {
   const body = (
     <>
-      <span className="flex items-center gap-2 text-[13px] font-medium text-muted">
+      <Card.Description className="flex items-center gap-2">
         {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
         {label}
-      </span>
+      </Card.Description>
       {pending ? (
-        <span className="text-sm text-muted">Pas encore mesuré</span>
+        <Card.Description>Pas encore mesuré</Card.Description>
       ) : (
-        <span className="text-[28px]/8 tracking-[-0.02em] text-foreground tabular-nums">{value}</span>
+        <Card.Title render={(props) => <span {...props} />} className="text-3xl tabular-nums">
+          {value}
+        </Card.Title>
       )}
-      {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
+      {hint && <Card.Description>{hint}</Card.Description>}
     </>
   );
-  const cls = "gap-1.5 p-4";
-  if (pending)
-    return <Box className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</Box>;
   if (href)
     return (
-      <Box
-        as={Link}
-        href={href}
-        className={cx(cls, "outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus")}
-      >
+      <Box as={Link} href={href}>
         {body}
       </Box>
     );
-  return <Box className={cls}>{body}</Box>;
+  return <Box variant={pending ? "transparent" : undefined}>{body}</Box>;
 }
 
 /** Répartition en barres : libellé, barre, valeur en mono. La valeur porte l'information. */
@@ -175,7 +170,7 @@ export function BarList({
   rows,
   labelWidth = 112,
 }: {
-  rows: { key: string; label: ReactNode; value: number; fill?: string; title?: string }[];
+  rows: { key: string; label: ReactNode; value: number; color?: "default" | "accent" | "success" | "warning" | "danger"; fill?: string; title?: string }[];
   labelWidth?: number;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
@@ -188,9 +183,9 @@ export function BarList({
           style={{ gridTemplateColumns: `${labelWidth}px minmax(0,1fr) 40px` }}
         >
           <span className="flex min-w-0 items-center gap-2 text-foreground">{r.label}</span>
-          <Meter value={r.value} minValue={0} maxValue={max} aria-label={r.title ?? r.key} className="w-full">
+          <Meter value={r.value} minValue={0} maxValue={max} aria-label={r.title ?? r.key} color={r.color} className="w-full">
             <Meter.Track>
-              <Meter.Fill className={r.fill ?? "bg-accent"} />
+              <Meter.Fill className={r.fill} />
             </Meter.Track>
           </Meter>
           <span className="text-right text-[13px] text-foreground tabular-nums">{r.value}</span>
