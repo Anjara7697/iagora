@@ -12,6 +12,7 @@ import { qs } from "@/lib/api";
 import { APPOINTMENT_STATUS, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, Page } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const TONES: Record<string, Tone> = {
   proposed: "warning", scheduled: "accent", done: "success",
@@ -93,8 +94,8 @@ function Appointments() {
           {!list.loading && list.data ? `${list.data.total} rendez-vous` : ""}
         </span>
       </div>
-      <form
-        className="card card--default flex-row flex-wrap items-end gap-4 px-5 py-4"
+      <Box as="form"
+        className="flex-row flex-wrap items-end gap-4 px-5 py-4"
         aria-label="Filtres des rendez-vous"
         onSubmit={(event) => event.preventDefault()}
       >
@@ -134,7 +135,7 @@ function Appointments() {
           <RotateCcw className="size-4" aria-hidden="true" />
           Réinitialiser les filtres
         </Btn>
-      </form>
+      </Box>
       {advisors.error && (
         <div className="flex flex-wrap items-center gap-3">
           <ErrorText>La liste des conseillers est indisponible.</ErrorText>
@@ -161,7 +162,7 @@ function Appointments() {
       {!list.loading && timeZone && list.data && (
         <>
           {list.data.items.length ? (
-            <ul className="card card--default gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés">
+            <Box as="ul" className="gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés">
               {list.data.items.map((appointment, index, items) => {
                 const url = meetingLink(appointment.meeting_url);
                 const dayLabel = day(appointment.start_at);
@@ -239,9 +240,9 @@ function Appointments() {
                   </Fragment>
                 );
               })}
-            </ul>
+            </Box>
           ) : (
-            <section className="card card--default p-0">
+            <Box as="section" className="p-0">
               <EmptyPanel
                 icon={CalendarDays}
                 title={list.data.total > 0 ? "Aucun rendez-vous sur cette page" : "Aucun rendez-vous pour cette sélection"}
@@ -256,7 +257,7 @@ function Appointments() {
                   )
                 }
               />
-            </section>
+            </Box>
           )}
           {list.data.items.length > 0 && (
             <Pager

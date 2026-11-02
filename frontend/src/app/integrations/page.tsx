@@ -36,6 +36,7 @@ import type {
   ServiceToken,
   ZoomSettings as ZoomConfig,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type Filter = "all" | "configured" | "todo" | "soon";
 const FILTERS: [Filter, string][] = [
@@ -175,13 +176,13 @@ function Catalog() {
       />
 
       {shown.length === 0 && !loading && (
-        <section className="card card--default p-0" role="status">
+        <Box as="section" className="p-0" role="status">
           <EmptyPanel
             icon={Plug}
             title="Aucun connecteur ne correspond à cette recherche."
             description="Essayez un autre mot ou un autre filtre."
           />
-        </section>
+        </Box>
       )}
 
       {CATEGORIES.map((category) => {
@@ -201,9 +202,10 @@ function Catalog() {
                       ? "Gérer"
                       : "Configurer";
                 return (
-                  <article
+                  <Box
+                    as="article"
                     key={c.id}
-                    className={`card card--default gap-3 p-5 transition-shadow hover:shadow-overlay ${c.soon ? "border border-dashed border-border bg-surface-secondary/50 shadow-none" : ""}`}
+                    className={`gap-3 p-5 transition-shadow hover:shadow-overlay ${c.soon ? "border border-dashed border-border bg-surface-secondary/50 shadow-none" : ""}`}
                     aria-label={c.name}
                   >
                     <div className="flex items-start gap-3">
@@ -235,7 +237,7 @@ function Catalog() {
                         </Btn>
                       )}
                     </div>
-                  </article>
+                  </Box>
                 );
               })}
             </div>

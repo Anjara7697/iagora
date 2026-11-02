@@ -9,6 +9,7 @@ import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, Page } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 export default function CampaignOwnership({
   campaign: c,
@@ -33,9 +34,9 @@ export default function CampaignOwnership({
     c.responsible_advisor_name ??
     (c.responsible_advisor_id ? `Conseiller #${c.responsible_advisor_id}` : "Aucun responsable");
   return (
-    <section
+    <Box as="section"
      
-      className="card card--default gap-4 p-5"
+      className="gap-4 p-5"
       aria-label="Responsable de campagne"
     >
       <div className="flex flex-col gap-1">
@@ -190,6 +191,6 @@ export default function CampaignOwnership({
           </Btn>
         </form>
       )}
-    </section>
+    </Box>
   );
 }

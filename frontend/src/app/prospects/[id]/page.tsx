@@ -40,6 +40,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 export default function ProspectPage() {
   const user = useCurrentUser();
@@ -172,7 +173,7 @@ export default function ProspectPage() {
       />
       {p && (
         <>
-          <header className="card card--default flex-row flex-wrap items-start gap-4 p-5">
+          <Box as="header" className="flex-row flex-wrap items-start gap-4 p-5">
             <Avatar size="lg" variant="soft" color="accent" aria-hidden="true">
               <Avatar.Fallback>
                 {[p.first_name, p.last_name]
@@ -218,7 +219,7 @@ export default function ProspectPage() {
                 </LinkButton>
               )}
             </div>
-          </header>
+          </Box>
           {notice && <Notice>{notice}</Notice>}
           {actionError && <ErrorText>{actionError}</ErrorText>}
           {p.consent_status === "opted_out" && (
@@ -230,8 +231,8 @@ export default function ProspectPage() {
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-6">
               {showRecommendation && (
-                <section
-                  className="card card--default gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
+                <Box as="section"
+                  className="gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
                   aria-label="Prochaine action recommandée"
                 >
                   <div className="flex flex-col gap-2 bg-agent-soft px-5 py-4">
@@ -278,7 +279,7 @@ export default function ProspectPage() {
                       onRetry={runs.reload}
                     />
                   </div>
-                </section>
+                </Box>
               )}
               <Panel label="Profil collecté" title="Profil collecté">
                 {Object.keys(p.profile).length === 0 ? (
