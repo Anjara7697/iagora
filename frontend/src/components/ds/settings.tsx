@@ -2,7 +2,7 @@
 
 import { Switch } from "@heroui/react";
 import { Check, Copy } from "lucide-react";
-import { cloneElement, useId, useState, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { formatDate } from "@/lib/labels";
 import type { Tone as StateTone } from "@/lib/types";
 import { Box } from "./card";
@@ -150,13 +150,15 @@ export function StatePill({ tone, children }: { tone: StateTone; children: React
   return <Tag tone={STATE_TONE[tone] ?? "neutral"}>{children}</Tag>;
 }
 
-/** Réglage activé ou non : titre et conséquence à gauche, interrupteur HeroUI à droite. */
+/** Réglage activé ou non : titre et conséquence à gauche, `Switch` HeroUI à droite (toutes ses propriétés). */
 export function Toggle({
   checked,
   onChange,
   title,
   note,
-}: {
+  className,
+  ...rest
+}: Omit<ComponentProps<typeof Switch>, "children" | "isSelected" | "onChange"> & {
   checked: boolean;
   onChange: (value: boolean) => void;
   title: string;
@@ -164,7 +166,7 @@ export function Toggle({
 }) {
   return (
     <div className="border-t border-separator pt-4">
-      <Switch isSelected={checked} onChange={onChange} className="w-full">
+      <Switch isSelected={checked} onChange={onChange} className={cx("w-full", typeof className === "string" ? className : undefined)} {...rest}>
         <Switch.Content className="flex w-full items-start justify-between gap-6">
           <span className="flex flex-col gap-0.5">
             <span className="text-[13.5px] font-medium text-foreground">{title}</span>
