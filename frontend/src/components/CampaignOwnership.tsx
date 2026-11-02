@@ -3,7 +3,7 @@
 import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, ErrorText, Field, NativeSelect, Notice } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, SelectBox, Notice } from "@/components/ds/controls";
 import { Eyebrow, initialsOf } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -95,7 +95,7 @@ export default function CampaignOwnership({
             onRetry={advisors.reload}
           />
           <Field label="Conseiller responsable de la campagne">
-            <NativeSelect
+            <SelectBox
               disabled={busy || advisors.loading || !!advisors.error}
               value={advisor}
               onChange={(e) => {
@@ -115,7 +115,7 @@ export default function CampaignOwnership({
                   {a.username}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectBox>
           </Field>
           {advisors.data && advisors.data.total > 50 && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -142,7 +142,7 @@ export default function CampaignOwnership({
             </div>
           )}
           <Field label="Prospects déjà présents">
-            <NativeSelect
+            <SelectBox
               required
               value={policy}
               disabled={busy}
@@ -157,7 +157,7 @@ export default function CampaignOwnership({
               <option value="keep">
                 Conserver toutes les affectations actuelles
               </option>
-            </NativeSelect>
+            </SelectBox>
           </Field>
           {policy === "transfer_inherited" && (
             <p className="rounded-xl bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">

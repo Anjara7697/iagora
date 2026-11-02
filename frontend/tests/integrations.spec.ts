@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const status = (over: Record<string, unknown> = {}) => ({
   configured: true,
@@ -347,8 +348,8 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
   await card.getByLabel("Jeton de vérification du webhook").fill("verify-token");
   await card.getByLabel("Identifiant du formulaire Meta").fill("form-123");
   await card.getByLabel("Nom du formulaire Meta").fill("Formulaire eBIHAR");
-  await card.getByLabel("Campagne").selectOption("4");
-  await card.getByLabel("Source").selectOption("9");
+  await choose(card.getByLabel("Campagne"), "4");
+  await choose(card.getByLabel("Source"), "9");
   await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
   await card.getByLabel("Activer la réception des leads Meta").press("Space");
   await card.getByRole("button", { name: "Enregistrer Meta" }).click();
@@ -478,9 +479,7 @@ test("configurer une boîte depuis la console : détection, test, dossier, enreg
   await expect(
     form.getByLabel("Résultat du test des paramètres"),
   ).toContainText("IMAP : ✓ connecté");
-  await form
-    .getByLabel("Dossier surveillé")
-    .selectOption({ label: "Programmé" });
+  await choose(form.getByLabel("Dossier surveillé"), { label: "Programmé" });
   await form.getByRole("button", { name: "Enregistrer" }).click();
   await expect(form.getByText(/Boîte enregistrée/)).toBeVisible();
   expect(saved).toHaveLength(1);
@@ -501,7 +500,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
   await open(page);
   await openConnector(page, "Agenda des conseillers");
   const card = page.getByRole("region", { name: "Agenda" });
-  await card.getByLabel("Mode").selectOption("google");
+  await choose(card.getByLabel("Mode"), "google");
   await expect(
     card.getByText("/api/v1/calendar/google/callback"),
   ).toBeVisible();
@@ -509,9 +508,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
     .getByLabel("Identifiant client OAuth Google")
     .fill("cid.apps.googleusercontent.com");
   await card.getByLabel("Code secret du client").fill("secret-123");
-  await card
-    .getByLabel("Agenda par défaut (prospect sans conseiller)")
-    .selectOption({ label: "paul" });
+  await choose(card.getByLabel("Agenda par défaut (prospect sans conseiller)"), { label: "paul" });
   await card.getByRole("button", { name: "Enregistrer l’agenda" }).click();
   await expect(card.getByText(/Agenda enregistré/)).toBeVisible();
   expect(saved).toContainEqual({
@@ -530,7 +527,7 @@ test("brancher le compte Zoom de l'école", async ({ page }) => {
   await open(page);
   await openConnector(page, "Zoom");
   const card = page.getByRole("region", { name: "Zoom" });
-  await card.getByLabel("Mode").selectOption("account");
+  await choose(card.getByLabel("Mode"), "account");
   await card.getByLabel("Account ID").fill("acc-1");
   await card.getByLabel("Client ID").fill("cid-1");
   await card.getByLabel("Client secret").fill("sec-1");
@@ -559,7 +556,7 @@ test("créer un jeton pour le formulaire du site : affiché une seule fois", asy
   await openConnector(page, "Formulaire du site et outils");
   const card = page.getByRole("region", { name: "Formulaire et outils" });
   await card.getByLabel("Nom du jeton").fill("Formulaire du site");
-  await card.getByLabel("Campagne").selectOption({ label: "Rentrée 2027" });
+  await choose(card.getByLabel("Campagne"), { label: "Rentrée 2027" });
   await card.getByRole("button", { name: "Créer un jeton" }).click();
   const shown = card.getByRole("status", { name: "Nouveau jeton" });
   await expect(shown.getByText("iag_abcdefSECRET").first()).toBeVisible();
@@ -622,9 +619,7 @@ test("serveurs sur mobile : test périmé retiré et ports enregistrés", async 
     .getByText("Paramètres avancés des serveurs", { exact: true })
     .click();
   await form.getByLabel("Port SMTP", { exact: true }).fill("465");
-  await form
-    .getByRole("combobox", { name: "Sécurité SMTP", exact: true })
-    .selectOption("ssl");
+  await choose(form.getByLabel("Sécurité SMTP", { exact: true }), "ssl");
   await expect(form.getByLabel("Résultat du test des paramètres")).toHaveCount(
     0,
   );

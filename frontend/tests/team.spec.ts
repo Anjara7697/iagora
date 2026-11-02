@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const members = [
   {
@@ -119,7 +120,7 @@ test("réinitialiser, changer le rôle et désactiver un membre", async ({
     .getByRole("button", { name: "Réinitialiser le mot de passe" })
     .click();
   await expect(page.getByText("Zyxw9876Vuts5432")).toBeVisible();
-  await paul.getByLabel("Rôle de paul").selectOption("VIEWER");
+  await choose(paul.getByLabel("Rôle de paul"), "VIEWER");
   await paul.getByRole("button", { name: "Désactiver" }).click();
   await expect
     .poll(() => calls)

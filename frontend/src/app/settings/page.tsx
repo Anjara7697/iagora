@@ -7,7 +7,7 @@ import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, FilterChip, LinkButton, NativeSelect, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, FilterChip, LinkButton, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
@@ -209,11 +209,12 @@ function Settings() {
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div className="flex flex-col gap-1.5 lg:hidden">
-          <label htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
+          <label id="settings-category-label" htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
             Catégorie
           </label>
-          <NativeSelect
+          <SelectBox
             id="settings-category"
+            aria-labelledby="settings-category-label"
             value={active}
             onChange={(e) =>
               router.replace(`${pathname}?section=${e.target.value}`, {
@@ -226,7 +227,7 @@ function Settings() {
                 {s.label}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </div>
         <nav className="hidden flex-col gap-1 lg:sticky lg:top-24 lg:flex" aria-label="Catégories de paramètres">
           {SECTIONS.map((s) => {
@@ -264,7 +265,7 @@ function Settings() {
             intro="Le modèle rédige les réponses et lit les messages. Si le modèle principal reste indisponible (surcharge, quota) après ses nouveaux essais, la même demande part sur le modèle de secours avant tout transfert au conseiller."
           >
             <Field label="Fournisseur">
-              <NativeSelect
+              <SelectBox
                 value={form.llm_provider}
                 onChange={(e) =>
                   set(
@@ -275,7 +276,7 @@ function Settings() {
               >
                 <option value="gemini">Google Gemini</option>
                 <option value="openai">OpenAI</option>
-              </NativeSelect>
+              </SelectBox>
             </Field>
             <Field label="Modèle principal" note="Ex. gemini-2.5-flash.">
               <TextInput

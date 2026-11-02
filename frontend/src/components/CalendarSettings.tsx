@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { calendarBadge } from "@/lib/connectors";
 import type { CalendarSettings as Settings, Page } from "@/lib/types";
-import { Btn, NativeSelect, TextInput } from "./ds/controls";
+import { Btn, SelectBox, TextInput } from "./ds/controls";
 import { ActionsBar, CodeBlock, ConnectedAccounts, Feedback, InfoRow, SettingRow as Field, StatePill } from "./ds/settings";
 
 const MODES: Record<Settings["provider"], string> = {
@@ -101,7 +101,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
           " Réglage actuel : fichier .env du serveur (enregistrer ici le remplace)."}
       </p>
       <Field label="Mode">
-        <NativeSelect
+        <SelectBox
           value={cfg.provider}
           onChange={(e) =>
             setCfg({
@@ -115,7 +115,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
               {MODES[m]}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       {cfg.provider === "google" && (
         <>
@@ -145,7 +145,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
             label="Agenda par défaut (prospect sans conseiller)"
             note="Sinon, la demande de rendez-vous est transférée au conseiller."
           >
-            <NativeSelect
+            <SelectBox
               value={cfg.default_user_id ?? ""}
               onChange={(e) =>
                 setCfg({
@@ -160,7 +160,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
                   {a.username}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectBox>
           </Field>
           <InfoRow label="URI de redirection" note="À déclarer telle quelle dans l’application OAuth Google.">
             <CodeBlock>{cfg.redirect_uri}</CodeBlock>

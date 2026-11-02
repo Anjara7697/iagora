@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const current = {
   llm_provider: "gemini",
@@ -338,9 +339,7 @@ test("paramètres sur mobile : catégorie choisie dans une liste, sans défileme
   await mockApi(page, []);
   await login(page);
   await page.goto("/settings");
-  await page
-    .getByRole("combobox", { name: "Catégorie", exact: true })
-    .selectOption("emails");
+  await choose(page.getByLabel("Catégorie", { exact: true }), "emails");
   await expect(page).toHaveURL(/section=emails/);
   await expect(page.getByRole("region", { name: "Emails" })).toBeVisible();
   expect(

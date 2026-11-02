@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Meter } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -183,12 +183,11 @@ export function BarList({
           style={{ gridTemplateColumns: `${labelWidth}px minmax(0,1fr) 40px` }}
         >
           <span className="flex min-w-0 items-center gap-2 text-foreground">{r.label}</span>
-          <span className="h-2 overflow-hidden rounded-full bg-surface-tertiary" aria-hidden="true">
-            <span
-              className={cx("block h-full rounded-full", r.fill ?? "bg-accent")}
-              style={{ width: `${Math.round((r.value / max) * 100)}%` }}
-            />
-          </span>
+          <Meter value={r.value} minValue={0} maxValue={max} aria-label={r.title ?? r.key} className="w-full">
+            <Meter.Track>
+              <Meter.Fill className={r.fill ?? "bg-accent"} />
+            </Meter.Track>
+          </Meter>
           <span className="text-right text-[13px] text-foreground tabular-nums">{r.value}</span>
         </div>
       ))}

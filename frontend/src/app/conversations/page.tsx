@@ -13,7 +13,7 @@ import {
   ErrorText,
   FilterChip,
   LinkButton,
-  NativeSelect,
+  SelectBox,
   Segmented,
   Tag,
   TextBox,
@@ -583,7 +583,7 @@ function Inbox() {
                   </FilterChip>
                 ))}
               </div>
-              <NativeSelect
+              <SelectBox
                 aria-label="Canal"
                 className="min-w-[150px] flex-1"
                 value={channel}
@@ -594,7 +594,7 @@ function Inbox() {
                     {o.text}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
             </div>
           </div>
           <Loading

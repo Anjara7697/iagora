@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const member: Record<string, unknown> = {
   id: 11,
@@ -208,7 +209,7 @@ test("suivi : affectation administrative, étape justifiée et historique actual
     name: "Suivi du parcours 11",
     exact: true,
   });
-  await follow.getByLabel("Conseiller responsable").selectOption("8");
+  await choose(follow.getByLabel("Conseiller responsable"), "8");
   await follow
     .getByRole("button", { name: "Enregistrer l’affectation" })
     .click();
@@ -257,7 +258,7 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
     name: "Étape du parcours 11",
     exact: true,
   });
-  await stage.getByLabel("Nouvelle étape").selectOption("applied");
+  await choose(stage.getByLabel("Nouvelle étape"), "applied");
   await stage.getByLabel("Motif du changement").fill("Justification conservée");
   await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
   await expect(
@@ -644,7 +645,7 @@ test("fiche : effacer un prospect (administrateur) et lister ce qui reste à la 
   });
   await expect(confirmButton).toBeDisabled();
   await panel.getByLabel("Adresse email du prospect").fill("alice@example.com");
-  await panel.getByLabel("Motif").selectOption("other");
+  await choose(panel.getByRole("button", { name: /Motif/ }), "other");
   await confirmButton.click();
   await expect(
     page.getByRole("heading", { name: "Prospect effacé" }),
@@ -860,11 +861,11 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Campagne d’attribution").selectOption("3");
+  await choose(form.getByLabel("Campagne d’attribution"), "3");
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Source d’attribution").selectOption("7");
+  await choose(form.getByLabel("Source d’attribution"), "7");
   await form
     .getByRole("button", { name: "Attribuer et démarrer le suivi" })
     .click();

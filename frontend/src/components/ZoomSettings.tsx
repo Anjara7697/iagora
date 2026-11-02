@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { zoomBadge } from "@/lib/connectors";
 import type { ZoomMode, ZoomSettings as Settings } from "@/lib/types";
-import { Btn, NativeSelect, TextInput } from "./ds/controls";
+import { Btn, SelectBox, TextInput } from "./ds/controls";
 import { ActionsBar, CodeBlock, ConnectedAccounts, Feedback, InfoRow, SettingRow as Field, StatePill } from "./ds/settings";
 
 const MODES: Record<ZoomMode, string> = {
@@ -95,7 +95,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
           " Réglage actuel : fichier .env du serveur (enregistrer ici le remplace)."}
       </p>
       <Field label="Mode">
-        <NativeSelect
+        <SelectBox
           value={cfg.mode}
           onChange={(e) => setCfg({ ...cfg, mode: e.target.value as ZoomMode })}
         >
@@ -104,7 +104,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
               {MODES[m]}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       {cfg.mode === "account" && (
         <Field

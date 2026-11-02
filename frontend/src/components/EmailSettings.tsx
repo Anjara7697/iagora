@@ -3,7 +3,7 @@
 import { Radar, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Btn, NativeSelect, TextInput } from "./ds/controls";
+import { Btn, SelectBox, TextInput } from "./ds/controls";
 import { cx } from "./ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, Toggle } from "./ds/settings";
 import { Field as Stacked } from "./ds/controls";
@@ -296,13 +296,13 @@ export function EmailSettings({
                   />
                 </Stacked>
                 <Stacked label="Sécurité SMTP" className="sm:col-span-2">
-                  <NativeSelect
+                  <SelectBox
                     value={form.smtp_security}
                     onChange={(e) => set("smtp_security", e.target.value as "starttls" | "ssl")}
                   >
                     <option value="starttls">STARTTLS (587)</option>
                     <option value="ssl">SSL/TLS (465)</option>
-                  </NativeSelect>
+                  </SelectBox>
                 </Stacked>
               </div>
             </div>
@@ -336,7 +336,7 @@ export function EmailSettings({
           }
         >
           {folders.length > 0 ? (
-            <NativeSelect
+            <SelectBox
               value={hasFolder ? form.imap_folder : ""}
               onChange={(e) => set("imap_folder", e.target.value)}
             >
@@ -346,7 +346,7 @@ export function EmailSettings({
                   {f.label}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectBox>
           ) : (
             <TextInput value={form.imap_folder} onChange={(e) => set("imap_folder", e.target.value)} />
           )}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, Check, ErrorText, Field, LinkButton, NativeSelect, Segmented, Tag, type Tone } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, Field, LinkButton, SelectBox, Segmented, Tag, type Tone } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { DemoBadge, Loading, Pager, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
@@ -99,7 +99,7 @@ function Appointments() {
         onSubmit={(event) => event.preventDefault()}
       >
         <Field label="Conseiller" className="w-full sm:w-56">
-          <NativeSelect id="appointment-advisor" value={advisor} onChange={(event) => update({ advisor: event.target.value })}>
+          <SelectBox id="appointment-advisor" value={advisor} onChange={(event) => update({ advisor: event.target.value })}>
             <option value="all">Tous les conseillers</option>
             <option value="me">Mes rendez-vous</option>
             {/^\d+$/.test(advisor) && !advisors.data?.items.some((a) => String(a.id) === advisor) && (
@@ -110,17 +110,17 @@ function Appointments() {
                 {a.username}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Field label="Statut" className="w-full sm:w-48">
-          <NativeSelect id="appointment-status" value={status} onChange={(event) => update({ status: event.target.value })}>
+          <SelectBox id="appointment-status" value={status} onChange={(event) => update({ status: event.target.value })}>
             <option value="">Tous les statuts</option>
             {Object.entries(APPOINTMENT_STATUS).map(([value, text]) => (
               <option key={value} value={value}>
                 {text}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Check
           className="h-9 items-center"

@@ -4,7 +4,7 @@ import { FileText, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "luc
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { DemoChip } from "@/components/ds/badges";
-import { Btn, ErrorText, Field, FileInput, FilterChip, LinkButton, NativeSelect, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FileInput, FilterChip, LinkButton, SelectBox, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { EmptyText, PageHeader, Panel, Screen } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
 import { Collapse } from "@/components/ds/collapse";
@@ -104,7 +104,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
           />
         </Field>
         <Field label="Programme du prospect">
-          <NativeSelect
+          <SelectBox
             value={target}
             disabled={busy}
             onChange={(e) => {
@@ -118,7 +118,7 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
                 {name}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Btn
           variant="primary"

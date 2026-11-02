@@ -5,7 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { cloneElement, useId, useState, type ReactElement, type ReactNode } from "react";
 import { formatDate } from "@/lib/labels";
 import type { Tone as StateTone } from "@/lib/types";
-import { Btn, ErrorText, Notice, Tag, type Tone } from "./controls";
+import { Btn, ErrorText, Notice, SelectBox, Tag, type Tone } from "./controls";
 import { Eyebrow, cx } from "./layout";
 
 /**
@@ -71,11 +71,15 @@ export function SettingRow({
   const noteId = note ? `${id}-note` : undefined;
   return (
     <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-separator pt-4">
-      <label htmlFor={id} className="basis-full pt-2 text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">
+      <label id={`${id}-label`} htmlFor={id} className="basis-full pt-2 text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">
         {label}
       </label>
       <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5">
-        {cloneElement(children, { id, "aria-describedby": noteId ?? children.props["aria-describedby"] })}
+        {cloneElement(children, {
+          id,
+          "aria-describedby": noteId ?? children.props["aria-describedby"],
+          ...(children.type === SelectBox ? { "aria-labelledby": `${id}-label` } : {}),
+        } as Record<string, string | undefined>)}
         {note && (
           <p id={noteId} className="text-xs/[18px] text-muted">
             {note}

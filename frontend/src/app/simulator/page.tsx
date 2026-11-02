@@ -8,7 +8,7 @@ import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, FilterChip, NativeSelect, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FilterChip, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, SIMULATOR_ENABLED } from "@/lib/api";
@@ -361,7 +361,7 @@ export default function SimulatorPage() {
               {campaign && (
                 <div className="flex flex-col gap-4">
                   <Field label="Campagne">
-                    <NativeSelect
+                    <SelectBox
                       value={campaign.id}
                       onChange={(e) => {
                         setCampaignId(Number(e.target.value));
@@ -373,10 +373,10 @@ export default function SimulatorPage() {
                           {c.name}
                         </option>
                       ))}
-                    </NativeSelect>
+                    </SelectBox>
                   </Field>
                   <Field label="Programme visé">
-                    <NativeSelect
+                    <SelectBox
                       value={targetCode || campaign.targets[0]?.code}
                       onChange={(e) => setTargetCode(e.target.value)}
                     >
@@ -385,7 +385,7 @@ export default function SimulatorPage() {
                           {t.name}
                         </option>
                       ))}
-                    </NativeSelect>
+                    </SelectBox>
                   </Field>
                   <Field label="Prénom du prospect">
                     <TextInput value={name} onChange={(e) => setName(e.target.value)} />
