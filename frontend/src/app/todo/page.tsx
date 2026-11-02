@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   BookOpen,
   Check,
-  ChevronRight,
   CircleCheck,
   ExternalLink,
   History,
@@ -36,6 +35,7 @@ import {
   RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -764,11 +764,10 @@ function Detail({
                 )}
               </div>
             </div>
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-[13px] font-medium text-foreground outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
-                <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-                Sources, confiance et contexte
-              </summary>
+            <Collapse
+  title="Sources, confiance et contexte"
+  triggerClassName="w-full px-5 py-3 hover:bg-surface-secondary focus-visible:ring-inset"
+>
               <div className="grid grid-cols-1 gap-5 border-t border-separator px-5 py-4 sm:grid-cols-3">
                 <div className="flex flex-col gap-2">
                   <Eyebrow>Sources utilisées</Eyebrow>
@@ -809,7 +808,7 @@ function Detail({
                   </div>
                 )}
               </div>
-            </details>
+</Collapse>
           </section>
         )}
 

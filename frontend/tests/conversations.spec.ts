@@ -363,8 +363,7 @@ test("mobile : la fiche de transfert mène à la rédaction sans modifier le tex
   await expect(brief.getByText("« Puis-je financer avec mon CPF ? »")).toBeVisible();
   const context = page.getByText("Contexte et règles d’envoi", { exact: true });
   await expect(page.getByText("Question sur le financement.", { exact: true })).toBeHidden();
-  await context.focus();
-  await page.keyboard.press("Enter");
+  await context.click();
   await expect(page.getByText("Question sur le financement.", { exact: true })).toBeVisible();
   await expect(page.getByText("Contraintes", { exact: true })).toBeVisible();
   await page.keyboard.press("Enter");

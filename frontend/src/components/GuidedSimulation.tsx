@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, CalendarCheck, Check, ChevronRight, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
 import { useState } from "react";
 import SimulationNotice from "./SimulationNotice";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
 import { Btn, ErrorText, Field, Tag, TextBox, TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
 import { api, ApiError } from "@/lib/api";
 import { ACTIONS, PROFILE_FIELDS, formatDate, label } from "@/lib/labels";
 import type { AgentRun, Conversation, Prospect } from "@/lib/types";
@@ -357,15 +358,16 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
               {runs.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {runs.map((r) => (
-                    <details key={r.run_id} className="group rounded-xl border border-separator">
-                      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-[13px] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-                        <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-                        {formatDate(r.started_at)} · {label(ACTIONS, r.action)}
-                      </summary>
+                    <Collapse
+  key={r.run_id}
+  title={`${formatDate(r.started_at)} · ${label(ACTIONS, r.action)}`}
+  className="rounded-xl border border-separator"
+  triggerClassName="w-full px-3 py-2 font-normal"
+>
                       <div className="border-t border-separator px-3 py-3">
                         <RunView run={r} />
                       </div>
-                    </details>
+</Collapse>
                   ))}
                 </div>
               )}

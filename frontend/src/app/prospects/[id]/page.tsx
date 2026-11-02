@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Avatar } from "@heroui/react";
-import { ChevronRight, MessageSquare, Play, Sparkles } from "lucide-react";
+import { MessageSquare, Play, Sparkles } from "lucide-react";
 import { Suspense, useState } from "react";
 import ProspectResultsReturn, { backLinkClass } from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";
@@ -30,6 +30,7 @@ import {
   label,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
+import { Collapse } from "@/components/ds/collapse";
 import type {
   AgentRun,
   Campaign,
@@ -478,30 +479,23 @@ export default function ProspectPage() {
                             : "Non affecté")}
                       </strong>
                     </p>
-                    <details
-                      className="group"
-                      open={editingMembership === m.id}
-                      onToggle={(e) => {
-                        if (e.currentTarget.open) setEditingMembership(m.id);
-                        else
-                          setEditingMembership((old) =>
-                            old === m.id ? null : old,
-                          );
-                      }}
-                    >
-                      <summary
-                        data-membership={m.id}
-                        className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg py-1 text-[13px] font-medium text-link outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
-                      >
-                        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
-                        Modifier l’affectation ou l’étape
-                      </summary>
+                    <Collapse
+  title="Modifier l’affectation ou l’étape"
+  triggerClassName="w-fit py-1 text-link"
+  open={editingMembership === m.id}
+  onOpenChange={(isOpen) =>
+    isOpen
+      ? setEditingMembership(m.id)
+      : setEditingMembership((old) => (old === m.id ? null : old))
+  }
+  triggerProps={{ "data-membership": m.id }}
+>
                       <MembershipActions
                         key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
                         membership={m}
                         onDone={refreshTracking}
                       />
-                    </details>
+</Collapse>
                     <MembershipHistory
                       key={`${m.id}:${revision}`}
                       id={m.id}
@@ -552,11 +546,10 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
   return (
     <>
       {history.data && (
-        <details className="group">
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg py-1 text-[13px] font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="size-3.5 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-            Historique du parcours {index}
-          </summary>
+        <Collapse
+  title={`Historique du parcours ${index}`}
+  triggerClassName="w-fit py-1"
+>
           <ul className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4 text-[13px] text-foreground">
             {history.data.stage_events.map((e) => (
               <li key={`s${e.id}`}>
@@ -574,7 +567,7 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
               </li>
             ))}
           </ul>
-        </details>
+</Collapse>
       )}
       <Loading
         loading={history.loading}
