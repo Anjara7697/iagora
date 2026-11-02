@@ -167,11 +167,11 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             <ol className="flex flex-col gap-2">
               {session.guide.map((message, i) => (
                 <li key={message}>
-                  <button
-                    type="button"
+                  <Btn
+                    variant="outline"
                     disabled={busy || stopped}
                     onClick={() => setText(message)}
-                    className="flex w-full items-start gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-[13px]/[19px] text-foreground outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-auto w-full items-start justify-start gap-3 px-3 py-2.5 text-left text-[13px]/[19px] font-normal whitespace-normal"
                   >
                     <span className="mt-px inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[11px] text-accent-soft-foreground" aria-hidden="true">
                       {i + 1}
@@ -180,7 +180,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                       <span className="sr-only">Étape {i + 1} : </span>
                       {message}
                     </span>
-                  </button>
+                  </Btn>
                 </li>
               ))}
             </ol>

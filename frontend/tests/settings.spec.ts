@@ -96,7 +96,7 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
   const slots = page.getByRole("region", {
     name: "Disponibilités des rendez-vous",
   });
-  await slots.getByLabel("Sam").check();
+  await slots.getByRole("button", { name: "Sam", exact: true }).click();
   await slots.getByLabel("Début de journée (heure)").fill("10");
   await page
     .getByRole("button", { name: "Enregistrer les paramètres" })

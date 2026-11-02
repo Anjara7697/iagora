@@ -179,7 +179,7 @@ export function FilterChip({
         "h-8 gap-1.5 rounded-lg px-3 text-[13px] whitespace-nowrap",
         pressed
           ? "bg-accent-soft text-accent-soft-foreground"
-          : "bg-surface text-foreground",
+          : "border border-border bg-surface text-foreground",
       )}
     >
       {children}

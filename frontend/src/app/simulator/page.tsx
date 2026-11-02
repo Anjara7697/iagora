@@ -453,15 +453,15 @@ export default function SimulatorPage() {
               </div>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Messages types">
                 {SCENARIOS.map((s) => (
-                  <button
+                  <Btn
                     key={s.title}
-                    type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={busy || closed}
                     onClick={() => setText(s.message)}
-                    className="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-foreground outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {s.title}
-                  </button>
+                  </Btn>
                 ))}
               </div>
             </section>
