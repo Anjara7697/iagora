@@ -271,7 +271,7 @@ test("bannière de lacune, filtre par programme et statut de chaque document", a
     page.getByRole("button", { name: "Programme eBIHAR" }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("table").getByRole("button", { name: "Master eBIHAR" }),
+    page.getByRole("grid").getByRole("button", { name: "Master eBIHAR" }),
   ).toBeVisible();
 });
 

@@ -4,8 +4,9 @@ import { FileText, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "luc
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { DemoChip } from "@/components/ds/badges";
-import { Btn, ErrorText, Field, FilterChip, LinkButton, NativeSelect, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FileInput, FilterChip, LinkButton, NativeSelect, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { EmptyText, PageHeader, Panel, Screen } from "@/components/ds/layout";
+import { DataTable, Table } from "@/components/ds/table";
 import { ActionsBar, Feedback, SettingsCard } from "@/components/ds/settings";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -55,8 +56,6 @@ function ScoreBar({ score, threshold, retained }: { score: number; threshold: nu
   );
 }
 
-const TH = "px-4 py-2.5 font-medium";
-const TD = "px-4 py-3";
 
 function SearchTester({ status }: { status: KnowledgeStatus }) {
   const [query, setQuery] = useState("");
@@ -193,8 +192,10 @@ function Editor({
     }
   }
 
+  const [picked, setPicked] = useState<File | null>(null);
   async function load(file: File | undefined) {
     if (!file) return;
+    setPicked(file);
     setContent(await file.text());
     if (!slug) setSlug(slugify(file.name));
   }
@@ -216,12 +217,7 @@ function Editor({
           />
         </Field>
         <Field label="Charger un fichier .md">
-          <input
-            type="file"
-            accept=".md,text/markdown,text/plain"
-            onChange={(e) => load(e.target.files?.[0])}
-            className="h-9 w-full cursor-pointer rounded-[var(--field-radius)] border border-dashed border-border bg-surface-secondary px-2 py-1.5 text-[13px] text-muted file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-default file:px-3 file:py-0.5 file:text-[13px] file:font-medium file:text-foreground"
-          />
+          <FileInput accept=".md,text/markdown,text/plain" file={picked} onChange={(f) => load(f)} />
         </Field>
       </div>
       <TextBox
@@ -530,94 +526,82 @@ export default function KnowledgePage() {
                 Faites défiler le tableau pour voir le statut et les actions.
               </p>
             )}
-            {docs.data && (
-              <div
-                className="overflow-x-auto rounded-xl border border-separator outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                role="region"
-                aria-label="Liste des documents"
-                tabIndex={0}
+            {docs.data && shown.length > 0 && (
+              <DataTable
+                label="Liste des documents"
+                minWidth={620}
+                columns={[
+                  { id: "doc", label: "Document", className: "min-w-[240px]" },
+                  { id: "program", label: "Programme" },
+                  { id: "chunks", label: "Extraits", className: "text-right" },
+                  { id: "updated", label: "Mis à jour" },
+                  { id: "status", label: "Statut" },
+                ]}
               >
-                <table className="w-full min-w-[620px] border-collapse text-sm">
-                  <thead className="bg-surface-secondary text-left text-xs text-muted">
-                    <tr>
-                      <th scope="col" className={TH}>Document</th>
-                      <th scope="col" className={TH}>Programme</th>
-                      <th scope="col" className={`${TH} text-right`}>Extraits</th>
-                      <th scope="col" className={TH}>Mis à jour</th>
-                      <th scope="col" className={TH}>Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((d) => {
-                      const open = d.slug === selected;
-                      return (
-                        <tr
-                          key={d.slug}
-                          className={`border-t border-separator transition-colors ${open ? "bg-accent-soft/50" : "hover:bg-surface-secondary/60"}`}
-                        >
-                          <td className={`${TD} min-w-[240px]`}>
-                            <span className="flex items-start gap-2.5">
-                              <FileText className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
-                              <span className="flex min-w-0 flex-col gap-0.5">
-                                <button
-                                  type="button"
-                                  aria-expanded={open}
-                                  className="w-fit text-left font-medium text-foreground outline-none hover:text-accent hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-focus"
-                                  onClick={() => setSelected(open ? null : d.slug)}
-                                >
-                                  {d.title}
-                                </button>
-                                <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                                  {d.slug}
-                                  {d.is_demo && <DemoChip />}
-                                </span>
-                              </span>
+                {shown.map((d) => {
+                  const open = d.slug === selected;
+                  return (
+                    <Table.Row key={d.slug} id={d.slug} className={open ? "bg-accent-soft/50" : undefined}>
+                      <Table.Cell>
+                        <span className="flex items-start gap-2.5">
+                          <FileText className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
+                          <span className="flex min-w-0 flex-col gap-0.5">
+                            <Btn
+                              variant="ghost"
+                              aria-expanded={open}
+                              className="h-auto w-fit justify-start px-0 py-0 text-left font-medium hover:bg-transparent hover:text-accent hover:underline"
+                              onClick={() => setSelected(open ? null : d.slug)}
+                            >
+                              {d.title}
+                            </Btn>
+                            <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                              {d.slug}
+                              {d.is_demo && <DemoChip />}
                             </span>
-                          </td>
-                          <td className={`${TD} whitespace-nowrap text-muted`}>
-                            {d.target_code ? label(TARGETS, d.target_code) : "Tous"}
-                          </td>
-                          <td className={`${TD} text-right tabular-nums`}>{d.chunks}</td>
-                          <td className={`${TD} text-xs whitespace-nowrap text-muted tabular-nums`}>{formatDate(d.updated_at)}</td>
-                          <td className={TD}>
-                            <Tag tone={d.needs_reindex ? "warning" : "success"}>
-                              {d.needs_reindex ? "À recalculer" : "À jour"}
-                            </Tag>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {shown.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
-                          {docs.data.length === 0 ? (
-                            <>
-                              Aucun document.{" "}
-                              {isAdmin
-                                ? "Ajoutez le premier avec le bouton ci-dessus."
-                                : "Un administrateur peut ajouter les documents de référence."}
-                            </>
-                          ) : (
-                            <>
-                              Aucun document ne correspond à ces critères.{" "}
-                              <button
-                                type="button"
-                                className="font-medium text-link outline-none hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-focus"
-                                onClick={() => {
-                                  setQuery("");
-                                  setProgramme(null);
-                                }}
-                              >
-                                Réinitialiser les filtres
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          </span>
+                        </span>
+                      </Table.Cell>
+                      <Table.Cell className="whitespace-nowrap text-muted">
+                        {d.target_code ? label(TARGETS, d.target_code) : "Tous"}
+                      </Table.Cell>
+                      <Table.Cell className="text-right tabular-nums">{d.chunks}</Table.Cell>
+                      <Table.Cell className="text-xs whitespace-nowrap text-muted tabular-nums">{formatDate(d.updated_at)}</Table.Cell>
+                      <Table.Cell>
+                        <Tag tone={d.needs_reindex ? "warning" : "success"}>
+                          {d.needs_reindex ? "À recalculer" : "À jour"}
+                        </Tag>
+                      </Table.Cell>
+                    </Table.Row>
+                  );
+                })}
+              </DataTable>
+            )}
+            {docs.data && shown.length === 0 && (
+              <p className="rounded-xl border border-separator px-4 py-8 text-center text-sm text-muted">
+                {docs.data.length === 0 ? (
+                  <>
+                    Aucun document.{" "}
+                    {isAdmin
+                      ? "Ajoutez le premier avec le bouton ci-dessus."
+                      : "Un administrateur peut ajouter les documents de référence."}
+                  </>
+                ) : (
+                  <>
+                    Aucun document ne correspond à ces critères.{" "}
+                    <Btn
+                      variant="ghost"
+                      size="sm"
+                      className="text-link"
+                      onClick={() => {
+                        setQuery("");
+                        setProgramme(null);
+                      }}
+                    >
+                      Réinitialiser les filtres
+                    </Btn>
+                  </>
+                )}
+              </p>
             )}
             {docs.data?.some((d) => d.is_demo) && (
               <p className="text-xs/[18px] text-muted">
