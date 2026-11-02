@@ -8,6 +8,7 @@ import { ActionsBar } from "./ds/settings";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MyCalendar as Status } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const RESULTS: Record<string, string> = {
   connected: "Agenda Google connecté.",
@@ -82,7 +83,7 @@ export function MyCalendar() {
   ) : null;
 
   return (
-    <section className="card card--default gap-4 p-5" aria-label="Mon agenda">
+    <Box as="section" className="gap-4 p-5" aria-label="Mon agenda">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
           <CalendarDays className="size-5" />
@@ -137,6 +138,6 @@ export function MyCalendar() {
         </>
       )}
       {error && <ErrorText>{error}</ErrorText>}
-    </section>
+    </Box>
   );
 }

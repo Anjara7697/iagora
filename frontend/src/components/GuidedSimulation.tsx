@@ -11,6 +11,7 @@ import { Collapse } from "@/components/ds/collapse";
 import { api, ApiError } from "@/lib/api";
 import { ACTIONS, PROFILE_FIELDS, formatDate, label } from "@/lib/labels";
 import type { AgentRun, Conversation, Prospect } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type Session = {
   prospect_id: number;
@@ -120,7 +121,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
       />
       {error && <ErrorText>{error}</ErrorText>}
       {!session && (
-        <section className="card card--default max-w-[760px] gap-4 p-6">
+        <Box as="section" className="max-w-[760px] gap-4 p-6">
           <span className="inline-flex size-10 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
             <Route className="size-5" />
           </span>
@@ -153,11 +154,11 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             <Play className="size-4" aria-hidden="true" />
             Démarrer le parcours guidé
           </Btn>
-        </section>
+        </Box>
       )}
       {session && (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[320px_minmax(0,1fr)_360px]">
-          <section className="card card--default gap-4 p-5" aria-label="Guide du parcours">
+          <Box as="section" className="gap-4 p-5" aria-label="Guide du parcours">
             <div className="flex flex-col gap-1">
               <h2 className="text-base font-semibold text-foreground">Messages suggérés</h2>
               <p className="text-[13px]/[20px] text-muted">
@@ -188,9 +189,9 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             <TextLink href={`/prospects/${session.prospect_id}`} className="w-fit text-[13px]">
               Voir le prospect fictif et son suivi
             </TextLink>
-          </section>
+          </Box>
 
-          <section className="card card--default gap-0 p-0" aria-label="Échange opérateur">
+          <Box as="section" className="gap-0 p-0" aria-label="Échange opérateur">
             <div className="flex min-h-14 items-center gap-2 border-b border-separator px-5 py-3">
               <MessagesSquare className="size-4 text-muted" aria-hidden="true" />
               <h2 className="flex-1 text-base font-semibold text-foreground">Échange et brouillons</h2>
@@ -305,10 +306,10 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                 </Btn>
               </div>
             </div>
-          </section>
+          </Box>
 
           <div className="flex flex-col gap-4">
-            <section className="card card--default gap-3 p-5" aria-label="Boîte du prospect">
+            <Box as="section" className="gap-3 p-5" aria-label="Boîte du prospect">
               <div className="flex items-center gap-2">
                 <Inbox className="size-4 text-muted" aria-hidden="true" />
                 <h2 className="text-base font-semibold text-foreground">Ce que voit le prospect simulé</h2>
@@ -324,8 +325,8 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                   {m.content}
                 </p>
               ))}
-            </section>
-            <section className="card card--default gap-4 p-5" aria-label="Bilan du parcours">
+            </Box>
+            <Box as="section" className="gap-4 p-5" aria-label="Bilan du parcours">
               <h2 className="text-base font-semibold text-foreground">Bilan observé</h2>
               <div className="flex flex-col gap-2">
                 <h3 className="text-[13px] font-semibold text-foreground">Informations mémorisées</h3>
@@ -381,7 +382,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                   ))}
                 </ul>
               )}
-            </section>
+            </Box>
           </div>
         </div>
       )}

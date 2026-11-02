@@ -8,6 +8,7 @@ import type { ServiceToken } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
 import { Btn, TextInput, TextLink } from "./ds/controls";
 import { ActionsBar, Feedback, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
+import { Box } from "@/components/ds/card";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */
 export function LeadSources({ embedded = false }: { embedded?: boolean }) {
@@ -66,9 +67,8 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
 
   const active = tokens.filter((t) => !t.revoked_at);
   return (
-    <section
-     
-      className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
+    <Box as="section"
+      className={embedded ? "gap-4 rounded-none bg-transparent p-0 shadow-none" : "gap-4 p-5"}
       aria-label="Formulaire et outils"
     >
       {!embedded && (
@@ -148,6 +148,6 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
           ))}
         </div>
       )}
-    </section>
+    </Box>
   );
 }

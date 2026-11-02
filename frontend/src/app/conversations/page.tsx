@@ -43,6 +43,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const LIMIT = 30;
 type StatusFilter = "" | "handed_off" | "open" | "closed";
@@ -368,7 +369,7 @@ function Detail({
         </div>
       )}
       {conv && (
-        <section className="card card--default gap-4 p-5" aria-label="Fil de la conversation">
+        <Box as="section" className="gap-4 p-5" aria-label="Fil de la conversation">
           <div className="flex items-baseline gap-2">
             <h3 className="flex-1 text-base font-semibold text-foreground">Fil de la conversation</h3>
             <span className="text-xs text-muted">
@@ -380,7 +381,7 @@ function Detail({
             prospectName={name}
             channel={conv.channel}
           />
-        </section>
+        </Box>
       )}
 
       {readOnly && (
@@ -404,7 +405,7 @@ function Detail({
         </div>
       )}
       {!readOnly && conv && conv.status !== "closed" && (
-        <div className="card card--default gap-3 p-5">
+        <Box as="div" className="gap-3 p-5">
           <div className="flex flex-wrap items-baseline gap-2">
             <strong className="text-sm font-semibold text-foreground">Votre réponse</strong>
             <span className="text-xs text-muted">
@@ -487,7 +488,7 @@ function Detail({
               </Btn>
             </div>
 </Collapse>
-        </div>
+        </Box>
       )}
     </section>
   );
@@ -556,8 +557,9 @@ function Inbox() {
         </div>
       )}
       <div className="flex items-start gap-6">
-        <aside
-          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+        <Box
+          as="aside"
+          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
           aria-label="Liste des conversations"
         >
           <div className="flex flex-col gap-2.5 px-1 pt-1">
@@ -646,7 +648,7 @@ function Inbox() {
               </Btn>
             </div>
           )}
-        </aside>
+        </Box>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {selected ? (
             <Detail
@@ -658,15 +660,15 @@ function Inbox() {
               }}
             />
           ) : selectedId ? (
-            <section className="card card--default flex-1 p-6">
+            <Box as="section" className="flex-1 p-6">
               <Loading
                 loading={direct.loading}
                 error={direct.error}
                 onRetry={direct.reload}
               />
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default flex-1 p-0">
+            <Box as="section" className="flex-1 p-0">
               <EmptyPanel
                 icon={InboxIcon}
                 title="Choisissez une conversation"
@@ -678,7 +680,7 @@ function Inbox() {
                   </LinkButton>
                 }
               />
-            </section>
+            </Box>
           )}
         </div>
       </div>

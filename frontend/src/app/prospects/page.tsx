@@ -28,6 +28,7 @@ import {
   type ProspectResults,
 } from "@/lib/prospectResults";
 import type { Campaign, Membership, Page, Prospect } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const LIMIT = 25;
 // Le pipeline affiche plus de prospects par page pour que les colonnes soient représentatives.
@@ -262,8 +263,8 @@ function Prospects() {
           )
         }
       />
-      <section
-        className="card card--default flex-row flex-wrap items-center gap-2 p-3"
+      <Box as="section"
+        className="flex-row flex-wrap items-center gap-2 p-3"
         aria-label="Affichage et périmètre des prospects"
       >
         <Segmented
@@ -327,7 +328,7 @@ function Prospects() {
             Exporter en CSV (Excel)
           </Btn>
         )}
-      </section>
+      </Box>
       {pendingCampaign && (
         <p className="rounded-lg bg-warning-soft px-5 py-3.5 text-sm text-warning-soft-foreground">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche
@@ -335,7 +336,7 @@ function Prospects() {
           répondre automatiquement.
         </p>
       )}
-      <form className="card card--default gap-4 p-4" onSubmit={(e) => e.preventDefault()}>
+      <Box as="form" className="gap-4 p-4" onSubmit={(e) => e.preventDefault()}>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
           {activeFilterCount > 0 && (
@@ -464,7 +465,7 @@ function Prospects() {
             ))}
           </div>
         )}
-      </form>
+      </Box>
       {exportError && <ErrorText>{exportError}</ErrorText>}
       {campaigns.error && (
         <div className="flex flex-wrap items-center gap-3">
@@ -478,14 +479,14 @@ function Prospects() {
       {!loading && data && (
         <>
           {data.items.length === 0 ? (
-            <section className="card card--default p-0">
+            <Box as="section" className="p-0">
               <EmptyPanel
                 icon={SearchX}
                 title="Aucun prospect ne correspond"
                 description="Essayez une autre recherche ou réinitialisez les filtres."
                 action={<Btn onClick={reset}>Réinitialiser les filtres</Btn>}
               />
-            </section>
+            </Box>
           ) : (
             <>
               {view === "pipeline" ? (

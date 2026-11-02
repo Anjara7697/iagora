@@ -6,6 +6,7 @@ import { Btn, Check, ErrorText, Field, NativeSelect, TextBox, TextInput } from "
 import { ActionsBar } from "@/components/ds/settings";
 import { PLATFORMS, SOURCE_TYPES } from "@/lib/labels";
 import type { Target } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 export type SourceDraft = {
   name: string;
@@ -79,9 +80,9 @@ export default function CampaignForm({
   }
 
   return (
-    <form
+    <Box as="form"
      
-      className="card card--default gap-5 p-5"
+      className="gap-5 p-5"
       aria-label="Campagne"
       onSubmit={(e) => {
         e.preventDefault();
@@ -218,6 +219,6 @@ export default function CampaignForm({
           Annuler
         </Btn>
       </ActionsBar>
-    </form>
+    </Box>
   );
 }

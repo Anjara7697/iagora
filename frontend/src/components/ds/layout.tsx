@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Box } from "./card";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -64,13 +65,15 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section aria-label={label} className={cx("card card--default gap-0 p-0", className)}>
-      <div className="flex min-h-13 items-center gap-3 border-b border-separator px-5 py-3">
-        <h2 className="flex-1 text-base font-semibold text-foreground">{title}</h2>
+    <Box as="section" aria-label={label} className={cx("gap-0 p-0", className)}>
+      <Card.Header className="flex min-h-13 flex-row items-center gap-3 border-b border-separator px-5 py-3">
+        <Card.Title render={(props) => <h2 {...props} />} className="flex-1 text-base font-semibold text-foreground">
+          {title}
+        </Card.Title>
         {action}
-      </div>
-      <div className={cx("flex flex-col", bodyClassName ?? "px-5 py-4")}>{children}</div>
-    </section>
+      </Card.Header>
+      <Card.Content className={cx("flex flex-col", bodyClassName ?? "px-5 py-4")}>{children}</Card.Content>
+    </Box>
   );
 }
 
@@ -151,18 +154,20 @@ export function KpiCard({
       {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
     </>
   );
-  const cls = "flex flex-col gap-1.5 rounded-lg bg-surface p-4 shadow-surface";
-  if (pending) return <div className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</div>;
+  const cls = "gap-1.5 p-4";
+  if (pending)
+    return <Box className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</Box>;
   if (href)
     return (
-      <Link
+      <Box
+        as={Link}
         href={href}
         className={cx(cls, "outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus")}
       >
         {body}
-      </Link>
+      </Box>
     );
-  return <div className={cls}>{body}</div>;
+  return <Box className={cls}>{body}</Box>;
 }
 
 /** Répartition en barres : libellé, barre, valeur en mono. La valeur porte l'information. */
