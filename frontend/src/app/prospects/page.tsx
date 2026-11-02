@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Btn, Check, ErrorText, Field, FilterChip, LinkButton, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
+import { DataTable, Table } from "@/components/ds/table";
 import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import {
   formatDate,
@@ -111,24 +112,26 @@ function PipelineScroller({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       {edges.left && (
-        <button
-          type="button"
-          className="absolute top-3 left-2 inline-flex size-9 items-center justify-center rounded-full bg-overlay text-foreground shadow-overlay outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+        <Btn
+          variant="outline"
+          isIconOnly
+          className="absolute top-3 left-2 rounded-full bg-overlay shadow-overlay"
           aria-label="Étapes précédentes"
           onClick={() => scroll(-1)}
         >
           <ChevronLeft className="size-4" aria-hidden="true" />
-        </button>
+        </Btn>
       )}
       {edges.right && (
-        <button
-          type="button"
-          className="absolute top-3 right-2 inline-flex size-9 items-center justify-center rounded-full bg-overlay text-foreground shadow-overlay outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+        <Btn
+          variant="outline"
+          isIconOnly
+          className="absolute top-3 right-2 rounded-full bg-overlay shadow-overlay"
           aria-label="Étapes suivantes"
           onClick={() => scroll(1)}
         >
           <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
+        </Btn>
       )}
     </div>
   );
@@ -447,10 +450,9 @@ function Prospects() {
         {!moreOpen && activeAdvanced.length > 0 && (
           <div className="flex flex-wrap gap-2" aria-label="Filtres actifs">
             {activeAdvanced.map((f) => (
-              <button
-                type="button"
+              <Btn
                 key={f.id}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-default pr-2 pl-3 text-[13px] font-medium text-foreground outline-none hover:bg-default-hover focus-visible:ring-2 focus-visible:ring-focus"
+                size="sm"
                 aria-label={`Retirer le filtre ${f.title}`}
                 onClick={() => {
                   f.set("");
@@ -458,7 +460,7 @@ function Prospects() {
               >
                 {f.title} : {label(f.options, f.value)}
                 <X className="size-3.5 text-muted" aria-hidden="true" />
-              </button>
+              </Btn>
             ))}
           </div>
         )}
@@ -570,23 +572,19 @@ function Prospects() {
                   </PipelineScroller>
                 </>
               ) : (
-                <div className="overflow-x-auto rounded-lg bg-surface shadow-surface" role="region" tabIndex={0} aria-label="Tableau des prospects">
-                  <table className="w-full min-w-[720px] border-collapse text-sm">
-                    <caption className="sr-only">
-                      Prospects et rattachements aux campagnes
-                    </caption>
-                    <thead className="sticky top-0 z-10 bg-surface-secondary text-left text-xs font-medium text-muted">
-                      <tr>
-                        <th scope="col" className="px-4 py-2.5 font-medium">Prospect</th>
-                        <th scope="col" className="px-4 py-2.5 font-medium">Étapes et scores</th>
-                        <th scope="col" className="px-4 py-2.5 font-medium">Consentement</th>
-                        <th scope="col" className="px-4 py-2.5 font-medium">Créé le</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                <DataTable
+                  label="Prospects et rattachements aux campagnes"
+                  minWidth={720}
+                  columns={[
+                    { id: "prospect", label: "Prospect" },
+                    { id: "stages", label: "Étapes et scores" },
+                    { id: "consent", label: "Consentement" },
+                    { id: "created", label: "Créé le" },
+                  ]}
+                >
                       {data.items.map((p) => (
-                        <tr key={p.id} className="border-t border-separator transition-colors hover:bg-surface-secondary/60">
-                          <td className="px-4 py-3">
+                        <Table.Row key={p.id} id={p.id}>
+                          <Table.Cell>
                             <div className="flex items-center gap-3">
                               <Avatar prospect={p} />
                               <div className="flex min-w-0 flex-col">
@@ -601,8 +599,8 @@ function Prospects() {
                                 </span>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </Table.Cell>
+                          <Table.Cell>
                             {membershipsOf(p).length ? (
                               <div className="flex flex-col gap-1.5">
                                 {membershipsOf(p).map((m) => (
@@ -623,18 +621,16 @@ function Prospects() {
                             ) : (
                               <span className="text-[13px] text-muted">Sans campagne</span>
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </Table.Cell>
+                          <Table.Cell>
                             <ConsentTag status={p.consent_status} />
-                          </td>
-                          <td className="px-4 py-3 text-xs text-muted tabular-nums">
+                          </Table.Cell>
+                          <Table.Cell className="text-xs text-muted tabular-nums">
                             {formatDate(p.created_at)}
-                          </td>
-                        </tr>
+                          </Table.Cell>
+                        </Table.Row>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                </DataTable>
               )}
             </>
           )}
