@@ -9,6 +9,7 @@ import CampaignOwnership from "@/components/CampaignOwnership";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, ErrorText, LinkButton, NativeSelect, Tag, TextInput, TextLink, type Tone } from "@/components/ds/controls";
 import { BarList, EmptyText, ErrorState, Eyebrow, KpiCard, Panel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
+import { DataTable, Table } from "@/components/ds/table";
 import {
   DemoBadge,
   Loading,
@@ -91,8 +92,6 @@ function Levels({ stats }: { stats: CampaignStats }) {
   );
 }
 
-const TH = "px-4 py-2.5 font-medium";
-const TD = "px-4 py-3";
 
 function Sources({
   campaign,
@@ -138,28 +137,20 @@ function Sources({
           campagne.
         </EmptyText>
       ) : (
-        <div
-          className="overflow-x-auto rounded-xl border border-separator outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          tabIndex={0}
-          role="region"
-          aria-label="Sources de la campagne, défilement horizontal"
+        <DataTable
+          label="Sources de la campagne"
+          minWidth={560}
+          columns={[
+            { id: "source", label: "Source" },
+            { id: "platform", label: "Plateforme" },
+            { id: "type", label: "Type" },
+            { id: "prospects", label: "Prospects", className: "text-right" },
+            { id: "actions", label: <span className="sr-only">Actions</span> },
+          ]}
         >
-          <table className="w-full min-w-[560px] border-collapse text-sm">
-            <thead className="bg-surface-secondary text-left text-xs text-muted">
-              <tr>
-                <th scope="col" className={TH}>Source</th>
-                <th scope="col" className={TH}>Plateforme</th>
-                <th scope="col" className={TH}>Type</th>
-                <th scope="col" className={`${TH} text-right`}>Prospects</th>
-                <th scope="col" className={TH}>
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
               {campaign.sources.map((s) => (
-                <tr key={s.id} className="border-t border-separator">
-                  <td className={`${TD} font-medium text-foreground`}>
+                <Table.Row key={s.id} id={s.id}>
+                  <Table.Cell className="font-medium text-foreground">
                     <span className="flex items-center gap-2.5">
                       <span
                         className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-[9px] font-medium text-background"
@@ -169,11 +160,11 @@ function Sources({
                       </span>
                       {s.name}
                     </span>
-                  </td>
-                  <td className={`${TD} text-muted`}>{label(PLATFORMS, s.platform)}</td>
-                  <td className={`${TD} text-muted`}>{label(SOURCE_TYPES, s.type)}</td>
-                  <td className={`${TD} text-right tabular-nums`}>{counts.get(s.id) ?? 0}</td>
-                  <td className={`${TD} text-right`}>
+                  </Table.Cell>
+                  <Table.Cell className="text-muted">{label(PLATFORMS, s.platform)}</Table.Cell>
+                  <Table.Cell className="text-muted">{label(SOURCE_TYPES, s.type)}</Table.Cell>
+                  <Table.Cell className="text-right tabular-nums">{counts.get(s.id) ?? 0}</Table.Cell>
+                  <Table.Cell className="text-right">
                     {canEdit && (
                       <Btn
                         variant="ghost"
@@ -190,12 +181,10 @@ function Sources({
                         Retirer
                       </Btn>
                     )}
-                  </td>
-                </tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
-        </div>
+        </DataTable>
       )}
       {error && <ErrorText>{error}</ErrorText>}
       {canEdit && (
@@ -309,18 +298,16 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
         </EmptyText>
       )}
       {items.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-separator">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <caption className="sr-only">Prospects de la campagne</caption>
-            <thead className="bg-surface-secondary text-left text-xs text-muted">
-              <tr>
-                <th scope="col" className={TH}>Prospect</th>
-                <th scope="col" className={TH}>Étape</th>
-                <th scope="col" className={TH}>Score</th>
-                <th scope="col" className={TH}>Consentement</th>
-              </tr>
-            </thead>
-            <tbody>
+        <DataTable
+          label="Prospects de la campagne"
+          minWidth={640}
+          columns={[
+            { id: "prospect", label: "Prospect" },
+            { id: "stage", label: "Étape" },
+            { id: "score", label: "Score" },
+            { id: "consent", label: "Consentement" },
+          ]}
+        >
               {items.map((p) => {
                 const m = p.campaigns
                   .filter((c) => c.campaign_id === campaign.id)
@@ -331,8 +318,8 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
                   )[0];
                 const name = fullName(p) || p.email || `#${p.id}`;
                 return (
-                  <tr key={p.id} className="border-t border-separator transition-colors hover:bg-surface-secondary/60">
-                    <td className={TD}>
+                  <Table.Row key={p.id} id={p.id}>
+                    <Table.Cell>
                       <span className="flex items-center gap-3">
                         <span
                           className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-semibold text-foreground"
@@ -353,11 +340,11 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
                           {p.email && <span className="text-xs text-muted">{p.email}</span>}
                         </span>
                       </span>
-                    </td>
-                    <td className={TD}>
+                    </Table.Cell>
+                    <Table.Cell>
                       {m ? <StageBadge stage={m.conversion_stage} /> : "-"}
-                    </td>
-                    <td className={TD}>
+                    </Table.Cell>
+                    <Table.Cell>
                       {m ? (
                         <ScoreBadge
                           total={m.total_score}
@@ -366,14 +353,12 @@ function CampaignProspects({ campaign }: { campaign: Campaign }) {
                       ) : (
                         "-"
                       )}
-                    </td>
-                    <td className={`${TD} text-muted`}>{label(CONSENT, p.consent_status)}</td>
-                  </tr>
+                    </Table.Cell>
+                    <Table.Cell className="text-muted">{label(CONSENT, p.consent_status)}</Table.Cell>
+                  </Table.Row>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+        </DataTable>
       )}
       {list.data && list.data.total > PROSPECTS_LIMIT && (
         <Pager

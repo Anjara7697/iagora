@@ -3,7 +3,7 @@
 import { Button, buttonVariants, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { cloneElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
@@ -298,6 +298,48 @@ export function NativeSelect({ className, children, ...props }: ComponentProps<"
       </select>
       <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
     </span>
+  );
+}
+
+/**
+ * Choix de fichier : bouton HeroUI qui ouvre l'entrée fichier native (masquée, libellée par `Field`).
+ * Affiche le nom du fichier retenu, ou `emptyLabel`.
+ */
+export function FileInput({
+  id,
+  accept,
+  file,
+  onChange,
+  emptyLabel = "Aucun fichier choisi",
+  buttonLabel = "Choisir un fichier",
+  "aria-describedby": describedBy,
+}: {
+  id?: string;
+  accept?: string;
+  file: File | null | undefined;
+  onChange: (file: File | undefined) => void;
+  emptyLabel?: string;
+  buttonLabel?: string;
+  "aria-describedby"?: string;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-2.5">
+      <input
+        ref={input}
+        id={id}
+        type="file"
+        accept={accept}
+        aria-describedby={describedBy}
+        tabIndex={-1}
+        className="sr-only"
+        onChange={(e) => onChange(e.target.files?.[0])}
+      />
+      <Btn variant="secondary" size="sm" onClick={() => input.current?.click()}>
+        {buttonLabel}
+      </Btn>
+      <span className="min-w-0 truncate text-[13px] text-muted">{file ? file.name : emptyLabel}</span>
+    </div>
   );
 }
 

@@ -349,7 +349,7 @@ test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospe
   ).toBeVisible();
   const sources = page.getByRole("region", { name: "Sources" });
   await expect(
-    sources.getByRole("row", { name: /LinkedIn Ads.*9/ }),
+    sources.getByRole("row", { name: /LinkedIn Ads/ }).getByRole("gridcell", { name: "9", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Voir les prospects" }).click();
   await expect(page).toHaveURL(/\/prospects\?campaign=1$/);

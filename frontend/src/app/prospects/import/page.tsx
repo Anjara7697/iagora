@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Check as CheckIcon, Eye, FileSpreadsheet, Upload } from "lucide-react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CampaignSourcePicker } from "@/components/CampaignSourcePicker";
-import { Btn, LinkButton, Tag } from "@/components/ds/controls";
+import { Btn, FileInput, LinkButton, Tag } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard as Section, Stats, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
@@ -123,14 +123,13 @@ export default function ImportPage() {
           label="Fichier CSV (2 Mo, 5000 lignes maximum)"
           note="Colonnes reconnues par leur intitulé : prénom, nom, email, téléphone, programme, ville, entreprise… Séparateur ; ou , — UTF-8 ou Windows."
         >
-          <input
-            type="file"
+          <FileInput
             accept=".csv,text/csv"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
+            file={file}
+            onChange={(f) => {
+              setFile(f ?? null);
               setReport(null);
             }}
-            className="w-full cursor-pointer rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-3 text-[13px] text-muted file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-accent-foreground"
           />
         </Field>
         {file && (
