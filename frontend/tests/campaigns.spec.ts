@@ -193,6 +193,7 @@ test("responsable : choix explicite du sort des prospects et mise à jour de la 
     return route.fulfill({ json: current });
   });
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Réglages" }).click();
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
   await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
   await expect(
@@ -223,6 +224,7 @@ test("responsable : erreur conservée, aucun contrôle d'affectation pour un con
     route.fulfill({ status: 422, json: { detail: "Compte indisponible" } }),
   );
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Réglages" }).click();
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
   await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
   await choose(form.getByLabel("Prospects déjà présents"), "transfer_inherited");
@@ -235,6 +237,7 @@ test("responsable : erreur conservée, aucun contrôle d'affectation pour un con
   ).toHaveAttribute("data-value", "9");
   await mockApi(page, { role: "ADVISOR" });
   await page.reload();
+  await page.getByRole("tab", { name: "Réglages" }).click();
   await expect(
     page.getByRole("heading", { name: "Responsable de campagne" }),
   ).toBeVisible();
@@ -399,6 +402,7 @@ test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospe
       .getByRole("region", { name: "Niveaux d'intérêt" })
       .getByText("Très chaud"),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Sources" }).click();
   const sources = page.getByRole("region", { name: "Sources" });
   await expect(
     sources.getByRole("row", { name: /LinkedIn Ads/ }).getByRole("gridcell", { name: "9", exact: true }),
@@ -445,10 +449,10 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
     "compagnons_pros",
   ]);
 
-  await page
-    .getByLabel("Nom de la nouvelle source")
-    .fill("Webinaire d'octobre");
-  await page.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await page.getByRole("button", { name: "Ajouter Formulaire du site ou n8n" }).click();
+  await page.getByLabel("Nom de la nouvelle source").fill("Webinaire d'octobre");
+  await page.getByRole("button", { name: "Ajouter à la campagne" }).click();
   await expect
     .poll(() =>
       calls.requests.some(
@@ -517,6 +521,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
     });
   });
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Prospects" }).click();
   const section = page.getByRole("region", {
     name: "Prospects de la campagne",
   });
@@ -530,7 +535,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);
   expect(queries.some((q) => q.includes("campaign_id=1"))).toBe(true);
-  await row.getByRole("link", { name: "Alice Martin" }).click();
+  await row.click();
   await expect(page).toHaveURL(/\/prospects\/5$/, { timeout: 15000 });
 });
 
@@ -539,15 +544,18 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
   await login(page, "/campaigns/1");
   await page.getByRole("button", { name: "Activer" }).click();
   await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByRole("button", { name: "Désactiver" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Désactiver la campagne ?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(dialog).toHaveCount(0);
   expect(
     calls.requests.filter(
       (r) => (r.body as { status?: string })?.status === "inactive",
     ),
   ).toHaveLength(0);
-  page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Désactiver" }).click();
   await expect
     .poll(() =>
       calls.requests.some(

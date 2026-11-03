@@ -50,6 +50,7 @@ export default function CampaignForm({
   targets,
   withSources,
   steps = false,
+  framed = true,
   submitLabel,
   busy,
   error,
@@ -60,6 +61,8 @@ export default function CampaignForm({
   targets: Target[];
   withSources: boolean;
   steps?: boolean;
+  /** Carte autour du formulaire ; `false` dans un panneau latéral qui a déjà son cadre. */
+  framed?: boolean;
   submitLabel: string;
   busy: boolean;
   error: string | null;
@@ -79,7 +82,8 @@ export default function CampaignForm({
   return (
     <Box
       as="form"
-      className="gap-5 rounded-lg p-5"
+      variant={framed ? undefined : "transparent"}
+      className={framed ? "gap-5 rounded-lg p-5" : "gap-5 p-0"}
       style={FIELD_RADIUS}
       aria-label="Campagne"
       onSubmit={(e) => {
@@ -121,7 +125,11 @@ export default function CampaignForm({
           <DateRangeField
             variant="secondary"
             label="Période de la campagne"
-            hint="Début et fin. Laissez vide pour une campagne sans dates."
+            hint={
+              Boolean(v.start_date) !== Boolean(v.end_date)
+                ? `Période incomplète : ${v.start_date ? `début le ${formatDay(v.start_date)}` : `fin le ${formatDay(v.end_date)}`}. Choisissez un début et une fin pour la remplacer.`
+                : "Début et fin. Laissez vide pour une campagne sans dates."
+            }
             start={v.start_date}
             end={v.end_date}
             onChange={(start, end) => setV((current) => ({ ...current, start_date: start, end_date: end }))}

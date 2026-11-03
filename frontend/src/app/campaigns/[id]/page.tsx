@@ -1,377 +1,36 @@
 "use client";
 
-import { CalendarDays, Pause, Pencil, Play, Plus, Users } from "lucide-react";
-import Link from "next/link";
+import { Tabs } from "@heroui/react";
+import { CalendarDays, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
-import CampaignOwnership from "@/components/CampaignOwnership";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, ErrorText, LinkButton, SelectBox, Tag, TextInput, TextLink, type Tone } from "@/components/ds/controls";
-import { BarList, EmptyText, ErrorState, Eyebrow, KpiCard, Panel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
-import { DataTable, Table } from "@/components/ds/table";
-import {
-  DemoBadge,
-  Loading,
-  Pager,
-  ScoreBadge,
-  StageBadge,
-} from "@/components/ui";
+import CampaignOverview from "@/components/campaign/CampaignOverview";
+import CampaignProspects from "@/components/campaign/CampaignProspects";
+import CampaignSettings from "@/components/campaign/CampaignSettings";
+import CampaignSources from "@/components/campaign/CampaignSources";
+import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
+import { Btn, ErrorText, LinkButton, TAB_RADIUS, Tag, TextLink, type Tone } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { Drawer } from "@/components/Drawer";
+import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
-import {
-  CAMPAIGN_STATUS,
-  CONSENT,
-  FUNNEL,
-  STAGES,
-  fullName,
-  LEVELS,
-  PLATFORM_MARK,
-  PLATFORMS,
-  SOURCE_TYPES,
-  TARGETS,
-  formatDay,
-  label,
-} from "@/lib/labels";
+import { CAMPAIGN_STATUS, formatDay, label } from "@/lib/labels";
+import type { Campaign, CampaignStats, Target } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { qs } from "@/lib/api";
-import type {
-  Campaign,
-  CampaignStats,
-  Page,
-  Prospect,
-  Target,
-} from "@/lib/types";
 
 const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
 const toIso = (value: string) => (value ? `${value}T00:00:00Z` : null);
+const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
 
-const LEVEL_FILL: Record<string, string> = {
-  very_hot: "bg-level-very-hot",
-  hot: "bg-level-hot",
-  warm: "bg-level-warm",
-  cold: "bg-level-cold",
-  none: "bg-default",
-};
-
-function Funnel({ stats }: { stats: CampaignStats }) {
-  const rows = FUNNEL.map((step) => ({
-    key: step.title,
-    label: step.title,
-    value: step.stages.reduce((sum, s) => sum + (stats.by_stage[s] ?? 0), 0),
-  }));
-  return (
-    <Panel title="Entonnoir" label="Entonnoir">
-      {stats.prospects === 0 ? (
-        <EmptyText>Aucun prospect pour l&apos;instant.</EmptyText>
-      ) : (
-        <BarList rows={rows} labelWidth={130} />
-      )}
-    </Panel>
-  );
-}
-
-function Levels({ stats }: { stats: CampaignStats }) {
-  const order = ["very_hot", "hot", "warm", "cold", "none"];
-  return (
-    <Panel title="Niveaux d'intérêt" label="Niveaux d'intérêt">
-      <BarList
-        labelWidth={130}
-        rows={order.map((k) => ({
-          key: k,
-          label: (
-            <>
-              <span className={`size-2 shrink-0 rounded-full ${LEVEL_FILL[k]}`} aria-hidden="true" />
-              {k === "none" ? "Non évalué" : label(LEVELS, k)}
-            </>
-          ),
-          value: stats.by_level[k] ?? 0,
-          fill: LEVEL_FILL[k],
-        }))}
-      />
-    </Panel>
-  );
-}
-
-
-function Sources({
-  campaign,
-  stats,
-  canEdit,
-  onChanged,
-}: {
-  campaign: Campaign;
-  stats: CampaignStats | null;
-  canEdit: boolean;
-  onChanged: () => void;
-}) {
-  const [draft, setDraft] = useState({
-    name: "",
-    type: "ads",
-    platform: "linkedin",
-    external_id: "",
-  });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const counts = new Map(
-    (stats?.by_source ?? []).map((s) => [s.source_id, s.prospects]),
-  );
-
-  async function act(action: () => Promise<unknown>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await action();
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Échec");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Panel title="Sources de prospects" label="Sources" bodyClassName="gap-4 px-5 py-4">
-      {campaign.sources.length === 0 ? (
-        <EmptyText>
-          Aucune source rattachée : aucun prospect ne peut entrer dans cette
-          campagne.
-        </EmptyText>
-      ) : (
-        <DataTable
-          label="Sources de la campagne"
-          minWidth={560}
-          columns={[
-            { id: "source", label: "Source" },
-            { id: "platform", label: "Plateforme" },
-            { id: "type", label: "Type" },
-            { id: "prospects", label: "Prospects", className: "text-right" },
-            { id: "actions", label: <span className="sr-only">Actions</span> },
-          ]}
-        >
-              {campaign.sources.map((s) => (
-                <Table.Row key={s.id} id={s.id}>
-                  <Table.Cell className="font-medium text-foreground">
-                    <span className="flex items-center gap-2.5">
-                      <span
-                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-[9px] font-medium text-background"
-                        aria-hidden="true"
-                      >
-                        {PLATFORM_MARK[s.platform ?? ""] ?? "•"}
-                      </span>
-                      {s.name}
-                    </span>
-                  </Table.Cell>
-                  <Table.Cell className="text-muted">{label(PLATFORMS, s.platform)}</Table.Cell>
-                  <Table.Cell className="text-muted">{label(SOURCE_TYPES, s.type)}</Table.Cell>
-                  <Table.Cell className="text-right tabular-nums">{counts.get(s.id) ?? 0}</Table.Cell>
-                  <Table.Cell className="text-right">
-                    {canEdit && (
-                      <Btn
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() =>
-                          act(() =>
-                            api(`/campaigns/${campaign.id}/sources/${s.id}`, {
-                              method: "DELETE",
-                            }),
-                          )
-                        }
-                      >
-                        Retirer
-                      </Btn>
-                    )}
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-        </DataTable>
-      )}
-      {error && <ErrorText>{error}</ErrorText>}
-      {canEdit && (
-        <div className="grid grid-cols-1 gap-2 rounded-xl bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
-          <TextInput
-            aria-label="Nom de la nouvelle source"
-            placeholder="Nouvelle source (ex. Webinaire d'octobre)"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-          <SelectBox
-            aria-label="Type de la nouvelle source"
-            value={draft.type}
-            onChange={(e) => setDraft({ ...draft, type: e.target.value })}
-          >
-            {Object.entries(SOURCE_TYPES).map(([k, text]) => (
-              <option key={k} value={k}>
-                {text}
-              </option>
-            ))}
-          </SelectBox>
-          <SelectBox
-            aria-label="Plateforme de la nouvelle source"
-            value={draft.platform}
-            onChange={(e) => setDraft({ ...draft, platform: e.target.value })}
-          >
-            {Object.entries(PLATFORMS).map(([k, text]) => (
-              <option key={k} value={k}>
-                {text}
-              </option>
-            ))}
-          </SelectBox>
-          <Btn
-            variant="primary"
-            disabled={busy || !draft.name.trim()}
-            onClick={() =>
-              act(async () => {
-                await api(`/campaigns/${campaign.id}/sources`, {
-                  method: "POST",
-                  body: {
-                    name: draft.name.trim(),
-                    type: draft.type,
-                    platform: draft.platform,
-                    external_id: draft.external_id.trim() || null,
-                  },
-                });
-                setDraft({ ...draft, name: "" });
-              })
-            }
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Ajouter
-          </Btn>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-const PROSPECTS_LIMIT = 10;
-
-/** Prospects rattachés à la campagne : nom, étape dans CETTE campagne, score, consentement. */
-function CampaignProspects({ campaign }: { campaign: Campaign }) {
-  const [stage, setStage] = useState("");
-  const [offset, setOffset] = useState(0);
-  const list = useApi<Page<Prospect>>(
-    `/prospects${qs({ campaign_id: campaign.id, stage, limit: PROSPECTS_LIMIT, offset })}`,
-    { keepPrevious: true },
-  );
-  const items = list.data?.items ?? [];
-  return (
-    <Panel
-      title="Prospects de la campagne"
-      label="Prospects de la campagne"
-      bodyClassName="gap-4 px-5 py-4"
-      action={
-        <span className="flex items-center gap-2">
-          <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
-            Étape
-          </label>
-          <SelectBox
-            id="campaign-stage"
-            aria-labelledby="campaign-stage-label"
-            className="w-44"
-            value={stage}
-            onChange={(e) => {
-              setStage(e.target.value);
-              setOffset(0);
-            }}
-          >
-            <option value="">Toutes</option>
-            {Object.entries(STAGES).map(([key, text]) => (
-              <option key={key} value={key}>
-                {text}
-              </option>
-            ))}
-          </SelectBox>
-        </span>
-      }
-    >
-      <Loading
-        loading={list.loading && !list.data}
-        error={list.error}
-        onRetry={list.reload}
-        shape="rows"
-      />
-      {list.data && items.length === 0 && (
-        <EmptyText>
-          {stage
-            ? "Aucun prospect à cette étape."
-            : "Aucun prospect pour l’instant. Ils arrivent par les sources de la campagne."}
-        </EmptyText>
-      )}
-      {items.length > 0 && (
-        <DataTable
-          label="Prospects de la campagne"
-          minWidth={640}
-          columns={[
-            { id: "prospect", label: "Prospect" },
-            { id: "stage", label: "Étape" },
-            { id: "score", label: "Score" },
-            { id: "consent", label: "Consentement" },
-          ]}
-        >
-              {items.map((p) => {
-                const m = p.campaigns
-                  .filter((c) => c.campaign_id === campaign.id)
-                  .sort(
-                    (a, b) =>
-                      new Date(b.last_seen_at ?? 0).getTime() -
-                        new Date(a.last_seen_at ?? 0).getTime() || b.id - a.id,
-                  )[0];
-                const name = fullName(p) || p.email || `#${p.id}`;
-                return (
-                  <Table.Row key={p.id} id={p.id}>
-                    <Table.Cell>
-                      <span className="flex items-center gap-3">
-                        <span
-                          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-semibold text-foreground"
-                          aria-hidden="true"
-                        >
-                          {initialsOf(name)}
-                        </span>
-                        <span className="flex min-w-0 flex-col">
-                          <span className="flex items-center gap-2">
-                            <Link
-                              href={`/prospects/${p.id}`}
-                              className="font-medium text-foreground hover:text-accent hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-                            >
-                              {name}
-                            </Link>
-                            <DemoBadge email={p.email} />
-                          </span>
-                          {p.email && <span className="text-xs text-muted">{p.email}</span>}
-                        </span>
-                      </span>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {m ? <StageBadge stage={m.conversion_stage} /> : "-"}
-                    </Table.Cell>
-                    <Table.Cell>
-                      {m ? (
-                        <ScoreBadge
-                          total={m.total_score}
-                          level={m.interest_status}
-                        />
-                      ) : (
-                        "-"
-                      )}
-                    </Table.Cell>
-                    <Table.Cell className="text-muted">{label(CONSENT, p.consent_status)}</Table.Cell>
-                  </Table.Row>
-                );
-              })}
-        </DataTable>
-      )}
-      {list.data && list.data.total > PROSPECTS_LIMIT && (
-        <Pager
-          total={list.data.total}
-          limit={PROSPECTS_LIMIT}
-          offset={offset}
-          onChange={setOffset}
-        />
-      )}
-    </Panel>
-  );
-}
+const TABS = [
+  { id: "overview", title: "Vue d'ensemble" },
+  { id: "prospects", title: "Prospects" },
+  { id: "sources", title: "Sources" },
+  { id: "settings", title: "Réglages" },
+];
 
 export default function CampaignPage() {
   const { id } = useParams<{ id: string }>();
@@ -380,6 +39,7 @@ export default function CampaignPage() {
   const campaign = useApi<Campaign>(`/campaigns/${id}`);
   const stats = useApi<CampaignStats>(`/campaigns/${id}/stats`);
   const targets = useApi<Target[]>(canEdit ? "/targets" : null);
+  const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -398,9 +58,7 @@ export default function CampaignPage() {
       setEditing(false);
       reload();
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Échec de l'enregistrement",
-      );
+      setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement");
     } finally {
       setBusy(false);
     }
@@ -416,21 +74,16 @@ export default function CampaignPage() {
       target_codes: v.target_codes,
     });
 
-  const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
-
   return (
-    <Screen>
+    <Screen scroll>
       <TextLink href="/campaigns" className="w-fit text-sm">
         ← Campagnes
       </TextLink>
-      <Loading
-        loading={campaign.loading}
-        error={campaign.error}
-        onRetry={campaign.reload}
-      />
+      <Loading loading={campaign.loading} error={campaign.error} onRetry={campaign.reload} />
       {c && (
         <>
           <PageHeader
+            {...reveal(0)}
             eyebrow="Pilotage · Campagne"
             title={c.name}
             subtitle={
@@ -439,9 +92,7 @@ export default function CampaignPage() {
                   <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarDays className="size-3.5" aria-hidden="true" />
-                    {c.start_date || c.end_date
-                      ? `${formatDay(c.start_date)} → ${formatDay(c.end_date)}`
-                      : "Sans dates"}
+                    {c.start_date || c.end_date ? `${formatDay(c.start_date)} → ${formatDay(c.end_date)}` : "Sans dates"}
                   </span>
                 </span>
                 {c.description && <span>{c.description}</span>}
@@ -449,9 +100,30 @@ export default function CampaignPage() {
             }
             actions={
               <>
-                {canEdit && !editing && (
+                {canEdit &&
+                  (c.status === "active" ? (
+                    <ConfirmDialog
+                      trigger={
+                        <Btn variant="danger-soft" className="rounded-lg" disabled={busy}>
+                          <Pause className="size-4" aria-hidden="true" />
+                          Désactiver
+                        </Btn>
+                      }
+                      title="Désactiver la campagne ?"
+                      description="Les nouveaux prospects ne seront plus rattachés à ses sources."
+                      confirmLabel="Désactiver"
+                      onConfirm={() => void patch({ status: "inactive" })}
+                    />
+                  ) : (
+                    <Btn variant="secondary" className="rounded-lg" disabled={busy} onClick={() => patch({ status: "active" })}>
+                      <Play className="size-4" aria-hidden="true" />
+                      Activer
+                    </Btn>
+                  ))}
+                {canEdit && (
                   <Btn
                     variant="outline"
+                    className="rounded-lg"
                     disabled={!targets.data}
                     onClick={() => setEditing(true)}
                     aria-describedby={targets.error ? "campaign-targets-error" : undefined}
@@ -460,7 +132,7 @@ export default function CampaignPage() {
                     Modifier la campagne
                   </Btn>
                 )}
-                <LinkButton variant="primary" href={`/prospects?campaign=${c.id}`}>
+                <LinkButton variant="primary" className="rounded-lg" href={`/prospects?campaign=${c.id}`}>
                   <Users className="size-4" aria-hidden="true" />
                   Voir les prospects
                 </LinkButton>
@@ -469,134 +141,67 @@ export default function CampaignPage() {
           />
           {canEdit && targets.error && (
             <span id="campaign-targets-error">
-              <ErrorState
-                message={`Liste des programmes indisponible : ${targets.error.message}`}
-                onRetry={targets.reload}
-              />
+              <ErrorState message={`Liste des programmes indisponible : ${targets.error.message}`} onRetry={targets.reload} />
             </span>
           )}
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
-          {editing && targets.data && (
-            <CampaignForm
-              initial={{
-                name: c.name,
-                description: c.description ?? "",
-                status: c.status,
-                start_date: day(c.start_date),
-                end_date: day(c.end_date),
-                target_codes: c.targets.map((t) => t.code),
-                sources: [],
-              }}
-              targets={targets.data}
-              withSources={false}
-              submitLabel="Enregistrer"
-              busy={busy}
-              error={error}
-              onSubmit={save}
-              onCancel={() => setEditing(false)}
-            />
-          )}
-
-          {stats.error && (
-            <ErrorState
-              message={`Statistiques indisponibles : ${stats.error.message}`}
-              onRetry={stats.reload}
-            />
-          )}
-          {stats.data && (
-            <>
-              <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Indicateurs de la campagne">
-                <KpiCard label="Prospects" value={stats.data.prospects} />
-                <KpiCard label="Score moyen" value={Math.round(stats.data.average_score * 10) / 10} />
-                <KpiCard label="Rendez-vous" value={stats.data.meetings} />
-                <KpiCard label="Convertis" value={stats.data.converted} />
-              </section>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <Funnel stats={stats.data} />
-                <Levels stats={stats.data} />
-              </div>
-            </>
-          )}
-          <CampaignProspects campaign={c} />
-
-          <section className="flex flex-col gap-4" aria-labelledby="campaign-settings-title">
-            <div className="flex flex-col gap-1 border-t border-separator pt-6">
-              <Eyebrow>Réglages</Eyebrow>
-              <h2 id="campaign-settings-title" className="text-xl font-semibold text-foreground">
-                Réglages de la campagne
-              </h2>
-              <p className="text-sm text-muted">
-                {canEdit
-                  ? "Responsable, programmes, sources et statut."
-                  : "Consultation seule : réservé aux administrateurs."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <CampaignOwnership
-                key={`${c.id}:${c.responsible_advisor_id}`}
+          <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key))}>
+            <Tabs.ListContainer className={TAB_RADIUS.container}>
+              <Tabs.List aria-label="Sections de la campagne">
+                {TABS.map((t) => (
+                  <Tabs.Tab key={t.id} id={t.id} className={TAB_RADIUS.tab}>
+                    {t.title}
+                    <Tabs.Indicator className={TAB_RADIUS.indicator} />
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs.ListContainer>
+            <Tabs.Panel id="overview" className="pt-4">
+              {stats.error && <ErrorState message={`Statistiques indisponibles : ${stats.error.message}`} onRetry={stats.reload} />}
+              {stats.data && <CampaignOverview stats={stats.data} />}
+            </Tabs.Panel>
+            <Tabs.Panel id="prospects" className="pt-4">
+              <CampaignProspects campaign={c} />
+            </Tabs.Panel>
+            <Tabs.Panel id="sources" className="pt-4">
+              <CampaignSources campaign={c} stats={stats.data} canEdit={canEdit} onChanged={reload} />
+            </Tabs.Panel>
+            <Tabs.Panel id="settings" className="pt-4">
+              <CampaignSettings
                 campaign={c}
-                onDone={campaign.reload}
+                targets={targets.data}
+                canEdit={canEdit}
+                busy={busy}
+                onPatch={(body) => void patch(body)}
+                onOwnerDone={campaign.reload}
               />
-              <div className="flex flex-col gap-4">
-                <Panel title="Programmes visés" label="Programmes visés">
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.targets.map((t) => (
-                      <Tag key={t.code} tone="accent">
-                        {label(TARGETS, t.code)}
-                      </Tag>
-                    ))}
-                    {c.targets.length === 0 && (
-                      <span className="text-sm text-muted">
-                        Aucun programme : modifiez la campagne pour en choisir.
-                      </span>
-                    )}
-                  </div>
-                </Panel>
-                {canEdit && (
-                  <Panel title="Statut" label="Statut" bodyClassName="flex-row flex-wrap items-center gap-4 px-5 py-4">
-                    <p className="min-w-[200px] flex-1 text-sm text-muted">
-                      {c.status === "active"
-                        ? "Active : les nouveaux prospects sont rattachés par ses sources."
-                        : "Inactive : aucun nouveau prospect n’est rattaché."}
-                    </p>
-                    {c.status !== "active" ? (
-                      <Btn
-                        variant="primary"
-                        disabled={busy}
-                        onClick={() => patch({ status: "active" })}
-                      >
-                        <Play className="size-4" aria-hidden="true" />
-                        Activer
-                      </Btn>
-                    ) : (
-                      <Btn
-                        variant="danger-soft"
-                        disabled={busy}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Désactiver la campagne ? Les nouveaux prospects ne seront plus rattachés à ses sources.",
-                            )
-                          )
-                            void patch({ status: "inactive" });
-                        }}
-                      >
-                        <Pause className="size-4" aria-hidden="true" />
-                        Désactiver
-                      </Btn>
-                    )}
-                  </Panel>
-                )}
-              </div>
-            </div>
-            <Sources
-              campaign={c}
-              stats={stats.data}
-              canEdit={canEdit}
-              onChanged={reload}
-            />
-          </section>
+            </Tabs.Panel>
+          </Tabs>
+
+          <Drawer open={editing && !!targets.data} onClose={() => setEditing(false)} title="Modifier la campagne" eyebrow="Campagne">
+            {targets.data && (
+              <CampaignForm
+                initial={{
+                  name: c.name,
+                  description: c.description ?? "",
+                  status: c.status,
+                  start_date: day(c.start_date),
+                  end_date: day(c.end_date),
+                  target_codes: c.targets.map((t) => t.code),
+                  sources: [],
+                }}
+                targets={targets.data}
+                withSources={false}
+                framed={false}
+                submitLabel="Enregistrer"
+                busy={busy}
+                error={error}
+                onSubmit={save}
+                onCancel={() => setEditing(false)}
+              />
+            )}
+          </Drawer>
         </>
       )}
     </Screen>

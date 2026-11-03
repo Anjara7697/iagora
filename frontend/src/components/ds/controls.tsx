@@ -78,6 +78,9 @@ export function TextLink(props: ComponentProps<typeof HeroLink>) {
   return <HeroLink {...props} />;
 }
 
+/** Arrondi « lg » des onglets HeroUI : conteneur, onglet et indicateur (cadre blanc de l'onglet choisi). */
+export const TAB_RADIUS = { container: "rounded-lg", tab: "rounded-lg", indicator: "rounded-lg" } as const;
+
 /**
  * Choix exclusif sur une ligne : `Tabs` HeroUI (panneaux vides et masqués : le contenu est géré par l'écran). Accepte les propriétés de `Tabs`
  * (variant, orientation…) ; `label` nomme la liste, `onChange` reçoit la valeur choisie.
@@ -96,12 +99,12 @@ export function Segmented<T extends string>({
 }) {
   return (
     <Tabs selectedKey={value} onSelectionChange={(key) => onChange(String(key) as T)} {...rest}>
-      <Tabs.ListContainer>
+      <Tabs.ListContainer className={TAB_RADIUS.container}>
         <Tabs.List aria-label={label}>
           {options.map((o) => (
-            <Tabs.Tab key={o.value} id={o.value}>
+            <Tabs.Tab key={o.value} id={o.value} className={TAB_RADIUS.tab}>
               {o.text}
-              <Tabs.Indicator />
+              <Tabs.Indicator className={TAB_RADIUS.indicator} />
             </Tabs.Tab>
           ))}
         </Tabs.List>
@@ -421,6 +424,7 @@ export function Check({
  */
 export function CheckCardGroup({
   label,
+  hideLabel = false,
   description,
   options,
   value,
@@ -429,6 +433,8 @@ export function CheckCardGroup({
   ...rest
 }: Omit<ComponentProps<typeof CheckboxGroup>, "children" | "value" | "onChange" | "aria-label"> & {
   label: string;
+  /** Masque le libellé à l'écran (il reste lu par les lecteurs d'écran) quand un titre l'annonce déjà. */
+  hideLabel?: boolean;
   description?: ReactNode;
   options: { value: string; text: ReactNode; hint?: ReactNode }[];
   value: string[];
@@ -436,7 +442,7 @@ export function CheckCardGroup({
 }) {
   return (
     <CheckboxGroup value={value} onChange={onChange} className={cx("flex flex-col gap-2", typeof className === "string" ? className : undefined)} {...rest}>
-      <Label>{label}</Label>
+      <Label className={hideLabel ? "sr-only" : undefined}>{label}</Label>
       {description && <Description>{description}</Description>}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {options.map((o) => (

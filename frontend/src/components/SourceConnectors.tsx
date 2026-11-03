@@ -20,7 +20,7 @@ export type SourceDraft = {
   external_id: string;
 };
 
-type Connector = {
+export type Connector = {
   id: ConnectorId;
   title: string;
   description: string;
@@ -30,7 +30,7 @@ type Connector = {
   soon?: boolean;
 };
 
-const CONNECTORS: Connector[] = [
+export const CONNECTORS: Connector[] = [
   {
     id: "meta",
     title: "Meta Lead Ads",
@@ -77,7 +77,7 @@ const CONNECTORS: Connector[] = [
 type State = { tone: "success" | "warning" | "default"; label: string; link?: { href: string; text: string } };
 
 /** État de chaque connecteur dans IAGORA (lu sur les réglages d'Intégrations ; l'administrateur seul y a accès). */
-function useConnectorStates(): Record<ConnectorId, State | null> {
+export function useConnectorStates(): Record<ConnectorId, State | null> {
   const meta = useApi<MetaSettings>("/integrations/meta");
   const tokens = useApi<ServiceToken[]>("/integrations/tokens");
   const email = useApi<EmailStatus>("/integrations/email");
@@ -106,7 +106,7 @@ function useConnectorStates(): Record<ConnectorId, State | null> {
 }
 
 /** Ce que l'administrateur doit encore faire pour qu'une source reçoive des prospects. */
-function draftState(s: SourceDraft): { tone: "success" | "warning" | "default"; label: string; help: ReactNode } {
+export function draftState(s: SourceDraft): { tone: "success" | "warning" | "default"; label: string; help: ReactNode } {
   switch (s.connector) {
     case "meta":
       return s.external_id.trim()
@@ -125,12 +125,47 @@ function draftState(s: SourceDraft): { tone: "success" | "warning" | "default"; 
   }
 }
 
+/** Catalogue de cartes de connecteurs : état de chaque connecteur (lu sur Intégrations) et bouton « Ajouter ». */
+export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { onAdd: (connector: Connector) => void; title?: string | null }) {
+  const states = useConnectorStates();
+  return (
+    <section aria-label="Connecteurs disponibles" className="flex flex-col gap-3">
+      {title && <h3 className="text-[13px] font-medium text-foreground">{title}</h3>}
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {CONNECTORS.map((c) => {
+          const state = states[c.id];
+          return (
+            <Box as="li" key={c.id} className="gap-3 rounded-lg p-4" aria-label={c.title}>
+              <div className="flex items-center gap-3">
+                <SourceAvatar platform={c.platform} name={c.title} />
+                <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{c.title}</span>
+                {state && (
+                  <Chip size="sm" variant="soft" color={state.tone}>
+                    <Chip.Label>{state.label}</Chip.Label>
+                  </Chip>
+                )}
+              </div>
+              <Description>{c.description}</Description>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button size="sm" variant="outline" className="rounded-lg" isDisabled={c.soon} onPress={() => onAdd(c)} aria-label={`Ajouter ${c.title}`}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  Ajouter
+                </Button>
+                {state?.link && <TextLink href={state.link.href} className="text-xs">{state.link.text}</TextLink>}
+              </div>
+            </Box>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /**
  * Sources d'une campagne présentées comme des connecteurs : un catalogue de cartes (avec l'état de chaque connecteur)
  * puis les sources ajoutées, chacune avec ce qui reste à faire pour recevoir des prospects.
  */
 export default function SourceConnectors({ value, onChange }: { value: SourceDraft[]; onChange: (value: SourceDraft[]) => void }) {
-  const states = useConnectorStates();
   const add = (c: Connector) =>
     onChange([...value, { connector: c.id, name: c.defaultName, type: c.type, platform: c.platform, external_id: "" }]);
   const patch = (index: number, change: Partial<SourceDraft>) =>
@@ -138,35 +173,7 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
 
   return (
     <div className="flex flex-col gap-5">
-      <section aria-label="Connecteurs disponibles" className="flex flex-col gap-3">
-        <h3 className="text-[13px] font-medium text-foreground">Ajouter une source</h3>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {CONNECTORS.map((c) => {
-            const state = states[c.id];
-            return (
-              <Box as="li" key={c.id} className="gap-3 p-4" aria-label={c.title}>
-                <div className="flex items-center gap-3">
-                  <SourceAvatar platform={c.platform} name={c.title} />
-                  <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{c.title}</span>
-                  {state && (
-                    <Chip size="sm" variant="soft" color={state.tone}>
-                      <Chip.Label>{state.label}</Chip.Label>
-                    </Chip>
-                  )}
-                </div>
-                <Description>{c.description}</Description>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button size="sm" variant="outline" className="rounded-lg" isDisabled={c.soon} onPress={() => add(c)} aria-label={`Ajouter ${c.title}`}>
-                    <Plus className="size-4" aria-hidden="true" />
-                    Ajouter
-                  </Button>
-                  {state?.link && <TextLink href={state.link.href} className="text-xs">{state.link.text}</TextLink>}
-                </div>
-              </Box>
-            );
-          })}
-        </ul>
-      </section>
+      <ConnectorCatalogue onAdd={add} />
 
       <section aria-label="Sources de cette campagne" className="flex flex-col gap-3">
         <h3 className="text-[13px] font-medium text-foreground">
@@ -182,7 +189,7 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
             const connector = CONNECTORS.find((c) => c.id === s.connector) ?? CONNECTORS[0];
             const state = draftState(s);
             return (
-              <Box as="li" key={i} className="gap-3 p-4" aria-label={`Source ${i + 1} : ${connector.title}`}>
+              <Box as="li" key={i} className="gap-3 rounded-lg p-4" aria-label={`Source ${i + 1} : ${connector.title}`}>
                 <div className="flex items-center gap-3">
                   <SourceAvatar platform={s.platform} name={connector.title} />
                   <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{connector.title}</span>
