@@ -10,7 +10,7 @@ import CampaignProspects from "@/components/campaign/CampaignProspects";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
-import { Btn, ErrorText, LinkButton, Tag, TextLink, type Tone } from "@/components/ds/controls";
+import { Btn, ErrorText, LinkButton, TAB_RADIUS, Tag, TextLink, type Tone } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
@@ -147,12 +147,12 @@ export default function CampaignPage() {
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
           <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key))}>
-            <Tabs.ListContainer>
+            <Tabs.ListContainer className={TAB_RADIUS.container}>
               <Tabs.List aria-label="Sections de la campagne">
                 {TABS.map((t) => (
-                  <Tabs.Tab key={t.id} id={t.id}>
+                  <Tabs.Tab key={t.id} id={t.id} className={TAB_RADIUS.tab}>
                     {t.title}
-                    <Tabs.Indicator />
+                    <Tabs.Indicator className={TAB_RADIUS.indicator} />
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
@@ -193,6 +193,7 @@ export default function CampaignPage() {
                 }}
                 targets={targets.data}
                 withSources={false}
+                framed={false}
                 submitLabel="Enregistrer"
                 busy={busy}
                 error={error}

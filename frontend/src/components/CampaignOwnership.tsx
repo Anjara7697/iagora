@@ -36,14 +36,14 @@ export default function CampaignOwnership({
   return (
     <Box as="section"
      
-      className="gap-4 p-5"
+      className="gap-4 rounded-lg p-5"
       aria-label="Responsable de campagne"
     >
       <div className="flex flex-col gap-1">
         <Eyebrow>Affectation</Eyebrow>
         <h2 className="text-base font-semibold text-foreground">Responsable de campagne</h2>
       </div>
-      <div className="flex items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3">
+      <div className="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
         <span
           className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-soft-foreground"
           aria-hidden="true"
@@ -97,6 +97,7 @@ export default function CampaignOwnership({
           />
           <Field label="Conseiller responsable de la campagne">
             <SelectBox
+              variant="secondary"
               disabled={busy || advisors.loading || !!advisors.error}
               value={advisor}
               onChange={(e) => {
@@ -144,6 +145,7 @@ export default function CampaignOwnership({
           )}
           <Field label="Prospects déjà présents">
             <SelectBox
+              variant="secondary"
               required
               value={policy}
               disabled={busy}
@@ -161,14 +163,14 @@ export default function CampaignOwnership({
             </SelectBox>
           </Field>
           {policy === "transfer_inherited" && (
-            <p className="rounded-xl bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
+            <p className="rounded-lg bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
               Les exceptions individuelles sont conservées. Les autres prospects
               suivront le nouveau responsable
               {advisor ? "." : " et deviendront non affectés."}
             </p>
           )}
           {policy === "keep" && (
-            <p className="rounded-xl bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
+            <p className="rounded-lg bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
               Les affectations actuelles deviennent des exceptions, y compris
               les prospects sans conseiller. Seuls les nouveaux prospects sans
               exception suivront le nouveau responsable.

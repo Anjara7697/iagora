@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Box } from "@/components/ds/card";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
-import { EmptyText, Panel } from "@/components/ds/layout";
+import { EmptyText } from "@/components/ds/layout";
 import { SourceAvatar } from "@/components/ds/SourceAvatars";
 import { DataTable, Table } from "@/components/ds/table";
 import { ConnectorCatalogue, type Connector } from "@/components/SourceConnectors";
@@ -65,8 +65,8 @@ export default function CampaignSources({
   }
 
   return (
-    <Panel title="Sources de prospects" label="Sources">
-      <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
+      <section aria-label="Sources" className="flex flex-col gap-3">
         <DataTable
           label="Sources de la campagne"
           minWidth={560}
@@ -107,12 +107,20 @@ export default function CampaignSources({
           ))}
         </DataTable>
         {error && <ErrorText>{error}</ErrorText>}
+      </section>
 
-        {canEdit && (
-          <div className="flex flex-col gap-3 border-t border-separator pt-5">
-            <ConnectorCatalogue onAdd={(connector) => setDraft({ connector, name: connector.defaultName, external_id: "" })} />
+      {canEdit && (
+        <section aria-labelledby="add-source-title" className="flex flex-col gap-3">
+          <div className="flex flex-col gap-0.5">
+            <h2 id="add-source-title" className="text-base font-semibold text-foreground">
+              Ajouter une source
+            </h2>
+            <p className="text-sm text-muted">Choisissez d’où viendront les prospects de cette campagne.</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <ConnectorCatalogue title={null} onAdd={(connector) => setDraft({ connector, name: connector.defaultName, external_id: "" })} />
             {draft && (
-              <Box as="form" className="gap-3 p-4" aria-label={`Ajouter ${draft.connector.title}`} onSubmit={(e) => { e.preventDefault(); if (draft.name.trim()) void act(() => add(draft)); }}>
+              <Box as="form" className="gap-3 rounded-lg p-4" aria-label={`Ajouter ${draft.connector.title}`} onSubmit={(e) => { e.preventDefault(); if (draft.name.trim()) void act(() => add(draft)); }}>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Nom de la nouvelle source">
                     <TextInput variant="secondary" aria-label="Nom de la nouvelle source" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
@@ -142,8 +150,8 @@ export default function CampaignSources({
               </Box>
             )}
           </div>
-        )}
-      </div>
-    </Panel>
+        </section>
+      )}
+    </div>
   );
 }

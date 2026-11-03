@@ -126,16 +126,16 @@ export function draftState(s: SourceDraft): { tone: "success" | "warning" | "def
 }
 
 /** Catalogue de cartes de connecteurs : état de chaque connecteur (lu sur Intégrations) et bouton « Ajouter ». */
-export function ConnectorCatalogue({ onAdd }: { onAdd: (connector: Connector) => void }) {
+export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { onAdd: (connector: Connector) => void; title?: string | null }) {
   const states = useConnectorStates();
   return (
     <section aria-label="Connecteurs disponibles" className="flex flex-col gap-3">
-      <h3 className="text-[13px] font-medium text-foreground">Ajouter une source</h3>
+      {title && <h3 className="text-[13px] font-medium text-foreground">{title}</h3>}
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CONNECTORS.map((c) => {
           const state = states[c.id];
           return (
-            <Box as="li" key={c.id} className="gap-3 p-4" aria-label={c.title}>
+            <Box as="li" key={c.id} className="gap-3 rounded-lg p-4" aria-label={c.title}>
               <div className="flex items-center gap-3">
                 <SourceAvatar platform={c.platform} name={c.title} />
                 <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{c.title}</span>
@@ -189,7 +189,7 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
             const connector = CONNECTORS.find((c) => c.id === s.connector) ?? CONNECTORS[0];
             const state = draftState(s);
             return (
-              <Box as="li" key={i} className="gap-3 p-4" aria-label={`Source ${i + 1} : ${connector.title}`}>
+              <Box as="li" key={i} className="gap-3 rounded-lg p-4" aria-label={`Source ${i + 1} : ${connector.title}`}>
                 <div className="flex items-center gap-3">
                   <SourceAvatar platform={s.platform} name={connector.title} />
                   <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{connector.title}</span>

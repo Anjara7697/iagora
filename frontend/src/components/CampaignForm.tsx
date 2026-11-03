@@ -50,6 +50,7 @@ export default function CampaignForm({
   targets,
   withSources,
   steps = false,
+  framed = true,
   submitLabel,
   busy,
   error,
@@ -60,6 +61,8 @@ export default function CampaignForm({
   targets: Target[];
   withSources: boolean;
   steps?: boolean;
+  /** Carte autour du formulaire ; `false` dans un panneau latéral qui a déjà son cadre. */
+  framed?: boolean;
   submitLabel: string;
   busy: boolean;
   error: string | null;
@@ -79,7 +82,8 @@ export default function CampaignForm({
   return (
     <Box
       as="form"
-      className="gap-5 rounded-lg p-5"
+      variant={framed ? undefined : "transparent"}
+      className={framed ? "gap-5 rounded-lg p-5" : "gap-5 p-0"}
       style={FIELD_RADIUS}
       aria-label="Campagne"
       onSubmit={(e) => {

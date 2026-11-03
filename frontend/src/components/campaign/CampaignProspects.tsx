@@ -1,7 +1,7 @@
 "use client";
 
 import { SelectBox, Tag } from "@/components/ds/controls";
-import { EmptyText, Panel, initialsOf } from "@/components/ds/layout";
+import { EmptyText, initialsOf } from "@/components/ds/layout";
 import { DataTable, Table, TablePagination } from "@/components/ds/table";
 import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
 import { qs } from "@/lib/api";
@@ -23,10 +23,11 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
   return (
-    <Panel
-      title="Prospects de la campagne"
-      label="Prospects de la campagne"
-      action={
+    <section aria-label="Prospects de la campagne" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm text-muted" role="status">
+          {list.data ? `${total} prospect${total > 1 ? "s" : ""}${stage ? ` à l’étape « ${label(STAGES, stage)} »` : ""}` : ""}
+        </span>
         <span className="flex items-center gap-2">
           <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
             Étape
@@ -51,8 +52,7 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
             ))}
           </SelectBox>
         </span>
-      }
-    >
+      </div>
       {list.error ? (
         <EmptyText>{list.error.message}</EmptyText>
       ) : (
@@ -108,6 +108,6 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
           })}
         </DataTable>
       )}
-    </Panel>
+    </section>
   );
 }

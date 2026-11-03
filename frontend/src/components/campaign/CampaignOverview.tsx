@@ -22,7 +22,7 @@ function Funnel({ stats }: { stats: CampaignStats }) {
     value: step.stages.reduce((sum, s) => sum + (stats.by_stage[s] ?? 0), 0),
   }));
   return (
-    <Panel title="Entonnoir" label="Entonnoir">
+    <Panel title="Entonnoir" label="Entonnoir" className="rounded-lg">
       {stats.prospects === 0 ? <EmptyText>Aucun prospect pour l&apos;instant.</EmptyText> : <BarList rows={rows} labelWidth={130} />}
     </Panel>
   );
@@ -31,7 +31,7 @@ function Funnel({ stats }: { stats: CampaignStats }) {
 function Levels({ stats }: { stats: CampaignStats }) {
   const order = ["very_hot", "hot", "warm", "cold", "none"];
   return (
-    <Panel title="Niveaux d'intérêt" label="Niveaux d'intérêt">
+    <Panel title="Niveaux d'intérêt" label="Niveaux d'intérêt" className="rounded-lg">
       <BarList
         labelWidth={130}
         rows={order.map((k) => ({
