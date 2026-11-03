@@ -55,7 +55,7 @@ function Knowledge() {
         subtitle="Les sources de référence utilisées par l’agent pour répondre aux questions des prospects."
         actions={
           isAdmin && (
-            <Btn variant="primary" className="rounded-lg" disabled={!canAdd} onClick={startCreating}>
+            <Btn variant="primary" disabled={!canAdd} onClick={startCreating}>
               <Plus className="size-4" aria-hidden="true" />
               Ajouter un document
             </Btn>
@@ -118,7 +118,7 @@ function Knowledge() {
               }}
               emptyAction={
                 canAdd && (
-                  <Btn variant="primary" className="rounded-lg" onClick={startCreating}>
+                  <Btn variant="primary" onClick={startCreating}>
                     <Plus className="size-4" aria-hidden="true" />
                     Ajouter un document
                   </Btn>

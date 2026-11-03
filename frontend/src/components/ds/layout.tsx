@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
-import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
+import { Alert, Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
+import { RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { KpiBadge } from "@/lib/kpi";
@@ -116,18 +116,21 @@ export function Panel({
 }
 
 /** Erreur de chargement lisible, avec nouvelle tentative. */
+/** Erreur de chargement : `Alert` HeroUI danger (même apparence que `ErrorText`), avec « Réessayer » à droite. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground">
-      <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-      <span className="flex-1">{message}</span>
+    <Alert role="alert" status="danger" className="flex-wrap items-center">
+      <Alert.Indicator />
+      <Alert.Content className="min-w-[200px] flex-1">
+        <Alert.Title>{message}</Alert.Title>
+      </Alert.Content>
       {onRetry && (
         <Button size="sm" variant="tertiary" onPress={onRetry}>
           <RefreshCw className="size-4" aria-hidden="true" />
           Réessayer
         </Button>
       )}
-    </div>
+    </Alert>
   );
 }
 

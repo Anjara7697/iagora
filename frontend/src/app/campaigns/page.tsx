@@ -95,7 +95,7 @@ function Campaigns() {
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
         actions={
           isAdmin && (
-            <LinkButton variant="primary" href="/campaigns/new" className="rounded-lg">
+            <LinkButton variant="primary" href="/campaigns/new">
               <Plus className="size-4" aria-hidden="true" />
               Nouvelle campagne
             </LinkButton>
@@ -161,7 +161,7 @@ function Campaigns() {
         leading={
           user &&
           user.role !== "VIEWER" && (
-            <FilterChip className="rounded-lg" pressed={mine} onClick={() => update({ mine: !mine })}>
+            <FilterChip pressed={mine} onClick={() => update({ mine: !mine })}>
               Mes campagnes
             </FilterChip>
           )
@@ -194,7 +194,7 @@ function Campaigns() {
                 title="Aucune campagne ne correspond à ces filtres"
                 description={`Filtres actifs : ${filterText}.`}
                 action={
-                  <Btn variant="secondary" className="rounded-lg" onClick={() => update({ status: "", mine: false })}>
+                  <Btn variant="secondary" onClick={() => update({ status: "", mine: false })}>
                     Afficher toutes les campagnes
                   </Btn>
                 }
@@ -210,7 +210,7 @@ function Campaigns() {
                 }
                 action={
                   isAdmin && (
-                    <LinkButton variant="primary" href="/campaigns/new" className="rounded-lg">
+                    <LinkButton variant="primary" href="/campaigns/new">
                       <Plus className="size-4" aria-hidden="true" />
                       Nouvelle campagne
                     </LinkButton>

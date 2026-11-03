@@ -90,6 +90,8 @@
 :root {
   /* Rayon « S » (small) : les autres rayons en dérivent (xl = 6 px, 2xl = 8 px). */
   --radius: 0.25rem;
+  /* Règle des parcours : champs au rayon « lg » (au lieu de 1,5 × le rayon). */
+  --field-radius: var(--radius-lg);
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -146,5 +148,16 @@
   .chip--very-hot.chip--primary {
     background: var(--level-very-hot);
     color: var(--level-very-hot-foreground);
+  }
+}
+
+@layer components {
+  /* Règle des parcours : rayon « lg » par défaut pour les boutons, pastilles de filtre, cartes et alertes
+     (HeroUI : 3xl). Un utilitaire (rounded-full…) l'emporte toujours, la couche utilities passant après. */
+  .button,
+  .toggle-button,
+  .card,
+  .alert {
+    border-radius: var(--radius-lg);
   }
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { toast } from "@heroui/react";
-import { FileText, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Pencil, Trash2 } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { DemoChip } from "@/components/ds/badges";
 import { Box } from "@/components/ds/card";
 import { Collapse } from "@/components/ds/collapse";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { Btn, ErrorText, FIELD_RADIUS, Field, FileInput, SelectBox, Tag, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FileInput, SelectBox, Tag, TextBox, TextInput } from "@/components/ds/controls";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ActionsBar } from "@/components/ds/settings";
 import { Drawer } from "@/components/Drawer";
@@ -68,7 +68,7 @@ export default function DocumentPanel({
         onClose={close}
         eyebrow={creating ? "Nouveau document" : editing ? "Modification" : "Document"}
         title={creating ? "Ajouter un document" : (d?.title ?? "Document")}
-        icon={<FileText aria-hidden="true" />}
+        icon={<BookOpen aria-hidden="true" />}
       >
         {edit ? (
           creating || d ? (
@@ -143,7 +143,7 @@ function DocumentView({
       {(canEdit || canDelete) && (
         <ActionsBar>
           {canEdit && (
-            <Btn variant="outline" size="sm" className="rounded-lg" onClick={onEdit}>
+            <Btn variant="outline" size="sm" onClick={onEdit}>
               <Pencil className="size-4" aria-hidden="true" />
               Modifier
             </Btn>
@@ -151,7 +151,7 @@ function DocumentView({
           {canDelete && (
             <ConfirmDialog
               trigger={
-                <Btn variant="danger-soft" size="sm" className="rounded-lg">
+                <Btn variant="danger-soft" size="sm">
                   <Trash2 className="size-4" aria-hidden="true" />
                   Supprimer
                 </Btn>
@@ -260,7 +260,6 @@ function DocumentEditor({
   return (
     <form
       className="flex flex-col gap-4"
-      style={FIELD_RADIUS}
       aria-label={locked ? "Modifier le document" : "Nouveau document"}
       onSubmit={(e) => {
         e.preventDefault();
@@ -335,10 +334,10 @@ function DocumentEditor({
       </Field>
       {error && <ErrorText>{error}</ErrorText>}
       <ActionsBar className="border-t border-separator pt-4">
-        <Btn variant="primary" type="submit" className="rounded-lg" disabled={busy || !valid}>
+        <Btn variant="primary" type="submit" disabled={busy || !valid}>
           {busy ? "Enregistrement…" : "Enregistrer"}
         </Btn>
-        <Btn variant="ghost" className="rounded-lg" disabled={busy} onClick={onCancel}>
+        <Btn variant="ghost" disabled={busy} onClick={onCancel}>
           Annuler
         </Btn>
       </ActionsBar>

@@ -4,7 +4,7 @@ import { FileSearch, FileText } from "lucide-react";
 import type { ReactNode } from "react";
 import { DemoChip } from "@/components/ds/badges";
 import { Box } from "@/components/ds/card";
-import { Btn, FIELD_RADIUS, Field, FilterChipGroup, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, Field, FilterChipGroup, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
 import { COMMON, type KnowledgeView } from "@/lib/knowledgeNav";
@@ -48,7 +48,7 @@ export default function DocumentList({
   const toReindex = documents.filter((d) => d.needs_reindex).length;
 
   return (
-    <Box as="section" className="gap-4 rounded-lg p-5" aria-label="Documents disponibles" style={FIELD_RADIUS}>
+    <Box as="section" className="gap-4 rounded-lg p-5" aria-label="Documents disponibles">
       {(documents.length > 0 || filtered) && (
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Rechercher un document" className="w-full sm:w-72">
@@ -103,7 +103,7 @@ export default function DocumentList({
                 .filter(Boolean)
                 .join(" · ")}
               action={
-                <Btn variant="secondary" className="rounded-lg" onClick={() => onChange({ q: "", programme: "", status: "" })}>
+                <Btn variant="secondary" onClick={() => onChange({ q: "", programme: "", status: "" })}>
                   Afficher tous les documents
                 </Btn>
               }

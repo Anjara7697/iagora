@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { Btn, CheckCardGroup, ErrorText, FIELD_RADIUS, Field, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, CheckCardGroup, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { DateRangeField } from "@/components/ds/DateRangeField";
 import { ActionsBar } from "@/components/ds/settings";
 import { Stepper, type Step } from "@/components/ds/Stepper";
@@ -95,7 +95,6 @@ export default function CampaignForm({
       as="form"
       variant={framed ? undefined : "transparent"}
       className={framed ? "gap-5 rounded-lg p-5" : "gap-5 p-0"}
-      style={FIELD_RADIUS}
       aria-label="Campagne"
       onSubmit={(e) => {
         e.preventDefault();
@@ -154,7 +153,7 @@ export default function CampaignForm({
                 <Btn
                   variant="ghost"
                   size="sm"
-                  className="rounded-lg"
+                 
                   onClick={() => set("target_codes", v.target_codes.length === targets.length ? [] : targets.map((t) => t.code))}
                 >
                   {v.target_codes.length === targets.length ? "Tout désélectionner" : "Tout sélectionner"}
@@ -193,20 +192,20 @@ export default function CampaignForm({
       )}
       <ActionsBar className="border-t border-separator pt-4">
         {steps && step > 0 && (
-          <Btn className="rounded-lg" disabled={busy} onClick={() => setStep(step - 1)}>
+          <Btn disabled={busy} onClick={() => setStep(step - 1)}>
             Retour
           </Btn>
         )}
         {steps && step < last ? (
-          <Btn variant="primary" className="rounded-lg" type="submit" disabled={!stepValid}>
+          <Btn variant="primary" type="submit" disabled={!stepValid}>
             Continuer
           </Btn>
         ) : (
-          <Btn variant="primary" className="rounded-lg" type="submit" disabled={busy || !valid}>
+          <Btn variant="primary" type="submit" disabled={busy || !valid}>
             {busy ? "Enregistrement…" : submitLabel}
           </Btn>
         )}
-        <Btn variant="ghost" className="rounded-lg" disabled={busy} onClick={onCancel}>
+        <Btn variant="ghost" disabled={busy} onClick={onCancel}>
           Annuler
         </Btn>
       </ActionsBar>

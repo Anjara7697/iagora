@@ -31,7 +31,7 @@ export default function CampaignSettings({
       <p className="text-sm text-muted">{canEdit ? "Responsable et programmes visés. Le statut se change dans l’en-tête." : "Consultation seule : réservé aux administrateurs."}</p>
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <CampaignOwnership key={`${campaign.id}:${campaign.responsible_advisor_id}`} campaign={campaign} onDone={onOwnerDone} />
-        <Panel title="Programmes visés" label="Programmes visés" className="rounded-lg">
+        <Panel title="Programmes visés" label="Programmes visés">
           {canEdit && targets ? (
             <div className="flex flex-col gap-4">
               <CheckCardGroup

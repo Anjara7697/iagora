@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs } from "@heroui/react";
-import { CalendarDays, Pause, Pencil, Play, Users } from "lucide-react";
+import { CalendarDays, Megaphone, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
@@ -117,7 +117,7 @@ function CampaignDetail() {
                   (c.status === "active" ? (
                     <ConfirmDialog
                       trigger={
-                        <Btn variant="danger-soft" className="rounded-lg" disabled={busy}>
+                        <Btn variant="danger-soft" disabled={busy}>
                           <Pause className="size-4" aria-hidden="true" />
                           Mettre en pause
                         </Btn>
@@ -130,7 +130,7 @@ function CampaignDetail() {
                   ) : (
                     <ConfirmDialog
                       trigger={
-                        <Btn variant="primary" className="rounded-lg" disabled={busy}>
+                        <Btn variant="primary" disabled={busy}>
                           <Play className="size-4" aria-hidden="true" />
                           {c.status === "inactive" ? "Réactiver" : "Activer"}
                         </Btn>
@@ -149,7 +149,7 @@ function CampaignDetail() {
                 {canEdit && (
                   <Btn
                     variant="outline"
-                    className="rounded-lg"
+                   
                     disabled={!targets.data}
                     onClick={() => setEditing(true)}
                     aria-describedby={targets.error ? "campaign-targets-error" : undefined}
@@ -159,7 +159,7 @@ function CampaignDetail() {
                   </Btn>
                 )}
                 {/* Page Prospects complète (filtres avancés, export) ; l'onglet Prospects reste le chemin principal. */}
-                <LinkButton variant="secondary" className="rounded-lg" href={`/prospects?campaign=${c.id}`}>
+                <LinkButton variant="secondary" href={`/prospects?campaign=${c.id}`}>
                   <Users className="size-4" aria-hidden="true" />
                   Ouvrir dans Prospects
                 </LinkButton>
@@ -212,7 +212,7 @@ function CampaignDetail() {
             </Tabs.Panel>
           </Tabs>
 
-          <Drawer open={editing && !!targets.data} onClose={closeEditor} title="Modifier la campagne" eyebrow="Campagne">
+          <Drawer open={editing && !!targets.data} onClose={closeEditor} title="Modifier la campagne" eyebrow="Campagne" icon={<Megaphone aria-hidden="true" />}>
             {targets.data && (
               <CampaignForm
                 initial={{

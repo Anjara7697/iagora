@@ -111,7 +111,7 @@ export default function CampaignSources({
                   ) : (
                     <ConfirmDialog
                       trigger={
-                        <Btn variant="ghost" size="sm" className="rounded-lg" disabled={busy}>
+                        <Btn variant="ghost" size="sm" disabled={busy}>
                           Retirer
                         </Btn>
                       }
@@ -158,11 +158,11 @@ export default function CampaignSources({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Btn variant="primary" type="submit" className="rounded-lg" disabled={busy || !draft.name.trim()}>
+                  <Btn variant="primary" type="submit" disabled={busy || !draft.name.trim()}>
                     <Plus className="size-4" aria-hidden="true" />
                     Ajouter à la campagne
                   </Btn>
-                  <Btn variant="ghost" className="rounded-lg" disabled={busy} onClick={() => setDraft(null)}>
+                  <Btn variant="ghost" disabled={busy} onClick={() => setDraft(null)}>
                     Annuler
                   </Btn>
                 </div>

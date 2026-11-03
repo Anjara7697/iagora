@@ -65,7 +65,7 @@ export default function KnowledgeAlerts({
           title="Recherche indisponible"
           actions={
             isAdmin && (
-              <LinkButton variant="secondary" size="sm" className="rounded-lg" href="/settings?section=ia">
+              <LinkButton variant="secondary" size="sm" href="/settings?section=ia">
                 Configurer dans les paramètres
               </LinkButton>
             )
@@ -82,12 +82,12 @@ export default function KnowledgeAlerts({
           actions={
             <>
               {!showingReindex && (
-                <Btn variant="tertiary" size="sm" className="rounded-lg" onClick={onShowReindex}>
+                <Btn variant="tertiary" size="sm" onClick={onShowReindex}>
                   Afficher {toReindex > 1 ? "ces documents" : "ce document"}
                 </Btn>
               )}
               {isAdmin && configured && (
-                <Btn variant="secondary" size="sm" className="rounded-lg" disabled={reindexing} onClick={onReindex}>
+                <Btn variant="secondary" size="sm" disabled={reindexing} onClick={onReindex}>
                   <RefreshCw className="size-4" aria-hidden="true" />
                   {reindexing ? "Recalcul…" : "Recalculer"}
                 </Btn>
@@ -108,7 +108,7 @@ export default function KnowledgeAlerts({
           icon={<Sparkles className="size-4 text-agent" />}
           title={`${gapCount} question${gapCount > 1 ? "s" : ""} sans source fiable`}
           actions={
-            <LinkButton variant="secondary" size="sm" className="rounded-lg" href="/todo?kind=kb_gap">
+            <LinkButton variant="secondary" size="sm" href="/todo?kind=kb_gap">
               {gapCount > 1 ? "Traiter les demandes" : "Traiter la demande"}
             </LinkButton>
           }
