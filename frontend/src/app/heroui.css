@@ -55,10 +55,6 @@
   --default-foreground: #18181b;
   --border: #e4e4e7;
   --separator: #ececee;
-  --field-background: #ffffff;
-  --field-foreground: #18181b;
-  --field-placeholder: var(--muted);
-  --field-border: #8b8b94;
   --segment: #ffffff;
   --focus: var(--accent);
   --link: var(--accent);
@@ -89,16 +85,13 @@
   --level-very-hot-foreground: #ffffff;
   --backdrop: rgba(24, 24, 27, 0.4);
   --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
-  --field-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
   --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
 }
 :root {
-  --radius: 8px;
-  --field-radius: 8px;
+  /* Rayon « S » (small) : les autres rayons en dérivent (xl = 6 px, 2xl = 8 px). */
+  --radius: 0.25rem;
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  /* Champs : bordure visible de 1 px (3:1 sur blanc). */
-  --field-border-width: 1px;
 }
 
 @theme inline {
@@ -144,11 +137,6 @@
 }
 
 @layer components {
-  /* Interrupteur éteint : piste visible sur fond blanc. */
-  .switch {
-    --switch-control-bg: #a1a1aa;
-  }
-
   /* Étapes portées par l’agent (« En conversation », « Qualifié »). */
   .chip--agent.chip--soft {
     background: var(--agent-soft);

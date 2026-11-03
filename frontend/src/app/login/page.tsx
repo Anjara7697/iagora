@@ -7,6 +7,7 @@ import { Brand } from "@/components/ds/Brand";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { api, ApiError, setToken } from "@/lib/api";
+import { Box } from "@/components/ds/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,10 +53,10 @@ export default function LoginPage() {
             ▪
           </span>
           IAGORA
-          <span className="rounded-sm border border-white/25 px-1.5 font-mono text-[11px] font-normal text-white/70">2.0</span>
+          <span className="rounded-sm border border-white/25 px-1.5 text-[11px] font-normal text-white/70">2.0</span>
         </span>
         <div className="relative flex max-w-[520px] flex-col gap-5">
-          <span className="font-mono text-xs tracking-[0.06em] text-white/60 uppercase">Agent intelligent commercial</span>
+          <span className="text-xs tracking-[0.06em] text-white/60 uppercase">Agent intelligent commercial</span>
           <h1 className="text-[44px]/[50px] font-semibold tracking-[-0.03em]">
             Chaque échange,
             <br />
@@ -80,14 +81,14 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <span className="relative font-mono text-xs tracking-[0.06em] text-white/60 uppercase">DATUM Academy</span>
+        <span className="relative text-xs tracking-[0.06em] text-white/60 uppercase">DATUM Academy</span>
       </section>
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="flex w-full max-w-[420px] flex-col gap-6">
           <span className="lg:hidden">
             <Brand />
           </span>
-          <form className="card card--default gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
+          <Box as="form" className="gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
             <div className="flex flex-col gap-1">
               <Eyebrow>Votre espace de travail</Eyebrow>
               <h2 id="login-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
@@ -126,7 +127,7 @@ export default function LoginPage() {
                 </>
               )}
             </Btn>
-          </form>
+          </Box>
           <p className="text-center text-[13px] text-muted">Besoin d’un accès ? Contactez votre administrateur.</p>
         </div>
       </section>

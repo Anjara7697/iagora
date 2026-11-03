@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Avatar } from "@heroui/react";
-import { ChevronRight, MessageSquare, Play, Sparkles } from "lucide-react";
+import { MessageSquare, Play, Sparkles } from "lucide-react";
 import { Suspense, useState } from "react";
 import ProspectResultsReturn, { backLinkClass } from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";
@@ -13,7 +13,7 @@ import { ErasePanel, ErasureResult } from "@/components/ErasePanel";
 import MembershipActions from "@/components/MembershipActions";
 import InteractionHistory from "@/components/InteractionHistory";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, LinkButton, NativeSelect, Notice, Tag, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, LinkButton, SelectBox, Notice, Tag, TextLink } from "@/components/ds/controls";
 import { EmptyText, Eyebrow, Panel, Screen } from "@/components/ds/layout";
 import { DemoBadge, Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -30,6 +30,7 @@ import {
   label,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
+import { Collapse } from "@/components/ds/collapse";
 import type {
   AgentRun,
   Campaign,
@@ -39,6 +40,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 export default function ProspectPage() {
   const user = useCurrentUser();
@@ -171,7 +173,7 @@ export default function ProspectPage() {
       />
       {p && (
         <>
-          <header className="card card--default flex-row flex-wrap items-start gap-4 p-5">
+          <Box as="header" className="flex-row flex-wrap items-start gap-4 p-5">
             <Avatar size="lg" variant="soft" color="accent" aria-hidden="true">
               <Avatar.Fallback>
                 {[p.first_name, p.last_name]
@@ -217,7 +219,7 @@ export default function ProspectPage() {
                 </LinkButton>
               )}
             </div>
-          </header>
+          </Box>
           {notice && <Notice>{notice}</Notice>}
           {actionError && <ErrorText>{actionError}</ErrorText>}
           {p.consent_status === "opted_out" && (
@@ -229,8 +231,8 @@ export default function ProspectPage() {
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-6">
               {showRecommendation && (
-                <section
-                  className="card card--default gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
+                <Box as="section"
+                  className="gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
                   aria-label="Prochaine action recommandée"
                 >
                   <div className="flex flex-col gap-2 bg-agent-soft px-5 py-4">
@@ -277,7 +279,7 @@ export default function ProspectPage() {
                       onRetry={runs.reload}
                     />
                   </div>
-                </section>
+                </Box>
               )}
               <Panel label="Profil collecté" title="Profil collecté">
                 {Object.keys(p.profile).length === 0 ? (
@@ -464,7 +466,7 @@ export default function ProspectPage() {
                         level={m.interest_status}
                       />
                     </div>
-                    <p className="font-mono text-xs text-muted tabular-nums">
+                    <p className="text-xs text-muted tabular-nums">
                       Intérêt {m.interest_score} · Adéquation {m.fit_score}
                     </p>
                     <p className="text-[13px] text-foreground">
@@ -478,30 +480,23 @@ export default function ProspectPage() {
                             : "Non affecté")}
                       </strong>
                     </p>
-                    <details
-                      className="group"
-                      open={editingMembership === m.id}
-                      onToggle={(e) => {
-                        if (e.currentTarget.open) setEditingMembership(m.id);
-                        else
-                          setEditingMembership((old) =>
-                            old === m.id ? null : old,
-                          );
-                      }}
-                    >
-                      <summary
-                        data-membership={m.id}
-                        className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg py-1 text-[13px] font-medium text-link outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden"
-                      >
-                        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
-                        Modifier l’affectation ou l’étape
-                      </summary>
+                    <Collapse
+  title="Modifier l’affectation ou l’étape"
+  triggerClassName="w-fit py-1 text-link"
+  open={editingMembership === m.id}
+  onOpenChange={(isOpen) =>
+    isOpen
+      ? setEditingMembership(m.id)
+      : setEditingMembership((old) => (old === m.id ? null : old))
+  }
+  triggerProps={{ "data-membership": m.id }}
+>
                       <MembershipActions
                         key={`${m.id}:${m.assigned_advisor_id}:${m.assignment_is_override}:${m.conversion_stage}`}
                         membership={m}
                         onDone={refreshTracking}
                       />
-                    </details>
+</Collapse>
                     <MembershipHistory
                       key={`${m.id}:${revision}`}
                       id={m.id}
@@ -526,7 +521,7 @@ export default function ProspectPage() {
                 )}
                 {runs.data?.map((r) => (
                   <div key={r.run_id} className="flex flex-col gap-2 border-b border-separator py-4 last:border-b-0">
-                    <div className="font-mono text-xs text-muted tabular-nums">{formatDate(r.started_at)}</div>
+                    <div className="text-xs text-muted tabular-nums">{formatDate(r.started_at)}</div>
                     <RunView run={r} />
                     {r.reply && (
                       <blockquote className="rounded-xl border-l-2 border-agent/40 bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
@@ -552,15 +547,14 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
   return (
     <>
       {history.data && (
-        <details className="group">
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-lg py-1 text-[13px] font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="size-3.5 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-            Historique du parcours {index}
-          </summary>
+        <Collapse
+  title={`Historique du parcours ${index}`}
+  triggerClassName="w-fit py-1"
+>
           <ul className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4 text-[13px] text-foreground">
             {history.data.stage_events.map((e) => (
               <li key={`s${e.id}`}>
-                <span className="font-mono text-xs text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
+                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
                 {label(STAGES, e.from_stage)} →{" "}
                 <b className="font-semibold">{label(STAGES, e.to_stage)}</b>{" "}
                 {e.reason ? `(${e.reason})` : ""}
@@ -568,13 +562,13 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
             ))}
             {history.data.score_events.map((e) => (
               <li key={`p${e.id}`}>
-                <span className="font-mono text-xs text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
+                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
                 {e.points >= 0 ? "+" : ""}
                 {e.points} → {e.new_value} ({e.reason})
               </li>
             ))}
           </ul>
-        </details>
+</Collapse>
       )}
       <Loading
         loading={history.loading}
@@ -646,7 +640,7 @@ function CampaignAttribution({
           >
             Campagnes précédentes
           </Btn>
-          <span className="font-mono text-xs text-muted tabular-nums">
+          <span className="text-xs text-muted tabular-nums">
             {offset + 1}–{Math.min(offset + 50, campaigns.data.total)} /{" "}
             {campaigns.data.total}
           </span>
@@ -665,7 +659,7 @@ function CampaignAttribution({
         </div>
       )}
       <Field label="Campagne d’attribution">
-        <NativeSelect
+        <SelectBox
           value={campaign}
           disabled={busy || campaigns.loading}
           onChange={(e) => {
@@ -679,10 +673,10 @@ function CampaignAttribution({
               {c.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       <Field label="Source d’attribution">
-        <NativeSelect
+        <SelectBox
           value={source}
           disabled={busy || !selected}
           onChange={(e) => setSource(e.target.value)}
@@ -693,7 +687,7 @@ function CampaignAttribution({
               {s.name}
             </option>
           ))}
-        </NativeSelect>
+        </SelectBox>
       </Field>
       {selected?.sources?.length === 0 && (
         <p className="text-[13px] text-muted">

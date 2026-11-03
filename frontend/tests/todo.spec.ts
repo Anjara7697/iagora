@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const prospect = {
   id: 1,
@@ -122,7 +123,7 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   const finish = page.getByRole("button", {
     name: "Passer à « Candidature déposée » et terminer",
   });
-  await expect(page.getByLabel("Parcours concerné")).toHaveValue("17");
+  await expect(page.getByLabel("Parcours concerné")).toHaveAttribute("data-value", "17");
   await expect(finish).toBeDisabled();
   await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").press("Space");
   await finish.click();
@@ -207,7 +208,7 @@ test("email d'admission : le conseiller confirme le bon parcours avec la preuve"
     .getByRole("complementary", { name: "Éléments à traiter" })
     .getByRole("button", { name: /Lina Dupont/ })
     .click();
-  await page.getByLabel("Parcours confirmé par la preuve").selectOption("27");
+  await choose(page.getByLabel("Parcours confirmé par la preuve"), "27");
   await page.getByLabel("Note facultative").fill("Identité vérifiée");
   await page
     .getByRole("button", { name: "Confirmer l'inscription", exact: true })
@@ -388,8 +389,7 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Risque : faible", { exact: true })).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeHidden();
   const sources = detail.getByText("Sources, confiance et contexte", { exact: true });
-  await sources.focus();
-  await page.keyboard.press("Enter");
+  await sources.click();
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(
@@ -455,7 +455,7 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(delivery).toContainText("aucun envoi n’est encore confirmé");
   await expect(page.getByRole("region", { name: "Message traité" })).toContainText("Bonjour Marie, version relue.");
   expect(calls.posts).toHaveLength(1);
-  await page.getByRole("button", { name: "À traiter", exact: true }).click();
+  await page.getByRole("tab", { name: "À traiter", exact: true }).click();
   await page.getByRole("button", { name: "Examiner la première demande →" }).click();
   await expect(
     page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
@@ -660,7 +660,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("button", { name: "Traités (24 h) (2)" }).click();
+  await page.getByRole("tab", { name: "Traités (24 h) (2)" }).click();
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();

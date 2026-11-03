@@ -102,7 +102,7 @@ export function ScoreBadge({ total, level }: { total: number; level?: string | n
       color="default"
       className={veryHot ? "chip--very-hot" : undefined}
     >
-      <span className="font-mono tabular-nums">{total}</span>
+      <span className="tabular-nums">{total}</span>
       {level && <HeatMeter level={level} onFill={veryHot} />}
       {level && <Chip.Label>{label(LEVELS, level)}</Chip.Label>}
     </Chip>

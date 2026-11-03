@@ -1,24 +1,61 @@
 "use client";
 
-import { Button } from "@heroui/react";
+import { Button, Card, Meter, ScrollShadow } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { KpiBadge } from "@/lib/kpi";
+import { Box } from "./card";
+import { reveal } from "./motion";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** Racine d'un écran refait : soustrait le sous-arbre à l'ancienne feuille de style. */
-export function Screen({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
-  return (
+/** Épaisseur du fondu des `ScrollShadow` (px) : une seule valeur pour la page et les tableaux (40 par défaut dans HeroUI). */
+export const SCROLL_SHADOW_SIZE = 15;
+
+/**
+ * Racine d'un écran. Avec `scroll`, le contenu défile dans un `ScrollShadow` vertical (fondu en haut et en bas quand
+ * il reste du contenu) dont la hauteur est bornée à celle de la fenêtre, sous l'en-tête de l'application.
+ * `hideScrollBar` masque la barre de défilement.
+ * Hauteurs (≥ 601 px) : en-tête 3.5rem + marge haute de `<main>` 1.75rem + 1rem laissé en bas = 6.25rem ; la marge basse
+ * de `<main>` (4rem) est annulée par `-mb-12` pour que la fenêtre ne défile pas en plus du conteneur.
+ * Sous 601 px : en-tête 3.5rem + marges de `<main>` (1.25rem en haut, 3rem en bas) = 8.25rem.
+ */
+export function Screen({
+  children,
+  className,
+  wide,
+  scroll = false,
+  hideScrollBar = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  wide?: boolean;
+  scroll?: boolean;
+  hideScrollBar?: boolean;
+}) {
+  const content = (
     <div className={cx("mx-auto flex w-full flex-col gap-6", wide ? "max-w-none" : "max-w-[1400px]", className)}>
       {children}
     </div>
+  );
+  if (!scroll) return content;
+  return (
+    <ScrollShadow
+      orientation="vertical"
+      size={SCROLL_SHADOW_SIZE}
+      hideScrollBar={hideScrollBar}
+      // -m-1 / p-1 : l'ombre des cartes et l'anneau de focus ne sont pas coupés par le conteneur.
+      className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:-mb-12 min-[601px]:max-h-[calc(100dvh-6.25rem)]"
+    >
+      {content}
+    </ScrollShadow>
   );
 }
 
 /** Ligne mono en capitales « Groupe · Page ». */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cx("font-mono text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
+  return <span className={cx("text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
 }
 
 /** En-tête d'écran : sur-titre, titre, sous-titre d'une phrase, actions à droite. */
@@ -28,15 +65,17 @@ export function PageHeader({
   subtitle,
   actions,
   className,
+  style,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-3", className)}>
+    <header className={cx("flex flex-wrap items-end gap-3", className)} style={style}>
       <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="text-[26px]/[32px] font-semibold tracking-[-0.02em] text-foreground sm:text-[28px]/[34px]">{title}</h1>
@@ -47,7 +86,7 @@ export function PageHeader({
   );
 }
 
-/** Carte titrée et nommée (région accessible) : titre, action à droite, contenu. */
+/** Carte titrée et nommée (région accessible) : `Card` HeroUI avec `Card.Header`, `Card.Title` (h2) et `Card.Content`. */
 export function Panel({
   title,
   label,
@@ -64,13 +103,15 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section aria-label={label} className={cx("card card--default gap-0 p-0", className)}>
-      <div className="flex min-h-13 items-center gap-3 border-b border-separator px-5 py-3">
-        <h2 className="flex-1 text-base font-semibold text-foreground">{title}</h2>
+    <Box as="section" aria-label={label} className={className}>
+      <Card.Header className="flex-row items-center gap-3">
+        <Card.Title render={(props) => <h2 {...props} />} className="flex-1">
+          {title}
+        </Card.Title>
         {action}
-      </div>
-      <div className={cx("flex flex-col", bodyClassName ?? "px-5 py-4")}>{children}</div>
-    </section>
+      </Card.Header>
+      <Card.Content className={bodyClassName}>{children}</Card.Content>
+    </Box>
   );
 }
 
@@ -121,7 +162,14 @@ export function EmptyPanel({
   );
 }
 
-/** Chiffre clé : libellé mono, valeur en chiffres tabulaires, indication. Lien si `href`. */
+/** Couleurs de texte du chiffre selon le ton (variantes « soft-foreground » du thème : contraste >= 6,5:1 sur blanc). */
+const TONE_TEXT = {
+  success: "text-success-soft-foreground",
+  warning: "text-warning-soft-foreground",
+  danger: "text-danger-soft-foreground",
+} as const;
+
+/** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
   label,
   value,
@@ -129,6 +177,9 @@ export function KpiCard({
   href,
   dot,
   pending,
+  badge,
+  className,
+  style,
 }: {
   label: ReactNode;
   value?: ReactNode;
@@ -136,33 +187,79 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
+  badge?: KpiBadge;
+  className?: string;
+  style?: CSSProperties;
 }) {
   const body = (
     <>
-      <span className="flex items-center gap-2 text-[13px] font-medium text-muted">
+      <Card.Description className="flex items-center gap-2">
         {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
         {label}
-      </span>
+      </Card.Description>
       {pending ? (
-        <span className="text-sm text-muted">Pas encore mesuré</span>
+        <Card.Description>Pas encore mesuré</Card.Description>
       ) : (
-        <span className="font-mono text-[28px]/8 tracking-[-0.02em] text-foreground tabular-nums">{value}</span>
+        <>
+          <Card.Title
+            render={(props) => <span {...props} />}
+            className={cx("text-3xl tabular-nums", badge && TONE_TEXT[badge.tone])}
+          >
+            {value}
+          </Card.Title>
+          {badge && <span className="sr-only">{badge.label}</span>}
+        </>
       )}
-      {hint && <span className="text-[13px]/[18px] text-muted">{hint}</span>}
+      {hint && <Card.Description>{hint}</Card.Description>}
     </>
   );
-  const cls = "flex flex-col gap-1.5 rounded-lg bg-surface p-4 shadow-surface";
-  if (pending) return <div className={cx(cls, "border border-dashed border-field-border/50 bg-transparent shadow-none")}>{body}</div>;
   if (href)
     return (
-      <Link
-        href={href}
-        className={cx(cls, "outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus")}
-      >
+      <Box as={Link} href={href} className={className} style={style}>
         {body}
-      </Link>
+      </Box>
     );
-  return <div className={cls}>{body}</div>;
+  return (
+    <Box variant={pending ? "transparent" : undefined} className={className} style={style}>
+      {body}
+    </Box>
+  );
+}
+
+export type KpiItem = {
+  key: string;
+  label: ReactNode;
+  value?: ReactNode;
+  hint?: ReactNode;
+  href?: string;
+  dot?: string;
+  pending?: boolean;
+  badge?: KpiBadge;
+};
+
+/** Bandeau de chiffres clés : grille de `KpiCard` (rayon « lg »), apparition échelonnée à partir de `startIndex`. */
+export function KpiStrip({
+  label,
+  items,
+  startIndex = 0,
+  cardClassName = "rounded-lg",
+  className,
+}: {
+  label: string;
+  items: KpiItem[];
+  startIndex?: number;
+  cardClassName?: string;
+  className?: string;
+}) {
+  return (
+    <section className={cx("grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4", className)} aria-label={label}>
+      {items.map(({ key, ...item }, i) => {
+        const motion = reveal(startIndex + i);
+        return <KpiCard key={key} {...item} className={cx(cardClassName, motion.className)} style={motion.style} />;
+      })}
+    </section>
+  );
 }
 
 /** Répartition en barres : libellé, barre, valeur en mono. La valeur porte l'information. */
@@ -170,7 +267,7 @@ export function BarList({
   rows,
   labelWidth = 112,
 }: {
-  rows: { key: string; label: ReactNode; value: number; fill?: string; title?: string }[];
+  rows: { key: string; label: ReactNode; value: number; color?: "default" | "accent" | "success" | "warning" | "danger"; fill?: string; title?: string }[];
   labelWidth?: number;
 }) {
   const max = Math.max(1, ...rows.map((r) => r.value));
@@ -183,13 +280,12 @@ export function BarList({
           style={{ gridTemplateColumns: `${labelWidth}px minmax(0,1fr) 40px` }}
         >
           <span className="flex min-w-0 items-center gap-2 text-foreground">{r.label}</span>
-          <span className="h-2 overflow-hidden rounded-full bg-surface-tertiary" aria-hidden="true">
-            <span
-              className={cx("block h-full rounded-full", r.fill ?? "bg-accent")}
-              style={{ width: `${Math.round((r.value / max) * 100)}%` }}
-            />
-          </span>
-          <span className="text-right font-mono text-[13px] text-foreground tabular-nums">{r.value}</span>
+          <Meter value={r.value} minValue={0} maxValue={max} aria-label={r.title ?? r.key} color={r.color} className="w-full">
+            <Meter.Track>
+              <Meter.Fill className={r.fill} />
+            </Meter.Track>
+          </Meter>
+          <span className="text-right text-[13px] text-foreground tabular-nums">{r.value}</span>
         </div>
       ))}
     </div>

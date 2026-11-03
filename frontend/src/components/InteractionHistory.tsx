@@ -6,6 +6,7 @@ import { Loading } from "@/components/ui";
 import { formatDate } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Page } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type Interaction = {
   id: number;
@@ -32,7 +33,7 @@ export default function InteractionHistory({ id }: { id: number }) {
     `/prospects/${id}/interactions?limit=${LIMIT}&offset=${offset}`,
   );
   return (
-    <section className="card card--default gap-0 p-0" aria-label="Historique des interactions">
+    <Box as="section" className="gap-0 p-0" aria-label="Historique des interactions">
       <div className="flex min-h-14 items-center border-b border-separator px-5 py-3">
         <h2 className="text-base font-semibold text-foreground">Interactions</h2>
       </div>
@@ -83,7 +84,7 @@ export default function InteractionHistory({ id }: { id: number }) {
             >
               Interactions précédentes
             </Btn>
-            <span className="font-mono text-xs text-muted tabular-nums">
+            <span className="text-xs text-muted tabular-nums">
               {history.data.total === 0 ? 0 : offset + 1}–
               {Math.min(offset + LIMIT, history.data.total)} /{" "}
               {history.data.total}
@@ -99,6 +100,6 @@ export default function InteractionHistory({ id }: { id: number }) {
           </div>
         )}
       </div>
-    </section>
+    </Box>
   );
 }

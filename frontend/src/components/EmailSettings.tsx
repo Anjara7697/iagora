@@ -1,12 +1,13 @@
 "use client";
 
-import { ChevronRight, Radar, ShieldCheck } from "lucide-react";
+import { Radar, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Btn, NativeSelect, TextInput } from "./ds/controls";
+import { Btn, SelectBox, TextInput } from "./ds/controls";
 import { cx } from "./ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, Toggle } from "./ds/settings";
 import { Field as Stacked } from "./ds/controls";
+import { Collapse } from "@/components/ds/collapse";
 import type {
   EmailAutodetect,
   EmailConfig,
@@ -259,11 +260,12 @@ export function EmailSettings({
               </span>
             )}
           </div>
-          <details className="group rounded-xl border border-separator px-4 py-3">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-medium text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
-              Paramètres avancés des serveurs
-            </summary>
+          <Collapse
+  title="Paramètres avancés des serveurs"
+  className="rounded-xl border border-separator px-4 py-3"
+  triggerClassName="w-full text-muted hover:text-foreground"
+  bodyClassName="pt-3"
+>
             <div className="mt-3 flex flex-col gap-4">
               <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
@@ -294,17 +296,17 @@ export function EmailSettings({
                   />
                 </Stacked>
                 <Stacked label="Sécurité SMTP" className="sm:col-span-2">
-                  <NativeSelect
+                  <SelectBox
                     value={form.smtp_security}
                     onChange={(e) => set("smtp_security", e.target.value as "starttls" | "ssl")}
                   >
                     <option value="starttls">STARTTLS (587)</option>
                     <option value="ssl">SSL/TLS (465)</option>
-                  </NativeSelect>
+                  </SelectBox>
                 </Stacked>
               </div>
             </div>
-          </details>
+</Collapse>
         </InfoRow>
         <InfoRow label="Connexion" note="Rien n’est lu, envoyé ni enregistré. Le test liste les dossiers de la boîte.">
           <div className="flex flex-wrap items-center gap-3">
@@ -334,7 +336,7 @@ export function EmailSettings({
           }
         >
           {folders.length > 0 ? (
-            <NativeSelect
+            <SelectBox
               value={hasFolder ? form.imap_folder : ""}
               onChange={(e) => set("imap_folder", e.target.value)}
             >
@@ -344,7 +346,7 @@ export function EmailSettings({
                   {f.label}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectBox>
           ) : (
             <TextInput value={form.imap_folder} onChange={(e) => set("imap_folder", e.target.value)} />
           )}

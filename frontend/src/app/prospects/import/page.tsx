@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Check as CheckIcon, Eye, FileSpreadsheet, Upload } from "lucide-react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CampaignSourcePicker } from "@/components/CampaignSourcePicker";
-import { Btn, LinkButton, Tag } from "@/components/ds/controls";
+import { Btn, FileInput, LinkButton, Tag } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard as Section, Stats, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
@@ -105,7 +105,7 @@ export default function ImportPage() {
             >
               <span
                 className={cx(
-                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-xs",
+                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs",
                   current ? "bg-accent text-accent-foreground" : done ? "bg-success text-success-foreground" : "bg-surface-tertiary",
                 )}
                 aria-hidden="true"
@@ -123,21 +123,20 @@ export default function ImportPage() {
           label="Fichier CSV (2 Mo, 5000 lignes maximum)"
           note="Colonnes reconnues par leur intitulé : prénom, nom, email, téléphone, programme, ville, entreprise… Séparateur ; ou , — UTF-8 ou Windows."
         >
-          <input
-            type="file"
+          <FileInput
             accept=".csv,text/csv"
-            onChange={(e) => {
-              setFile(e.target.files?.[0] ?? null);
+            file={file}
+            onChange={(f) => {
+              setFile(f ?? null);
               setReport(null);
             }}
-            className="w-full cursor-pointer rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-3 text-[13px] text-muted file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-[13px] file:font-medium file:text-accent-foreground"
           />
         </Field>
         {file && (
           <p className="flex items-center gap-2 text-[13px] text-foreground">
             <FileSpreadsheet className="size-4 text-success" aria-hidden="true" />
             <span className="font-medium">{file.name}</span>
-            <span className="font-mono text-xs text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
+            <span className="text-xs text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
           </p>
         )}
         <InfoRow label="Destination" note="Facultatif : les prospects sans campagne restent « à rattacher ».">

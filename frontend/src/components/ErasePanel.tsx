@@ -5,7 +5,7 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ErasureReport, Prospect } from "@/lib/types";
-import { Btn, LinkButton, NativeSelect, TextInput } from "./ds/controls";
+import { Btn, LinkButton, SelectBox, TextInput } from "./ds/controls";
 import { PageHeader, Screen } from "./ds/layout";
 import { ActionsBar, Feedback, SettingRow, SettingsCard, Stats } from "./ds/settings";
 
@@ -60,13 +60,13 @@ export function ErasePanel({
             label="Motif"
             note="Une demande d’effacement garde une empreinte (illisible) de l’adresse pour ne plus jamais recontacter la personne."
           >
-            <NativeSelect
+            <SelectBox
               value={reason}
               onChange={(e) => setReason(e.target.value as "request" | "other")}
             >
               <option value="request">Demande de la personne</option>
               <option value="other">Autre motif</option>
-            </NativeSelect>
+            </SelectBox>
           </SettingRow>
           <SettingRow
             label={

@@ -8,7 +8,7 @@ import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, FilterChip, NativeSelect, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FilterChip, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
 import { api, ApiError, SIMULATOR_ENABLED } from "@/lib/api";
@@ -22,6 +22,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type Session = { prospectId: number; conversationId: string; name: string };
 
@@ -260,7 +261,7 @@ export default function SimulatorPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="card card--default flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
+        <Box as="section" className="flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
             <Route className="size-4" />
           </span>
@@ -274,9 +275,9 @@ export default function SimulatorPage() {
           <Btn variant="outline" size="sm" onClick={() => setGuided(true)}>
             Ouvrir le parcours guidé
           </Btn>
-        </section>
+        </Box>
         {isAdmin && (
-          <section className="card card--default gap-3 p-5" aria-label="Données fictives">
+          <Box as="section" className="gap-3 p-5" aria-label="Données fictives">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
                 <Database className="size-4" />
@@ -322,7 +323,7 @@ export default function SimulatorPage() {
               </Btn>
             </div>
             {purgeNotice && <Notice>{purgeNotice}</Notice>}
-          </section>
+          </Box>
         )}
       </div>
 
@@ -345,7 +346,7 @@ export default function SimulatorPage() {
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
         <aside className="flex flex-col gap-4" aria-label="Prospect simulé">
           {!session ? (
-            <section className="card card--default gap-4 p-5">
+            <Box as="section" className="gap-4 p-5">
               <h2 className="text-base font-semibold text-foreground">Nouveau prospect fictif</h2>
               <Loading
                 loading={campaigns.loading}
@@ -361,7 +362,7 @@ export default function SimulatorPage() {
               {campaign && (
                 <div className="flex flex-col gap-4">
                   <Field label="Campagne">
-                    <NativeSelect
+                    <SelectBox
                       value={campaign.id}
                       onChange={(e) => {
                         setCampaignId(Number(e.target.value));
@@ -373,10 +374,10 @@ export default function SimulatorPage() {
                           {c.name}
                         </option>
                       ))}
-                    </NativeSelect>
+                    </SelectBox>
                   </Field>
                   <Field label="Programme visé">
-                    <NativeSelect
+                    <SelectBox
                       value={targetCode || campaign.targets[0]?.code}
                       onChange={(e) => setTargetCode(e.target.value)}
                     >
@@ -385,7 +386,7 @@ export default function SimulatorPage() {
                           {t.name}
                         </option>
                       ))}
-                    </NativeSelect>
+                    </SelectBox>
                   </Field>
                   <Field label="Prénom du prospect">
                     <TextInput value={name} onChange={(e) => setName(e.target.value)} />
@@ -396,9 +397,9 @@ export default function SimulatorPage() {
                   </Btn>
                 </div>
               )}
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default gap-3 p-5">
+            <Box as="section" className="gap-3 p-5">
               <div className="flex items-center gap-3">
                 <span
                   className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-sm font-semibold text-foreground"
@@ -440,11 +441,11 @@ export default function SimulatorPage() {
               <TextLink href={`/prospects/${session.prospectId}`} className="w-fit text-[13px]">
                 Voir la fiche complète →
               </TextLink>
-            </section>
+            </Box>
           )}
 
           {session && (
-            <section className="card card--default gap-3 p-5">
+            <Box as="section" className="gap-3 p-5">
               <div className="flex flex-col gap-1">
                 <h3 className="text-sm font-semibold text-foreground">Messages types</h3>
                 <p className="text-xs text-muted">
@@ -453,22 +454,22 @@ export default function SimulatorPage() {
               </div>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Messages types">
                 {SCENARIOS.map((s) => (
-                  <button
+                  <Btn
                     key={s.title}
-                    type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={busy || closed}
                     onClick={() => setText(s.message)}
-                    className="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-3 text-[13px] font-medium text-foreground outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {s.title}
-                  </button>
+                  </Btn>
                 ))}
               </div>
-            </section>
+            </Box>
           )}
         </aside>
 
-        <section className="card card--default min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
+        <Box as="section" className="min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
           <div className="flex min-h-14 items-center gap-2 border-b border-separator px-5 py-3">
             <MessagesSquare className="size-4 text-muted" aria-hidden="true" />
             <h2 className="flex-1 text-base font-semibold text-foreground">Conversation</h2>
@@ -553,9 +554,9 @@ export default function SimulatorPage() {
               </div>
             </>
           )}
-        </section>
+        </Box>
 
-        <aside className="card card--default gap-4 p-5" aria-label="Décision de l'agent">
+        <Box as="aside" className="gap-4 p-5" aria-label="Décision de l'agent">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-agent" aria-hidden="true" />
             <h3 className="text-base font-semibold text-foreground">Décision de l&apos;agent</h3>
@@ -583,7 +584,7 @@ export default function SimulatorPage() {
               <RunView run={current} />
               <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 text-[13px]">
                 <dt className="text-muted">Intérêt / adéquation</dt>
-                <dd className="font-mono text-foreground tabular-nums">
+                <dd className="text-foreground tabular-nums">
                   {current.scores.interest ?? "-"} /{" "}
                   {current.scores.fit ?? "-"}
                 </dd>
@@ -599,7 +600,7 @@ export default function SimulatorPage() {
                       {sources.length > 0 ? sources.join(" ; ") : "aucune"}
                     </dd>
                     <dt className="text-muted">Confiance</dt>
-                    <dd className="font-mono text-foreground tabular-nums">
+                    <dd className="text-foreground tabular-nums">
                       {confidence !== null
                         ? `${Math.round(confidence * 100)} %`
                         : "-"}
@@ -609,7 +610,7 @@ export default function SimulatorPage() {
               </dl>
             </>
           )}
-        </aside>
+        </Box>
       </div>
     </Screen>
   );

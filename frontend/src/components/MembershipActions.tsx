@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, ErrorText, Field, NativeSelect, Notice, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, SelectBox, Notice, TextBox, TextInput } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { STAGES } from "@/lib/labels";
@@ -117,7 +117,7 @@ export default function MembershipActions({
             campagne, sur toutes ses sources.
           </p>
           <Field label="Conseiller responsable">
-            <NativeSelect
+            <SelectBox
               value={advisor}
               disabled={busy || advisors.loading || !!advisors.error}
               onChange={(e) => setAdvisor(e.target.value)}
@@ -134,7 +134,7 @@ export default function MembershipActions({
                   {a.username}
                 </option>
               ))}
-            </NativeSelect>
+            </SelectBox>
           </Field>
           {advisors.data && advisors.data.total > 50 && (
             <div className="flex items-center justify-between gap-2">
@@ -146,7 +146,7 @@ export default function MembershipActions({
               >
                 Conseillers précédents
               </Btn>
-              <span className="font-mono text-xs text-muted tabular-nums">
+              <span className="text-xs text-muted tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>
@@ -204,7 +204,7 @@ export default function MembershipActions({
           }}
         >
           <Field label="Nouvelle étape">
-            <NativeSelect
+            <SelectBox
               value={stage}
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
@@ -216,7 +216,7 @@ export default function MembershipActions({
                     {text}
                   </option>
                 ))}
-            </NativeSelect>
+            </SelectBox>
           </Field>
           <Field label="Motif du changement">
             <TextBox
@@ -256,12 +256,12 @@ export default function MembershipActions({
             </p>
           </div>
           <Field label="Preuve vérifiée">
-            <NativeSelect value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+            <SelectBox value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
               <option value="school_email">Email de confirmation de l’école</option>
               <option value="admissions_system">Système d’admission</option>
               <option value="signed_document">Document signé</option>
               <option value="other">Autre preuve vérifiée</option>
-            </NativeSelect>
+            </SelectBox>
           </Field>
           <Field label="Référence de la preuve">
             <TextInput

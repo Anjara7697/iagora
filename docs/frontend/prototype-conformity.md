@@ -1,5 +1,10 @@
 # Conformité à la maquette IA GORA
 
+> **Document historique.** Depuis la migration vers HeroUI, la maquette n'est plus la
+> référence visuelle de la console. Ce document reste utile pour le contenu fonctionnel des
+> écrans, pas pour leur apparence. Le système d'interface actuel est décrit dans
+> [heroui.md](heroui.md).
+
 ## Référence et méthode
 
 Référence visuelle : fichier utilisateur `IA GORA.html`, SHA-256

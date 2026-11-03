@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const current = {
   llm_provider: "gemini",
@@ -96,7 +97,7 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
   const slots = page.getByRole("region", {
     name: "Disponibilités des rendez-vous",
   });
-  await slots.getByLabel("Sam").check();
+  await slots.getByRole("button", { name: "Sam", exact: true }).click();
   await slots.getByLabel("Début de journée (heure)").fill("10");
   await page
     .getByRole("button", { name: "Enregistrer les paramètres" })
@@ -338,9 +339,7 @@ test("paramètres sur mobile : catégorie choisie dans une liste, sans défileme
   await mockApi(page, []);
   await login(page);
   await page.goto("/settings");
-  await page
-    .getByRole("combobox", { name: "Catégorie", exact: true })
-    .selectOption("emails");
+  await choose(page.getByLabel("Catégorie", { exact: true }), "emails");
   await expect(page).toHaveURL(/section=emails/);
   await expect(page.getByRole("region", { name: "Emails" })).toBeVisible();
   expect(

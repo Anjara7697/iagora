@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
+import { Providers } from "@/components/ds/Providers";
 import { Toaster } from "@/components/ds/Toaster";
 import "./heroui.css";
 
@@ -12,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" data-theme="light">
       <body>
-        <AppShell>{children}</AppShell>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
         <Toaster />
       </body>
     </html>

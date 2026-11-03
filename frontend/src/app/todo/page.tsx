@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   BookOpen,
   Check,
-  ChevronRight,
   CircleCheck,
   ExternalLink,
   History,
@@ -25,7 +24,7 @@ import {
   Field,
   FilterChip,
   LinkButton,
-  NativeSelect,
+  SelectBox,
   Notice,
   Segmented,
   Tag,
@@ -33,8 +32,10 @@ import {
   TextInput,
   TextLink,
   type Tone,
+  RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -61,6 +62,7 @@ import type {
   Prospect,
   Membership,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 type KindFilter = "" | TodoKind;
 type DecisionResult = { message: string; prospectName: string; treatedId?: string };
@@ -133,7 +135,7 @@ function Confidence({ value }: { value: number | null }) {
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span className="font-mono text-[13px] text-foreground tabular-nums">{percent} %</span>
+      <span className="text-[13px] text-foreground tabular-nums">{percent} %</span>
     </div>
   );
 }
@@ -150,11 +152,6 @@ function PersonMark({ name, incident }: { name: string; incident?: boolean }) {
   );
 }
 
-const rowClass = (selected: boolean) =>
-  `flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
-    selected ? "bg-accent-soft" : "hover:bg-surface-secondary"
-  }`;
-
 function Row({
   item,
   selected,
@@ -167,7 +164,7 @@ function Row({
   const name = itemName(item);
   return (
     <li>
-      <button className={rowClass(selected)} aria-current={selected} onClick={onSelect}>
+      <RowButton selected={selected} onClick={onSelect} className="py-2.5">
         <PersonMark name={name} incident={item.kind === "incident"} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-baseline gap-2">
@@ -185,7 +182,7 @@ function Row({
             {item.detail ? `« ${item.detail} »` : item.title}
           </span>
         </span>
-      </button>
+      </RowButton>
     </li>
   );
 }
@@ -232,7 +229,7 @@ function DraftPanel({
   }
 
   return (
-    <section className="draft-panel card card--default gap-0 p-0" aria-label="Brouillon de l'agent">
+    <section className="draft-panel gap-0 p-0" aria-label="Brouillon de l'agent">
       <header className="flex flex-wrap items-center gap-2 border-b border-separator px-5 py-3.5">
         <strong className="flex-1 text-sm font-semibold text-foreground">
           Réponse proposée — {label(CHANNELS, item.channel)}
@@ -360,13 +357,13 @@ function membershipLabel(m: Membership): string {
 
 function ReviewCard({ label: aria, title, intro, children }: { label: string; title: string; intro?: string; children: React.ReactNode }) {
   return (
-    <section className="card card--default gap-4 p-5" aria-label={aria}>
+    <Box as="section" className="gap-4 p-5" aria-label={aria}>
       <div className="flex flex-col gap-1">
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         {intro && <p className="text-[13px] text-muted">{intro}</p>}
       </div>
       {children}
-    </section>
+    </Box>
   );
 }
 
@@ -461,7 +458,7 @@ function ApplicationReview({
                   J’ai contrôlé le dossier original dans la boîte email
                 </CheckBox>
                 <Field label="Parcours concerné">
-                  <NativeSelect
+                  <SelectBox
                     value={selected ? String(selected.id) : ""}
                     onChange={(e) => setMembershipId(e.target.value)}
                   >
@@ -474,7 +471,7 @@ function ApplicationReview({
                         {label(STAGES, m.conversion_stage)}
                       </option>
                     ))}
-                  </NativeSelect>
+                  </SelectBox>
                 </Field>
                 {needsStage && (
                   <Field label="Motif enregistré dans l’historique">
@@ -591,7 +588,7 @@ function EnrollmentReview({
           )}
           {eligible.length > 0 && (
             <Field label="Parcours confirmé par la preuve">
-              <NativeSelect
+              <SelectBox
                 value={membershipId}
                 onChange={(event) => setMembershipId(event.target.value)}
               >
@@ -601,7 +598,7 @@ function EnrollmentReview({
                     {membershipLabel(membership)}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
             </Field>
           )}
           <Field label="Référence de la preuve">
@@ -707,7 +704,7 @@ function Detail({
         }
       />
 
-      <div className="card card--default gap-2 p-5">
+      <Box as="div" className="gap-2 p-5">
         <span className="sr-only">La demande à examiner</span>
         <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
         {item.detail && (
@@ -718,12 +715,12 @@ function Detail({
         <span className="text-xs text-muted">
           {label(CHANNELS, item.channel)} · {formatDate(item.created_at)}
         </span>
-      </div>
+      </Box>
 
       <div className="flex flex-col gap-4">
         {rec && (
-          <section
-            className="card card--default gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
+          <Box as="section"
+            className="gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
             aria-label="Éléments pour décider"
           >
             <div className="flex flex-col gap-3 bg-agent-soft px-5 py-4">
@@ -768,11 +765,10 @@ function Detail({
                 )}
               </div>
             </div>
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-[13px] font-medium text-foreground outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
-                <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-                Sources, confiance et contexte
-              </summary>
+            <Collapse
+  title="Sources, confiance et contexte"
+  triggerClassName="w-full px-5 py-3 hover:bg-surface-secondary focus-visible:ring-inset"
+>
               <div className="grid grid-cols-1 gap-5 border-t border-separator px-5 py-4 sm:grid-cols-3">
                 <div className="flex flex-col gap-2">
                   <Eyebrow>Sources utilisées</Eyebrow>
@@ -813,8 +809,8 @@ function Detail({
                   </div>
                 )}
               </div>
-            </details>
-          </section>
+</Collapse>
+          </Box>
         )}
 
         {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
@@ -916,7 +912,7 @@ function TreatedDetail({
           </LinkButton>
         }
       />
-      <section className="card card--default gap-3 p-5" aria-label="État d’envoi">
+      <Box as="section" className="gap-3 p-5" aria-label="État d’envoi">
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex flex-1 flex-col gap-1">
             <Eyebrow>État d’envoi</Eyebrow>
@@ -944,7 +940,7 @@ function TreatedDetail({
         <p className="text-sm text-foreground">{EXECUTION_HELP[item.execution]}</p>
         {item.reason && <p className="text-sm text-foreground">Motif du refus : {item.reason}</p>}
         {item.execution_detail && (
-          <p className="rounded-xl bg-surface-secondary px-3 py-2 font-mono text-xs text-muted">{item.execution_detail}</p>
+          <p className="rounded-xl bg-surface-secondary px-3 py-2 text-xs text-muted">{item.execution_detail}</p>
         )}
         {canRetry && (
           <div>
@@ -955,8 +951,8 @@ function TreatedDetail({
         )}
         {error && <ErrorText>{error}</ErrorText>}
         {notice && <Notice>{notice}</Notice>}
-      </section>
-      <section className="draft-panel card card--default gap-0 overflow-hidden p-0" aria-label="Message traité">
+      </Box>
+      <section className="draft-panel gap-0 overflow-hidden p-0" aria-label="Message traité">
         <header className="border-b border-separator px-5 py-3.5">
           <strong className="text-sm font-semibold text-foreground">Message — {label(CHANNELS, item.channel)}</strong>
         </header>
@@ -1082,14 +1078,15 @@ function Todo() {
         </div>
       )}
       <div className="flex items-start gap-5">
-        <aside
-          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+        <Box
+          as="aside"
+          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
           aria-label="Éléments à traiter"
         >
           <header className="flex items-center gap-2 px-2 pt-1">
             <h2 className="flex-1 text-base font-semibold text-foreground">Votre file de travail</h2>
             <span className="text-[13px] text-muted" aria-label="Éléments en attente">
-              <strong className="font-mono font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
+              <strong className="font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
             </span>
           </header>
           <Segmented
@@ -1122,9 +1119,9 @@ function Todo() {
                     : "Prospect";
                   return (
                     <li key={t.id}>
-                      <button
-                        className={rowClass(t.id === selectedId)}
-                        aria-current={t.id === selectedId ? "true" : undefined}
+                      <RowButton
+                        selected={t.id === selectedId}
+                        className="py-2.5"
                         onClick={() =>
                           router.replace(
                             `/todo?tab=treated&id=${encodeURIComponent(t.id)}`,
@@ -1147,7 +1144,7 @@ function Todo() {
                             <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
                           </span>
                         </span>
-                      </button>
+                      </RowButton>
                     </li>
                   );
                 })}
@@ -1225,7 +1222,7 @@ function Todo() {
                 >
                   Éléments précédents
                 </Btn>
-                <span className="font-mono text-xs text-muted tabular-nums">
+                <span className="text-xs text-muted tabular-nums">
                   {offset + 1}–{Math.min(offset + 50, list.data.total)} /{" "}
                   {list.data.total}
                 </span>
@@ -1239,7 +1236,7 @@ function Todo() {
                 </Btn>
               </div>
             )}
-        </aside>
+        </Box>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {tab === "treated" && selectedTreated ? (
             <TreatedDetail
@@ -1249,8 +1246,8 @@ function Todo() {
               refreshing={treated.loading}
             />
           ) : tab === "treated" && selectedId ? (
-            <section
-              className="card card--default flex-1 gap-4 p-6"
+            <Box as="section"
+              className="flex-1 gap-4 p-6"
               aria-label="Décision recherchée"
             >
               <Loading
@@ -1273,7 +1270,7 @@ function Todo() {
                   </div>
                 </div>
               )}
-            </section>
+            </Box>
           ) : tab === "todo" && selected ? (
             <Detail
               key={selected.id}
@@ -1286,7 +1283,7 @@ function Todo() {
               }}
             />
           ) : tab === "todo" && selectedId ? (
-            <section className="card card--default flex-1 gap-4 p-6">
+            <Box as="section" className="flex-1 gap-4 p-6">
               <Loading
                 loading={direct.loading}
                 error={direct.error}
@@ -1295,9 +1292,9 @@ function Todo() {
               {direct.error?.status === 404 && (
                 <TextLink href="/conversations">Consulter les conversations</TextLink>
               )}
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default flex-1 p-0">
+            <Box as="section" className="flex-1 p-0">
               <EmptyPanel
                 icon={tab === "treated" ? History : ListChecks}
                 title={placeholderTitle}
@@ -1329,7 +1326,7 @@ function Todo() {
                   </>
                 }
               />
-            </section>
+            </Box>
           )}
         </div>
       </div>

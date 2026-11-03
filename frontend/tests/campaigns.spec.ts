@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const campaign = (over: Record<string, unknown> = {}) => ({
   id: 1,
@@ -82,7 +83,40 @@ async function mockApi(
     } else if (path === "/campaigns" && method === "POST") {
       calls.requests.push({ method, path, body: request.postDataJSON() });
       code = 201;
-      body = campaign({ id: 7, name: "Nouvelle" });
+      body = campaign({
+        id: 7,
+        name: "Nouvelle",
+        targets: [{ id: 2, code: "compagnons_pros", name: "Professionnels Les Compagnons" }],
+        sources: [
+          { id: 21, name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { id: 22, name: "Formulaire du site", type: "form", platform: "web", external_id: null },
+        ],
+      });
+    } else if (path === "/integrations/meta" && method === "GET") {
+      body = {
+        configured: true,
+        enabled: true,
+        app_id: "app-1",
+        api_version: "v21.0",
+        app_secret_set: true,
+        page_access_token_set: true,
+        verify_token_set: true,
+        mappings: [],
+        webhook_path: "/api/v1/webhooks/meta",
+        last_event_at: null,
+        last_success_at: null,
+        last_error: null,
+        received: 0,
+        processed: 0,
+        failed: 0,
+      };
+    } else if (path === "/integrations/meta" && method === "PUT") {
+      calls.requests.push({ method, path, body: request.postDataJSON() });
+      body = { configured: true };
+    } else if (path === "/integrations/tokens") {
+      body = [];
+    } else if (path === "/integrations/email") {
+      body = { configured: false, enabled: false, send_enabled: false, sender: null, imap_host: "", smtp_host: "", sandbox_recipients: [], last_run_at: null };
     } else if (path === "/campaigns/overview")
       body = [
         {
@@ -159,14 +193,13 @@ test("responsable : choix explicite du sort des prospects et mise à jour de la 
     return route.fulfill({ json: current });
   });
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Réglages" }).click();
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
-  await form
-    .getByLabel("Conseiller responsable de la campagne")
-    .selectOption("9");
+  await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
   await expect(
     form.getByRole("button", { name: "Enregistrer le responsable" }),
   ).toBeDisabled();
-  await form.getByLabel("Prospects déjà présents").selectOption("keep");
+  await choose(form.getByLabel("Prospects déjà présents"), "keep");
   await expect(
     form.getByText(/Les affectations actuelles deviennent des exceptions/),
   ).toBeVisible();
@@ -191,22 +224,20 @@ test("responsable : erreur conservée, aucun contrôle d'affectation pour un con
     route.fulfill({ status: 422, json: { detail: "Compte indisponible" } }),
   );
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Réglages" }).click();
   const form = page.getByRole("form", { name: "Affectation de la campagne" });
-  await form
-    .getByLabel("Conseiller responsable de la campagne")
-    .selectOption("9");
-  await form
-    .getByLabel("Prospects déjà présents")
-    .selectOption("transfer_inherited");
+  await choose(form.getByLabel("Conseiller responsable de la campagne"), "9");
+  await choose(form.getByLabel("Prospects déjà présents"), "transfer_inherited");
   await form
     .getByRole("button", { name: "Enregistrer le responsable" })
     .click();
   await expect(form.getByRole("alert")).toHaveText("Compte indisponible");
   await expect(
     form.getByLabel("Conseiller responsable de la campagne"),
-  ).toHaveValue("9");
+  ).toHaveAttribute("data-value", "9");
   await mockApi(page, { role: "ADVISOR" });
   await page.reload();
+  await page.getByRole("tab", { name: "Réglages" }).click();
   await expect(
     page.getByRole("heading", { name: "Responsable de campagne" }),
   ).toBeVisible();
@@ -244,11 +275,14 @@ test("liste des campagnes avec chiffres clés, programmes et statut", async ({
 }) => {
   const calls = await mockApi(page);
   await login(page);
-  const card = page.getByRole("link", { name: /Recrutement eBIHAR 2026/ });
+  const card = page.getByRole("row", { name: /Recrutement eBIHAR 2026/ });
   await expect(card.getByText("Brouillon")).toBeVisible();
   await expect(card.getByText("eBIHAR — étudiants")).toBeVisible();
   await expect(card.getByText("2 sources")).toBeVisible();
-  await expect(card.getByText("12 · 5 · 1")).toBeVisible();
+  const figures = card.getByRole("gridcell");
+  await expect(figures.nth(2)).toHaveText("12");
+  await expect(figures.nth(3)).toHaveText("5");
+  await expect(figures.nth(4)).toHaveText("1");
   const strip = page.getByRole("region", { name: "Chiffres clés" });
   await expect(strip.getByText("0 / 1")).toBeVisible();
   await expect(strip.getByText("42 %")).toBeVisible();
@@ -269,7 +303,7 @@ test("un conseiller consulte sans pouvoir créer ni modifier", async ({
   await expect(
     page.getByRole("link", { name: "Nouvelle campagne" }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: /Recrutement eBIHAR 2026/ }).click();
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
   await expect(
     page.getByRole("heading", { name: "Recrutement eBIHAR 2026" }),
   ).toBeVisible();
@@ -279,20 +313,36 @@ test("un conseiller consulte sans pouvoir créer ni modifier", async ({
   await expect(page.getByRole("button", { name: "Retirer" })).toHaveCount(0);
 });
 
-test("création : formulaire, programmes et sources envoyés à l'API", async ({
+test("création en trois étapes : informations, période et ciblage, sources envoyés à l'API", async ({
   page,
 }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/new");
+  // Étape 1 : informations
+  await expect(page.getByRole("navigation", { name: "Étapes de création" })).toBeVisible();
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
-  await page.getByLabel("Statut").selectOption("active");
+  await choose(page.getByLabel("Statut"), "active");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 2 : période et programmes
+  await page.getByRole("spinbutton").first().click();
+  await page.keyboard.type("0109202630092026");
   await page.getByLabel("Compagnons", { exact: false }).press("Space");
-  await page.getByRole("button", { name: "Ajouter une source" }).click();
-  await page.getByLabel("Nom de la source 1").fill("Webinaire");
-  await page.getByLabel("Type de la source 1").selectOption("webinar");
-  await page.getByLabel("Plateforme de la source 1").selectOption("web");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 3 : connecteurs de sources, récapitulatif puis création
+  await expect(page.getByRole("region", { name: "Connecteurs disponibles" }).getByText("Connectée")).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter Meta Lead Ads" }).click();
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("À finaliser");
+  await page.getByLabel("Identifiant du formulaire Meta 1").fill("123456");
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("Formulaire associé");
+  await page.getByRole("button", { name: "Ajouter Formulaire du site ou n8n" }).click();
+  await expect(page.getByLabel("Source 2 : Formulaire du site ou n8n")).toContainText("Jeton à créer");
+  await expect(page.getByRole("button", { name: "Ajouter LinkedIn Lead Gen" })).toBeDisabled();
+  const recap = page.getByLabel("Récapitulatif");
+  await expect(recap).toContainText("Rentrée 2027");
+  await expect(recap).toContainText("01/09/2026 → 30/09/2026");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
-  await expect(page).toHaveURL(/\/campaigns\/7$/);
+  // La fiche est compilée au premier accès par le serveur de développement.
+  await expect(page).toHaveURL(/\/campaigns\/7$/, { timeout: 30_000 });
   await expect
     .poll(() => calls.requests)
     .toContainEqual({
@@ -302,33 +352,38 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
         name: "Rentrée 2027",
         description: null,
         status: "active",
-        start_date: null,
-        end_date: null,
+        start_date: "2026-09-01T00:00:00Z",
+        end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
         sources: [
-          {
-            name: "Webinaire",
-            type: "webinar",
-            platform: "web",
-            external_id: null,
-          },
+          { name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { name: "Formulaire du site", type: "form", platform: "web", external_id: null },
         ],
       },
     });
+  // Le formulaire Meta saisi est associé à la campagne créée (source et programme unique).
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT" && r.path === "/integrations/meta")?.body)
+    .toMatchObject({
+      mappings: [
+        { form_id: "123456", campaign_id: 7, source_id: 21, target_code: "compagnons_pros", enabled: true },
+      ],
+      app_secret: null,
+    });
 });
 
-test("dates incohérentes : création bloquée", async ({ page }) => {
+test("création : le nom est requis pour continuer et le retour conserve la saisie", async ({ page }) => {
   await mockApi(page);
   await login(page, "/campaigns/new");
-  await page.getByLabel("Nom de la campagne").fill("X");
-  await page.getByLabel("Date de début").fill("2026-10-10");
-  await page.getByLabel("Date de fin").fill("2026-09-01");
-  await expect(
-    page.getByText("La date de fin doit être postérieure"),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Créer la campagne" }),
-  ).toBeDisabled();
+  const next = page.getByRole("button", { name: "Continuer" });
+  await expect(next).toBeDisabled();
+  await page.getByLabel("Nom de la campagne").fill("Campagne test");
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveCount(0);
+  await page.getByRole("button", { name: "Retour" }).click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveValue("Campagne test");
+  await expect(page.getByRole("button", { name: /Informations/ })).toHaveAttribute("aria-current", "step");
 });
 
 test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospects", async ({
@@ -347,9 +402,10 @@ test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospe
       .getByRole("region", { name: "Niveaux d'intérêt" })
       .getByText("Très chaud"),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Sources" }).click();
   const sources = page.getByRole("region", { name: "Sources" });
   await expect(
-    sources.getByRole("row", { name: /LinkedIn Ads.*9/ }),
+    sources.getByRole("row", { name: /LinkedIn Ads/ }).getByRole("gridcell", { name: "9", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Voir les prospects" }).click();
   await expect(page).toHaveURL(/\/prospects\?campaign=1$/);
@@ -393,10 +449,10 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
     "compagnons_pros",
   ]);
 
-  await page
-    .getByLabel("Nom de la nouvelle source")
-    .fill("Webinaire d'octobre");
-  await page.getByRole("button", { name: "Ajouter", exact: true }).click();
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await page.getByRole("button", { name: "Ajouter Formulaire du site ou n8n" }).click();
+  await page.getByLabel("Nom de la nouvelle source").fill("Webinaire d'octobre");
+  await page.getByRole("button", { name: "Ajouter à la campagne" }).click();
   await expect
     .poll(() =>
       calls.requests.some(
@@ -465,6 +521,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
     });
   });
   await login(page, "/campaigns/1");
+  await page.getByRole("tab", { name: "Prospects" }).click();
   const section = page.getByRole("region", {
     name: "Prospects de la campagne",
   });
@@ -473,12 +530,12 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
   await expect(row.getByText("alice@acme-corp.com")).toBeVisible();
   await expect(row.getByText("En conversation")).toBeVisible();
   await expect(row.getByText("Perdu")).toHaveCount(0);
-  await section.getByLabel("Étape").selectOption("qualified");
+  await choose(section.getByLabel("Étape"), "qualified");
   await expect
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);
   expect(queries.some((q) => q.includes("campaign_id=1"))).toBe(true);
-  await row.getByRole("link", { name: "Alice Martin" }).click();
+  await row.click();
   await expect(page).toHaveURL(/\/prospects\/5$/, { timeout: 15000 });
 });
 
@@ -487,15 +544,18 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
   await login(page, "/campaigns/1");
   await page.getByRole("button", { name: "Activer" }).click();
   await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.dismiss());
   await page.getByRole("button", { name: "Désactiver" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Désactiver la campagne ?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(dialog).toHaveCount(0);
   expect(
     calls.requests.filter(
       (r) => (r.body as { status?: string })?.status === "inactive",
     ),
   ).toHaveLength(0);
-  page.once("dialog", (dialog) => void dialog.accept());
   await page.getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Désactiver" }).click();
   await expect
     .poll(() =>
       calls.requests.some(

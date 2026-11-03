@@ -13,14 +13,16 @@ import {
   ErrorText,
   FilterChip,
   LinkButton,
-  NativeSelect,
+  SelectBox,
   Segmented,
   Tag,
   TextBox,
   TextInput,
   TextLink,
+  RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -41,6 +43,7 @@ import type {
   Page,
   Prospect,
 } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const LIMIT = 30;
 type StatusFilter = "" | "handed_off" | "open" | "closed";
@@ -85,13 +88,7 @@ function InboxRow({
   const name = rowName(c);
   return (
     <li>
-      <button
-        className={`flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${
-          selected ? "bg-accent-soft" : "hover:bg-surface-secondary"
-        }`}
-        aria-current={selected}
-        onClick={onSelect}
-      >
+      <RowButton selected={selected} onClick={onSelect}>
         <Avatar size="sm" variant="soft" color="accent" aria-hidden="true">
           <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
         </Avatar>
@@ -118,7 +115,7 @@ function InboxRow({
               : "Aucun message."}
           </span>
         </span>
-      </button>
+      </RowButton>
     </li>
   );
 }
@@ -286,11 +283,11 @@ function Detail({
           )}
         </section>
       )}
-      <details className="card card--default group gap-0 p-0">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-5 py-3.5 text-sm font-medium text-foreground outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-          <ChevronRight className="size-4 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-          Contexte et règles d’envoi
-        </summary>
+      <Collapse
+  title="Contexte et règles d’envoi"
+  className="card card--default gap-0 p-0"
+  triggerClassName="w-full rounded-xl px-5 py-3.5 text-sm hover:bg-surface-secondary"
+>
         <div className="flex flex-col gap-3 border-t border-separator px-5 py-4 text-sm text-foreground">
           <p>
             Conseiller responsable :{" "}
@@ -354,7 +351,7 @@ function Detail({
             </div>
           </div>
         </div>
-      </details>
+</Collapse>
       {pendingDraft && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-agent-soft px-5 py-4">
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -372,7 +369,7 @@ function Detail({
         </div>
       )}
       {conv && (
-        <section className="card card--default gap-4 p-5" aria-label="Fil de la conversation">
+        <Box as="section" className="gap-4 p-5" aria-label="Fil de la conversation">
           <div className="flex items-baseline gap-2">
             <h3 className="flex-1 text-base font-semibold text-foreground">Fil de la conversation</h3>
             <span className="text-xs text-muted">
@@ -384,7 +381,7 @@ function Detail({
             prospectName={name}
             channel={conv.channel}
           />
-        </section>
+        </Box>
       )}
 
       {readOnly && (
@@ -408,7 +405,7 @@ function Detail({
         </div>
       )}
       {!readOnly && conv && conv.status !== "closed" && (
-        <div className="card card--default gap-3 p-5">
+        <Box as="div" className="gap-3 p-5">
           <div className="flex flex-wrap items-baseline gap-2">
             <strong className="text-sm font-semibold text-foreground">Votre réponse</strong>
             <span className="text-xs text-muted">
@@ -449,12 +446,12 @@ function Detail({
             </p>
           </div>
 
-          <details className="group border-t border-separator pt-3">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 text-[13px] font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
-              <Settings2 className="size-4 text-muted" aria-hidden="true" />
-              Gestion de la conversation
-              <ChevronRight className="size-3.5 text-muted transition-transform group-open:rotate-90" aria-hidden="true" />
-            </summary>
+          <Collapse
+  title="Gestion de la conversation"
+  icon={<Settings2 className="size-4 text-muted" aria-hidden="true" />}
+  className="border-t border-separator pt-3"
+  triggerClassName="w-fit py-1"
+>
             <div className="flex flex-wrap gap-2 pt-3">
               {conv.status === "open" ? (
                 <>
@@ -490,8 +487,8 @@ function Detail({
                 Clôturer
               </Btn>
             </div>
-          </details>
-        </div>
+</Collapse>
+        </Box>
       )}
     </section>
   );
@@ -560,8 +557,9 @@ function Inbox() {
         </div>
       )}
       <div className="flex items-start gap-6">
-        <aside
-          className={`card card--default w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+        <Box
+          as="aside"
+          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
           aria-label="Liste des conversations"
         >
           <div className="flex flex-col gap-2.5 px-1 pt-1">
@@ -587,7 +585,7 @@ function Inbox() {
                   </FilterChip>
                 ))}
               </div>
-              <NativeSelect
+              <SelectBox
                 aria-label="Canal"
                 className="min-w-[150px] flex-1"
                 value={channel}
@@ -598,7 +596,7 @@ function Inbox() {
                     {o.text}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectBox>
             </div>
           </div>
           <Loading
@@ -634,7 +632,7 @@ function Inbox() {
               >
                 <ChevronLeft className="size-4" />
               </Btn>
-              <span className="font-mono text-xs text-muted tabular-nums">
+              <span className="text-xs text-muted tabular-nums">
                 {offset + 1}-{Math.min(offset + LIMIT, list.data.total)} sur{" "}
                 {list.data.total}
               </span>
@@ -650,7 +648,7 @@ function Inbox() {
               </Btn>
             </div>
           )}
-        </aside>
+        </Box>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {selected ? (
             <Detail
@@ -662,15 +660,15 @@ function Inbox() {
               }}
             />
           ) : selectedId ? (
-            <section className="card card--default flex-1 p-6">
+            <Box as="section" className="flex-1 p-6">
               <Loading
                 loading={direct.loading}
                 error={direct.error}
                 onRetry={direct.reload}
               />
-            </section>
+            </Box>
           ) : (
-            <section className="card card--default flex-1 p-0">
+            <Box as="section" className="flex-1 p-0">
               <EmptyPanel
                 icon={InboxIcon}
                 title="Choisissez une conversation"
@@ -682,7 +680,7 @@ function Inbox() {
                   </LinkButton>
                 }
               />
-            </section>
+            </Box>
           )}
         </div>
       </div>

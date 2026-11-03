@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const member: Record<string, unknown> = {
   id: 11,
@@ -95,6 +96,7 @@ async function login(page: Page) {
 async function selectFilter(page: Page, label: string, value: string) {
   await page.getByLabel(label, { exact: true }).click();
   await page.locator(`[role="option"][data-value="${value}"]`).click();
+  await expect(page.getByRole("listbox", { name: label })).toHaveCount(0);
 }
 
 test("campagne et source : seuls les parcours filtrés apparaissent, export identique", async ({
@@ -135,7 +137,7 @@ test("campagne et source : seuls les parcours filtrés apparaissent, export iden
   await selectFilter(page, "Source", "7");
   const board = page.getByRole("region", { name: /Pipeline des prospects/ });
   await expect(board.getByText("Alice Martin", { exact: true })).toHaveCount(1);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   const row = page.getByRole("row", { name: /Alice Martin/ });
   await expect(row.getByText("Qualifié", { exact: true })).toBeVisible();
   await expect(row.getByText("Contacté", { exact: true })).toHaveCount(0);
@@ -201,13 +203,13 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
     exact: true,
   });
-  await follow.getByLabel("Conseiller responsable").selectOption("8");
+  await choose(follow.getByLabel("Conseiller responsable"), "8");
   await follow
     .getByRole("button", { name: "Enregistrer l’affectation" })
     .click();
@@ -250,13 +252,13 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
   await page.goto("/prospects/1");
   await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const stage = page.getByRole("form", {
     name: "Étape du parcours 11",
     exact: true,
   });
-  await stage.getByLabel("Nouvelle étape").selectOption("applied");
+  await choose(stage.getByLabel("Nouvelle étape"), "applied");
   await stage.getByLabel("Motif du changement").fill("Justification conservée");
   await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
   await expect(
@@ -375,7 +377,7 @@ test("exception individuelle : retour au responsable de la campagne", async ({
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
@@ -403,9 +405,9 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
       .getByRole("region", { name: /Pipeline des prospects/ })
       .getByText("Alice Martin"),
   ).toHaveCount(2);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   await expect(
-    page.getByRole("table").getByText("Très chaud", { exact: false }),
+    page.getByRole("grid").getByText("Très chaud", { exact: false }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Alice Martin" }).click();
   await expect(
@@ -643,7 +645,7 @@ test("fiche : effacer un prospect (administrateur) et lister ce qui reste à la 
   });
   await expect(confirmButton).toBeDisabled();
   await panel.getByLabel("Adresse email du prospect").fill("alice@example.com");
-  await panel.getByLabel("Motif").selectOption("other");
+  await choose(panel.getByRole("button", { name: /Motif/ }), "other");
   await confirmButton.click();
   await expect(
     page.getByRole("heading", { name: "Prospect effacé" }),
@@ -859,11 +861,11 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Campagne d’attribution").selectOption("3");
+  await choose(form.getByLabel("Campagne d’attribution"), "3");
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Source d’attribution").selectOption("7");
+  await choose(form.getByLabel("Source d’attribution"), "7");
   await form
     .getByRole("button", { name: "Attribuer et démarrer le suivi" })
     .click();
@@ -910,7 +912,7 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
     if (url.pathname === "/api/v1/prospects") queries.push(url.searchParams);
   });
   await login(page);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   await page.getByLabel("Rechercher", { exact: true }).fill("Alice");
   await selectFilter(page, "Campagne", "3");
   await selectFilter(page, "Source", "7");
@@ -934,7 +936,7 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
   await page.reload();
   await page.getByRole("link", { name: "← Retour aux résultats", exact: true }).click();
   await expect(page).toHaveURL(results);
-  await expect(page.getByRole("button", { name: "Table", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Campagne", { exact: true })).toHaveAttribute("data-value", "3");
   await expect(page.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "7");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("Alice");
@@ -965,7 +967,7 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(results);
-  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Campagne", { exact: true })).toHaveAttribute("data-value", "3");
   await page.goForward();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
@@ -988,7 +990,7 @@ test("liens directs : paramètres invalides ignorés et retour limité aux prosp
   await mockApi(page);
   await login(page);
   await page.goto("/prospects?view=incorrect&offset=-25&stage=invented&campaign=no&source=7&mine=true&demo=exclude&pending_campaign=true");
-  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Mes prospects", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("Masquer les prospects fictifs")).toBeChecked();
   await expect(page.getByLabel("Étape", { exact: true })).toHaveAttribute("data-value", "");

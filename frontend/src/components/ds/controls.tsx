@@ -1,65 +1,55 @@
 "use client";
 
-import { Button, Checkbox, Chip, Input, Label, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
-import { ChevronDown } from "lucide-react";
+import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
-import { cloneElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
-type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
+type ButtonProps = ComponentProps<typeof Button>;
 
 /**
- * Bouton HeroUI avec l'interface des écrans existants : `onClick` (appelé sans événement)
- * et `disabled`. Par défaut neutre (« tertiary ») ; « primary » pour l'action de l'écran.
+ * Bouton HeroUI : toutes les propriétés du `Button` (variant, size, color, isIconOnly, onPress, ref…)
+ * sont acceptées. Raccourcis : `onClick` (appelé sans événement) et `disabled`.
+ * Par défaut neutre (« tertiary ») et `type="button"` ; « primary » pour l'action de l'écran.
  */
 export function Btn({
   variant = "tertiary",
-  size = "md",
-  onClick,
-  disabled,
   type = "button",
-  className,
-  children,
+  onClick,
+  onPress,
+  disabled,
+  isDisabled,
   ...rest
-}: {
-  variant?: ButtonVariant;
-  size?: "sm" | "md" | "lg";
-  onClick?: () => void;
-  disabled?: boolean;
-  type?: "button" | "submit" | "reset";
-  className?: string;
-  children: ReactNode;
-  isIconOnly?: boolean;
-  fullWidth?: boolean;
-  "aria-label"?: string;
-  "aria-expanded"?: boolean;
-  "aria-controls"?: string;
-  "aria-pressed"?: boolean;
-  "aria-describedby"?: string;
-  form?: string;
-}) {
+}: Omit<ButtonProps, "onClick"> & { onClick?: () => void; disabled?: boolean }) {
   return (
     <Button
       variant={variant}
-      size={size}
       type={type}
-      isDisabled={disabled}
-      onPress={onClick ? () => onClick() : undefined}
-      className={className}
+      isDisabled={isDisabled ?? disabled}
+      onPress={onClick || onPress ? (e) => { onPress?.(e); onClick?.(); } : undefined}
       {...rest}
-    >
-      {children}
-    </Button>
+    />
   );
 }
 
-const LINK_VARIANT: Record<"primary" | "tertiary" | "ghost" | "danger" | "outline", string> = {
-  primary: "bg-accent text-accent-foreground hover:bg-accent-hover",
-  tertiary: "bg-default text-foreground hover:bg-default-hover",
-  outline: "border border-border bg-surface text-foreground hover:bg-surface-secondary",
-  ghost: "text-foreground hover:bg-default",
-  danger: "bg-danger text-danger-foreground hover:bg-danger-hover",
-};
+/** Ligne cliquable d'une liste (file, conversations) : bouton HeroUI sur toute la largeur, `aria-current` si sélectionnée. */
+export function RowButton({
+  selected,
+  onClick,
+  onPress,
+  className,
+  ...rest
+}: Omit<ButtonProps, "onClick" | "variant"> & { selected: boolean; onClick?: () => void }) {
+  return (
+    <Button
+      variant={selected ? "secondary" : "ghost"}
+      aria-current={selected ? "true" : undefined}
+      onPress={onClick || onPress ? (e) => { onPress?.(e); onClick?.(); } : undefined}
+      className={cx("h-auto w-full items-start justify-start text-left whitespace-normal", typeof className === "string" ? className : undefined)}
+      {...rest}
+    />
+  );
+}
 
 /** Lien qui a l'apparence d'un bouton (navigation, pas action). */
 export function LinkButton({
@@ -71,79 +61,60 @@ export function LinkButton({
   ...rest
 }: {
   href: string;
-  variant?: keyof typeof LINK_VARIANT;
+  variant?: "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft";
   size?: "sm" | "md";
   className?: string;
   children: ReactNode;
 } & Omit<ComponentProps<typeof Link>, "href" | "className" | "children">) {
   return (
-    <Link
-      href={href}
-      className={cx(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus",
-        size === "sm" ? "h-8 px-3 text-sm" : "h-9 px-4 text-sm",
-        LINK_VARIANT[variant],
-        className,
-      )}
-      {...rest}
-    >
+    <Link href={href} className={buttonVariants({ variant, size, className })} {...rest}>
       {children}
     </Link>
   );
 }
 
-/** Lien de texte (accent). */
-export function TextLink({ className, ...props }: ComponentProps<typeof Link>) {
-  return (
-    <Link
-      {...props}
-      className={cx(
-        "rounded text-sm font-medium text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus",
-        className,
-      )}
-    />
-  );
+/** Lien de texte : `Link` HeroUI (toutes ses propriétés), navigation côté client via le `RouterProvider` de l'application. */
+export function TextLink(props: ComponentProps<typeof HeroLink>) {
+  return <HeroLink {...props} />;
 }
 
+/** Arrondi « lg » des onglets HeroUI : conteneur, onglet et indicateur (cadre blanc de l'onglet choisi). */
+export const TAB_RADIUS = { container: "rounded-lg", tab: "rounded-lg", indicator: "rounded-lg" } as const;
+
 /**
- * Choix exclusif sur une ligne (onglets d'affichage) : boutons natifs `aria-pressed`,
- * présentés comme un contrôle segmenté HeroUI.
+ * Choix exclusif sur une ligne : `Tabs` HeroUI (panneaux vides et masqués : le contenu est géré par l'écran). Accepte les propriétés de `Tabs`
+ * (variant, orientation…) ; `label` nomme la liste, `onChange` reçoit la valeur choisie.
  */
 export function Segmented<T extends string>({
   label,
   value,
   options,
   onChange,
-  className,
-}: {
+  ...rest
+}: Omit<ComponentProps<typeof Tabs>, "children" | "selectedKey" | "onSelectionChange" | "aria-label"> & {
   label: string;
   value: T;
   options: { value: T; text: ReactNode }[];
   onChange: (value: T) => void;
-  className?: string;
 }) {
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className={cx("inline-flex gap-0.5 rounded-lg bg-surface-tertiary p-[3px]", className)}
-    >
+    <Tabs selectedKey={value} onSelectionChange={(key) => onChange(String(key) as T)} {...rest}>
+      <Tabs.ListContainer className={TAB_RADIUS.container}>
+        <Tabs.List aria-label={label}>
+          {options.map((o) => (
+            <Tabs.Tab key={o.value} id={o.value} className={TAB_RADIUS.tab}>
+              {o.text}
+              <Tabs.Indicator className={TAB_RADIUS.indicator} />
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs.ListContainer>
       {options.map((o) => (
-        <ToggleButton
-          key={o.value}
-          isSelected={o.value === value}
-          onChange={() => onChange(o.value)}
-          className={cx(
-            "h-8 min-w-0 flex-1 rounded-md border-0 px-3 text-[13px] whitespace-nowrap",
-            o.value === value
-              ? "bg-segment text-foreground shadow-surface"
-              : "bg-transparent text-muted shadow-none hover:text-foreground",
-          )}
-        >
-          {o.text}
-        </ToggleButton>
+        <Tabs.Panel key={o.value} id={o.value} className="hidden">
+          <></>
+        </Tabs.Panel>
       ))}
-    </div>
+    </Tabs>
   );
 }
 
@@ -151,28 +122,43 @@ export function Segmented<T extends string>({
 export function FilterChip({
   pressed,
   onClick,
-  children,
   ...rest
-}: {
+}: Omit<ComponentProps<typeof ToggleButton>, "isSelected" | "onChange"> & {
   pressed: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  "aria-expanded"?: boolean;
+  onClick?: () => void;
+}) {
+  return <ToggleButton size="sm" isSelected={pressed} onChange={() => onClick?.()} {...rest} />;
+}
+
+/** Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des pastilles avant. */
+export function FilterChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  leading,
+  chipClassName = "rounded-lg",
+  className,
+  style,
+}: {
+  label: string;
+  options: { value: T; text: ReactNode }[];
+  value: T;
+  onChange: (value: T) => void;
+  leading?: ReactNode;
+  chipClassName?: string;
+  className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <ToggleButton
-      isSelected={pressed}
-      onChange={() => onClick()}
-      {...rest}
-      className={cx(
-        "h-8 gap-1.5 rounded-lg px-3 text-[13px] whitespace-nowrap",
-        pressed
-          ? "bg-accent-soft text-accent-soft-foreground"
-          : "bg-surface text-foreground",
-      )}
-    >
-      {children}
-    </ToggleButton>
+    <div role="group" aria-label={label} className={cx("flex flex-wrap gap-1.5", className)} style={style}>
+      {leading}
+      {options.map((o) => (
+        <FilterChip key={o.value} className={chipClassName} pressed={o.value === value} onClick={() => onChange(o.value)}>
+          {o.text}
+        </FilterChip>
+      ))}
+    </div>
   );
 }
 
@@ -194,78 +180,83 @@ export function Field({
   const auto = useId();
   const id = children.props.id ?? auto;
   const hintId = hint ? `${id}-hint` : undefined;
+  const labelId = `${id}-label`;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-[13px] font-medium text-foreground">
+      <Label id={labelId} htmlFor={id}>
         {label}
-      </label>
-      {cloneElement(children, { id, "aria-describedby": hintId ?? children.props["aria-describedby"] })}
+      </Label>
+      {cloneElement(children, {
+        id,
+        "aria-describedby": hintId ?? children.props["aria-describedby"],
+        ...(children.type === SelectBox ? { "aria-labelledby": labelId } : {}),
+      } as Record<string, string | undefined>)}
       {hint && (
-        <span id={hintId} className="text-xs/[16px] font-normal text-muted">
-          {hint}
-        </span>
+        <Description id={hintId}>{hint}</Description>
       )}
     </div>
   );
 }
 
-/** Champ texte HeroUI (input natif). */
-export function TextInput({ className, ...props }: Omit<ComponentProps<typeof Input>, "className"> & { className?: string }) {
-  return <Input {...props} className={cx("w-full", className)} />;
+/** Champ texte HeroUI : toutes les propriétés de `Input` (variant, fullWidth…), pleine largeur par défaut. */
+export function TextInput({ fullWidth = true, ...props }: ComponentProps<typeof Input>) {
+  return <Input fullWidth={fullWidth} {...props} />;
 }
 
-/** Zone de texte HeroUI (textarea natif). */
-export function TextBox({ className, ...props }: Omit<ComponentProps<typeof TextArea>, "className"> & { className?: string }) {
-  return <TextArea {...props} className={cx("min-h-24 w-full", className)} />;
+/** Zone de texte HeroUI : toutes les propriétés de `TextArea`, pleine largeur par défaut. */
+export function TextBox({ fullWidth = true, rows = 4, ...props }: ComponentProps<typeof TextArea>) {
+  return <TextArea fullWidth={fullWidth} rows={rows} {...props} />;
 }
 
 type SelectChoice = { value: string; label: string };
+type SelectItem = { id: string; value: string; text: string };
 const EMPTY_SELECT_KEY = "__iagora_empty__";
 
-/** Liste de choix HeroUI, avec libellé et popover accessibles. */
-export function SelectInput({
-  label,
+type SelectRootProps = ComponentProps<typeof Select<SelectItem>>;
+/** Propriétés du `Select` HeroUI (variant, fullWidth, placeholder, isInvalid, name…) acceptées telles quelles. */
+type SelectPassThrough = Omit<
+  SelectRootProps,
+  "children" | "items" | "selectedKey" | "defaultSelectedKey" | "onSelectionChange" | "value" | "onChange"
+> & { isDisabled?: boolean; isRequired?: boolean };
+
+/** Rendu commun : `Select` HeroUI, déclencheur, popover et options. Libellé visible ou masqué. */
+function SelectView({
+  items,
   value,
-  options,
-  onChange,
-  disabled,
-  className,
-  id,
-}: {
-  label: string;
+  onValueChange,
+  label,
+  labelHidden,
+  triggerId,
+  fullWidth = true,
+  ...rest
+}: SelectPassThrough & {
+  items: SelectItem[];
   value: string;
-  options: SelectChoice[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  className?: string;
-  id?: string;
+  onValueChange: (value: string) => void;
+  label?: string;
+  labelHidden?: boolean;
+  triggerId?: string;
+  isDisabled?: boolean;
+  isRequired?: boolean;
 }) {
-  const items = options.map((option) => ({
-    id: option.value || EMPTY_SELECT_KEY,
-    ...option,
-  }));
-  const selectedKey = value || EMPTY_SELECT_KEY;
   return (
-    <Select<(typeof items)[number]>
-      aria-label={label}
-      className={cx("flex min-w-0 flex-col gap-1.5", className)}
-      fullWidth
-      isDisabled={disabled}
-      selectedKey={selectedKey}
-      onSelectionChange={(key) =>
-        onChange(String(key) === EMPTY_SELECT_KEY ? "" : String(key))
-      }
+    <Select<SelectItem>
+      fullWidth={fullWidth}
+      {...rest}
+      aria-label={rest["aria-label"] ?? label}
+      selectedKey={value || EMPTY_SELECT_KEY}
+      onSelectionChange={(key) => onValueChange(String(key) === EMPTY_SELECT_KEY ? "" : String(key))}
     >
-      <Label className="text-[13px] font-medium text-foreground">{label}</Label>
-      <Select.Trigger id={id} className="rounded-lg" data-value={value}>
+      {label && <Label className={labelHidden ? "sr-only" : undefined}>{label}</Label>}
+      <Select.Trigger id={triggerId} data-value={value}>
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
       <Select.Popover>
         <ListBox items={items}>
           {(item) => (
-            <ListBox.Item id={item.id} textValue={item.label} data-value={item.value}>
-              <Label>{item.label}</Label>
+            <ListBox.Item id={item.id} textValue={item.text} data-value={item.value}>
+              <Label>{item.text}</Label>
               <ListBox.ItemIndicator />
             </ListBox.Item>
           )}
@@ -275,22 +266,122 @@ export function SelectInput({
   );
 }
 
-/** Liste de choix native, à l'apparence des champs HeroUI (clavier et mobile natifs). */
-export function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
+/** Liste de choix HeroUI avec libellé visible et options en tableau. Accepte les propriétés du `Select`. */
+export function SelectInput({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+  id,
+  ...rest
+}: SelectPassThrough & {
+  label: string;
+  value: string;
+  options: SelectChoice[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  id?: string;
+}) {
+  const items = options.map((o) => ({ id: o.value || EMPTY_SELECT_KEY, value: o.value, text: o.label }));
   return (
-    <span className={cx("relative inline-flex w-full", className)}>
-      <select
-        {...props}
-        className="h-9 w-full min-w-0 cursor-pointer appearance-none rounded-[var(--field-radius)] border border-field-border bg-field-background py-0 pr-9 pl-3 text-sm text-field-foreground shadow-field outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-    </span>
+    <SelectView
+      {...rest}
+      items={items}
+      value={value}
+      onValueChange={onChange}
+      label={label}
+      triggerId={id}
+      isDisabled={rest.isDisabled ?? disabled}
+    />
   );
 }
 
-/** Case à cocher native, alignée sur son libellé. */
+/**
+ * Liste de choix HeroUI à interface de `<select>` : `<option>` en enfants et `onChange` avec `e.target.value`.
+ * Libellé externe (`id` + `aria-labelledby`) ou masqué (`aria-label`). Accepte les propriétés du `Select`
+ * (variant, fullWidth, placeholder, isInvalid…).
+ */
+export function SelectBox({
+  value,
+  onChange,
+  disabled,
+  required,
+  id,
+  children,
+  ...rest
+}: SelectPassThrough & {
+  value: string | number;
+  onChange: (e: { target: { value: string } }) => void;
+  disabled?: boolean;
+  required?: boolean;
+  id?: string;
+  children: ReactNode;
+}) {
+  const items = Children.toArray(children)
+    .filter((c): c is ReactElement<{ value?: string; children?: ReactNode }> => isValidElement(c))
+    .map((c) => {
+      const v = String(c.props.value ?? "");
+      return { id: v || EMPTY_SELECT_KEY, value: v, text: Children.toArray(c.props.children).join("") };
+    });
+  return (
+    <SelectView
+      {...rest}
+      items={items}
+      value={String(value)}
+      onValueChange={(v) => onChange({ target: { value: v } })}
+      label={rest["aria-label"]}
+      labelHidden
+      triggerId={id}
+      isDisabled={rest.isDisabled ?? disabled}
+      isRequired={rest.isRequired ?? required}
+    />
+  );
+}
+
+/**
+ * Choix de fichier : bouton HeroUI qui ouvre l'entrée fichier native (masquée, libellée par `Field`).
+ * Affiche le nom du fichier retenu, ou `emptyLabel`.
+ */
+export function FileInput({
+  id,
+  accept,
+  file,
+  onChange,
+  emptyLabel = "Aucun fichier choisi",
+  buttonLabel = "Choisir un fichier",
+  "aria-describedby": describedBy,
+}: {
+  id?: string;
+  accept?: string;
+  file: File | null | undefined;
+  onChange: (file: File | undefined) => void;
+  emptyLabel?: string;
+  buttonLabel?: string;
+  "aria-describedby"?: string;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-2.5">
+      <input
+        ref={input}
+        id={id}
+        type="file"
+        accept={accept}
+        aria-describedby={describedBy}
+        tabIndex={-1}
+        className="sr-only"
+        onChange={(e) => onChange(e.target.files?.[0])}
+      />
+      <Btn variant="secondary" size="sm" onClick={() => input.current?.click()}>
+        {buttonLabel}
+      </Btn>
+      <span className="min-w-0 truncate text-[13px] text-muted">{file ? file.name : emptyLabel}</span>
+    </div>
+  );
+}
+
+/** Case à cocher HeroUI : toutes les propriétés de `Checkbox`. Raccourcis : `checked`, `onChange(boolean)`, `disabled`, `hint`. */
 export function Check({
   checked,
   onChange,
@@ -298,20 +389,21 @@ export function Check({
   hint,
   disabled,
   className,
-}: {
+  ...rest
+}: Omit<ComponentProps<typeof Checkbox>, "children" | "onChange" | "isSelected"> & {
   checked: boolean;
   onChange: (value: boolean) => void;
   children: ReactNode;
   hint?: ReactNode;
   disabled?: boolean;
-  className?: string;
 }) {
   return (
     <Checkbox
       isSelected={checked}
-      isDisabled={disabled}
+      isDisabled={rest.isDisabled ?? disabled}
       onChange={onChange}
-      className={cx("rounded-lg", className)}
+      className={className}
+      {...rest}
     >
       <Checkbox.Content>
         <Checkbox.Control>
@@ -326,27 +418,77 @@ export function Check({
   );
 }
 
+/**
+ * Choix multiple en cartes : `CheckboxGroup` HeroUI, une carte `Checkbox` par option (la carte cochée se met en évidence).
+ * Accepte les propriétés du `CheckboxGroup` ; `label` et `description` nomment et expliquent le groupe.
+ */
+export function CheckCardGroup({
+  label,
+  hideLabel = false,
+  description,
+  options,
+  value,
+  onChange,
+  className,
+  ...rest
+}: Omit<ComponentProps<typeof CheckboxGroup>, "children" | "value" | "onChange" | "aria-label"> & {
+  label: string;
+  /** Masque le libellé à l'écran (il reste lu par les lecteurs d'écran) quand un titre l'annonce déjà. */
+  hideLabel?: boolean;
+  description?: ReactNode;
+  options: { value: string; text: ReactNode; hint?: ReactNode }[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  return (
+    <CheckboxGroup value={value} onChange={onChange} className={cx("flex flex-col gap-2", typeof className === "string" ? className : undefined)} {...rest}>
+      <Label className={hideLabel ? "sr-only" : undefined}>{label}</Label>
+      {description && <Description>{description}</Description>}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {options.map((o) => (
+          <Checkbox
+            key={o.value}
+            value={o.value}
+            className="flex-row items-start gap-3 rounded-lg border border-border px-3 py-3 data-[selected=true]:border-accent data-[selected=true]:bg-accent-soft"
+          >
+            <Checkbox.Control>
+              <Checkbox.Indicator />
+            </Checkbox.Control>
+            <Checkbox.Content>
+              <Label>{o.text}</Label>
+              {o.hint && <Description>{o.hint}</Description>}
+            </Checkbox.Content>
+          </Checkbox>
+        ))}
+      </div>
+    </CheckboxGroup>
+  );
+}
+
 export type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "agent" | "muted";
 
-/** Puce d'état (tons : neutre, accent, succès, avertissement, danger, agent). */
+/** Puce d'état HeroUI : toutes les propriétés de `Chip` ; `tone` choisit la couleur (taille « sm » et variante « soft » par défaut). */
 export function Tag({
   tone = "neutral",
   children,
   icon,
   className,
-}: {
+  size = "sm",
+  variant = "soft",
+  ...rest
+}: Omit<ComponentProps<typeof Chip>, "color" | "children"> & {
   tone?: Tone;
   children: ReactNode;
   icon?: ReactNode;
-  className?: string;
 }) {
   const color = tone === "accent" || tone === "success" || tone === "warning" || tone === "danger" ? tone : "default";
   return (
     <Chip
-      size="sm"
-      variant="soft"
+      size={size}
+      variant={variant}
       color={color}
-      className={cx("whitespace-nowrap", tone === "agent" && "chip--agent", tone === "muted" && "text-muted", className)}
+      className={cx("whitespace-nowrap", tone === "agent" && "chip--agent", tone === "muted" && "text-muted", typeof className === "string" ? className : undefined)}
+      {...rest}
     >
       {icon}
       <Chip.Label>{children}</Chip.Label>
@@ -354,37 +496,25 @@ export function Tag({
   );
 }
 
-/** Message de réussite ou d'information sous une action. */
+/** Message de réussite ou d'information (`Alert` HeroUI, toutes ses propriétés ; `tone` choisit le statut). */
 export function Notice({
   tone = "success",
   children,
   className,
-}: {
-  tone?: "success" | "info" | "warning";
-  children: ReactNode;
-  className?: string;
-}) {
+  ...rest
+}: Omit<ComponentProps<typeof Alert>, "status"> & { tone?: "success" | "info" | "warning" }) {
   return (
-    <p
-      role="status"
-      className={cx(
-        "rounded-lg px-3 py-2 text-[13px]",
-        tone === "success" && "bg-success-soft text-success-soft-foreground",
-        tone === "info" && "bg-accent-soft text-accent-soft-foreground",
-        tone === "warning" && "bg-warning-soft text-warning-soft-foreground",
-        className,
-      )}
-    >
-      {children}
-    </p>
+    <Alert role="status" status={tone === "info" ? "accent" : tone} className={className} {...rest}>
+      <Alert.Content>{children}</Alert.Content>
+    </Alert>
   );
 }
 
-/** Message d'erreur sous une action (le texte reste lisible, sans bouton). */
-export function ErrorText({ children, className }: { children: ReactNode; className?: string }) {
+/** Message d'erreur (`Alert` HeroUI danger, toutes ses propriétés). */
+export function ErrorText({ children, className, ...rest }: Omit<ComponentProps<typeof Alert>, "status">) {
   return (
-    <p role="alert" className={cx("rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger-soft-foreground", className)}>
-      {children}
-    </p>
+    <Alert role="alert" status="danger" className={className} {...rest}>
+      <Alert.Content>{children}</Alert.Content>
+    </Alert>
   );
 }

@@ -10,6 +10,8 @@ import { useCurrentUser } from "@/components/AppShell";
 import { TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
+import { toast } from "@heroui/react";
+import { linkMetaForms } from "@/lib/metaForms";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, Target } from "@/lib/types";
@@ -55,6 +57,8 @@ export default function NewCampaignPage() {
             })),
         },
       });
+      const warning = await linkMetaForms(created, v.sources);
+      if (warning) toast.warning("Campagne créée", { description: warning });
       router.push(`/campaigns/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de la création");
@@ -63,7 +67,7 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <Screen className="max-w-[960px]">
+    <Screen className="max-w-[960px]" scroll>
       <PageHeader eyebrow="Pilotage · Campagnes" title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
       <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
@@ -71,6 +75,7 @@ export default function NewCampaignPage() {
           initial={EMPTY_VALUES}
           targets={targets.data}
           withSources
+          steps
           submitLabel="Créer la campagne"
           busy={busy}
           error={error}

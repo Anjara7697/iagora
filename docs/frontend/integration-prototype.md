@@ -1,5 +1,10 @@
 # Historique de l’intégration de la maquette IAGORA
 
+> **Document historique.** Depuis la migration vers HeroUI, la maquette n'est plus la
+> référence visuelle de la console. Ce document reste utile pour le contenu fonctionnel des
+> écrans, pas pour leur apparence. Le système d'interface actuel est décrit dans
+> [heroui.md](heroui.md).
+
 État courant et écarts restant à traiter : [conformité à la maquette](prototype-conformity.md).
 Les lots ci-dessous décrivent les étapes historiques ; leurs limites initiales
 ne doivent pas être interprétées comme l’état actuel de l’application.

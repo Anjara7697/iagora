@@ -1,11 +1,12 @@
 "use client";
 
-import { Switch } from "@heroui/react";
+import { Card, Switch } from "@heroui/react";
 import { Check, Copy } from "lucide-react";
-import { cloneElement, useId, useState, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from "react";
 import { formatDate } from "@/lib/labels";
 import type { Tone as StateTone } from "@/lib/types";
-import { Btn, ErrorText, Notice, Tag, type Tone } from "./controls";
+import { Box } from "./card";
+import { Btn, ErrorText, Notice, SelectBox, Tag, type Tone } from "./controls";
 import { Eyebrow, cx } from "./layout";
 
 /**
@@ -33,26 +34,25 @@ export function SettingsCard({
   className?: string;
 }) {
   return (
-    <section
-     
-      aria-label={region}
-      hidden={hidden}
-      className={cx("card card--default gap-4 p-5", className)}
-    >
+    <Box as="section" aria-label={region} hidden={hidden} className={className}>
       {(label || title || aside || intro) && (
-        <div className="flex flex-col gap-1">
+        <Card.Header>
           {label && <Eyebrow>{label}</Eyebrow>}
           {(title || aside) && (
             <div className="flex flex-wrap items-center gap-3">
-              {title && <h2 className="min-w-[200px] flex-1 text-base font-semibold text-foreground">{title}</h2>}
+              {title && (
+                <Card.Title render={(props) => <h2 {...props} />} className="flex-1">
+                  {title}
+                </Card.Title>
+              )}
               {aside}
             </div>
           )}
-          {intro && <p className="max-w-[76ch] text-[13px]/[20px] text-muted">{intro}</p>}
-        </div>
+          {intro && <Card.Description>{intro}</Card.Description>}
+        </Card.Header>
       )}
-      {children}
-    </section>
+      <Card.Content>{children}</Card.Content>
+    </Box>
   );
 }
 
@@ -71,11 +71,15 @@ export function SettingRow({
   const noteId = note ? `${id}-note` : undefined;
   return (
     <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-separator pt-4">
-      <label htmlFor={id} className="basis-full pt-2 text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">
+      <label id={`${id}-label`} htmlFor={id} className="basis-full pt-2 text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">
         {label}
       </label>
       <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5">
-        {cloneElement(children, { id, "aria-describedby": noteId ?? children.props["aria-describedby"] })}
+        {cloneElement(children, {
+          id,
+          "aria-describedby": noteId ?? children.props["aria-describedby"],
+          ...(children.type === SelectBox ? { "aria-labelledby": `${id}-label` } : {}),
+        } as Record<string, string | undefined>)}
         {note && (
           <p id={noteId} className="text-xs/[18px] text-muted">
             {note}
@@ -98,7 +102,7 @@ export function Stats({
     <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4" aria-label={label}>
       {items.map((i) => (
         <span key={i.caption} className="flex flex-col gap-1 rounded-xl bg-surface-secondary px-4 py-3">
-          <span className="font-mono text-xl text-foreground tabular-nums">{i.value}</span>
+          <span className="text-xl text-foreground tabular-nums">{i.value}</span>
           <span className="text-[13px]/[18px] text-muted">{i.caption}</span>
         </span>
       ))}
@@ -150,13 +154,15 @@ export function StatePill({ tone, children }: { tone: StateTone; children: React
   return <Tag tone={STATE_TONE[tone] ?? "neutral"}>{children}</Tag>;
 }
 
-/** Réglage activé ou non : titre et conséquence à gauche, interrupteur HeroUI à droite. */
+/** Réglage activé ou non : titre et conséquence à gauche, `Switch` HeroUI à droite (toutes ses propriétés). */
 export function Toggle({
   checked,
   onChange,
   title,
   note,
-}: {
+  className,
+  ...rest
+}: Omit<ComponentProps<typeof Switch>, "children" | "isSelected" | "onChange"> & {
   checked: boolean;
   onChange: (value: boolean) => void;
   title: string;
@@ -164,7 +170,7 @@ export function Toggle({
 }) {
   return (
     <div className="border-t border-separator pt-4">
-      <Switch isSelected={checked} onChange={onChange} className="w-full">
+      <Switch isSelected={checked} onChange={onChange} className={cx("w-full", typeof className === "string" ? className : undefined)} {...rest}>
         <Switch.Content className="flex w-full items-start justify-between gap-6">
           <span className="flex flex-col gap-0.5">
             <span className="text-[13.5px] font-medium text-foreground">{title}</span>

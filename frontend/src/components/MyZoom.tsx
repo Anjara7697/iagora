@@ -8,6 +8,7 @@ import { ActionsBar } from "./ds/settings";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MyZoom as Status } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const RESULTS: Record<string, string> = {
   connected: "Compte Zoom connecté.",
@@ -83,7 +84,7 @@ export function MyZoom() {
     ) : null;
 
   return (
-    <section className="card card--default gap-4 p-5" aria-label="Mon Zoom">
+    <Box as="section" className="gap-4 p-5" aria-label="Mon Zoom">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
           <Video className="size-5" />
@@ -131,6 +132,6 @@ export function MyZoom() {
         </>
       )}
       {error && <ErrorText>{error}</ErrorText>}
-    </section>
+    </Box>
   );
 }
