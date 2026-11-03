@@ -59,13 +59,13 @@ export default function CampaignOverview({ stats }: { stats: CampaignStats }) {
         label="Indicateurs de la campagne"
         items={[
           { key: "prospects", label: "Prospects", value: <CountUp value={stats.prospects} /> },
-          { key: "score", label: "Score moyen", value: <CountUp value={stats.average_score} decimals={1} /> },
+          { key: "score", label: "Score moyen", value: <CountUp value={stats.average_score} decimals={1} />, hint: "sur 100" },
           { key: "meetings", label: "Rendez-vous", value: <CountUp value={stats.meetings} /> },
           {
             key: "converted",
             label: "Convertis",
             value: <CountUp value={stats.converted} />,
-            hint: stats.prospects > 0 ? `${conversion} % des prospects` : undefined,
+            hint: stats.prospects > 0 ? `${conversion} % des prospects · repère ${RATE_THRESHOLDS.enrolment.good} %` : undefined,
             badge: stats.prospects > 0 ? rateBadge(conversion, RATE_THRESHOLDS.enrolment) : undefined,
           },
         ]}

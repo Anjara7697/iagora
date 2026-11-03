@@ -44,6 +44,9 @@ export function Drawer({
     closeButton.current?.focus();
 
     function onKey(event: KeyboardEvent) {
+      // Une confirmation ouverte par-dessus le panneau (ex. « Abandonner les modifications ? ») garde ses touches.
+      const focused = document.activeElement;
+      if (focused && panel.current && !panel.current.contains(focused) && focused.closest('[role="dialog"], [role="alertdialog"]')) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         onCloseRef.current();

@@ -155,7 +155,14 @@ export const TARGETS: Record<string, string> = {
 export const CAMPAIGN_STATUS: Record<string, string> = {
   draft: "Brouillon",
   active: "Active",
-  inactive: "Inactive",
+  inactive: "En pause",
+};
+
+/** Effet du statut sur l'arrivée des prospects (seule une campagne active en reçoit). */
+export const CAMPAIGN_STATUS_EFFECT: Record<string, string> = {
+  draft: "Ne reçoit pas encore de prospects : activez-la pour démarrer.",
+  active: "Reçoit les prospects qui arrivent par ses sources.",
+  inactive: "Ne reçoit plus de nouveaux prospects tant qu’elle n’est pas réactivée.",
 };
 
 export const SOURCE_TYPES: Record<string, string> = {
@@ -190,6 +197,14 @@ export const FUNNEL: { title: string; stages: string[] }[] = [
 
 export function formatDay(iso: string | null | undefined): string {
   return iso ? new Date(iso).toLocaleDateString("fr-FR") : "-";
+}
+
+/** Période lisible, y compris ouverte : « 01/09/2026 → 30/09/2026 », « Depuis le … », « Jusqu’au … », « Sans dates ». */
+export function formatPeriod(start: string | null | undefined, end: string | null | undefined): string {
+  if (start && end) return `${formatDay(start)} → ${formatDay(end)}`;
+  if (start) return `Depuis le ${formatDay(start)}`;
+  if (end) return `Jusqu’au ${formatDay(end)}`;
+  return "Sans dates";
 }
 
 /** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
