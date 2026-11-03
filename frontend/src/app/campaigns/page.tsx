@@ -13,7 +13,7 @@ import { RATE_THRESHOLDS, percent, rateBadge } from "@/lib/kpi";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 6;
 
 const STATUS_FILTERS = [
   { value: "", text: "Toutes" },
