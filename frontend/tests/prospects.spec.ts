@@ -423,7 +423,7 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
   await page.getByRole("button", { name: /Menu du compte/ }).click();
-  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),

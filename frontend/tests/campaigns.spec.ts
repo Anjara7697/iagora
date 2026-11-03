@@ -604,16 +604,6 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
     .toBe(true);
 });
 
-test("l'en-tête porte le titre de chaque écran", async ({ page }) => {
-  await mockApi(page);
-  await login(page, "/campaigns/new");
-  await expect(page.locator("header strong")).toHaveText("Nouvelle campagne");
-  await page.goto("/campaigns/1");
-  await expect(page.locator("header strong")).toHaveText("Campagne");
-  await page.goto("/integrations");
-  await expect(page.locator("header strong")).toHaveText("Intégrations");
-});
-
 test("menu en quatre groupes, écrans à venir regroupés et recherche globale", async ({
   page,
 }) => {
@@ -903,17 +893,27 @@ test("menu mobile : Drawer HeroUI qui garde le focus et se ferme", async ({ page
   await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
 });
 
-test("accessibilité : barre et menu (complet, réduit, état de l'agent, palette, mobile)", async ({ page }) => {
-  test.setTimeout(90_000);
+test("accessibilité : barre et menu (complet, réduit, menu du compte, palette, mobile, thème sombre)", async ({ page }) => {
+  test.setTimeout(120_000);
   await mockApi(page);
   await page.setViewportSize({ width: 1280, height: 720 });
   await login(page, "/campaigns");
   await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
   await auditA11y(page, "barre et menu complet");
-  await page.getByRole("button", { name: /État de l’agent/ }).click();
-  await expect(page.getByRole("dialog", { name: "État de l’agent" })).toBeVisible();
-  await auditA11y(page, "menu de l'état de l'agent");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toBeVisible();
+  await auditA11y(page, "menu du compte (agent, thème)");
+  // Thème sombre : mêmes écrans, contrastes du jeu de couleurs sombre.
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("radio", { name: "Sombre" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await auditA11y(page, "menu du compte en thème sombre");
   await page.keyboard.press("Escape");
+  await auditA11y(page, "liste des campagnes en thème sombre");
+  await page.goto("/campaigns/1");
+  await expect(page.getByRole("heading", { name: "Recrutement eBIHAR 2026" })).toBeVisible();
+  await auditA11y(page, "fiche campagne en thème sombre");
+  await page.goto("/campaigns");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await expect(page.getByRole("dialog", { name: "Recherche rapide" })).toBeVisible();
   await auditA11y(page, "palette de recherche");
@@ -927,4 +927,64 @@ test("accessibilité : barre et menu (complet, réduit, état de l'agent, palett
   await page.getByRole("button", { name: "Ouvrir le menu" }).click();
   await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
   await auditA11y(page, "menu mobile");
+});
+
+test("menu du compte : thème clair, sombre ou système, conservé au rechargement", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.emulateMedia({ colorScheme: "light" });
+  await login(page, "/campaigns");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  const menu = page.getByRole("dialog", { name: "Menu du compte" });
+  // Sélection unique : le ToggleButtonGroup HeroUI est un groupe de boutons radio.
+  const theme = menu.getByRole("radiogroup", { name: "Thème" });
+  await expect(theme.getByRole("radio", { name: "Système" })).toHaveAttribute("aria-checked", "true");
+  await theme.getByRole("radio", { name: "Sombre" }).click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  // « Système » suit le réglage de l'appareil, y compris quand il change.
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("radio", { name: "Système" }).click();
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(html).toHaveAttribute("data-theme", "dark");
+});
+
+test("barre : recherche à gauche, menu du compte au clavier", async ({ page }) => {
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  const search = page.getByRole("button", { name: /Rechercher un prospect, une page/ });
+  const account = page.getByRole("button", { name: /Menu du compte/ });
+  const [s, a] = [await search.boundingBox(), await account.boundingBox()];
+  expect(s!.x).toBeLessThan(400);
+  expect(s!.x).toBeLessThan(a!.x);
+  // Clavier : Entrée ouvre le menu, Tab parcourt ses entrées, Échap le ferme et rend le focus au bouton.
+  await account.focus();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("dialog", { name: "Menu du compte" });
+  await expect(menu).toBeVisible();
+  const names: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press("Tab");
+    names.push(await page.evaluate(() => (document.activeElement as HTMLElement).getAttribute("aria-label") || (document.activeElement as HTMLElement).innerText.trim()));
+  }
+  // Le groupe de thème est un seul arrêt de tabulation ; les flèches déplacent le focus d'un choix à l'autre. Le focus
+  // reste dans le menu (retour à « Mon compte » après « Déconnexion »).
+  expect(names).toEqual(["Mon compte", "Arrêt d’urgence", "Clair", "Déconnexion", "Mon compte"]);
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  // Flèches pour se déplacer, Espace pour choisir.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Space");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(account).toBeFocused();
 });

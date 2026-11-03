@@ -3,9 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  ChevronDown,
   FlaskConical,
-  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -18,26 +16,19 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { canUseSimulator } from "@/lib/access";
-import { pageTitle } from "@/lib/labels";
-import { Avatar, Button, Card, Chip, Drawer, Dropdown, Label, Spinner, Tooltip } from "@heroui/react";
-import AgentStatus from "./AgentStatus";
+import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
+import AccountMenu from "./shell/AccountMenu";
 import AppNav from "./shell/AppNav";
 import { visibleGroups } from "./shell/navigation";
 import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
-import { ReplyDraftsProvider, useHasUnsentReplies } from "./ReplyDrafts";
-import { ConfirmDialog } from "./ds/ConfirmDialog";
+import { ReplyDraftsProvider } from "./ReplyDrafts";
 import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
 export const useCurrentUser = () => useContext(UserContext);
-const ROLE_LABELS = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
 const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
 
 /** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
@@ -45,25 +36,7 @@ export const firstNameOf = (username: string) => {
   const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
   return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
 };
-const displayNameOf = (username: string) =>
-  username
-    .split("@")[0]
-    .split(/[.\s_-]+/)
-    .filter(Boolean)
-    .map((p) => p[0].toUpperCase() + p.slice(1).toLowerCase())
-    .join(" ");
 
-const initialsOf = (name: string) => {
-  const parts = name.split(/[.\s_-]+/).filter(Boolean);
-  return (
-    parts.length > 1
-      ? parts
-          .slice(0, 2)
-          .map((p) => p[0])
-          .join("")
-      : name.slice(0, 2)
-  ).toUpperCase();
-};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -177,7 +150,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = user.role === "ADMIN";
   const inSimulator = pathname === "/simulator" && canUseSimulator(user.role);
   const groups = visibleGroups(user);
-  const title = pageTitle(pathname);
   const commands: Command[] = [
     ...groups.flatMap((g) =>
       g.items.map((i) => ({
@@ -267,16 +239,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
-            {/* Titre de la page : utile sur tablette (menu replié) ; sur téléphone, le titre de la page suffit. */}
-            <strong className="hidden min-w-0 flex-1 truncate text-base font-semibold text-foreground sm:block lg:hidden">
-              {title}
-            </strong>
-            <span className="flex-1 sm:hidden lg:block" />
-            {/* Seule recherche de la console : la palette (prospects, pages, actions). */}
-            <div role="search" className="flex shrink-0 justify-end md:w-[300px] xl:w-[340px]">
+            {/* Recherche et commandes à gauche (la palette : prospects, pages, actions) ; icône seule sur téléphone. */}
+            <div role="search" className="flex min-w-0 md:w-[300px] xl:w-[340px]">
               <CommandPalette commands={commands} />
             </div>
-            {!mustChange && <AgentStatus readOnly={user.role === "VIEWER"} refreshKey={pathname} />}
+            <span className="flex-1" />
             {inSimulator ? (
               <Chip
                 color="warning"
@@ -311,7 +278,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             )}
             <AccountMenu
               user={user}
-              onAccount={() => router.push("/account")}
+              refreshKey={pathname}
+              showAgent={!mustChange}
               onLogout={() => {
                 setToken(null);
                 setUser(null);
@@ -340,76 +308,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       </ReplyDraftsProvider>
     </UserContext.Provider>
-  );
-}
-
-/** Menu du compte (avatar) : identité, Mon compte, Déconnexion (avec garde des réponses en cours). */
-function AccountMenu({
-  user,
-  onAccount,
-  onLogout,
-}: {
-  user: User;
-  onAccount: () => void;
-  onLogout: () => void;
-}) {
-  const hasUnsentReplies = useHasUnsentReplies();
-  const [open, setOpen] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  return (
-    <>
-    <ConfirmDialog
-      isOpen={confirmLogout}
-      onOpenChange={setConfirmLogout}
-      title="Se déconnecter ?"
-      description="Vous avez des réponses non envoyées : la déconnexion les efface."
-      cancelLabel="Rester connecté"
-      confirmLabel="Se déconnecter"
-      onConfirm={onLogout}
-    />
-    <Dropdown isOpen={open} onOpenChange={setOpen}>
-      <Button
-        variant="ghost"
-        className="h-10 gap-2 px-1.5 sm:px-2"
-        aria-label={`Menu du compte : ${displayNameOf(user.username)}, ${ROLE_LABELS[user.role]}`}
-      >
-        <Avatar size="sm" variant="soft" color="accent">
-          <Avatar.Fallback>{initialsOf(user.username)}</Avatar.Fallback>
-        </Avatar>
-        <span className="hidden flex-col items-start leading-tight sm:flex">
-          <span className="text-sm font-medium text-foreground">{displayNameOf(user.username)}</span>
-          <span className="text-xs font-normal text-muted">{ROLE_LABELS[user.role]}</span>
-        </span>
-        <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden="true" />
-      </Button>
-      <Dropdown.Popover placement="bottom end" className="min-w-[240px]">
-        <div className="flex flex-col gap-0.5 border-b border-separator px-3 py-2.5">
-          <span className="text-sm font-semibold text-foreground">{user.username}</span>
-          <span className="text-xs text-muted">{user.email}</span>
-        </div>
-        <Dropdown.Menu
-          aria-label="Compte"
-          onAction={(key) => {
-            setOpen(false);
-            if (key === "account") onAccount();
-            // Des réponses non envoyées seraient effacées : confirmation HeroUI d'abord.
-            if (key === "logout") {
-              if (hasUnsentReplies()) setConfirmLogout(true);
-              else onLogout();
-            }
-          }}
-        >
-          <Dropdown.Item id="account" textValue="Mon compte">
-            <UserRound className="size-4 text-muted" aria-hidden="true" />
-            <Label>Mon compte</Label>
-          </Dropdown.Item>
-          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
-            <LogOut className="size-4" aria-hidden="true" />
-            <Label>Déconnexion</Label>
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
-    </>
   );
 }
