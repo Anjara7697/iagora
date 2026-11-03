@@ -3,7 +3,8 @@ import { SLUG_PATTERN } from "@/lib/knowledgeDoc";
 
 /**
  * État de la Base de connaissances porté par l'adresse : onglet, recherche, programme et document ouvert
- * (`/knowledge?tab=test`, `?q=durée&programme=common`, `?doc=ebihar`). Seules les valeurs connues sont relues.
+ * (`/knowledge?tab=test`, `?q=durée&programme=common&status=reindex`, `?doc=ebihar`). Seules les valeurs connues
+ * sont relues.
  */
 type Query = { get: (key: string) => string | null };
 
@@ -21,6 +22,8 @@ export function readKnowledgeView(query: Query) {
     tab: (tab && Object.hasOwn(KNOWLEDGE_TABS, tab) ? tab : "documents") as KnowledgeTab,
     q: (query.get("q") ?? "").slice(0, 100),
     programme: programme === COMMON || Object.hasOwn(TARGETS, programme) ? programme : "",
+    /** `reindex` : seulement les documents à recalculer (vecteurs d'un ancien modèle, ignorés par l'agent). */
+    status: query.get("status") === "reindex" ? ("reindex" as const) : ("" as const),
     doc: doc && SLUG_PATTERN.test(doc) ? doc : null,
   };
 }
@@ -31,6 +34,7 @@ export function knowledgeHref(view: KnowledgeView) {
   if (view.tab !== "documents") params.set("tab", view.tab);
   if (view.q) params.set("q", view.q);
   if (view.programme) params.set("programme", view.programme);
+  if (view.status) params.set("status", view.status);
   if (view.doc) params.set("doc", view.doc);
   const search = params.toString();
   return `/knowledge${search ? `?${search}` : ""}`;

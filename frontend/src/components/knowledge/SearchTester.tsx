@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { Btn, ErrorText, FIELD_RADIUS, Field, SelectBox, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, ErrorText, FIELD_RADIUS, Field, Notice, SelectBox, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyText, Panel } from "@/components/ds/layout";
 import { api, ApiError } from "@/lib/api";
 import { TARGETS } from "@/lib/labels";
@@ -58,6 +58,11 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
         Vérifiez quelles sources l’agent peut utiliser avant de répondre à un
         prospect. Les extraits trop peu pertinents sont écartés.
       </p>
+      {!status.configured && (
+        <Notice tone="warning" className="rounded-lg">
+          Test indisponible : le service de recherche n’est pas configuré.
+        </Notice>
+      )}
       <form className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end" style={FIELD_RADIUS} onSubmit={run}>
         <Field label="Question du prospect">
           <TextInput

@@ -284,11 +284,10 @@ test("embeddings non configurés : avertissement et recherche bloquée", async (
 }) => {
   await mockApi(page, { configured: false });
   await open(page);
-  await expect(
-    page.getByText("le service de recherche n’est pas configuré", {
-      exact: false,
-    }),
-  ).toBeVisible();
+  // Alerte HeroUI annoncée poliment (état durable), avec le lien vers les paramètres pour l'administrateur.
+  const alert = page.getByRole("status").filter({ hasText: "Recherche indisponible" });
+  await expect(alert).toContainText("Le service de recherche n’est pas configuré");
+  await expect(alert.getByRole("link", { name: "Configurer dans les paramètres" })).toHaveAttribute("href", "/settings?section=ia");
   await page.getByRole("tab", { name: "Tester une question" }).click();
   await page.getByLabel("Question du prospect").fill("une question");
   await expect(page.getByRole("button", { name: "Tester" })).toBeDisabled();
@@ -299,13 +298,14 @@ test("documents à recalculer : bannière et recalcul", async ({ page }) => {
     docs: [doc({ needs_reindex: true, embedding_model: "ancien/modele" })],
   });
   await open(page);
-  await expect(
-    page.getByText("Certains documents doivent être actualisés", {
-      exact: false,
-    }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Actualiser les documents" }).click();
-  await expect(page.getByText("Documents actualisés.")).toBeVisible();
+  await expect(page.getByText("1 document à recalculer")).toBeVisible();
+  await expect(page.getByText("l’agent ne l’utilise pas tant qu’il n’est pas recalculé")).toBeVisible();
+  // « Afficher ce document » filtre la liste sur les documents à recalculer.
+  await page.getByRole("button", { name: "Afficher ce document" }).click();
+  await expect(page).toHaveURL(/status=reindex/);
+  await expect(page.getByRole("button", { name: "À recalculer (1)" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Recalculer", exact: true }).click();
+  await expect(page.getByText("Documents recalculés")).toBeVisible();
   expect(calls.requests.some((r) => r.path === "/knowledge/reindex")).toBe(
     true,
   );
@@ -332,7 +332,7 @@ test("bannière de lacune, filtre par programme et statut de chaque document", a
   );
   await open(page);
   await expect(
-    page.getByText("1 demande nécessite une source fiable"),
+    page.getByText("1 question sans source fiable"),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Traiter la demande" }),
@@ -495,4 +495,22 @@ test("onglets, filtres dans l'adresse, tableau complet et ouverture au clavier",
   await page.reload();
   await expect(page.getByRole("tab", { name: "Tester une question" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Question du prospect")).toBeVisible();
+});
+
+test("état de la page : erreur de chargement explicite et testeur expliqué sans service", async ({ page }) => {
+  await mockApi(page, { configured: false });
+  await page.route("**/api/v1/knowledge/documents", (route) => route.fulfill({ status: 500, json: { detail: "Erreur interne" } }));
+  await open(page);
+  await expect(page.getByRole("alert").filter({ hasText: "Impossible de charger les documents : Erreur interne" })).toBeVisible();
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await expect(page.getByText("Test indisponible : le service de recherche n’est pas configuré.")).toBeVisible();
+  // Plusieurs questions en attente : libellé au pluriel.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockApi(page);
+  await page.route("**/api/v1/todo**", (route) =>
+    route.fulfill({ json: { items: [], total: 2, limit: 1, offset: 0, counts: { kb_gap: 2 } } }),
+  );
+  await page.goto("/knowledge");
+  await expect(page.getByText("2 questions sans source fiable")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Traiter les demandes" })).toBeVisible();
 });

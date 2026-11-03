@@ -41,34 +41,46 @@ export default function DocumentList({
   const shown = documents.filter(
     (d) =>
       (!view.programme || programmeOf(d) === view.programme) &&
+      (!view.status || d.needs_reindex) &&
       `${d.title} ${d.slug}`.toLocaleLowerCase("fr").includes(needle),
   );
-  const filtered = !!view.q || !!view.programme;
+  const filtered = !!view.q || !!view.programme || !!view.status;
+  const toReindex = documents.filter((d) => d.needs_reindex).length;
 
   return (
     <Box as="section" className="gap-4 rounded-lg p-5" aria-label="Documents disponibles" style={FIELD_RADIUS}>
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Rechercher un document" className="w-full sm:w-72">
-          <TextInput
-            variant="secondary"
-            type="search"
-            value={view.q}
-            onChange={(e) => onChange({ q: e.target.value })}
-            placeholder="Titre ou identifiant…"
-          />
-        </Field>
-        {programmes.length > 1 && (
-          <FilterChipGroup
-            label="Programme"
-            options={[{ value: "", text: "Tous" }, ...programmes.map((code) => ({ value: code, text: programmeLabel(code) }))]}
-            value={view.programme}
-            onChange={(value) => onChange({ programme: value })}
-          />
-        )}
-        <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
-          {isLoading ? "" : `${shown.length} document${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${documents.length}` : ""}`}
-        </span>
-      </div>
+      {(documents.length > 0 || filtered) && (
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Rechercher un document" className="w-full sm:w-72">
+            <TextInput
+              variant="secondary"
+              type="search"
+              value={view.q}
+              onChange={(e) => onChange({ q: e.target.value })}
+              placeholder="Titre ou identifiant…"
+            />
+          </Field>
+          {programmes.length > 1 && (
+            <FilterChipGroup
+              label="Programme"
+              options={[{ value: "", text: "Tous" }, ...programmes.map((code) => ({ value: code, text: programmeLabel(code) }))]}
+              value={view.programme}
+              onChange={(value) => onChange({ programme: value })}
+            />
+          )}
+          {(toReindex > 0 || view.status) && (
+            <FilterChipGroup
+              label="Statut"
+              options={[{ value: "reindex", text: `À recalculer (${toReindex})` }]}
+              value={view.status}
+              onChange={() => onChange({ status: view.status ? "" : "reindex" })}
+            />
+          )}
+          <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+            {isLoading ? "" : `${shown.length} document${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${documents.length}` : ""}`}
+          </span>
+        </div>
+      )}
 
       <DataTable
         label="Liste des documents"
@@ -87,9 +99,11 @@ export default function DocumentList({
             <EmptyPanel
               icon={FileSearch}
               title="Aucun document ne correspond"
-              description={[view.q && `Recherche « ${view.q.trim()} »`, view.programme && programmeLabel(view.programme)].filter(Boolean).join(" · ")}
+              description={[view.q && `Recherche « ${view.q.trim()} »`, view.programme && programmeLabel(view.programme), view.status && "À recalculer"]
+                .filter(Boolean)
+                .join(" · ")}
               action={
-                <Btn variant="secondary" className="rounded-lg" onClick={() => onChange({ q: "", programme: "" })}>
+                <Btn variant="secondary" className="rounded-lg" onClick={() => onChange({ q: "", programme: "", status: "" })}>
                   Afficher tous les documents
                 </Btn>
               }
