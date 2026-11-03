@@ -321,7 +321,8 @@ test("création en trois étapes : informations, période et ciblage, sources en
   // Étape 1 : informations
   await expect(page.getByRole("navigation", { name: "Étapes de création" })).toBeVisible();
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
-  await choose(page.getByLabel("Statut"), "active");
+  // Le statut ne se choisit plus à la création : la campagne naît en brouillon.
+  await expect(page.getByLabel("Statut")).toHaveCount(0);
   await page.getByRole("button", { name: "Continuer" }).click();
   // Étape 2 : période et programmes
   await page.getByRole("spinbutton").first().click();
@@ -340,6 +341,7 @@ test("création en trois étapes : informations, période et ciblage, sources en
   const recap = page.getByLabel("Récapitulatif");
   await expect(recap).toContainText("Rentrée 2027");
   await expect(recap).toContainText("01/09/2026 → 30/09/2026");
+  await expect(recap).toContainText("Brouillon");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
   // La fiche est compilée au premier accès par le serveur de développement.
   await expect(page).toHaveURL(/\/campaigns\/7$/, { timeout: 30_000 });
@@ -351,7 +353,7 @@ test("création en trois étapes : informations, période et ciblage, sources en
       body: {
         name: "Rentrée 2027",
         description: null,
-        status: "active",
+        status: "draft",
         start_date: "2026-09-01T00:00:00Z",
         end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
@@ -597,4 +599,68 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
   await page.getByLabel("Rechercher un prospect").fill("alice");
   await page.getByLabel("Rechercher un prospect").press("Enter");
   await expect(page).toHaveURL(/\/prospects\?q=alice$/);
+});
+
+test("création : Annuler sans saisie quitte, avec saisie demande confirmation", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/new");
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/, { timeout: 15_000 });
+
+  await page.goto("/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await page.getByRole("button", { name: "Annuler" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Abandonner les modifications ?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/campaigns\/new$/);
+  await expect(page.getByLabel("Nom de la campagne")).toHaveValue("Rentrée 2027");
+
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/, { timeout: 15_000 });
+});
+
+test("création : une erreur de l'API s'affiche en alerte", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/v1/campaigns", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 422, json: { detail: "Programme inconnu" } })
+      : route.fallback(),
+  );
+  await login(page, "/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Créer la campagne" }).click();
+  const alert = page.getByRole("alert").filter({ hasText: "Programme inconnu" });
+  await expect(alert).toBeVisible();
+  await expect(alert).toBeInViewport();
+  await expect(page).toHaveURL(/\/campaigns\/new$/);
+});
+
+test("fiche : fermer le panneau de modification avec une saisie demande confirmation", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1");
+  const drawer = page.getByRole("dialog", { name: "Modifier la campagne" });
+  // Sans modification, Échap ferme directement.
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  await drawer.getByLabel("Nom de la campagne").fill("Nouveau nom");
+  await page.keyboard.press("Escape");
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Abandonner les modifications ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(drawer.getByLabel("Nom de la campagne")).toHaveValue("Nouveau nom");
+
+  await drawer.getByRole("button", { name: "Annuler" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(drawer).toHaveCount(0);
+  expect(calls.requests.some((r) => r.method === "PATCH" && (r.body as { name?: string }).name === "Nouveau nom")).toBe(false);
 });

@@ -12,6 +12,7 @@ import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
 import { Btn, ErrorText, LinkButton, TAB_RADIUS, Tag, TextLink, type Tone } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Drawer } from "@/components/Drawer";
@@ -43,6 +44,14 @@ export default function CampaignPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const { guard, dialog } = useDiscardGuard(editing && dirty);
+  const closeEditor = () =>
+    guard(() => {
+      setEditing(false);
+      setDirty(false);
+      setError(null);
+    });
 
   const c = campaign.data;
   const reload = () => {
@@ -56,6 +65,7 @@ export default function CampaignPage() {
     try {
       await api(`/campaigns/${id}`, { method: "PATCH", body });
       setEditing(false);
+      setDirty(false);
       reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement");
@@ -68,7 +78,6 @@ export default function CampaignPage() {
     patch({
       name: v.name.trim(),
       description: v.description.trim() || null,
-      status: v.status,
       start_date: toIso(v.start_date),
       end_date: toIso(v.end_date),
       target_codes: v.target_codes,
@@ -179,13 +188,12 @@ export default function CampaignPage() {
             </Tabs.Panel>
           </Tabs>
 
-          <Drawer open={editing && !!targets.data} onClose={() => setEditing(false)} title="Modifier la campagne" eyebrow="Campagne">
+          <Drawer open={editing && !!targets.data} onClose={closeEditor} title="Modifier la campagne" eyebrow="Campagne">
             {targets.data && (
               <CampaignForm
                 initial={{
                   name: c.name,
                   description: c.description ?? "",
-                  status: c.status,
                   start_date: day(c.start_date),
                   end_date: day(c.end_date),
                   target_codes: c.targets.map((t) => t.code),
@@ -198,10 +206,12 @@ export default function CampaignPage() {
                 busy={busy}
                 error={error}
                 onSubmit={save}
-                onCancel={() => setEditing(false)}
+                onCancel={closeEditor}
+                onDirtyChange={setDirty}
               />
             )}
           </Drawer>
+          {dialog}
         </>
       )}
     </Screen>

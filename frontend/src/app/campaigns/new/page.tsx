@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/components/AppShell";
 import { TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { toast } from "@heroui/react";
 import { linkMetaForms } from "@/lib/metaForms";
 import { api, ApiError } from "@/lib/api";
@@ -24,6 +25,9 @@ export default function NewCampaignPage() {
   const targets = useApi<Target[]>("/targets");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  // Pas d'avertissement une fois la campagne créée : la redirection vers sa fiche n'abandonne rien.
+  const { guard, dialog } = useDiscardGuard(dirty && !busy);
 
   if (user && user.role !== "ADMIN") {
     return (
@@ -43,7 +47,7 @@ export default function NewCampaignPage() {
         body: {
           name: v.name.trim(),
           description: v.description.trim() || null,
-          status: v.status,
+          status: "draft",
           start_date: toIso(v.start_date),
           end_date: toIso(v.end_date),
           target_codes: v.target_codes,
@@ -80,9 +84,11 @@ export default function NewCampaignPage() {
           busy={busy}
           error={error}
           onSubmit={create}
-          onCancel={() => router.push("/campaigns")}
+          onCancel={() => guard(() => router.push("/campaigns"))}
+          onDirtyChange={setDirty}
         />
       )}
+      {dialog}
     </Screen>
   );
 }

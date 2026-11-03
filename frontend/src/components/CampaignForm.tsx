@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { Btn, CheckCardGroup, ErrorText, Field, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { Btn, CheckCardGroup, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { DateRangeField } from "@/components/ds/DateRangeField";
 import { ActionsBar } from "@/components/ds/settings";
 import { Stepper, type Step } from "@/components/ds/Stepper";
@@ -15,7 +15,6 @@ export type { SourceDraft };
 export type CampaignValues = {
   name: string;
   description: string;
-  status: string;
   start_date: string;
   end_date: string;
   target_codes: string[];
@@ -25,7 +24,6 @@ export type CampaignValues = {
 export const EMPTY_VALUES: CampaignValues = {
   name: "",
   description: "",
-  status: "draft",
   start_date: "",
   end_date: "",
   target_codes: [],
@@ -33,7 +31,7 @@ export const EMPTY_VALUES: CampaignValues = {
 };
 
 const STEPS: Step[] = [
-  { id: "basics", title: "Informations", description: "Nom, description et statut" },
+  { id: "basics", title: "Informations", description: "Nom et description" },
   { id: "targeting", title: "Période et ciblage", description: "Dates et programmes visés" },
   { id: "sources", title: "Sources", description: "D’où viennent les prospects" },
 ];
@@ -42,8 +40,10 @@ const STEPS: Step[] = [
 const FIELD_RADIUS = { "--field-radius": "var(--radius-lg)" } as CSSProperties;
 
 /**
- * Nom, description, statut, période et programmes visés ; les sources seulement à la création.
+ * Nom, description, période et programmes visés ; les sources seulement à la création.
  * Avec `steps` (création), le formulaire se déroule en trois étapes : informations, période et ciblage, sources.
+ * Le statut n'en fait pas partie : une campagne est créée en brouillon et s'active depuis l'en-tête de sa fiche,
+ * avec confirmation. `onDirtyChange` signale une saisie non enregistrée (garde avant de quitter).
  */
 export default function CampaignForm({
   initial,
@@ -56,6 +56,7 @@ export default function CampaignForm({
   error,
   onSubmit,
   onCancel,
+  onDirtyChange,
 }: {
   initial: CampaignValues;
   targets: Target[];
@@ -68,6 +69,7 @@ export default function CampaignForm({
   error: string | null;
   onSubmit: (values: CampaignValues) => void;
   onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [v, setV] = useState<CampaignValues>(initial);
   const [step, setStep] = useState(0);
@@ -77,7 +79,14 @@ export default function CampaignForm({
   const valid = v.name.trim().length > 0;
   const stepValid = step === 0 ? valid : true;
   const show = (index: number) => !steps || step === index;
+  const dirty = JSON.stringify(v) !== JSON.stringify(initial);
+  const errorRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  // Une erreur d'enregistrement s'affiche sous le formulaire : on l'amène à l'écran.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [error]);
 
   return (
     <Box
@@ -109,13 +118,6 @@ export default function CampaignForm({
           </Field>
           <Field label="Description" hint="Visible par l’équipe ; l’agent ne l’envoie jamais au prospect.">
             <TextBox variant="secondary" value={v.description} onChange={(e) => set("description", e.target.value)} />
-          </Field>
-          <Field label="Statut">
-            <SelectBox variant="secondary" fullWidth={false} className="w-full sm:w-64" value={v.status} onChange={(e) => set("status", e.target.value)}>
-              <option value="draft">Brouillon</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </SelectBox>
           </Field>
         </section>
       )}
@@ -169,6 +171,8 @@ export default function CampaignForm({
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-lg bg-surface-secondary p-3 text-[13px]" aria-label="Récapitulatif">
               <dt className="text-muted">Campagne</dt>
               <dd className="font-medium text-foreground">{v.name.trim() || "—"}</dd>
+              <dt className="text-muted">Statut</dt>
+              <dd>Brouillon : ne reçoit aucun prospect tant que vous ne l’activez pas depuis sa fiche</dd>
               <dt className="text-muted">Période</dt>
               <dd>{v.start_date && v.end_date ? `${formatDay(v.start_date)} → ${formatDay(v.end_date)}` : "Sans dates"}</dd>
               <dt className="text-muted">Programmes</dt>
@@ -180,7 +184,11 @@ export default function CampaignForm({
         </section>
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
+      {error && (
+        <div ref={errorRef}>
+          <ErrorText>{error}</ErrorText>
+        </div>
+      )}
       <ActionsBar className="border-t border-separator pt-4">
         {steps && step > 0 && (
           <Btn className="rounded-lg" disabled={busy} onClick={() => setStep(step - 1)}>
