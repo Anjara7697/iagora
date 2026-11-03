@@ -260,7 +260,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               variant="ghost"
               isIconOnly
               className="lg:hidden"
-              aria-label={navOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-label="Ouvrir le menu"
               aria-expanded={navOpen}
               onPress={() => setNavOpen(true)}
             >

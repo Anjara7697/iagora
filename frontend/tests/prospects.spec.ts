@@ -509,11 +509,12 @@ test("mobile : menu repliable et absence de débordement de page", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await login(page);
-  const menu = page.locator('button[aria-controls="app-navigation"]');
-  await menu.click();
-  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  // Menu mobile : Drawer HeroUI, refermé par Échap.
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ouvrir le menu" })).toHaveAttribute("aria-expanded", "false");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
