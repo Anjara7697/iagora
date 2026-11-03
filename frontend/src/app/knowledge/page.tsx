@@ -1,47 +1,24 @@
 "use client";
 
-import { FileText, Pencil, Plus, RefreshCw, Search, Sparkles, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { FileText, Plus, RefreshCw, Search, Sparkles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { DemoChip } from "@/components/ds/badges";
-import { Btn, ErrorText, Field, FileInput, FilterChip, LinkButton, SelectBox, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FilterChip, LinkButton, SelectBox, Tag, TextInput, TextLink } from "@/components/ds/controls";
 import { EmptyText, PageHeader, Panel, Screen } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
 import { Collapse } from "@/components/ds/collapse";
-import { ActionsBar, Feedback, SettingsCard } from "@/components/ds/settings";
+import { Feedback } from "@/components/ds/settings";
+import DocumentPanel from "@/components/knowledge/DocumentPanel";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
+import { SLUG_PATTERN } from "@/lib/knowledgeDoc";
 import { TARGETS, formatDate, label } from "@/lib/labels";
+import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
-import type {
-  KnowledgeDocument,
-  KnowledgeDocumentDetail,
-  KnowledgeStatus,
-  SearchResult,
-} from "@/lib/types";
+import type { KnowledgeDocument, KnowledgeStatus, SearchResult } from "@/lib/types";
 import { Box } from "@/components/ds/card";
-
-const TEMPLATE = `---
-title: Titre du document
-target: ebihar_students
----
-## Première section
-Un fait par phrase claire, par exemple : le programme dure 18 mois.
-
-## Deuxième section
-Conditions d'admission, rythme, financement…
-`;
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\.md$/, "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
 
 function ScoreBar({ score, threshold, retained }: { score: number; threshold: number; retained: boolean }) {
   return (
@@ -162,189 +139,32 @@ function SearchTester({ status }: { status: KnowledgeStatus }) {
   );
 }
 
-function Editor({
-  initial,
-  onSaved,
-  onCancel,
-}: {
-  initial: { slug: string; content: string; locked: boolean };
-  onSaved: () => void;
-  onCancel: () => void;
-}) {
-  const [slug, setSlug] = useState(initial.slug);
-  const [content, setContent] = useState(initial.content);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    try {
-      await api(`/knowledge/documents/${slug}`, {
-        method: "PUT",
-        body: { content },
-      });
-      onSaved();
-    } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Échec de l'enregistrement",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const [picked, setPicked] = useState<File | null>(null);
-  async function load(file: File | undefined) {
-    if (!file) return;
-    setPicked(file);
-    setContent(await file.text());
-    if (!slug) setSlug(slugify(file.name));
-  }
-
-  return (
-    <SettingsCard
-      region="Éditeur de document"
-      label={initial.locked ? "Modification" : "Nouveau document"}
-      title={initial.locked ? `Modifier « ${initial.slug} »` : "Ajouter un document"}
-    >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Identifiant (lettres minuscules, chiffres, tirets)">
-          <TextInput
-            aria-label="Identifiant du document"
-            value={slug}
-            disabled={initial.locked}
-            onChange={(e) => setSlug(slugify(e.target.value))}
-            className="font-mono"
-          />
-        </Field>
-        <Field label="Charger un fichier .md">
-          <FileInput accept=".md,text/markdown,text/plain" file={picked} onChange={(f) => load(f)} />
-        </Field>
-      </div>
-      <TextBox
-        aria-label="Contenu du document"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        className="min-h-[320px] font-mono text-[13px]/[20px]"
-      />
-      <p className="text-xs/[18px] text-muted">
-        En-tête obligatoire : <code className="rounded bg-surface-tertiary px-1 font-mono">title:</code>, et{" "}
-        <code className="rounded bg-surface-tertiary px-1 font-mono">target:</code> pour
-        limiter le document à un programme (
-        <code className="font-mono">{Object.keys(TARGETS).join(" | ")}</code>, ou omis pour tous). Une
-        section = un titre <code className="rounded bg-surface-tertiary px-1 font-mono">##</code>.
-      </p>
-      {error && <ErrorText>{error}</ErrorText>}
-      <ActionsBar>
-        <Btn
-          variant="primary"
-          disabled={busy || !slug || content.trim().length < 10}
-          onClick={save}
-        >
-          {busy ? "Enregistrement…" : "Enregistrer"}
-        </Btn>
-        <Btn disabled={busy} onClick={onCancel}>
-          Annuler
-        </Btn>
-      </ActionsBar>
-    </SettingsCard>
-  );
-}
-
-function DocumentDetail({
-  slug,
-  canEdit,
-  onEdit,
-  onDelete,
-}: {
-  slug: string;
-  canEdit: boolean;
-  onEdit: (d: KnowledgeDocumentDetail) => void;
-  /** Suppression réservée à l'administrateur, depuis le détail uniquement. */
-  onDelete?: (d: KnowledgeDocumentDetail) => void;
-}) {
-  const detail = useApi<KnowledgeDocumentDetail>(
-    `/knowledge/documents/${slug}`,
-  );
-  const d = detail.data;
-  return (
-    <Box as="section" className="gap-4 p-5" aria-label={`Document ${slug}`}>
-      <Loading
-        loading={detail.loading}
-        error={detail.error}
-        onRetry={detail.reload}
-      />
-      {d && (
-        <>
-          <div className="flex flex-wrap items-start gap-3">
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-soft-foreground" aria-hidden="true">
-              <FileText className="size-5" />
-            </span>
-            <div className="flex min-w-[200px] flex-1 flex-col gap-0.5">
-              <h2 className="text-lg font-semibold text-foreground">{d.title}</h2>
-              <p className="text-[13px] text-muted">
-                {d.target_code
-                  ? label(TARGETS, d.target_code)
-                  : "Tous les programmes"}{" "}
-                · {d.chunks} extraits
-              </p>
-            </div>
-            <ActionsBar>
-              {canEdit && d.source_text !== null && (
-                <Btn variant="outline" size="sm" onClick={() => onEdit(d)}>
-                  <Pencil className="size-4" aria-hidden="true" />
-                  Modifier
-                </Btn>
-              )}
-              {onDelete && (
-                <Btn variant="danger-soft" size="sm" onClick={() => onDelete(d)}>
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  Supprimer
-                </Btn>
-              )}
-            </ActionsBar>
-          </div>
-          <Collapse
-  title="Informations techniques du document"
-  className="rounded-xl bg-surface-secondary px-4 py-2.5 text-[13px]"
-  triggerClassName="w-full text-muted hover:text-foreground"
->
-            <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted">Identifiant</dt>
-              <dd className="font-mono">{d.slug}</dd>
-              <dt className="text-muted">Modèle utilisé</dt>
-              <dd className="font-mono">{d.embedding_model}</dd>
-            </dl>
-</Collapse>
-          <ol className="flex flex-col gap-3">
-            {d.sections.map((s, i) => (
-              <li key={i} className="flex gap-3 border-t border-separator pt-3 first:border-t-0 first:pt-0">
-                <span className="mt-0.5 text-xs text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
-                <span className="flex flex-col gap-1">
-                  <strong className="text-sm font-semibold text-foreground">{s.heading ?? "Introduction"}</strong>
-                  <p className="text-[13px]/[20px] whitespace-pre-wrap text-muted">{s.text}</p>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
-    </Box>
-  );
-}
-
 export default function KnowledgePage() {
+  return (
+    <Suspense>
+      <Knowledge />
+    </Suspense>
+  );
+}
+
+/** Ouvre un document dans le panneau latéral : son identifiant est dans l'adresse (`?doc=`), donc partageable. */
+function docHref(slug: string | null) {
+  const params = new URLSearchParams(window.location.search);
+  if (slug) params.set("doc", slug);
+  else params.delete("doc");
+  const search = params.toString();
+  return `/knowledge${search ? `?${search}` : ""}`;
+}
+
+function Knowledge() {
   const user = useCurrentUser();
   const isAdmin = user?.role === "ADMIN";
   const status = useApi<KnowledgeStatus>("/knowledge/status");
   const docs = useApi<KnowledgeDocument[]>("/knowledge/documents");
-  const [selected, setSelected] = useState<string | null>(null);
-  const [editor, setEditor] = useState<{
-    slug: string;
-    content: string;
-    locked: boolean;
-  } | null>(null);
+  const requested = useSearchParams().get("doc");
+  const selected = requested && SLUG_PATTERN.test(requested) ? requested : null;
+  const openDoc = (slug: string | null) => replaceUrl(docHref(slug));
+  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -390,8 +210,11 @@ export default function KnowledgePage() {
           isAdmin && (
             <Btn
               variant="primary"
-              disabled={status.loading || !status.data?.configured || !!editor}
-              onClick={() => setEditor({ slug: "", content: TEMPLATE, locked: false })}
+              disabled={status.loading || !status.data?.configured}
+              onClick={() => {
+                openDoc(null);
+                setCreating(true);
+              }}
             >
               <Plus className="size-4" aria-hidden="true" />
               Ajouter un document
@@ -467,20 +290,6 @@ export default function KnowledgePage() {
       )}
       <Feedback notice={notice} error={error} />
 
-      {editor && (
-        <Editor
-          key={editor.slug || "new"}
-          initial={editor}
-          onCancel={() => setEditor(null)}
-          onSaved={() => {
-            setEditor(null);
-            setNotice("Document enregistré.");
-            docs.reload();
-            if (editor.slug) setSelected(editor.slug);
-          }}
-        />
-      )}
-
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(340px,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
           <Loading
@@ -551,9 +360,11 @@ export default function KnowledgePage() {
                           <span className="flex min-w-0 flex-col gap-0.5">
                             <Btn
                               variant="ghost"
-                              aria-expanded={open}
                               className="h-auto w-fit justify-start px-0 py-0 text-left font-medium hover:bg-transparent hover:text-accent hover:underline"
-                              onClick={() => setSelected(open ? null : d.slug)}
+                              onClick={() => {
+                                setCreating(false);
+                                openDoc(d.slug);
+                              }}
                             >
                               {d.title}
                             </Btn>
@@ -613,37 +424,6 @@ export default function KnowledgePage() {
               </p>
             )}
           </Box>
-          {selected && (
-            <DocumentDetail
-              key={selected}
-              slug={selected}
-              canEdit={isAdmin && status.data?.configured === true}
-              onEdit={(d) =>
-                setEditor({
-                  slug: d.slug,
-                  content: d.source_text ?? "",
-                  locked: true,
-                })
-              }
-              onDelete={
-                isAdmin && !busy
-                  ? (d) => {
-                      if (
-                        window.confirm(
-                          `Supprimer « ${d.title} » ? L'agent ne pourra plus s'en servir.`,
-                        )
-                      )
-                        act(async () => {
-                          await api(`/knowledge/documents/${d.slug}`, {
-                            method: "DELETE",
-                          });
-                          setSelected(null);
-                        }, "Document supprimé.");
-                    }
-                  : undefined
-              }
-            />
-          )}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6 xl:sticky xl:top-24">
@@ -669,6 +449,31 @@ export default function KnowledgePage() {
           )}
         </aside>
       </div>
+
+      <DocumentPanel
+        slug={creating ? null : selected}
+        creating={creating}
+        documents={docs.data ?? []}
+        canEdit={isAdmin && status.data?.configured === true}
+        canDelete={isAdmin}
+        onClose={() => {
+          setCreating(false);
+          openDoc(null);
+        }}
+        onOpen={(slug) => {
+          setCreating(false);
+          openDoc(slug);
+        }}
+        onSaved={(slug) => {
+          setCreating(false);
+          openDoc(slug);
+          docs.reload();
+        }}
+        onDeleted={() => {
+          openDoc(null);
+          docs.reload();
+        }}
+      />
     </Screen>
   );
 }

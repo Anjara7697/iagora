@@ -127,10 +127,16 @@ test("liste des documents, détail et marque « Fictif »", async ({ page }) => 
     page.getByRole("button", { name: "Programme eBIHAR" }),
   ).toBeVisible();
   await expect(page.getByText("Fictif", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
-  const detail = page.getByRole("region", { name: "Document ebihar" });
-  await expect(detail.getByText("Le programme dure 18 mois.")).toBeVisible();
   await auditA11y(page, "base de connaissances");
+  // Le document s'ouvre dans un panneau latéral, à l'écran, et son adresse est partageable.
+  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await expect(panel.getByText("Le programme dure 18 mois.")).toBeInViewport();
+  await expect(page).toHaveURL(/\/knowledge\?doc=ebihar$/);
+  await auditA11y(page, "base de connaissances : document ouvert");
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(page).toHaveURL(/\/knowledge$/);
 });
 
 test("tester une question affiche les scores et le verdict du seuil", async ({
@@ -162,36 +168,99 @@ test("l'administrateur ajoute un document", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
   await page.getByRole("button", { name: "Ajouter un document" }).click();
-  await page.getByLabel("Identifiant du document").fill("Mon Nouveau Doc");
-  await expect(page.getByLabel("Identifiant du document")).toHaveValue(
-    "mon-nouveau-doc",
-  );
-  await page
-    .getByLabel("Contenu du document")
-    .fill("---\ntitle: Nouveau\n---\n## A\nUn fait.");
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page.getByText("Document enregistré.")).toBeVisible();
+  const panel = page.getByRole("dialog", { name: "Ajouter un document" });
+  // L'identifiant se déduit du titre ; l'en-tête est généré à partir des champs.
+  await panel.getByLabel("Titre").fill("Mon Nouveau Doc");
+  await expect(panel.getByLabel("Identifiant")).toHaveValue("mon-nouveau-doc");
+  await choose(panel.getByRole("button", { name: /Programme$/ }), "compagnons_pros");
+  await panel.getByLabel("Contenu").fill("## A\nUn fait vérifié.");
+  await panel.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Document enregistré")).toBeVisible();
   await expect
     .poll(() => calls.requests)
     .toContainEqual({
       method: "PUT",
       path: "/knowledge/documents/mon-nouveau-doc",
-      body: { content: "---\ntitle: Nouveau\n---\n## A\nUn fait." },
+      body: { content: "---\ntitle: Mon Nouveau Doc\ntarget: compagnons_pros\n---\n## A\nUn fait vérifié." },
     });
+});
+
+test("création : un identifiant déjà utilisé est refusé, avec un lien vers le document", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: "Ajouter un document" }).click();
+  const panel = page.getByRole("dialog", { name: "Ajouter un document" });
+  await panel.getByLabel("Titre").fill("eBIHAR");
+  await panel.getByLabel("Contenu").fill("## A\nUn fait vérifié.");
+  await expect(panel.getByText("Un document porte déjà cet identifiant.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+  expect(calls.requests.some((r) => r.method === "PUT")).toBe(false);
+  // Ouvrir le document existant abandonne la saisie : confirmation d'abord.
+  await panel.getByRole("button", { name: "Ouvrir ce document" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
+  await expect(page).toHaveURL(/\?doc=ebihar$/);
+});
+
+test("modifier : champs pré-remplis dans le panneau et confirmation avant d'abandonner", async ({ page }) => {
+  const calls = await mockApi(page);
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("admin");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/knowledge?doc=ebihar");
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await panel.getByRole("button", { name: "Modifier" }).click();
+  await expect(panel.getByLabel("Titre")).toHaveValue("Programme eBIHAR");
+  await expect(panel.getByLabel("Identifiant")).toBeDisabled();
+  await expect(panel.getByRole("button", { name: /Programme$/ })).toContainText("eBIHAR — étudiants");
+  await expect(panel.getByLabel("Contenu")).toHaveValue("## Durée\n18 mois.");
+  await expect(panel.getByLabel("Contenu")).toBeInViewport();
+  // Sans modification, Annuler revient à la fiche ; avec une modification, confirmation.
+  await panel.getByRole("button", { name: "Annuler" }).click();
+  await expect(panel.getByRole("button", { name: "Modifier" })).toBeVisible();
+  await panel.getByRole("button", { name: "Modifier" }).click();
+  await panel.getByLabel("Contenu").fill("## Durée\n24 mois.");
+  await page.keyboard.press("Escape");
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Abandonner les modifications ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(panel.getByLabel("Contenu")).toHaveValue("## Durée\n24 mois.");
+  await panel.getByRole("button", { name: "Enregistrer" }).click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT")?.body)
+    .toEqual({ content: "---\ntitle: Programme eBIHAR\ntarget: ebihar_students\n---\n## Durée\n24 mois." });
+  // Après l'enregistrement, le panneau revient à la fiche.
+  await expect(panel.getByRole("button", { name: "Modifier" })).toBeVisible();
+});
+
+test("adresse d'un document : identifiant invalide ignoré", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("admin");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/knowledge?doc=..%2Fsecret");
+  await expect(page.getByRole("button", { name: "Programme eBIHAR" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("la suppression demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  // La suppression se fait depuis le détail du document.
+  // La suppression se fait depuis le panneau du document, après confirmation HeroUI.
   await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
   await page.getByRole("button", { name: "Programme eBIHAR" }).click();
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Supprimer" }).click();
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await panel.getByRole("button", { name: "Supprimer" }).click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Supprimer « Programme eBIHAR » ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Annuler" }).click();
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Supprimer" }).click();
-  await expect(page.getByText("Document supprimé.")).toBeVisible();
+  await panel.getByRole("button", { name: "Supprimer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Supprimer" }).click();
+  await expect(page.getByText("Document supprimé")).toBeVisible();
+  await expect(panel).toHaveCount(0);
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(1);
 });
 
@@ -331,9 +400,11 @@ test("sans service configuré, ajout bloqué et lecture préservée", async ({
   await page
     .getByRole("button", { name: "Programme eBIHAR", exact: true })
     .click();
-  await expect(
-    page.getByRole("region", { name: "Document ebihar" }),
-  ).toBeVisible();
+  // Lecture préservée dans le panneau ; modifier demande le service de recherche, supprimer non.
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await expect(panel.getByText("Le programme dure 18 mois.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Modifier" })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "Supprimer" })).toBeVisible();
 });
 
 test("changer de programme retire les résultats de la question précédente", async ({
