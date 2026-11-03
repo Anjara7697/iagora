@@ -4,6 +4,7 @@ import { Alert } from "@heroui/react";
 import { RefreshCw, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { Btn, LinkButton } from "@/components/ds/controls";
+import { reveal } from "@/components/ds/motion";
 
 /** Alerte HeroUI : icône, titre, explication, actions à droite (en dessous sur mobile). */
 function KnowledgeAlert({
@@ -13,6 +14,7 @@ function KnowledgeAlert({
   children,
   actions,
   className,
+  index,
 }: {
   status: "accent" | "warning" | "danger";
   icon?: ReactNode;
@@ -20,10 +22,13 @@ function KnowledgeAlert({
   children: ReactNode;
   actions?: ReactNode;
   className?: string;
+  /** Rang dans la cascade d'apparition (règle des parcours). */
+  index: number;
 }) {
+  const motion = reveal(index);
   return (
     // État durable de la base, pas une urgence : annoncé poliment (`status`) et non comme une alerte.
-    <Alert role="status" status={status} className={`flex-wrap rounded-lg ${className ?? ""}`}>
+    <Alert role="status" status={status} className={`flex-wrap ${motion.className} ${className ?? ""}`} style={motion.style}>
       <Alert.Indicator>{icon}</Alert.Indicator>
       <Alert.Content className="min-w-[220px] flex-1">
         <Alert.Title>{title}</Alert.Title>
@@ -61,6 +66,7 @@ export default function KnowledgeAlerts({
     <>
       {configured === false && (
         <KnowledgeAlert
+          index={1}
           status="warning"
           title="Recherche indisponible"
           actions={
@@ -77,6 +83,7 @@ export default function KnowledgeAlerts({
       )}
       {toReindex > 0 && (
         <KnowledgeAlert
+          index={2}
           status="warning"
           title={`${toReindex} document${toReindex > 1 ? "s" : ""} à recalculer`}
           actions={
@@ -103,6 +110,7 @@ export default function KnowledgeAlerts({
       )}
       {gapCount > 0 && (
         <KnowledgeAlert
+          index={3}
           status="accent"
           className="border border-agent/25 bg-agent-soft/60"
           icon={<Sparkles className="size-4 text-agent" />}

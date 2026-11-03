@@ -293,6 +293,8 @@ test("liste des campagnes avec chiffres clés, programmes et statut", async ({
   const strip = page.getByRole("region", { name: "Chiffres clés" });
   await expect(strip.getByText("0 / 1")).toBeVisible();
   await expect(strip.getByText("42 %")).toBeVisible();
+  // Compteur à droite de la barre de filtres.
+  await expect(page.getByRole("status").filter({ hasText: /^1 campagne$/ })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Nouvelle campagne" }),
   ).toBeVisible();
@@ -432,6 +434,8 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
   const activate = page.getByRole("alertdialog");
   await expect(activate.getByText("Activer la campagne ?")).toBeVisible();
   await activate.getByRole("button", { name: "Activer" }).click();
+  // Règle des parcours : toute écriture réussie est confirmée par un Toast.
+  await expect(page.getByText("Campagne activée")).toBeVisible();
   await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
   await expect
     .poll(() => calls.requests)
@@ -472,6 +476,7 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
       ),
     )
     .toBe(true);
+  await expect(page.getByText("Source ajoutée")).toBeVisible();
 
   // Source avec prospects : retrait impossible, raison en infobulle, aucun appel.
   const linkedin = page.getByRole("row", { name: /LinkedIn Ads/ });

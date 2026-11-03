@@ -3,7 +3,7 @@
 import { FileSearch, FileText } from "lucide-react";
 import type { ReactNode } from "react";
 import { DemoChip } from "@/components/ds/badges";
-import { Box } from "@/components/ds/card";
+import { reveal } from "@/components/ds/motion";
 import { Btn, Field, FilterChipGroup, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
@@ -48,7 +48,8 @@ export default function DocumentList({
   const toReindex = documents.filter((d) => d.needs_reindex).length;
 
   return (
-    <Box as="section" className="gap-4 rounded-lg p-5" aria-label="Documents disponibles">
+    // Règle des parcours : le tableau HeroUI est posé sur la page (pas de carte autour), filtres au-dessus.
+    <section className="flex flex-col gap-4" aria-label="Documents disponibles">
       {(documents.length > 0 || filtered) && (
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Rechercher un document" className="w-full sm:w-72">
@@ -118,12 +119,13 @@ export default function DocumentList({
           )
         }
       >
-        {shown.map((d) => (
+        {shown.map((d, i) => (
           <Table.Row
             key={d.slug}
             id={d.slug}
             onAction={() => onOpen(d.slug)}
-            className={`cursor-pointer ${d.slug === selected ? "bg-accent-soft/50" : ""}`}
+            className={`cursor-pointer ${d.slug === selected ? "bg-accent-soft/50" : ""} ${reveal(6 + i, 40).className}`}
+            style={reveal(6 + i, 40).style}
           >
             <Table.Cell>
               <span className="flex items-start gap-2.5">
@@ -152,7 +154,7 @@ export default function DocumentList({
           Les documents « Fictif » sont des données de démonstration : ils ne sont jamais utilisés en production.
         </p>
       )}
-    </Box>
+    </section>
   );
 }
 

@@ -66,6 +66,7 @@ export default function CampaignSources({
     });
     const warning = await linkMetaForms(updated, [{ connector: d.connector.id, name: d.name, external_id: d.external_id }]);
     if (warning) toast.warning("Source ajoutée", { description: warning });
+    else toast.success("Source ajoutée", { description: `« ${d.name.trim()} » est rattachée à la campagne.` });
     setDraft(null);
   }
 
@@ -118,7 +119,12 @@ export default function CampaignSources({
                       title={`Retirer « ${s.name} » ?`}
                       description="La source ne sera plus rattachée à cette campagne. Vous pourrez l’ajouter à nouveau depuis le catalogue."
                       confirmLabel="Retirer"
-                      onConfirm={() => void act(() => api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" }))}
+                      onConfirm={() =>
+                        void act(async () => {
+                          await api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" });
+                          toast.success("Source retirée", { description: `« ${s.name} » n’est plus rattachée à la campagne.` });
+                        })
+                      }
                     />
                   ))}
               </Table.Cell>

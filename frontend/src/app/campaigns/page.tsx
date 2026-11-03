@@ -152,21 +152,28 @@ function Campaigns() {
       {/* Une seule alerte par panne : si la liste échoue aussi, son « Réessayer » recharge les chiffres. */}
       {kpiError && !list.error && <ErrorState message={`Chiffres clés indisponibles : ${kpiError.message}`} onRetry={retryKpis} />}
 
-      <FilterChipGroup
-        {...reveal(5)}
-        label="Statut"
-        options={STATUS_FILTERS}
-        value={status}
-        onChange={(value) => update({ status: value })}
-        leading={
-          user &&
-          user.role !== "VIEWER" && (
-            <FilterChip pressed={mine} onClick={() => update({ mine: !mine })}>
-              Mes campagnes
-            </FilterChip>
-          )
-        }
-      />
+      {/* Barre au-dessus du tableau (règle des parcours) : filtres à gauche, compteur à droite. */}
+      <div style={reveal(5).style} className={`flex flex-wrap items-center justify-between gap-3 ${reveal(5).className}`}>
+        <FilterChipGroup
+          label="Statut"
+          options={STATUS_FILTERS}
+          value={status}
+          onChange={(value) => update({ status: value })}
+          leading={
+            user &&
+            user.role !== "VIEWER" && (
+              <FilterChip pressed={mine} onClick={() => update({ mine: !mine })}>
+                Mes campagnes
+              </FilterChip>
+            )
+          }
+        />
+        <span className="text-[13px] text-muted tabular-nums" role="status">
+          {list.data
+            ? `${total} campagne${total > 1 ? "s" : ""}${filtered && allCount.data ? ` sur ${allCount.data.total}` : ""}`
+            : ""}
+        </span>
+      </div>
 
       {list.error ? (
         <ErrorState

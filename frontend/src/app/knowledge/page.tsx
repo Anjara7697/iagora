@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, TAB_RADIUS } from "@/components/ds/controls";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
 import { Collapse } from "@/components/ds/collapse";
 import DocumentList from "@/components/knowledge/DocumentList";
 import DocumentPanel from "@/components/knowledge/DocumentPanel";
@@ -50,6 +51,7 @@ function Knowledge() {
   return (
     <Screen scroll>
       <PageHeader
+        {...reveal(0)}
         eyebrow="Intelligence · Base de connaissances"
         title="Base de connaissances"
         subtitle="Les sources de référence utilisées par l’agent pour répondre aux questions des prospects."
@@ -91,7 +93,7 @@ function Knowledge() {
         }}
       />
 
-      <Tabs selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as KnowledgeTab })}>
+      <Tabs {...reveal(4)} selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as KnowledgeTab })}>
         <Tabs.ListContainer className={TAB_RADIUS.container}>
           <Tabs.List aria-label="Sections de la base de connaissances">
             {Object.entries(KNOWLEDGE_TABS).map(([key, title]) => (

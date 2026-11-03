@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs } from "@heroui/react";
+import { Tabs, toast } from "@heroui/react";
 import { CalendarDays, Megaphone, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
@@ -63,12 +63,14 @@ function CampaignDetail() {
     stats.reload();
   };
 
-  async function patch(body: Record<string, unknown>) {
+  /** Enregistre et confirme par un Toast (règle des parcours : toute écriture réussie est confirmée). */
+  async function patch(body: Record<string, unknown>, success: string) {
     setBusy(true);
     setError(null);
     try {
       await api(`/campaigns/${id}`, { method: "PATCH", body });
       setEditing(false);
+      toast.success(success);
       reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement");
@@ -84,7 +86,7 @@ function CampaignDetail() {
       start_date: toIso(v.start_date),
       end_date: toIso(v.end_date),
       target_codes: v.target_codes,
-    });
+    }, "Campagne enregistrée");
 
   return (
     <Screen scroll>
@@ -125,7 +127,7 @@ function CampaignDetail() {
                       title="Mettre la campagne en pause ?"
                       description="Les nouveaux prospects ne seront plus rattachés à ses sources. Vous pourrez la réactiver à tout moment."
                       confirmLabel="Mettre en pause"
-                      onConfirm={() => void patch({ status: "inactive" })}
+                      onConfirm={() => void patch({ status: "inactive" }, "Campagne mise en pause")}
                     />
                   ) : (
                     <ConfirmDialog
@@ -143,7 +145,7 @@ function CampaignDetail() {
                           : "Elle n’a encore aucune source : aucun prospect n’arrivera tant que vous n’en ajoutez pas."
                       }
                       confirmLabel={c.status === "inactive" ? "Réactiver" : "Activer"}
-                      onConfirm={() => void patch({ status: "active" })}
+                      onConfirm={() => void patch({ status: "active" }, c.status === "inactive" ? "Campagne réactivée" : "Campagne activée")}
                     />
                   ))}
                 {canEdit && (
@@ -206,7 +208,7 @@ function CampaignDetail() {
                 targets={targets.data}
                 canEdit={canEdit}
                 busy={busy}
-                onPatch={(body) => void patch(body)}
+                onPatch={(body) => void patch(body, "Programmes enregistrés")}
                 onOwnerDone={campaign.reload}
               />
             </Tabs.Panel>
