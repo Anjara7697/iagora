@@ -629,10 +629,10 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
   // Écrans prévus : regroupés dans une ligne « À venir » repliée, sans lien.
   const upcoming = nav.getByText("À venir");
   await expect(upcoming).toBeVisible();
-  await expect(nav.getByText("Dashboard", { exact: true })).toBeHidden();
+  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeHidden();
   await upcoming.click();
-  await expect(nav.getByText("Dashboard", { exact: true })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
+  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Tableau de bord" })).toHaveCount(0);
   // Recherche unique de la barre du haut : la palette, qui cherche aussi les prospects.
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("alice");
@@ -854,4 +854,51 @@ test("accessibilité : fiche, onglets, panneau, confirmations, création et éta
   await page.goto("/campaigns/1?tab=sources");
   await expect(page.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
   await auditA11y(page, "fiche mobile : sources");
+});
+
+test("menu : intitulés en français, réduit à ses icônes avec infobulles et choix mémorisé", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  const nav = page.getByRole("navigation", { name: "Navigation principale" });
+  await expect(nav.getByRole("link", { name: "Base de connaissances" })).toBeVisible();
+  // Tout le menu tient dans un écran de portable, Paramètres compris.
+  await expect(nav.getByRole("link", { name: "Paramètres" })).toBeInViewport();
+  await page.getByRole("button", { name: "Réduire le menu" }).click();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toHaveAttribute("aria-expanded", "false");
+  // Réduit : le lien garde son nom et l'intitulé apparaît en infobulle.
+  const campaigns = nav.getByRole("link", { name: "Campagnes" });
+  await expect(campaigns).toHaveAttribute("aria-current", "page");
+  await campaigns.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Campagnes");
+  // Choix mémorisé au rechargement.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toBeVisible();
+  await page.getByRole("button", { name: "Agrandir le menu" }).click();
+  await expect(page.getByRole("button", { name: "Réduire le menu" })).toBeVisible();
+});
+
+test("menu mobile : Drawer HeroUI qui garde le focus et se ferme", async ({ page }) => {
+  await mockApi(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "/campaigns");
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu).toBeVisible();
+  // Le focus reste dans le menu tant qu'il est ouvert.
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    expect(await menu.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  // Bouton Fermer, puis navigation qui referme le menu.
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await page.getByRole("dialog", { name: "Menu" }).getByRole("button", { name: "Fermer le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Base de connaissances" }).click();
+  await expect(page).toHaveURL(/\/knowledge$/, { timeout: 15_000 });
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
 });

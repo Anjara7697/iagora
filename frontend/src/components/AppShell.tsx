@@ -3,34 +3,26 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
-  CalendarDays,
   ChevronDown,
-  CircleDashed,
   FlaskConical,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   Upload,
   UserRound,
-  ListChecks,
-  Megaphone,
-  MessageSquare,
-  Plug,
-  Settings,
-  Sun,
-  Users,
-  UsersRound,
-  type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
-import { canAccessSettings, canUseSimulator } from "@/lib/access";
+import { canUseSimulator } from "@/lib/access";
 import { pageTitle } from "@/lib/labels";
-import { Avatar, Button, Card, Chip, Disclosure, Dropdown, Label, Spinner } from "@heroui/react";
+import { Avatar, Button, Card, Chip, Drawer, Dropdown, Label, Spinner, Tooltip } from "@heroui/react";
 import AgentStatus from "./AgentStatus";
+import AppNav from "./shell/AppNav";
+import { visibleGroups } from "./shell/navigation";
 import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
@@ -45,51 +37,7 @@ const ROLE_LABELS = {
   ADVISOR: "Conseiller",
   VIEWER: "Observateur",
 };
-type NavItem = {
-  href?: string;
-  label: string;
-  /** Pictogramme Lucide, décoratif : le libellé porte le sens. */
-  icon?: LucideIcon;
-  badge?: boolean;
-  /** Écran prévu, pas encore développé : affiché grisé, sans lien. */
-  soon?: boolean;
-  adminOnly?: boolean;
-};
-const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
-  {
-    name: "Travail",
-    items: [
-      { href: "/", label: "Aujourd’hui", icon: Sun },
-      { href: "/todo", label: "À traiter", icon: ListChecks, badge: true },
-      { href: "/conversations", label: "Conversations", icon: MessageSquare },
-      { href: "/appointments", label: "Rendez-vous", icon: CalendarDays },
-      { href: "/prospects", label: "Prospects", icon: Users },
-    ],
-  },
-  {
-    name: "Pilotage",
-    items: [
-      { href: "/campaigns", label: "Campagnes", icon: Megaphone },
-      { label: "Dashboard", soon: true },
-      { label: "Analytics", soon: true },
-    ],
-  },
-  {
-    name: "Intelligence",
-    items: [
-      { label: "Agent", soon: true },
-      { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
-    ],
-  },
-  {
-    name: "Administration",
-    items: [
-      { href: "/team", label: "Équipe", icon: UsersRound, adminOnly: true },
-      { href: "/integrations", label: "Intégrations", icon: Plug, adminOnly: true },
-      { href: "/settings", label: "Paramètres", icon: Settings },
-    ],
-  },
-];
+const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
 
 /** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
 export const firstNameOf = (username: string) => {
@@ -182,14 +130,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(retry);
   }, [blocked, router]);
 
+  // Menu réduit (bureau) : préférence de ce navigateur, sans effet si le stockage est indisponible.
+  const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
-    if (!navOpen) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setNavOpen(false);
-    };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [navOpen]);
+    try {
+      setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
+    } catch {
+      /* stockage indisponible : menu complet */
+    }
+  }, []);
+  const toggleCollapsed = () =>
+    setCollapsed((value) => {
+      try {
+        window.localStorage.setItem(NAV_COLLAPSED_KEY, value ? "0" : "1");
+      } catch {
+        /* préférence non mémorisée */
+      }
+      return !value;
+    });
 
   if (isLogin) return <>{children}</>;
   if (!user)
@@ -217,17 +175,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user.role === "ADMIN";
   const inSimulator = pathname === "/simulator" && canUseSimulator(user.role);
-  const groups = NAV_GROUPS.map((g) => ({
-    ...g,
-    items: g.items.filter(
-      (i) =>
-        i.href &&
-        (isAdmin || !i.adminOnly) &&
-        (i.href !== "/settings" || canAccessSettings(user.role)),
-    ),
-  })).filter((g) => g.items.length > 0);
-  // Écrans prévus mais pas encore développés : regroupés dans une seule ligne repliée.
-  const upcoming = NAV_GROUPS.flatMap((g) => g.items.filter((i) => i.soon));
+  const groups = visibleGroups(user);
   const title = pageTitle(pathname);
   const commands: Command[] = [
     ...groups.flatMap((g) =>
@@ -258,93 +206,52 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         Aller au contenu
       </a>
       <div className="flex min-h-dvh bg-background">
-        <button
-          className={`fixed inset-0 z-40 bg-backdrop transition-opacity duration-200 lg:hidden ${navOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          aria-label="Fermer le menu"
-          aria-hidden={!navOpen}
-          tabIndex={navOpen ? 0 : -1}
-          onClick={() => setNavOpen(false)}
-        />
+        {/* Bureau : menu fixe, réductible à ses icônes ; le choix est mémorisé dans le navigateur. */}
         <aside
           id="app-navigation"
-          className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col gap-3 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
+          aria-label="Menu"
+          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-3 border-r border-border bg-surface p-3 transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-16" : "w-[240px]"}`}
         >
-          <div className="px-2 pt-2 pb-3">
-            <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
-              <Brand />
+          {/* Marque et bouton de réduction en haut du menu (le bas reste libre pour le défilement). */}
+          <div className={`flex items-center gap-2 pt-2 pb-3 ${collapsed ? "flex-col" : "justify-between pl-2"}`}>
+            <Link href="/" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <Brand compact={collapsed} />
             </Link>
+            <Tooltip delay={200} closeDelay={0}>
+              <Button
+                variant="ghost"
+                size="sm"
+                isIconOnly
+                className="text-muted"
+                aria-label={collapsed ? "Agrandir le menu" : "Réduire le menu"}
+                aria-expanded={!collapsed}
+                aria-controls="app-navigation"
+                onPress={toggleCollapsed}
+              >
+                {collapsed ? <PanelLeftOpen className="size-4" aria-hidden="true" /> : <PanelLeftClose className="size-4" aria-hidden="true" />}
+              </Button>
+              <Tooltip.Content placement="right" showArrow>
+                <Tooltip.Arrow />
+                {collapsed ? "Agrandir le menu" : "Réduire le menu"}
+              </Tooltip.Content>
+            </Tooltip>
           </div>
-          <nav aria-label="Navigation principale" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1">
-            {groups.map((group) => (
-              <div key={group.name} className="flex flex-col gap-0.5">
-                <p className="px-2 pb-1 text-xs tracking-[0.06em] text-muted uppercase">
-                  {group.name === "Administration" && !isAdmin
-                    ? "Réglages"
-                    : group.name}
-                </p>
-                {group.items.map((link) => {
-                  if (!link.href) return null;
-                  const active =
-                    pathname === link.href ||
-                    (link.href !== "/" &&
-                      pathname.startsWith(`${link.href}/`)) ||
-                    (link.href === "/settings" && inSimulator);
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      aria-current={active ? "page" : undefined}
-                      className={`flex h-9 items-center gap-2.5 rounded-lg px-2 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${active ? "bg-accent-soft font-medium text-accent-soft-foreground" : "text-foreground hover:bg-surface-secondary"}`}
-                      onClick={() => setNavOpen(false)}
-                    >
-                      {Icon && <Icon className={`size-4 shrink-0 ${active ? "text-accent" : "text-muted"}`} aria-hidden="true" />}
-                      <span className="flex-1">{link.label}</span>
-                      {link.badge && waiting ? (
-                        <Chip
-                          size="sm"
-                          variant={active ? "primary" : "soft"}
-                          color={active ? "accent" : "warning"}
-                          aria-label={`${waiting} en attente`}
-                        >
-                          <Chip.Label>{waiting}</Chip.Label>
-                        </Chip>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-            {upcoming.length > 0 && (
-              <Disclosure className="border-t border-separator pt-2">
-                <Disclosure.Heading>
-                  <Disclosure.Trigger className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-muted outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus">
-                    <span className="flex-1 text-left">À venir</span>
-                    <Chip size="sm" variant="soft">
-                      <Chip.Label>{upcoming.length}</Chip.Label>
-                    </Chip>
-                    <Disclosure.Indicator>
-                      <ChevronDown className="size-3.5" aria-hidden="true" />
-                    </Disclosure.Indicator>
-                  </Disclosure.Trigger>
-                </Disclosure.Heading>
-                <Disclosure.Content>
-                  <Disclosure.Body>
-                    <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">
-                      {upcoming.map((item) => (
-                        <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 text-sm text-muted">
-                          <CircleDashed className="size-4" aria-hidden="true" />
-                          <span>{item.label}</span>
-                          <span className="ms-auto text-[11px]" aria-hidden="true">Bientôt</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </Disclosure.Body>
-                </Disclosure.Content>
-              </Disclosure>
-            )}
-          </nav>
+          <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} collapsed={collapsed} />
         </aside>
+        {/* Mobile et tablette : Drawer HeroUI (focus gardé dans le menu, Échap, voile et bouton Fermer). */}
+        <Drawer.Backdrop isOpen={navOpen} onOpenChange={setNavOpen}>
+          <Drawer.Content placement="left" className="w-[280px] max-w-[85vw]">
+            <Drawer.Dialog aria-label="Menu" className="flex h-full flex-col gap-3 p-3">
+              <Drawer.Header className="flex flex-row items-center justify-between gap-2 px-2 pt-2 pb-1">
+                <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                  <Brand />
+                </Link>
+                <Drawer.CloseTrigger aria-label="Fermer le menu" />
+              </Drawer.Header>
+              <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} onNavigate={() => setNavOpen(false)} />
+            </Drawer.Dialog>
+          </Drawer.Content>
+        </Drawer.Backdrop>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
             className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:px-7"
@@ -355,8 +262,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               className="lg:hidden"
               aria-label={navOpen ? "Fermer le menu" : "Ouvrir le menu"}
               aria-expanded={navOpen}
-              aria-controls="app-navigation"
-              onPress={() => setNavOpen(!navOpen)}
+              onPress={() => setNavOpen(true)}
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
