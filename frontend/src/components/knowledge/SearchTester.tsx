@@ -24,10 +24,16 @@ function ScoreBar({ score, threshold, retained }: { score: number; threshold: nu
 }
 
 
-/** Teste une question : extraits trouvés, score et passage ou non du seuil de pertinence. */
+/** Score de pertinence en notation française, deux décimales (0,85). */
+const score = (value: number) => value.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/**
+ * Teste une question : extraits trouvés, score et passage ou non du seuil de pertinence. Par défaut sur tous les
+ * programmes ; choisir celui du prospect reproduit la recherche de l'agent.
+ */
 export default function SearchTester({ status }: { status: KnowledgeStatus }) {
   const [query, setQuery] = useState("");
-  const [target, setTarget] = useState("ebihar_students");
+  const [target, setTarget] = useState("");
   const [result, setResult] = useState<SearchResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,9 +113,18 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
       {error && <ErrorText>{error}</ErrorText>}
       {result && result.results.length === 0 && (
         <EmptyText>
-          Aucun extrait : la base est vide pour ce programme, ou les vecteurs
-          sont à recalculer.
+          Aucun extrait : la base est vide pour ce programme, ou ses documents sont à recalculer. Pour une question de ce
+          type, l’agent la transmettrait à un conseiller.
         </EmptyText>
+      )}
+      {result && result.results.length > 0 && (
+        <p className="text-[13px] text-muted" role="status">
+          {result.results.length} extrait{result.results.length > 1 ? "s" : ""} trouvé{result.results.length > 1 ? "s" : ""} ·{" "}
+          {result.results.filter((h) => h.retained).length} retenu{result.results.filter((h) => h.retained).length > 1 ? "s" : ""}{" "}
+          (seuil de pertinence {score(result.threshold)})
+          {!result.results.some((h) => h.retained) &&
+            " : aucun n’atteint le seuil, l’agent transmettrait cette question à un conseiller."}
+        </p>
       )}
       {result && result.results.length > 0 && (
         <ul className="flex flex-col gap-2.5">
@@ -119,11 +134,14 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
               className={`flex flex-col gap-2 rounded-lg border px-4 py-3 ${hit.retained ? "border-success/30 bg-success-soft/40" : "border-separator bg-surface-secondary/60"}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{hit.source}</strong>
+                <strong className="min-w-0 flex-1 text-sm font-semibold break-words text-foreground">{hit.source}</strong>
                 <Tag tone={hit.retained ? "success" : "neutral"}>
                   {hit.retained ? "Retenu" : "Écarté (sous le seuil)"}
                 </Tag>
-                <span className="text-xs text-muted tabular-nums">{hit.score.toFixed(3)}</span>
+                <span className="text-xs text-muted tabular-nums">
+                  <span className="sr-only">Pertinence </span>
+                  {score(hit.score)}
+                </span>
               </div>
               <ScoreBar score={hit.score} threshold={result.threshold} retained={hit.retained} />
               <p className="text-[13px]/[20px] text-muted">{hit.text}</p>

@@ -152,7 +152,9 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
   await page.getByRole("button", { name: "Tester" }).click();
-  await expect(page.getByText("0.846")).toBeVisible();
+  // Notation française, et une synthèse avec le seuil ; le programme par défaut est « Tous les programmes ».
+  await expect(page.getByText("Pertinence 0,85")).toBeVisible();
+  await expect(page.getByText("2 extraits trouvés · 1 retenu (seuil de pertinence 0,60)")).toBeVisible();
   await expect(page.getByText("Retenu", { exact: true })).toBeVisible();
   await expect(page.getByText("Écarté (sous le seuil)")).toBeVisible();
   await expect
@@ -162,7 +164,7 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
       path: "/knowledge/search",
       body: {
         query: "Combien de temps dure le programme ?",
-        target_code: "ebihar_students",
+        target_code: null,
         limit: 6,
       },
     });
@@ -423,9 +425,9 @@ test("changer de programme retire les résultats de la question précédente", a
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
   await page.getByRole("button", { name: "Tester", exact: true }).click();
-  await expect(page.getByText("0.846", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pertinence 0,85")).toBeVisible();
   await choose(page.getByLabel("Programme du prospect"), "master_candidates");
-  await expect(page.getByText("0.846", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Pertinence 0,85")).toHaveCount(0);
 });
 
 test("panne du statut de recherche : lecture possible et nouvelle tentative", async ({
@@ -513,4 +515,40 @@ test("état de la page : erreur de chargement explicite et testeur expliqué san
   await page.goto("/knowledge");
   await expect(page.getByText("2 questions sans source fiable")).toBeVisible();
   await expect(page.getByRole("link", { name: "Traiter les demandes" })).toBeVisible();
+});
+
+test("accessibilité : alertes, panneau, éditeur, testeur, états vides et mobile", async ({ page }) => {
+  test.setTimeout(120_000);
+  await mockApi(page, {
+    docs: [doc(), doc({ slug: "compagnons", title: "Les Compagnons", target_code: "compagnons_pros", is_demo: false, needs_reindex: true })],
+  });
+  await page.route("**/api/v1/todo**", (route) =>
+    route.fulfill({ json: { items: [], total: 2, limit: 1, offset: 0, counts: { kb_gap: 2 } } }),
+  );
+  await open(page);
+  await expect(page.getByText("1 document à recalculer")).toBeVisible();
+  await auditA11y(page, "base de connaissances : alertes et liste");
+  await page.getByLabel("Rechercher un document").fill("introuvable");
+  await expect(page.getByText("Aucun document ne correspond")).toBeVisible();
+  await auditA11y(page, "base de connaissances : recherche sans résultat");
+  await page.getByLabel("Rechercher un document").fill("");
+
+  await page.getByRole("button", { name: "Ajouter un document" }).click();
+  const add = page.getByRole("dialog", { name: "Ajouter un document" });
+  await add.getByLabel("Titre").fill("eBIHAR");
+  await expect(add.getByText("Un document porte déjà cet identifiant.")).toBeVisible();
+  await auditA11y(page, "base de connaissances : création, identifiant pris");
+  await page.keyboard.press("Escape");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await page.getByLabel("Question du prospect").fill("Combien de temps dure le programme ?");
+  await page.getByRole("button", { name: "Tester" }).click();
+  await expect(page.getByText("Retenu", { exact: true })).toBeVisible();
+  await auditA11y(page, "base de connaissances : testeur avec résultats");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/knowledge?doc=ebihar");
+  await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
+  await auditA11y(page, "base de connaissances : document sur mobile");
 });
