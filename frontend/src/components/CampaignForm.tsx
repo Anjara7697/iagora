@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { Btn, CheckCardGroup, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { DateRangeField } from "@/components/ds/DateRangeField";
 import { ActionsBar } from "@/components/ds/settings";
@@ -43,7 +43,7 @@ const FIELD_RADIUS = { "--field-radius": "var(--radius-lg)" } as CSSProperties;
  * Nom, description, période et programmes visés ; les sources seulement à la création.
  * Avec `steps` (création), le formulaire se déroule en trois étapes : informations, période et ciblage, sources.
  * Le statut n'en fait pas partie : une campagne est créée en brouillon et s'active depuis l'en-tête de sa fiche,
- * avec confirmation. `onDirtyChange` signale une saisie non enregistrée (garde avant de quitter).
+ * avec confirmation. `dirtyRef` reflète une saisie non enregistrée (garde avant de quitter, cf. `useDiscardGuard`).
  */
 export default function CampaignForm({
   initial,
@@ -56,7 +56,7 @@ export default function CampaignForm({
   error,
   onSubmit,
   onCancel,
-  onDirtyChange,
+  dirtyRef,
 }: {
   initial: CampaignValues;
   targets: Target[];
@@ -69,7 +69,7 @@ export default function CampaignForm({
   error: string | null;
   onSubmit: (values: CampaignValues) => void;
   onCancel: () => void;
-  onDirtyChange?: (dirty: boolean) => void;
+  dirtyRef?: RefObject<boolean>;
 }) {
   const [v, setV] = useState<CampaignValues>(initial);
   const [step, setStep] = useState(0);
@@ -82,7 +82,9 @@ export default function CampaignForm({
   const dirty = JSON.stringify(v) !== JSON.stringify(initial);
   const errorRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  useLayoutEffect(() => {
+    if (dirtyRef) dirtyRef.current = dirty;
+  }, [dirty, dirtyRef]);
   // Une erreur d'enregistrement s'affiche sous le formulaire : on l'amène à l'écran.
   useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });

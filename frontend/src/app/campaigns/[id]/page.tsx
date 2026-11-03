@@ -3,7 +3,7 @@
 import { Tabs } from "@heroui/react";
 import { CalendarDays, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import CampaignOverview from "@/components/campaign/CampaignOverview";
 import CampaignProspects from "@/components/campaign/CampaignProspects";
@@ -44,12 +44,11 @@ export default function CampaignPage() {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
-  const { guard, dialog } = useDiscardGuard(editing && dirty);
+  const dirty = useRef(false);
+  const { guard, dialog } = useDiscardGuard(() => editing && dirty.current);
   const closeEditor = () =>
     guard(() => {
       setEditing(false);
-      setDirty(false);
       setError(null);
     });
 
@@ -65,7 +64,6 @@ export default function CampaignPage() {
     try {
       await api(`/campaigns/${id}`, { method: "PATCH", body });
       setEditing(false);
-      setDirty(false);
       reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'enregistrement");
@@ -124,10 +122,23 @@ export default function CampaignPage() {
                       onConfirm={() => void patch({ status: "inactive" })}
                     />
                   ) : (
-                    <Btn variant="secondary" className="rounded-lg" disabled={busy} onClick={() => patch({ status: "active" })}>
-                      <Play className="size-4" aria-hidden="true" />
-                      Activer
-                    </Btn>
+                    <ConfirmDialog
+                      trigger={
+                        <Btn variant="secondary" className="rounded-lg" disabled={busy}>
+                          <Play className="size-4" aria-hidden="true" />
+                          Activer
+                        </Btn>
+                      }
+                      status="accent"
+                      title="Activer la campagne ?"
+                      description={
+                        c.sources.length
+                          ? "Les prospects qui arrivent par ses sources seront rattachés à la campagne et pris en charge par l’agent."
+                          : "Elle n’a encore aucune source : aucun prospect n’arrivera tant que vous n’en ajoutez pas."
+                      }
+                      confirmLabel="Activer"
+                      onConfirm={() => void patch({ status: "active" })}
+                    />
                   ))}
                 {canEdit && (
                   <Btn
@@ -207,7 +218,7 @@ export default function CampaignPage() {
                 error={error}
                 onSubmit={save}
                 onCancel={closeEditor}
-                onDirtyChange={setDirty}
+                dirtyRef={dirty}
               />
             )}
           </Drawer>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import CampaignForm, {
   EMPTY_VALUES,
   type CampaignValues,
@@ -25,9 +25,9 @@ export default function NewCampaignPage() {
   const targets = useApi<Target[]>("/targets");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const dirty = useRef(false);
   // Pas d'avertissement une fois la campagne créée : la redirection vers sa fiche n'abandonne rien.
-  const { guard, dialog } = useDiscardGuard(dirty && !busy);
+  const { guard, dialog } = useDiscardGuard(() => dirty.current && !busy);
 
   if (user && user.role !== "ADMIN") {
     return (
@@ -85,7 +85,7 @@ export default function NewCampaignPage() {
           error={error}
           onSubmit={create}
           onCancel={() => guard(() => router.push("/campaigns"))}
-          onDirtyChange={setDirty}
+          dirtyRef={dirty}
         />
       )}
       {dialog}

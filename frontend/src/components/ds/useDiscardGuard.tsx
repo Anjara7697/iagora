@@ -1,26 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
- * Évite de perdre une saisie : tant que `dirty` est vrai, `guard(action)` demande d'abord
+ * Évite de perdre une saisie : tant que `isDirty()` est vrai, `guard(action)` demande d'abord
  * « Abandonner les modifications ? » ; sans modification, l'action s'exécute directement.
  * Fermer l'onglet ou recharger la page déclenche aussi l'avertissement du navigateur.
+ * `isDirty` est lu au moment de quitter (pas au dernier rendu) : une touche Échap juste après la frappe est couverte.
  * `dialog` est à placer dans le rendu.
  */
-export function useDiscardGuard(dirty: boolean) {
+export function useDiscardGuard(isDirty: () => boolean) {
   const [pending, setPending] = useState<(() => void) | null>(null);
+  const latest = useRef(isDirty);
+  useLayoutEffect(() => {
+    latest.current = isDirty;
+  });
 
   useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    const warn = (event: BeforeUnloadEvent) => {
+      if (latest.current()) event.preventDefault();
+    };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, []);
 
   const guard = (action: () => void) => {
-    if (dirty) setPending(() => action);
+    if (latest.current()) setPending(() => action);
     else action();
   };
 

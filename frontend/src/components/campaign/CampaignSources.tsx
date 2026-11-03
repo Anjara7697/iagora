@@ -1,10 +1,11 @@
 "use client";
 
-import { toast } from "@heroui/react";
+import { buttonVariants, toast, Tooltip } from "@heroui/react";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Box } from "@/components/ds/card";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { EmptyText } from "@/components/ds/layout";
 import { SourceAvatar } from "@/components/ds/SourceAvatars";
 import { DataTable, Table } from "@/components/ds/table";
@@ -14,11 +15,15 @@ import { PLATFORMS, SOURCE_TYPES, label } from "@/lib/labels";
 import { linkMetaForms } from "@/lib/metaForms";
 import type { Campaign, CampaignStats } from "@/lib/types";
 
+const plural = (n: number) => (n > 1 ? `${n} prospects proviennent` : "1 prospect provient");
+
 type Draft = { connector: Connector; name: string; external_id: string };
 
 /**
  * Sources d'une campagne : tableau (logo de la plateforme, effectifs) et, pour l'administrateur, ajout depuis le
  * catalogue de connecteurs. Un identifiant de formulaire Meta saisi est associé à la campagne comme à la création.
+ * Retirer : impossible (bouton désactivé, raison en infobulle) quand des prospects proviennent de la source, règle
+ * du serveur ; sinon après confirmation.
  */
 export default function CampaignSources({
   campaign,
@@ -91,17 +96,31 @@ export default function CampaignSources({
               <Table.Cell className="text-muted">{label(SOURCE_TYPES, s.type)}</Table.Cell>
               <Table.Cell className="text-right tabular-nums">{counts.get(s.id) ?? 0}</Table.Cell>
               <Table.Cell className="text-right">
-                {canEdit && (
-                  <Btn
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-lg"
-                    disabled={busy}
-                    onClick={() => act(() => api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" }))}
-                  >
-                    Retirer
-                  </Btn>
-                )}
+                {canEdit &&
+                  ((counts.get(s.id) ?? 0) > 0 ? (
+                    <Tooltip delay={200}>
+                      {/* Bouton désactivé mais focalisable (aria-disabled) : la raison reste lisible au survol et au clavier. */}
+                      <Tooltip.Trigger tabIndex={0} aria-disabled="true" className={buttonVariants({ variant: "ghost", size: "sm", className: "rounded-lg cursor-not-allowed pointer-events-auto!" })}>
+                        Retirer
+                      </Tooltip.Trigger>
+                      <Tooltip.Content showArrow className="max-w-64 break-normal">
+                        <Tooltip.Arrow />
+                        {plural(counts.get(s.id) ?? 0)} de cette source : elle ne peut pas être retirée.
+                      </Tooltip.Content>
+                    </Tooltip>
+                  ) : (
+                    <ConfirmDialog
+                      trigger={
+                        <Btn variant="ghost" size="sm" className="rounded-lg" disabled={busy}>
+                          Retirer
+                        </Btn>
+                      }
+                      title={`Retirer « ${s.name} » ?`}
+                      description="La source ne sera plus rattachée à cette campagne. Vous pourrez l’ajouter à nouveau depuis le catalogue."
+                      confirmLabel="Retirer"
+                      onConfirm={() => void act(() => api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" }))}
+                    />
+                  ))}
               </Table.Cell>
             </Table.Row>
           ))}

@@ -140,8 +140,10 @@ async function mockApi(
       };
       body = current;
     } else if (path === "/campaigns/1/sources" && method === "POST") {
-      calls.requests.push({ method, path, body: request.postDataJSON() });
+      const added = request.postDataJSON() as { name: string; type: string; platform: string; external_id: string | null };
+      calls.requests.push({ method, path, body: added });
       code = 201;
+      current = { ...current, sources: [...current.sources, { id: 12, ...added, external_id: null }] };
       body = current;
     } else if (
       path.startsWith("/campaigns/1/sources/") &&
@@ -422,6 +424,9 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
   const calls = await mockApi(page, { removeConflict: true });
   await login(page, "/campaigns/1");
   await page.getByRole("button", { name: "Activer" }).click();
+  const activate = page.getByRole("alertdialog");
+  await expect(activate.getByText("Activer la campagne ?")).toBeVisible();
+  await activate.getByRole("button", { name: "Activer" }).click();
   await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
   await expect
     .poll(() => calls.requests)
@@ -463,13 +468,24 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
     )
     .toBe(true);
 
-  await page
-    .getByRole("row", { name: /LinkedIn Ads/ })
-    .getByRole("button", { name: "Retirer" })
-    .click();
-  await expect(
-    page.getByText("9 prospect(s) proviennent de cette source"),
-  ).toBeVisible();
+  // Source avec prospects : retrait impossible, raison en infobulle, aucun appel.
+  const linkedin = page.getByRole("row", { name: /LinkedIn Ads/ });
+  await expect(linkedin.getByRole("button", { name: "Retirer", exact: true })).toBeDisabled();
+  await linkedin.getByRole("button", { name: "Retirer", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("9 prospects proviennent de cette source");
+  // Source sans prospect : confirmation d'abord ; Annuler n'appelle rien.
+  const webinar = page.getByRole("row", { name: /Webinaire d'octobre/ });
+  await webinar.getByRole("button", { name: "Retirer", exact: true }).click();
+  const remove = page.getByRole("alertdialog");
+  await expect(remove.getByText("Retirer « Webinaire d'octobre » ?")).toBeVisible();
+  await remove.getByRole("button", { name: "Annuler" }).click();
+  await expect(remove).toHaveCount(0);
+  expect(calls.requests.some((r) => r.method === "DELETE")).toBe(false);
+  // Confirmé : appel envoyé ; un refus du serveur (chiffres périmés) reste affiché.
+  await webinar.getByRole("button", { name: "Retirer", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Retirer", exact: true }).click();
+  await expect.poll(() => calls.requests.some((r) => r.method === "DELETE" && r.path === "/campaigns/1/sources/12")).toBe(true);
+  await expect(page.getByRole("alert").filter({ hasText: "ne peut pas être retirée" })).toBeVisible();
 });
 
 test("fiche : les prospects de la campagne sont listés sous les sources", async ({
@@ -544,7 +560,12 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
 test("désactiver une campagne demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/1");
+  // Activer demande aussi confirmation ; Annuler n'envoie rien.
   await page.getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Annuler" }).click();
+  expect(calls.requests.some((r) => (r.body as { status?: string })?.status === "active")).toBe(false);
+  await page.getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Activer" }).click();
   await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
   await page.getByRole("button", { name: "Désactiver" }).click();
   const dialog = page.getByRole("alertdialog");
