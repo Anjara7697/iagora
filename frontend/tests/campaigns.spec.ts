@@ -633,8 +633,10 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
   await upcoming.click();
   await expect(nav.getByText("Dashboard", { exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
-  await page.getByLabel("Rechercher un prospect").fill("alice");
-  await page.getByLabel("Rechercher un prospect").press("Enter");
+  // Recherche unique de la barre du haut : la palette, qui cherche aussi les prospects.
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("alice");
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/prospects\?q=alice$/);
 });
 

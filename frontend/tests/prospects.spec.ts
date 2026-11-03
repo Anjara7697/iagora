@@ -977,8 +977,9 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await selectFilter(page, "Étape", "qualified");
   await page.goBack();
   await expect(page.getByLabel("Étape", { exact: true })).toHaveAttribute("data-value", "");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).fill("inexistant");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("inexistant");
+  await page.keyboard.press("Enter");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("inexistant");
   await expect(page.getByRole("heading", { name: "Aucun prospect ne correspond" })).toBeVisible();
   await page.goBack();

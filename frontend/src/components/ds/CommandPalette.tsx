@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Description, Header, Kbd, Label, ListBox, Modal } from "@heroui/react";
+import { Button, Description, Header, Kbd, Label, ListBox, Modal, SearchField } from "@heroui/react";
 import { ArrowRight, Search, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,13 +18,18 @@ const norm = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**
- * Palette ⌘K / Ctrl K : aller à une page, lancer une action ou chercher un prospect.
- * Ouverte depuis le bouton « Rechercher… » du menu ou par le raccourci, n'importe où.
+ * Palette ⌘K / Ctrl K : aller à une page, lancer une action ou chercher un prospect. Seule recherche de la
+ * console : son déclencheur a l'allure d'un champ dans la barre du haut (une icône sur mobile), et le raccourci
+ * l'ouvre de n'importe où.
  */
 export function CommandPalette({ commands }: { commands: Command[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  // Touche affichée selon le système (lue après le rendu serveur pour éviter un écart d'hydratation).
+  const [mac, setMac] = useState(false);
+  useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)), []);
+  const shortcut = mac ? "⌘ K" : "Ctrl K";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -64,39 +69,41 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
 
   return (
     <>
+      {/* Un seul déclencheur : icône sur mobile, allure de champ (texte et raccourci) à partir de md. */}
       <Button
         variant="tertiary"
-        className="w-full justify-start gap-2 font-normal text-muted"
+        className="w-10 justify-center gap-2 px-0 font-normal text-muted md:w-full md:justify-start md:px-3"
         onPress={() => setOpen(true)}
-        aria-label="Ouvrir la recherche rapide (Ctrl K)"
+        aria-label={`Rechercher un prospect, une page ou une action (${shortcut})`}
       >
-        <Search className="size-4" aria-hidden="true" />
-        Rechercher…
-        <span className="flex-1" />
-        <Kbd variant="light" aria-hidden="true">
-          <Kbd.Abbr keyValue="command" />
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+        <span className="hidden md:inline xl:hidden">Rechercher…</span>
+        <span className="hidden xl:inline">Rechercher un prospect, une page…</span>
+        <span className="hidden flex-1 md:block" />
+        <Kbd variant="light" aria-hidden="true" className="hidden md:inline-flex">
+          {mac ? <Kbd.Abbr keyValue="command" /> : <Kbd.Content>Ctrl</Kbd.Content>}
           <Kbd.Content>K</Kbd.Content>
         </Kbd>
       </Button>
       <Modal.Backdrop isOpen={open} onOpenChange={setOpen}>
         <Modal.Container placement="top">
           <Modal.Dialog aria-label="Recherche rapide" className="mt-[10vh] overflow-hidden p-0 sm:max-w-[560px]">
-            <div className="flex items-center gap-2 border-b border-separator px-4 py-3">
-              <Search className="size-4 text-muted" aria-hidden="true" />
-              <input
-                autoFocus
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && items[0]) {
-                    e.preventDefault();
-                    go(items[0].id);
-                  }
-                }}
-                placeholder="Rechercher un prospect, une page, une action…"
+            <div className="flex items-center gap-2 border-b border-separator px-2 py-2">
+              <SearchField
                 aria-label="Recherche rapide"
-                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
-              />
+                className="min-w-0 flex-1"
+                value={q}
+                onChange={setQ}
+                onSubmit={() => {
+                  if (items[0]) go(items[0].id);
+                }}
+              >
+                <SearchField.Group className="border-0 bg-transparent shadow-none">
+                  <SearchField.SearchIcon />
+                  <SearchField.Input autoFocus placeholder="Rechercher un prospect, une page, une action…" />
+                  <SearchField.ClearButton />
+                </SearchField.Group>
+              </SearchField>
               <Kbd variant="light" aria-hidden="true">
                 <Kbd.Content>Échap</Kbd.Content>
               </Kbd>

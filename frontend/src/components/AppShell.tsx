@@ -29,8 +29,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import { pageTitle } from "@/lib/labels";
-import { Avatar, Button, Card, Chip, Disclosure, Dropdown, Label, SearchField, Spinner } from "@heroui/react";
-import AgentModeCard from "./AgentModeCard";
+import { Avatar, Button, Card, Chip, Disclosure, Dropdown, Label, Spinner } from "@heroui/react";
+import AgentStatus from "./AgentStatus";
+import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
 import { ReplyDraftsProvider, confirmLogoutWithDrafts, useHasUnsentReplies } from "./ReplyDrafts";
@@ -123,7 +124,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
   const [waiting, setWaiting] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -269,12 +269,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           id="app-navigation"
           className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col gap-3 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
         >
-          <div className="px-2 pt-2">
+          <div className="px-2 pt-2 pb-3">
             <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <Brand />
             </Link>
           </div>
-          <CommandPalette commands={commands} />
           <nav aria-label="Navigation principale" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1">
             {groups.map((group) => (
               <div key={group.name} className="flex flex-col gap-0.5">
@@ -345,16 +344,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Disclosure>
             )}
           </nav>
-          {!mustChange && (
-            <AgentModeCard
-              readOnly={user.role === "VIEWER"}
-              refreshKey={pathname}
-            />
-          )}
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur-md lg:px-7"
+            className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:px-7"
           >
             <Button
               variant="ghost"
@@ -367,31 +360,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
-            <strong className="min-w-0 truncate text-base font-semibold text-foreground lg:hidden">
+            {/* Titre de la page : utile sur tablette (menu replié) ; sur téléphone, le titre de la page suffit. */}
+            <strong className="hidden min-w-0 flex-1 truncate text-base font-semibold text-foreground sm:block lg:hidden">
               {title}
             </strong>
-            <span className="flex-1" />
-            <form
-              className="hidden w-full max-w-[320px] md:block"
-              role="search"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <SearchField
-                aria-label="Rechercher un prospect"
-                value={search}
-                onChange={setSearch}
-                onSubmit={() => {
-                  const q = search.trim();
-                  router.push(q ? `/prospects?q=${encodeURIComponent(q)}` : "/prospects");
-                }}
-              >
-                <SearchField.Group>
-                  <SearchField.SearchIcon />
-                  <SearchField.Input placeholder="Nom ou email du prospect…" />
-                  <SearchField.ClearButton />
-                </SearchField.Group>
-              </SearchField>
-            </form>
+            <span className="flex-1 sm:hidden lg:block" />
+            {/* Seule recherche de la console : la palette (prospects, pages, actions). */}
+            <div role="search" className="flex shrink-0 justify-end md:w-[300px] xl:w-[340px]">
+              <CommandPalette commands={commands} />
+            </div>
+            {!mustChange && <AgentStatus readOnly={user.role === "VIEWER"} refreshKey={pathname} />}
             {inSimulator ? (
               <Chip
                 color="warning"
@@ -400,20 +378,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 aria-label="Mode du simulateur"
               >
                 <FlaskConical className="size-3.5" aria-hidden="true" />
-                <Chip.Label>Test · données fictives</Chip.Label>
+                <Chip.Label>
+                  Test<span className="hidden sm:inline"> · données fictives</span>
+                </Chip.Label>
               </Chip>
             ) : (
               waiting !== null && (
-                <Link
+                <LinkButton
                   href="/todo"
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-surface px-3 text-sm font-medium text-foreground shadow-surface outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+                  variant="tertiary"
+                  className="h-9 shrink-0 gap-2 px-3"
+                  aria-label={waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
                 >
-                  <span
-                    className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`}
-                    aria-hidden="true"
-                  />
-                  {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
-                </Link>
+                  <span className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`} aria-hidden="true" />
+                  {waiting > 0 ? (
+                    <>
+                      {waiting}
+                      <span className="hidden sm:inline">à traiter</span>
+                    </>
+                  ) : (
+                    <span className="hidden sm:inline">Rien à traiter</span>
+                  )}
+                </LinkButton>
               )
             )}
             <AccountMenu
