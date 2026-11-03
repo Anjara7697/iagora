@@ -1,7 +1,7 @@
 "use client";
 
-import { Pagination, Spinner, Table } from "@heroui/react";
-import type { CSSProperties, ReactNode } from "react";
+import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { cx } from "./layout";
 
 export type DataColumn = {
@@ -16,6 +16,7 @@ export type DataColumn = {
  * Tableau HeroUI : défilement horizontal sous `minWidth`, en-têtes de colonnes, lignes en enfants.
  * Les lignes sont des `Table.Row` (id unique, `href` pour une ligne qui ouvre une page) contenant des `Table.Cell`.
  * `isLoading` et `emptyState` alimentent le `renderEmptyState` du corps ; `footer` s'affiche dans `Table.Footer`.
+ * Le défilement horizontal passe par `ScrollShadow` ; le tableau est en `rounded-lg`.
  */
 export function DataTable({
   label,
@@ -27,6 +28,7 @@ export function DataTable({
   loadingLabel = "Chargement…",
   emptyState,
   footer,
+  hideScrollBar = true,
   children,
 }: {
   label: string;
@@ -38,11 +40,13 @@ export function DataTable({
   loadingLabel?: string;
   emptyState?: ReactNode;
   footer?: ReactNode;
+  /** Masque la barre de défilement horizontal (l'ombre sur les bords indique qu'il reste du contenu). */
+  hideScrollBar?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <Table className={className} style={style}>
-      <Table.ScrollContainer>
+    <Table className={cx("rounded-lg", className)} style={style}>
+      <ScrollShadow orientation="horizontal" hideScrollBar={hideScrollBar}>
         <Table.Content aria-label={label} style={{ minWidth }}>
           <Table.Header>
             {columns.map((c, i) => (
@@ -66,10 +70,30 @@ export function DataTable({
             {isLoading ? null : children}
           </Table.Body>
         </Table.Content>
-      </Table.ScrollContainer>
+      </ScrollShadow>
       {footer && <Table.Footer>{footer}</Table.Footer>}
     </Table>
   );
+}
+
+/** Pagination côté client d'une liste déjà chargée : page courante (bornée), éléments de la page, retour à la page 1. */
+export function usePagination<T>(items: T[], pageSize: number) {
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(items.length / pageSize));
+  const current = Math.min(page, pages);
+  return {
+    page: current,
+    setPage,
+    reset: () => setPage(1),
+    pageItems: items.slice((current - 1) * pageSize, current * pageSize),
+    total: items.length,
+    pageSize,
+    /** Pagination à afficher dans `Table.Footer` : seulement si la liste dépasse une page. */
+    footer:
+      items.length > pageSize ? (
+        <TablePagination total={items.length} pageSize={pageSize} page={current} onChange={setPage} />
+      ) : undefined,
+  };
 }
 
 /** Pagination HeroUI pour `Table.Footer` : résumé « 1-10 sur 23 », précédent, pages, suivant. */

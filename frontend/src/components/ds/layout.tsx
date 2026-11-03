@@ -4,7 +4,9 @@ import { Button, Card, Meter } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import type { KpiBadge } from "@/lib/kpi";
 import { Box } from "./card";
+import { reveal } from "./motion";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -152,7 +154,7 @@ export function KpiCard({
   dot?: string;
   pending?: boolean;
   /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
-  badge?: { tone: "success" | "warning" | "danger"; label: string };
+  badge?: KpiBadge;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -188,6 +190,41 @@ export function KpiCard({
     <Box variant={pending ? "transparent" : undefined} className={className} style={style}>
       {body}
     </Box>
+  );
+}
+
+export type KpiItem = {
+  key: string;
+  label: ReactNode;
+  value?: ReactNode;
+  hint?: ReactNode;
+  href?: string;
+  dot?: string;
+  pending?: boolean;
+  badge?: KpiBadge;
+};
+
+/** Bandeau de chiffres clés : grille de `KpiCard` (rayon « lg »), apparition échelonnée à partir de `startIndex`. */
+export function KpiStrip({
+  label,
+  items,
+  startIndex = 0,
+  cardClassName = "rounded-lg",
+  className,
+}: {
+  label: string;
+  items: KpiItem[];
+  startIndex?: number;
+  cardClassName?: string;
+  className?: string;
+}) {
+  return (
+    <section className={cx("grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4", className)} aria-label={label}>
+      {items.map(({ key, ...item }, i) => {
+        const motion = reveal(startIndex + i);
+        return <KpiCard key={key} {...item} className={cx(cardClassName, motion.className)} style={motion.style} />;
+      })}
+    </section>
   );
 }
 

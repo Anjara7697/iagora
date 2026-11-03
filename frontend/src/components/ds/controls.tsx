@@ -2,7 +2,7 @@
 
 import { Alert, Button, buttonVariants, Checkbox, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
-import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonProps = ComponentProps<typeof Button>;
@@ -125,6 +125,38 @@ export function FilterChip({
   onClick?: () => void;
 }) {
   return <ToggleButton size="sm" isSelected={pressed} onChange={() => onClick?.()} {...rest} />;
+}
+
+/** Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des pastilles avant. */
+export function FilterChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  leading,
+  chipClassName = "rounded-lg",
+  className,
+  style,
+}: {
+  label: string;
+  options: { value: T; text: ReactNode }[];
+  value: T;
+  onChange: (value: T) => void;
+  leading?: ReactNode;
+  chipClassName?: string;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div role="group" aria-label={label} className={cx("flex flex-wrap gap-1.5", className)} style={style}>
+      {leading}
+      {options.map((o) => (
+        <FilterChip key={o.value} className={chipClassName} pressed={o.value === value} onClick={() => onChange(o.value)}>
+          {o.text}
+        </FilterChip>
+      ))}
+    </div>
+  );
 }
 
 /**
