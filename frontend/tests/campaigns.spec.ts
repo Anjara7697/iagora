@@ -83,7 +83,40 @@ async function mockApi(
     } else if (path === "/campaigns" && method === "POST") {
       calls.requests.push({ method, path, body: request.postDataJSON() });
       code = 201;
-      body = campaign({ id: 7, name: "Nouvelle" });
+      body = campaign({
+        id: 7,
+        name: "Nouvelle",
+        targets: [{ id: 2, code: "compagnons_pros", name: "Professionnels Les Compagnons" }],
+        sources: [
+          { id: 21, name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { id: 22, name: "Formulaire du site", type: "form", platform: "web", external_id: null },
+        ],
+      });
+    } else if (path === "/integrations/meta" && method === "GET") {
+      body = {
+        configured: true,
+        enabled: true,
+        app_id: "app-1",
+        api_version: "v21.0",
+        app_secret_set: true,
+        page_access_token_set: true,
+        verify_token_set: true,
+        mappings: [],
+        webhook_path: "/api/v1/webhooks/meta",
+        last_event_at: null,
+        last_success_at: null,
+        last_error: null,
+        received: 0,
+        processed: 0,
+        failed: 0,
+      };
+    } else if (path === "/integrations/meta" && method === "PUT") {
+      calls.requests.push({ method, path, body: request.postDataJSON() });
+      body = { configured: true };
+    } else if (path === "/integrations/tokens") {
+      body = [];
+    } else if (path === "/integrations/email") {
+      body = { configured: false, enabled: false, send_enabled: false, sender: null, imap_host: "", smtp_host: "", sandbox_recipients: [], last_run_at: null };
     } else if (path === "/campaigns/overview")
       body = [
         {
@@ -292,11 +325,15 @@ test("création en trois étapes : informations, période et ciblage, sources en
   await page.keyboard.type("0109202630092026");
   await page.getByLabel("Compagnons", { exact: false }).press("Space");
   await page.getByRole("button", { name: "Continuer" }).click();
-  // Étape 3 : sources, récapitulatif puis création
-  await page.getByRole("button", { name: "Ajouter une source" }).click();
-  await page.getByLabel("Nom de la source 1").fill("Webinaire");
-  await choose(page.getByLabel("Type de la source 1"), "webinar");
-  await choose(page.getByLabel("Plateforme de la source 1"), "web");
+  // Étape 3 : connecteurs de sources, récapitulatif puis création
+  await expect(page.getByRole("region", { name: "Connecteurs disponibles" }).getByText("Connectée")).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter Meta Lead Ads" }).click();
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("À finaliser");
+  await page.getByLabel("Identifiant du formulaire Meta 1").fill("123456");
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("Formulaire associé");
+  await page.getByRole("button", { name: "Ajouter Formulaire du site ou n8n" }).click();
+  await expect(page.getByLabel("Source 2 : Formulaire du site ou n8n")).toContainText("Jeton à créer");
+  await expect(page.getByRole("button", { name: "Ajouter LinkedIn Lead Gen" })).toBeDisabled();
   const recap = page.getByLabel("Récapitulatif");
   await expect(recap).toContainText("Rentrée 2027");
   await expect(recap).toContainText("01/09/2026 → 30/09/2026");
@@ -316,14 +353,19 @@ test("création en trois étapes : informations, période et ciblage, sources en
         end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
         sources: [
-          {
-            name: "Webinaire",
-            type: "webinar",
-            platform: "web",
-            external_id: null,
-          },
+          { name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { name: "Formulaire du site", type: "form", platform: "web", external_id: null },
         ],
       },
+    });
+  // Le formulaire Meta saisi est associé à la campagne créée (source et programme unique).
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT" && r.path === "/integrations/meta")?.body)
+    .toMatchObject({
+      mappings: [
+        { form_id: "123456", campaign_id: 7, source_id: 21, target_code: "compagnons_pros", enabled: true },
+      ],
+      app_secret: null,
     });
 });
 

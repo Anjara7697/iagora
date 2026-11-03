@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, buttonVariants, Checkbox, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
@@ -412,6 +412,50 @@ export function Check({
         </span>
       </Checkbox.Content>
     </Checkbox>
+  );
+}
+
+/**
+ * Choix multiple en cartes : `CheckboxGroup` HeroUI, une carte `Checkbox` par option (la carte cochée se met en évidence).
+ * Accepte les propriétés du `CheckboxGroup` ; `label` et `description` nomment et expliquent le groupe.
+ */
+export function CheckCardGroup({
+  label,
+  description,
+  options,
+  value,
+  onChange,
+  className,
+  ...rest
+}: Omit<ComponentProps<typeof CheckboxGroup>, "children" | "value" | "onChange" | "aria-label"> & {
+  label: string;
+  description?: ReactNode;
+  options: { value: string; text: ReactNode; hint?: ReactNode }[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  return (
+    <CheckboxGroup value={value} onChange={onChange} className={cx("flex flex-col gap-2", typeof className === "string" ? className : undefined)} {...rest}>
+      <Label>{label}</Label>
+      {description && <Description>{description}</Description>}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {options.map((o) => (
+          <Checkbox
+            key={o.value}
+            value={o.value}
+            className="flex-row items-start gap-3 rounded-lg border border-border px-3 py-3 data-[selected=true]:border-accent data-[selected=true]:bg-accent-soft"
+          >
+            <Checkbox.Control>
+              <Checkbox.Indicator />
+            </Checkbox.Control>
+            <Checkbox.Content>
+              <Label>{o.text}</Label>
+              {o.hint && <Description>{o.hint}</Description>}
+            </Checkbox.Content>
+          </Checkbox>
+        ))}
+      </div>
+    </CheckboxGroup>
   );
 }
 

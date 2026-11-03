@@ -1,21 +1,16 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
 import { useState, type CSSProperties } from "react";
-import { Btn, Check, ErrorText, Field, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, CheckCardGroup, ErrorText, Field, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { DateRangeField } from "@/components/ds/DateRangeField";
 import { ActionsBar } from "@/components/ds/settings";
 import { Stepper, type Step } from "@/components/ds/Stepper";
-import { PLATFORMS, SOURCE_TYPES, formatDay } from "@/lib/labels";
+import { formatDay } from "@/lib/labels";
 import type { Target } from "@/lib/types";
 import { Box } from "@/components/ds/card";
+import SourceConnectors, { type SourceDraft } from "@/components/SourceConnectors";
 
-export type SourceDraft = {
-  name: string;
-  type: string;
-  platform: string;
-  external_id: string;
-};
+export type { SourceDraft };
 
 export type CampaignValues = {
   name: string;
@@ -80,12 +75,6 @@ export default function CampaignForm({
   const stepValid = step === 0 ? valid : true;
   const show = (index: number) => !steps || step === index;
 
-  function toggleTarget(code: string) {
-    set("target_codes", v.target_codes.includes(code) ? v.target_codes.filter((c) => c !== code) : [...v.target_codes, code]);
-  }
-  function setSource(index: number, patch: Partial<SourceDraft>) {
-    set("sources", v.sources.map((s, i) => (i === index ? { ...s, ...patch } : s)));
-  }
 
   return (
     <Box
@@ -137,83 +126,36 @@ export default function CampaignForm({
             end={v.end_date}
             onChange={(start, end) => setV((current) => ({ ...current, start_date: start, end_date: end }))}
           />
-          <fieldset className="flex flex-col gap-3">
-            <legend className="float-left mb-3 w-full text-[13px] font-medium text-foreground">Programmes visés</legend>
-            <div className="clear-both grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {targets.map((t) => (
-                <Check
-                  key={t.code}
-                  checked={v.target_codes.includes(t.code)}
-                  onChange={() => toggleTarget(t.code)}
-                  className="rounded-lg border border-border px-3 py-2.5"
+          <div className="flex flex-col gap-2">
+            <CheckCardGroup
+              label="Programmes visés"
+              description="Sans programme coché, le sujet d’intérêt des prospects n’est pas pré-rempli : l’agent le déduit de leur message."
+              options={targets.map((t) => ({ value: t.code, text: t.name }))}
+              value={v.target_codes}
+              onChange={(codes) => set("target_codes", codes)}
+            />
+            {targets.length > 1 && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted" role="status">
+                  {v.target_codes.length} sur {targets.length} sélectionné{v.target_codes.length > 1 ? "s" : ""}
+                </span>
+                <Btn
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => set("target_codes", v.target_codes.length === targets.length ? [] : targets.map((t) => t.code))}
                 >
-                  {t.name}
-                </Check>
-              ))}
-            </div>
-          </fieldset>
+                  {v.target_codes.length === targets.length ? "Tout désélectionner" : "Tout sélectionner"}
+                </Btn>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
       {withSources && show(2) && (
         <section className="flex flex-col gap-4" aria-label={steps ? STEPS[2].title : undefined}>
-          <fieldset className="flex flex-col gap-3">
-            <legend className="float-left mb-1 w-full text-[13px] font-medium text-foreground">Sources de prospects</legend>
-            <p className="clear-both text-xs text-muted">
-              D’où viennent les personnes : une publicité, un formulaire, un salon… Vous pourrez en ajouter plus tard.
-            </p>
-            {v.sources.map((s, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-1 gap-2 rounded-lg border border-separator p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
-              >
-                <TextInput
-                  variant="secondary"
-                  aria-label={`Nom de la source ${i + 1}`}
-                  placeholder="Nom (ex. LinkedIn Ads)"
-                  value={s.name}
-                  onChange={(e) => setSource(i, { name: e.target.value })}
-                />
-                <SelectBox
-                  variant="secondary"
-                  aria-label={`Type de la source ${i + 1}`}
-                  value={s.type}
-                  onChange={(e) => setSource(i, { type: e.target.value })}
-                >
-                  {Object.entries(SOURCE_TYPES).map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </SelectBox>
-                <SelectBox
-                  variant="secondary"
-                  aria-label={`Plateforme de la source ${i + 1}`}
-                  value={s.platform}
-                  onChange={(e) => setSource(i, { platform: e.target.value })}
-                >
-                  {Object.entries(PLATFORMS).map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </SelectBox>
-                <Btn variant="ghost" size="sm" className="rounded-lg" onClick={() => set("sources", v.sources.filter((_, j) => j !== i))}>
-                  <X className="size-4" aria-hidden="true" />
-                  Retirer
-                </Btn>
-              </div>
-            ))}
-            <Btn
-              variant="outline"
-              size="sm"
-              className="w-fit rounded-lg"
-              onClick={() => set("sources", [...v.sources, { name: "", type: "ads", platform: "linkedin", external_id: "" }])}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Ajouter une source
-            </Btn>
-          </fieldset>
+          <SourceConnectors value={v.sources} onChange={(sources) => set("sources", sources)} />
 
           {steps && (
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-lg bg-surface-secondary p-3 text-[13px]" aria-label="Récapitulatif">
