@@ -3,7 +3,7 @@
 import { Button, Card, Meter } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Box } from "./card";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -29,15 +29,17 @@ export function PageHeader({
   subtitle,
   actions,
   className,
+  style,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-3", className)}>
+    <header className={cx("flex flex-wrap items-end gap-3", className)} style={style}>
       <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="text-[26px]/[32px] font-semibold tracking-[-0.02em] text-foreground sm:text-[28px]/[34px]">{title}</h1>
@@ -133,6 +135,7 @@ export function KpiCard({
   dot,
   pending,
   className,
+  style,
 }: {
   label: ReactNode;
   value?: ReactNode;
@@ -141,6 +144,7 @@ export function KpiCard({
   dot?: string;
   pending?: boolean;
   className?: string;
+  style?: CSSProperties;
 }) {
   const body = (
     <>
@@ -160,12 +164,12 @@ export function KpiCard({
   );
   if (href)
     return (
-      <Box as={Link} href={href} className={className}>
+      <Box as={Link} href={href} className={className} style={style}>
         {body}
       </Box>
     );
   return (
-    <Box variant={pending ? "transparent" : undefined} className={className}>
+    <Box variant={pending ? "transparent" : undefined} className={className} style={style}>
       {body}
     </Box>
   );

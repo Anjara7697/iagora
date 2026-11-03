@@ -1,7 +1,7 @@
 "use client";
 
 import { Pagination, Spinner, Table } from "@heroui/react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cx } from "./layout";
 
 export type DataColumn = {
@@ -22,6 +22,7 @@ export function DataTable({
   columns,
   minWidth = 640,
   className,
+  style,
   isLoading = false,
   loadingLabel = "Chargement…",
   emptyState,
@@ -32,6 +33,7 @@ export function DataTable({
   columns: DataColumn[];
   minWidth?: number;
   className?: string;
+  style?: CSSProperties;
   isLoading?: boolean;
   loadingLabel?: string;
   emptyState?: ReactNode;
@@ -39,7 +41,7 @@ export function DataTable({
   children?: ReactNode;
 }) {
   return (
-    <Table className={className}>
+    <Table className={className} style={style}>
       <Table.ScrollContainer>
         <Table.Content aria-label={label} style={{ minWidth }}>
           <Table.Header>

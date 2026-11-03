@@ -7,12 +7,19 @@ import { FilterChip, LinkButton, Tag, type Tone } from "@/components/ds/controls
 import { EmptyPanel, ErrorState, KpiCard, PageHeader, Screen } from "@/components/ds/layout";
 import { DataTable, Table, TablePagination } from "@/components/ds/table";
 import { SourceAvatars } from "@/components/ds/SourceAvatars";
+import { CountUp, reveal } from "@/components/ds/motion";
 import { CAMPAIGN_STATUS, TARGETS, formatDay, label } from "@/lib/labels";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
+
+/** Apparition échelonnée + rayon « lg » (cartes de chiffres clés). */
+const lg = (index: number) => {
+  const r = reveal(index);
+  return { className: `rounded-lg ${r.className}`, style: r.style };
+};
 
 const FILTERS = [
   { value: "", text: "Toutes" },
@@ -57,6 +64,7 @@ export default function CampaignsPage() {
   return (
     <Screen>
       <PageHeader
+        {...reveal(0)}
         eyebrow="Pilotage · Campagnes"
         title="Campagnes"
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
@@ -72,22 +80,35 @@ export default function CampaignsPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Chiffres clés">
         <KpiCard
-          className="rounded-lg"
+          {...lg(1)}
           label="Campagnes actives"
-          value={kpiReady ? `${all.filter((c) => c.status === "active").length} / ${all.length}` : "…"}
+          value={
+            kpiReady ? (
+              <>
+                <CountUp value={all.filter((c) => c.status === "active").length} /> / <CountUp value={all.length} />
+              </>
+            ) : (
+              "…"
+            )
+          }
           hint={kpiReady ? `${all.filter((c) => c.status === "draft").length} brouillon(s)` : undefined}
         />
-        <KpiCard className="rounded-lg" label="Leads" value={kpiReady ? totals.leads : "…"} hint="au total, prospects fictifs exclus" />
         <KpiCard
-          className="rounded-lg"
+          {...lg(2)}
+          label="Leads"
+          value={kpiReady ? <CountUp value={totals.leads} /> : "…"}
+          hint="au total, prospects fictifs exclus"
+        />
+        <KpiCard
+          {...lg(3)}
           label="Taux de qualification"
-          value={kpiReady ? `${pct(totals.qualified, totals.leads)} %` : "…"}
+          value={kpiReady ? <CountUp value={pct(totals.qualified, totals.leads)} suffix=" %" /> : "…"}
           hint={kpiReady ? `${totals.qualified} qualifié(s)` : undefined}
         />
         <KpiCard
-          className="rounded-lg"
+          {...lg(4)}
           label="Inscrits"
-          value={kpiReady ? totals.converted : "…"}
+          value={kpiReady ? <CountUp value={totals.converted} /> : "…"}
           hint={kpiReady ? `${pct(totals.converted, totals.leads)} % des leads` : undefined}
         />
       </section>
@@ -95,7 +116,7 @@ export default function CampaignsPage() {
         <ErrorState message={`Chiffres indisponibles : ${overview.error.message}`} onRetry={overview.reload} />
       )}
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Statut">
+      <div {...{ ...reveal(5), className: `flex flex-wrap gap-1.5 ${reveal(5).className}` }} role="group" aria-label="Statut">
         {user && user.role !== "VIEWER" && (
           <FilterChip className="rounded-lg" pressed={mine} onClick={() => { setMine(!mine); setPage(1); }}>
             Mes campagnes
@@ -116,6 +137,7 @@ export default function CampaignsPage() {
       {list.error && <ErrorState message={list.error.message} onRetry={list.reload} />}
       {!list.error && (
         <DataTable
+          {...reveal(6)}
           label="Liste des campagnes"
           minWidth={820}
           isLoading={list.loading && !list.data}
@@ -141,10 +163,11 @@ export default function CampaignsPage() {
             ) : undefined
           }
         >
-          {pageItems.map((c) => {
+          {pageItems.map((c, i) => {
             const f = figures.get(c.id);
+            const row = reveal(7 + i, 50);
             return (
-              <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}`}>
+              <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}`} className={row.className} style={row.style}>
                 <Table.Cell>
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <strong className="text-sm font-semibold text-foreground">{c.name}</strong>

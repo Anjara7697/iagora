@@ -6,6 +6,8 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3100",
     browserName: "chromium",
+    // Animations réduites : états finaux immédiats, audits d'accessibilité stables.
+    reducedMotion: "reduce",
     launchOptions: {
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
     },
