@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Chip, Meter } from "@heroui/react";
+import { Button, Card, Meter } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -126,6 +126,13 @@ export function EmptyPanel({
   );
 }
 
+/** Couleurs de texte du chiffre selon le ton (variantes « soft-foreground » du thème : contraste >= 6,5:1 sur blanc). */
+const TONE_TEXT = {
+  success: "text-success-soft-foreground",
+  warning: "text-warning-soft-foreground",
+  danger: "text-danger-soft-foreground",
+} as const;
+
 /** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
   label,
@@ -144,30 +151,29 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
-  /** Lecture du chiffre : pastille colorée avec un mot (la couleur seule ne porte pas le sens). */
+  /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
   badge?: { tone: "success" | "warning" | "danger"; label: string };
   className?: string;
   style?: CSSProperties;
 }) {
   const body = (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <Card.Description className="flex items-center gap-2">
-          {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
-          {label}
-        </Card.Description>
-        {badge && !pending && (
-          <Chip size="sm" variant="soft" color={badge.tone}>
-            <Chip.Label>{badge.label}</Chip.Label>
-          </Chip>
-        )}
-      </div>
+      <Card.Description className="flex items-center gap-2">
+        {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
+        {label}
+      </Card.Description>
       {pending ? (
         <Card.Description>Pas encore mesuré</Card.Description>
       ) : (
-        <Card.Title render={(props) => <span {...props} />} className="text-3xl tabular-nums">
-          {value}
-        </Card.Title>
+        <>
+          <Card.Title
+            render={(props) => <span {...props} />}
+            className={cx("text-3xl tabular-nums", badge && TONE_TEXT[badge.tone])}
+          >
+            {value}
+          </Card.Title>
+          {badge && <span className="sr-only">{badge.label}</span>}
+        </>
       )}
       {hint && <Card.Description>{hint}</Card.Description>}
     </>
