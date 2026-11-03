@@ -132,6 +132,7 @@ export function KpiCard({
   href,
   dot,
   pending,
+  className,
 }: {
   label: ReactNode;
   value?: ReactNode;
@@ -139,6 +140,7 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  className?: string;
 }) {
   const body = (
     <>
@@ -158,11 +160,15 @@ export function KpiCard({
   );
   if (href)
     return (
-      <Box as={Link} href={href}>
+      <Box as={Link} href={href} className={className}>
         {body}
       </Box>
     );
-  return <Box variant={pending ? "transparent" : undefined}>{body}</Box>;
+  return (
+    <Box variant={pending ? "transparent" : undefined} className={className}>
+      {body}
+    </Box>
+  );
 }
 
 /** Répartition en barres : libellé, barre, valeur en mono. La valeur porte l'information. */

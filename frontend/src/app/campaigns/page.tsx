@@ -1,17 +1,18 @@
 "use client";
 
-import { ChevronRight, Megaphone, Plus } from "lucide-react";
-import Link from "next/link";
+import { Megaphone, Plus } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { FilterChip, LinkButton, Tag, type Tone } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, KpiCard, PageHeader, Screen } from "@/components/ds/layout";
-import { Loading } from "@/components/ui";
-import { CAMPAIGN_STATUS, PLATFORM_MARK, TARGETS, formatDay, label } from "@/lib/labels";
+import { DataTable, Table, TablePagination } from "@/components/ds/table";
+import { SourceAvatars } from "@/components/ds/SourceAvatars";
+import { CAMPAIGN_STATUS, TARGETS, formatDay, label } from "@/lib/labels";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
-import { Box } from "@/components/ds/card";
+
+const PAGE_SIZE = 10;
 
 const FILTERS = [
   { value: "", text: "Toutes" },
@@ -24,6 +25,7 @@ export default function CampaignsPage() {
   const user = useCurrentUser();
   const [status, setStatus] = useState("");
   const [mine, setMine] = useState(false);
+  const [page, setPage] = useState(1);
   const list = useApi<Page<Campaign>>(
     `/campaigns${qs({ status, advisor_id: mine ? user?.id : undefined, limit: 100 })}`,
     {
@@ -34,6 +36,9 @@ export default function CampaignsPage() {
   const overview = useApi<CampaignOverview[]>("/campaigns/overview");
   const figures = new Map((overview.data ?? []).map((o) => [o.campaign_id, o]));
   const items = list.data?.items ?? [];
+  const lastPage = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const currentPage = Math.min(page, lastPage);
+  const pageItems = items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const all = everything.data?.items ?? [];
   const totals = (overview.data ?? []).reduce(
@@ -45,10 +50,6 @@ export default function CampaignsPage() {
     { leads: 0, qualified: 0, converted: 0 },
   );
   const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
-  const maxLeads = Math.max(
-    1,
-    ...(overview.data ?? []).map((o) => o.prospects),
-  );
   const kpiReady = !!everything.data && !!overview.data;
 
   const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
@@ -61,7 +62,7 @@ export default function CampaignsPage() {
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
         actions={
           user?.role === "ADMIN" && (
-            <LinkButton variant="primary" href="/campaigns/new">
+            <LinkButton variant="primary" href="/campaigns/new" className="rounded-lg">
               <Plus className="size-4" aria-hidden="true" />
               Nouvelle campagne
             </LinkButton>
@@ -71,17 +72,20 @@ export default function CampaignsPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Chiffres clés">
         <KpiCard
+          className="rounded-lg"
           label="Campagnes actives"
           value={kpiReady ? `${all.filter((c) => c.status === "active").length} / ${all.length}` : "…"}
           hint={kpiReady ? `${all.filter((c) => c.status === "draft").length} brouillon(s)` : undefined}
         />
-        <KpiCard label="Leads" value={kpiReady ? totals.leads : "…"} hint="au total, prospects fictifs exclus" />
+        <KpiCard className="rounded-lg" label="Leads" value={kpiReady ? totals.leads : "…"} hint="au total, prospects fictifs exclus" />
         <KpiCard
+          className="rounded-lg"
           label="Taux de qualification"
           value={kpiReady ? `${pct(totals.qualified, totals.leads)} %` : "…"}
           hint={kpiReady ? `${totals.qualified} qualifié(s)` : undefined}
         />
         <KpiCard
+          className="rounded-lg"
           label="Inscrits"
           value={kpiReady ? totals.converted : "…"}
           hint={kpiReady ? `${pct(totals.converted, totals.leads)} % des leads` : undefined}
@@ -93,109 +97,82 @@ export default function CampaignsPage() {
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Statut">
         {user && user.role !== "VIEWER" && (
-          <FilterChip pressed={mine} onClick={() => setMine(!mine)}>
+          <FilterChip className="rounded-lg" pressed={mine} onClick={() => { setMine(!mine); setPage(1); }}>
             Mes campagnes
           </FilterChip>
         )}
         {FILTERS.map((f) => (
           <FilterChip
             key={f.value}
+            className="rounded-lg"
             pressed={status === f.value}
-            onClick={() => setStatus(f.value)}
+            onClick={() => { setStatus(f.value); setPage(1); }}
           >
             {f.text}
           </FilterChip>
         ))}
       </div>
 
-      <Loading
-        loading={list.loading && !list.data}
-        error={list.error}
-        onRetry={list.reload}
-        shape="rows"
-      />
-      {list.data && items.length === 0 && (
-        <Box as="section" className="p-0">
-          <EmptyPanel
-            icon={Megaphone}
-            title={`Aucune campagne${status ? " dans ce statut" : ""}`}
-            description={user?.role === "ADMIN" && !status ? "Créez la première avec « Nouvelle campagne »." : undefined}
-          />
-        </Box>
-      )}
-      {items.length > 0 && (
-        <Box as="div" className="gap-0 overflow-hidden p-0" role="table" aria-label="Liste des campagnes">
-          <div
-            className="hidden grid-cols-[minmax(200px,2fr)_120px_minmax(140px,1.2fr)_minmax(200px,1.6fr)_20px] gap-4 bg-surface-secondary px-5 py-2.5 text-xs font-medium text-muted md:grid"
-            aria-hidden="true"
-          >
-            <span>Campagne</span>
-            <span>Statut</span>
-            <span>Sources</span>
-            <span>Leads · Qualifiés · Inscrits</span>
-            <span />
-          </div>
-          {items.map((c) => {
+      {list.error && <ErrorState message={list.error.message} onRetry={list.reload} />}
+      {!list.error && (
+        <DataTable
+          label="Liste des campagnes"
+          minWidth={820}
+          isLoading={list.loading && !list.data}
+          loadingLabel="Chargement des campagnes…"
+          emptyState={
+            <EmptyPanel
+              icon={Megaphone}
+              title={`Aucune campagne${status ? " dans ce statut" : ""}`}
+              description={user?.role === "ADMIN" && !status ? "Créez la première avec « Nouvelle campagne »." : undefined}
+            />
+          }
+          columns={[
+            { id: "campaign", label: "Campagne", className: "min-w-[240px]" },
+            { id: "status", label: "Statut" },
+            { id: "sources", label: "Sources" },
+            { id: "leads", label: "Leads", className: "text-right" },
+            { id: "qualified", label: "Qualifiés", className: "text-right" },
+            { id: "converted", label: "Inscrits", className: "text-right" },
+          ]}
+          footer={
+            items.length > PAGE_SIZE ? (
+              <TablePagination total={items.length} pageSize={PAGE_SIZE} page={currentPage} onChange={setPage} />
+            ) : undefined
+          }
+        >
+          {pageItems.map((c) => {
             const f = figures.get(c.id);
-            const leads = f?.prospects ?? 0;
-            const qualified = f?.qualified ?? 0;
-            const converted = f?.converted ?? 0;
             return (
-              <Link
-                key={c.id}
-                href={`/campaigns/${c.id}`}
-                className="grid grid-cols-1 items-center gap-3 border-t border-separator px-5 py-4 outline-none transition-colors first:border-t-0 hover:bg-surface-secondary/60 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset md:grid-cols-[minmax(200px,2fr)_120px_minmax(140px,1.2fr)_minmax(200px,1.6fr)_20px] md:gap-4 md:[&:nth-child(2)]:border-t-0"
-              >
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <strong className="text-sm font-semibold text-foreground">{c.name}</strong>
-                  <span className="text-xs text-muted">
-                    Responsable : {c.responsible_advisor_name ?? "Non affecté"}
-                  </span>
-                  <span className="text-xs text-muted">
-                    {c.targets.map((t) => label(TARGETS, t.code)).join(", ") ||
-                      "Aucun programme"}
-                    {c.start_date || c.end_date
-                      ? ` · ${formatDay(c.start_date)} → ${formatDay(c.end_date)}`
-                      : ""}
-                  </span>
-                </span>
-                <span>
-                  <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="flex -space-x-1.5">
-                    {c.sources.slice(0, 3).map((s) => (
-                      <span
-                        key={s.id}
-                        className="inline-flex size-6 items-center justify-center rounded-full bg-foreground text-[9px] font-medium text-background ring-2 ring-surface"
-                        aria-hidden="true"
-                        title={s.name}
-                      >
-                        {PLATFORM_MARK[s.platform ?? ""] ?? "•"}
-                      </span>
-                    ))}
-                  </span>
-                  <span className="text-[13px] text-muted">
-                    {c.sources.length} source{c.sources.length > 1 ? "s" : ""}
-                  </span>
-                </span>
-                <span className="flex flex-col gap-1.5">
-                  <span className="h-2 overflow-hidden rounded-full bg-surface-tertiary" aria-hidden="true">
-                    <span className="block h-full rounded-full bg-accent/35" style={{ width: `${(leads / maxLeads) * 100}%` }}>
-                      <span className="block h-full rounded-full bg-accent/70" style={{ width: `${pct(qualified, leads)}%` }}>
-                        <span className="block h-full rounded-full bg-accent" style={{ width: `${pct(converted, qualified)}%` }} />
-                      </span>
+              <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}`}>
+                <Table.Cell>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <strong className="text-sm font-semibold text-foreground">{c.name}</strong>
+                    <span className="text-xs text-muted">Responsable : {c.responsible_advisor_name ?? "Non affecté"}</span>
+                    <span className="text-xs text-muted">
+                      {c.targets.map((t) => label(TARGETS, t.code)).join(", ") || "Aucun programme"}
+                      {c.start_date || c.end_date ? ` · ${formatDay(c.start_date)} → ${formatDay(c.end_date)}` : ""}
                     </span>
                   </span>
-                  <strong className="text-[13px] font-medium text-foreground tabular-nums">
-                    {leads} · {qualified} · {converted}
-                  </strong>
-                </span>
-                <ChevronRight aria-hidden="true" className="hidden size-4 text-muted md:block" />
-              </Link>
+                </Table.Cell>
+                <Table.Cell>
+                  <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
+                </Table.Cell>
+                <Table.Cell>
+                  <span className="flex items-center gap-2">
+                    <SourceAvatars sources={c.sources} />
+                    <span className="text-[13px] text-muted">
+                      {c.sources.length} source{c.sources.length > 1 ? "s" : ""}
+                    </span>
+                  </span>
+                </Table.Cell>
+                <Table.Cell className="text-right tabular-nums">{f?.prospects ?? 0}</Table.Cell>
+                <Table.Cell className="text-right tabular-nums">{f?.qualified ?? 0}</Table.Cell>
+                <Table.Cell className="text-right tabular-nums">{f?.converted ?? 0}</Table.Cell>
+              </Table.Row>
             );
           })}
-        </Box>
+        </DataTable>
       )}
     </Screen>
   );
