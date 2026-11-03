@@ -95,7 +95,7 @@ function Campaigns() {
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
         actions={
           isAdmin && (
-            <LinkButton variant="primary" href="/campaigns/new" className="rounded-lg">
+            <LinkButton variant="primary" href="/campaigns/new">
               <Plus className="size-4" aria-hidden="true" />
               Nouvelle campagne
             </LinkButton>
@@ -152,21 +152,28 @@ function Campaigns() {
       {/* Une seule alerte par panne : si la liste échoue aussi, son « Réessayer » recharge les chiffres. */}
       {kpiError && !list.error && <ErrorState message={`Chiffres clés indisponibles : ${kpiError.message}`} onRetry={retryKpis} />}
 
-      <FilterChipGroup
-        {...reveal(5)}
-        label="Statut"
-        options={STATUS_FILTERS}
-        value={status}
-        onChange={(value) => update({ status: value })}
-        leading={
-          user &&
-          user.role !== "VIEWER" && (
-            <FilterChip className="rounded-lg" pressed={mine} onClick={() => update({ mine: !mine })}>
-              Mes campagnes
-            </FilterChip>
-          )
-        }
-      />
+      {/* Barre au-dessus du tableau (règle des parcours) : filtres à gauche, compteur à droite. */}
+      <div style={reveal(5).style} className={`flex flex-wrap items-center justify-between gap-3 ${reveal(5).className}`}>
+        <FilterChipGroup
+          label="Statut"
+          options={STATUS_FILTERS}
+          value={status}
+          onChange={(value) => update({ status: value })}
+          leading={
+            user &&
+            user.role !== "VIEWER" && (
+              <FilterChip pressed={mine} onClick={() => update({ mine: !mine })}>
+                Mes campagnes
+              </FilterChip>
+            )
+          }
+        />
+        <span className="text-[13px] text-muted tabular-nums" role="status">
+          {list.data
+            ? `${total} campagne${total > 1 ? "s" : ""}${filtered && allCount.data ? ` sur ${allCount.data.total}` : ""}`
+            : ""}
+        </span>
+      </div>
 
       {list.error ? (
         <ErrorState
@@ -194,7 +201,7 @@ function Campaigns() {
                 title="Aucune campagne ne correspond à ces filtres"
                 description={`Filtres actifs : ${filterText}.`}
                 action={
-                  <Btn variant="secondary" className="rounded-lg" onClick={() => update({ status: "", mine: false })}>
+                  <Btn variant="secondary" onClick={() => update({ status: "", mine: false })}>
                     Afficher toutes les campagnes
                   </Btn>
                 }
@@ -210,7 +217,7 @@ function Campaigns() {
                 }
                 action={
                   isAdmin && (
-                    <LinkButton variant="primary" href="/campaigns/new" className="rounded-lg">
+                    <LinkButton variant="primary" href="/campaigns/new">
                       <Plus className="size-4" aria-hidden="true" />
                       Nouvelle campagne
                     </LinkButton>

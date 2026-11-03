@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { Btn, ErrorText, FIELD_RADIUS, Field, Notice, SelectBox, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, Notice, SelectBox, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyText, Panel } from "@/components/ds/layout";
 import { api, ApiError } from "@/lib/api";
 import { TARGETS } from "@/lib/labels";
@@ -59,17 +59,17 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
   }
 
   return (
-    <Panel title="Tester une question" label="Tester une question" className="rounded-lg" bodyClassName="gap-4 px-5 py-4">
+    <Panel title="Tester une question" label="Tester une question" bodyClassName="gap-4 px-5 py-4">
       <p className="text-[13px]/[20px] text-muted">
         Vérifiez quelles sources l’agent peut utiliser avant de répondre à un
         prospect. Les extraits trop peu pertinents sont écartés.
       </p>
       {!status.configured && (
-        <Notice tone="warning" className="rounded-lg">
+        <Notice tone="warning">
           Test indisponible : le service de recherche n’est pas configuré.
         </Notice>
       )}
-      <form className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end" style={FIELD_RADIUS} onSubmit={run}>
+      <form className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end" onSubmit={run}>
         <Field label="Question du prospect">
           <TextInput
             variant="secondary"

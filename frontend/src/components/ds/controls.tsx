@@ -81,9 +81,6 @@ export function TextLink(props: ComponentProps<typeof HeroLink>) {
 /** Arrondi « lg » des onglets HeroUI : conteneur, onglet et indicateur (cadre blanc de l'onglet choisi). */
 export const TAB_RADIUS = { container: "rounded-lg", tab: "rounded-lg", indicator: "rounded-lg" } as const;
 
-/** Champs en `rounded-lg` : le rayon des champs HeroUI se règle par cette variable, pour tout un formulaire (`style`). */
-export const FIELD_RADIUS = { "--field-radius": "var(--radius-lg)" } as CSSProperties;
-
 /**
  * Choix exclusif sur une ligne : `Tabs` HeroUI (panneaux vides et masqués : le contenu est géré par l'écran). Accepte les propriétés de `Tabs`
  * (variant, orientation…) ; `label` nomme la liste, `onChange` reçoit la valeur choisie.

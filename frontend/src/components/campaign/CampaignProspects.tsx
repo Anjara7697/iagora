@@ -33,14 +33,14 @@ export default function CampaignProspects({
     `/prospects${qs({ campaign_id: campaign.id, stage, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })}`,
     { keepPrevious: true },
   );
+  // Total de la campagne, pour « N sur M » quand une étape est choisie.
+  const all = useApi<Page<Prospect>>(stage ? `/prospects${qs({ campaign_id: campaign.id, limit: 1 })}` : null);
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
   return (
     <section aria-label="Prospects de la campagne" className="flex flex-col gap-3">
+      {/* Barre au-dessus du tableau (règle des parcours) : filtre à gauche, compteur à droite. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-sm text-muted" role="status">
-          {list.data ? `${total} prospect${total > 1 ? "s" : ""}${stage ? ` à l’étape « ${label(STAGES, stage)} »` : ""}` : ""}
-        </span>
         <span className="flex items-center gap-2">
           <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
             Étape
@@ -61,6 +61,11 @@ export default function CampaignProspects({
               </option>
             ))}
           </SelectBox>
+        </span>
+        <span className="text-[13px] text-muted tabular-nums" role="status">
+          {list.data
+            ? `${total} prospect${total > 1 ? "s" : ""}${stage ? `${all.data ? ` sur ${all.data.total}` : ""} à l’étape « ${label(STAGES, stage)} »` : ""}`
+            : ""}
         </span>
       </div>
       {list.error ? (

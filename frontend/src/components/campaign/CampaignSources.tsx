@@ -66,6 +66,7 @@ export default function CampaignSources({
     });
     const warning = await linkMetaForms(updated, [{ connector: d.connector.id, name: d.name, external_id: d.external_id }]);
     if (warning) toast.warning("Source ajoutée", { description: warning });
+    else toast.success("Source ajoutée", { description: `« ${d.name.trim()} » est rattachée à la campagne.` });
     setDraft(null);
   }
 
@@ -111,14 +112,19 @@ export default function CampaignSources({
                   ) : (
                     <ConfirmDialog
                       trigger={
-                        <Btn variant="ghost" size="sm" className="rounded-lg" disabled={busy}>
+                        <Btn variant="ghost" size="sm" disabled={busy}>
                           Retirer
                         </Btn>
                       }
                       title={`Retirer « ${s.name} » ?`}
                       description="La source ne sera plus rattachée à cette campagne. Vous pourrez l’ajouter à nouveau depuis le catalogue."
                       confirmLabel="Retirer"
-                      onConfirm={() => void act(() => api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" }))}
+                      onConfirm={() =>
+                        void act(async () => {
+                          await api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" });
+                          toast.success("Source retirée", { description: `« ${s.name} » n’est plus rattachée à la campagne.` });
+                        })
+                      }
                     />
                   ))}
               </Table.Cell>
@@ -158,11 +164,11 @@ export default function CampaignSources({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Btn variant="primary" type="submit" className="rounded-lg" disabled={busy || !draft.name.trim()}>
+                  <Btn variant="primary" type="submit" disabled={busy || !draft.name.trim()}>
                     <Plus className="size-4" aria-hidden="true" />
                     Ajouter à la campagne
                   </Btn>
-                  <Btn variant="ghost" className="rounded-lg" disabled={busy} onClick={() => setDraft(null)}>
+                  <Btn variant="ghost" disabled={busy} onClick={() => setDraft(null)}>
                     Annuler
                   </Btn>
                 </div>

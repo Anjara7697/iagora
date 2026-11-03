@@ -63,6 +63,7 @@ export default function NewCampaignPage() {
       });
       const warning = await linkMetaForms(created, v.sources);
       if (warning) toast.warning("Campagne créée", { description: warning });
+      else toast.success("Campagne créée", { description: "En brouillon : activez-la depuis sa fiche pour recevoir des prospects." });
       router.push(`/campaigns/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de la création");

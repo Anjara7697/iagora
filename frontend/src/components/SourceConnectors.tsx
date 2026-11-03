@@ -147,7 +147,7 @@ export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { on
               </div>
               <Description>{c.description}</Description>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button size="sm" variant="outline" className="rounded-lg" isDisabled={c.soon} onPress={() => onAdd(c)} aria-label={`Ajouter ${c.title}`}>
+                <Button size="sm" variant="outline" isDisabled={c.soon} onPress={() => onAdd(c)} aria-label={`Ajouter ${c.title}`}>
                   <Plus className="size-4" aria-hidden="true" />
                   Ajouter
                 </Button>
@@ -196,7 +196,7 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
                   <Chip size="sm" variant="soft" color={state.tone}>
                     <Chip.Label>{state.label}</Chip.Label>
                   </Chip>
-                  <Btn variant="ghost" size="sm" className="rounded-lg" aria-label={`Retirer la source ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
+                  <Btn variant="ghost" size="sm" aria-label={`Retirer la source ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>
                     <X className="size-4" aria-hidden="true" />
                     Retirer
                   </Btn>

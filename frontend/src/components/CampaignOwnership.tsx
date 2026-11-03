@@ -3,6 +3,7 @@
 import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
+import { toast } from "@heroui/react";
 import { Btn, ErrorText, Field, SelectBox, Notice } from "@/components/ds/controls";
 import { Eyebrow, initialsOf } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
@@ -78,6 +79,7 @@ export default function CampaignOwnership({
                   existing_prospects: policy,
                 },
               });
+              toast.success(advisor ? "Responsable de campagne enregistré" : "Campagne sans responsable");
               onDone();
             } catch (err) {
               setError(
