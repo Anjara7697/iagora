@@ -49,7 +49,7 @@ export default function CampaignsPage() {
   const enrolment = percent(totals.converted, totals.leads);
 
   return (
-    <Screen>
+    <Screen scroll>
       <PageHeader
         {...reveal(0)}
         eyebrow="Pilotage · Campagnes"

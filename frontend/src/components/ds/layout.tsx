@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Meter } from "@heroui/react";
+import { Button, Card, Meter, ScrollShadow } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -10,12 +10,39 @@ import { reveal } from "./motion";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** Racine d'un écran refait : soustrait le sous-arbre à l'ancienne feuille de style. */
-export function Screen({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
-  return (
+/**
+ * Racine d'un écran. Avec `scroll`, le contenu défile dans un `ScrollShadow` vertical (fondu en haut et en bas quand
+ * il reste du contenu) dont la hauteur est bornée à celle de la fenêtre, sous l'en-tête de l'application.
+ * `hideScrollBar` masque la barre de défilement. Hauteurs : en-tête 3.5rem + marges de `<main>` d'`AppShell`.
+ */
+export function Screen({
+  children,
+  className,
+  wide,
+  scroll = false,
+  hideScrollBar = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  wide?: boolean;
+  scroll?: boolean;
+  hideScrollBar?: boolean;
+}) {
+  const content = (
     <div className={cx("mx-auto flex w-full flex-col gap-6", wide ? "max-w-none" : "max-w-[1400px]", className)}>
       {children}
     </div>
+  );
+  if (!scroll) return content;
+  return (
+    <ScrollShadow
+      orientation="vertical"
+      hideScrollBar={hideScrollBar}
+      // -m-1 / p-1 : l'ombre des cartes et l'anneau de focus ne sont pas coupés par le conteneur.
+      className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:max-h-[calc(100dvh-9.25rem)]"
+    >
+      {content}
+    </ScrollShadow>
   );
 }
 
