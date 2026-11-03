@@ -117,19 +117,22 @@ async function open(page: Page) {
 test("liste des documents, détail et marque « Fictif »", async ({ page }) => {
   await mockApi(page);
   await open(page);
+  // Le testeur et les réglages techniques sont dans l'onglet « Tester une question ».
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   const model = page.getByText("gemini/gemini-embedding-001", { exact: true });
   await expect(model).toBeHidden();
   await page
     .getByText("Réglages techniques de la recherche", { exact: true })
     .click();
   await expect(model).toBeVisible();
+  await page.getByRole("tab", { name: "Documents" }).click();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR" }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(page.getByText("Fictif", { exact: true })).toBeVisible();
   await auditA11y(page, "base de connaissances");
   // Le document s'ouvre dans un panneau latéral, à l'écran, et son adresse est partageable.
-  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
+  await page.getByRole("row", { name: /Programme eBIHAR/ }).click();
   const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
   await expect(panel.getByText("Le programme dure 18 mois.")).toBeInViewport();
   await expect(page).toHaveURL(/\/knowledge\?doc=ebihar$/);
@@ -144,6 +147,7 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
 }) => {
   const calls = await mockApi(page);
   await open(page);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
@@ -241,7 +245,7 @@ test("adresse d'un document : identifiant invalide ignoré", async ({ page }) =>
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
   await page.goto("/knowledge?doc=..%2Fsecret");
-  await expect(page.getByRole("button", { name: "Programme eBIHAR" })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Programme eBIHAR/ })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
@@ -250,7 +254,7 @@ test("la suppression demande confirmation", async ({ page }) => {
   await open(page);
   // La suppression se fait depuis le panneau du document, après confirmation HeroUI.
   await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
+  await page.getByRole("row", { name: /Programme eBIHAR/ }).click();
   const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
   await panel.getByRole("button", { name: "Supprimer" }).click();
   const confirm = page.getByRole("alertdialog");
@@ -271,6 +275,7 @@ test("un conseiller consulte et teste, sans modifier", async ({ page }) => {
     page.getByRole("button", { name: "Ajouter un document" }),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await expect(page.getByRole("button", { name: "Tester" })).toBeVisible();
 });
 
@@ -284,6 +289,7 @@ test("embeddings non configurés : avertissement et recherche bloquée", async (
       exact: false,
     }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page.getByLabel("Question du prospect").fill("une question");
   await expect(page.getByRole("button", { name: "Tester" })).toBeDisabled();
 });
@@ -338,10 +344,10 @@ test("bannière de lacune, filtre par programme et statut de chaque document", a
     .getByRole("button", { name: "Master eBIHAR — candidats" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR" }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("grid").getByRole("button", { name: "Master eBIHAR" }),
+    page.getByRole("row", { name: /Master eBIHAR/ }),
   ).toBeVisible();
 });
 
@@ -364,23 +370,23 @@ test("recherche, documents communs et remise à zéro sur mobile", async ({
     .getByRole("button", { name: "Documents communs", exact: true })
     .click();
   await expect(
-    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    library.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toHaveCount(0);
   await expect(
-    library.getByRole("button", { name: "Charte de référence", exact: true }),
+    library.getByRole("row", { name: /Charte de référence/ }),
   ).toBeVisible();
   await page.getByLabel("Rechercher un document").fill("introuvable");
   await expect(
-    page.getByText("Aucun document ne correspond à ces critères.", {
+    page.getByText("Aucun document ne correspond", {
       exact: false,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Réinitialiser les filtres" }).click();
+  await page.getByRole("button", { name: "Afficher tous les documents" }).click();
   await expect(
-    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    library.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(
-    library.getByRole("button", { name: "Charte de référence", exact: true }),
+    library.getByRole("row", { name: /Charte de référence/ }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -398,7 +404,7 @@ test("sans service configuré, ajout bloqué et lecture préservée", async ({
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Programme eBIHAR", exact: true })
+    .getByRole("row", { name: /Programme eBIHAR/ })
     .click();
   // Lecture préservée dans le panneau ; modifier demande le service de recherche, supprimer non.
   const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
@@ -412,6 +418,7 @@ test("changer de programme retire les résultats de la question précédente", a
 }) => {
   await mockApi(page);
   await open(page);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
@@ -450,7 +457,7 @@ test("panne du statut de recherche : lecture possible et nouvelle tentative", as
       .filter({ hasText: "Service de recherche indisponible" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
@@ -460,4 +467,32 @@ test("panne du statut de recherche : lecture possible et nouvelle tentative", as
   await expect(
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
   ).toBeEnabled();
+});
+
+test("onglets, filtres dans l'adresse, tableau complet et ouverture au clavier", async ({ page }) => {
+  await mockApi(page, {
+    docs: [doc(), doc({ slug: "charte", title: "Charte de référence", target_code: null, is_demo: false })],
+  });
+  await open(page);
+  // Bureau : toutes les colonnes, dont le statut, sont visibles sans défiler.
+  await expect(page.getByRole("columnheader", { name: "Statut" })).toBeInViewport({ ratio: 1 });
+  // Recherche et programme dans l'adresse, conservés au rechargement.
+  await page.getByRole("group", { name: "Programme" }).getByRole("button", { name: "Documents communs" }).click();
+  await page.getByLabel("Rechercher un document").fill("charte");
+  await expect(page).toHaveURL(/\/knowledge\?q=charte&programme=common$/);
+  await page.reload();
+  await expect(page.getByLabel("Rechercher un document")).toHaveValue("charte");
+  await expect(page.getByRole("row", { name: /Programme eBIHAR/ })).toHaveCount(0);
+  // Clavier : la ligne prend le focus, Entrée ouvre le document ; la fermeture garde les filtres.
+  await page.getByRole("row", { name: /Charte de référence/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\?q=charte&programme=common&doc=charte$/);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/knowledge\?q=charte&programme=common$/);
+  // Onglet du testeur dans l'adresse.
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await expect(page).toHaveURL(/tab=test/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Tester une question" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Question du prospect")).toBeVisible();
 });
