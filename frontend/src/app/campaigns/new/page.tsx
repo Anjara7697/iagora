@@ -63,7 +63,7 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <Screen className="max-w-[960px]">
+    <Screen className="max-w-[960px]" scroll>
       <PageHeader eyebrow="Pilotage · Campagnes" title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
       <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
