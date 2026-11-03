@@ -17,12 +17,15 @@ export default function CampaignsTable({
   isLoading,
   emptyState,
   footer,
+  linkSuffix = "",
 }: {
   campaigns: Campaign[];
   figures: Map<number, CampaignOverview>;
   isLoading?: boolean;
   emptyState?: ReactNode;
   footer?: ReactNode;
+  /** Ajouté au lien de chaque ligne (ex. `?from=…` pour revenir à la liste filtrée). */
+  linkSuffix?: string;
 }) {
   return (
     <DataTable
@@ -46,7 +49,7 @@ export default function CampaignsTable({
         const f = figures.get(c.id);
         const row = reveal(7 + i, 40);
         return (
-          <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}`} className={row.className} style={row.style}>
+          <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}${linkSuffix}`} className={row.className} style={row.style}>
             <Table.Cell>
               <span className="flex min-w-0 flex-col gap-0.5">
                 <strong className="text-sm font-semibold text-foreground">{c.name}</strong>

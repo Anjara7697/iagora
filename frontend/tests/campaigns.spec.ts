@@ -553,8 +553,14 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);
   expect(queries.some((q) => q.includes("campaign_id=1"))).toBe(true);
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/);
   await row.click();
-  await expect(page).toHaveURL(/\/prospects\/5$/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/prospects\/5\?from=/, { timeout: 15000 });
+  // Le retour ramène à la campagne, sur l'onglet et l'étape quittés.
+  await page.getByRole("link", { name: "← Retour à la campagne" }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/, { timeout: 15000 });
+  await expect(page.getByRole("tab", { name: "Prospects" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("region", { name: "Prospects de la campagne" }).getByLabel("Étape")).toContainText("Qualifié");
 });
 
 test("désactiver une campagne demande confirmation", async ({ page }) => {
@@ -684,4 +690,36 @@ test("fiche : fermer le panneau de modification avec une saisie demande confirma
   await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
   await expect(drawer).toHaveCount(0);
   expect(calls.requests.some((r) => r.method === "PATCH" && (r.body as { name?: string }).name === "Nouveau nom")).toBe(false);
+});
+
+test("liste : filtres dans l'URL, conservés au retour depuis une fiche", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.getByRole("button", { name: "Brouillons", exact: true }).click();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/);
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?from=%2Fcampaigns%3Fstatus%3Ddraft$/, { timeout: 15_000 });
+  // Lien « ← Campagnes » : retour à la liste filtrée.
+  await page.getByRole("link", { name: "← Campagnes" }).click();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Retour du navigateur : même résultat, et l'onglet de la fiche est conservé.
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=sources&from=/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goForward();
+  await expect(page.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à la vue d'ensemble", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  await expect(page.getByRole("tab", { name: "Réglages" })).toHaveAttribute("aria-selected", "true");
+  await page.goto("/campaigns/1?tab=inconnu&from=https%3A%2F%2Fexemple.test");
+  await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
+  // Une URL de retour étrangère n'est jamais suivie.
+  await expect(page.getByRole("link", { name: "← Campagnes" })).toHaveAttribute("href", "/campaigns");
 });

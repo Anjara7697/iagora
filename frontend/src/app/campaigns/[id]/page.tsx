@@ -2,8 +2,8 @@
 
 import { Tabs } from "@heroui/react";
 import { CalendarDays, Pause, Pencil, Play, Users } from "lucide-react";
-import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import CampaignOverview from "@/components/campaign/CampaignOverview";
 import CampaignProspects from "@/components/campaign/CampaignProspects";
@@ -18,6 +18,7 @@ import { reveal } from "@/components/ds/motion";
 import { Drawer } from "@/components/Drawer";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
+import { CAMPAIGN_TABS, campaignHref, readCampaignView, replaceUrl, type CampaignView } from "@/lib/campaignNav";
 import { CAMPAIGN_STATUS, formatDay, label } from "@/lib/labels";
 import type { Campaign, CampaignStats, Target } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -26,21 +27,25 @@ const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
 const toIso = (value: string) => (value ? `${value}T00:00:00Z` : null);
 const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
 
-const TABS = [
-  { id: "overview", title: "Vue d'ensemble" },
-  { id: "prospects", title: "Prospects" },
-  { id: "sources", title: "Sources" },
-  { id: "settings", title: "Réglages" },
-];
-
 export default function CampaignPage() {
+  return (
+    <Suspense>
+      <CampaignDetail />
+    </Suspense>
+  );
+}
+
+/** Fiche d'une campagne ; l'onglet (et l'étape, la page des prospects) est dans l'URL : lien partageable, retour conservé. */
+function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
+  const view = readCampaignView(useSearchParams());
+  const navigate = (patch: Partial<CampaignView>) =>
+    replaceUrl(campaignHref(id, { ...readCampaignView(new URLSearchParams(window.location.search)), ...patch }));
   const user = useCurrentUser();
   const canEdit = user?.role === "ADMIN";
   const campaign = useApi<Campaign>(`/campaigns/${id}`);
   const stats = useApi<CampaignStats>(`/campaigns/${id}/stats`);
   const targets = useApi<Target[]>(canEdit ? "/targets" : null);
-  const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +88,7 @@ export default function CampaignPage() {
 
   return (
     <Screen scroll>
-      <TextLink href="/campaigns" className="w-fit text-sm">
+      <TextLink href={view.from ?? "/campaigns"} className="w-fit text-sm">
         ← Campagnes
       </TextLink>
       <Loading loading={campaign.loading} error={campaign.error} onRetry={campaign.reload} />
@@ -166,12 +171,12 @@ export default function CampaignPage() {
           )}
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
-          <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key))}>
+          <Tabs selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
             <Tabs.ListContainer className={TAB_RADIUS.container}>
               <Tabs.List aria-label="Sections de la campagne">
-                {TABS.map((t) => (
-                  <Tabs.Tab key={t.id} id={t.id} className={TAB_RADIUS.tab}>
-                    {t.title}
+                {Object.entries(CAMPAIGN_TABS).map(([key, title]) => (
+                  <Tabs.Tab key={key} id={key} className={TAB_RADIUS.tab}>
+                    {title}
                     <Tabs.Indicator className={TAB_RADIUS.indicator} />
                   </Tabs.Tab>
                 ))}
@@ -182,7 +187,13 @@ export default function CampaignPage() {
               {stats.data && <CampaignOverview stats={stats.data} />}
             </Tabs.Panel>
             <Tabs.Panel id="prospects" className="pt-4">
-              <CampaignProspects campaign={c} />
+              <CampaignProspects
+                campaign={c}
+                stage={view.stage}
+                page={view.page}
+                onChange={(next) => navigate({ tab: "prospects", ...next })}
+                returnHref={campaignHref(id, view)}
+              />
             </Tabs.Panel>
             <Tabs.Panel id="sources" className="pt-4">
               <CampaignSources campaign={c} stats={stats.data} canEdit={canEdit} onChanged={reload} />
