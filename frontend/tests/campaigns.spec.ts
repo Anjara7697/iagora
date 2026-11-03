@@ -277,20 +277,32 @@ test("un conseiller consulte sans pouvoir créer ni modifier", async ({
   await expect(page.getByRole("button", { name: "Retirer" })).toHaveCount(0);
 });
 
-test("création : formulaire, programmes et sources envoyés à l'API", async ({
+test("création en trois étapes : informations, période et ciblage, sources envoyés à l'API", async ({
   page,
 }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/new");
+  // Étape 1 : informations
+  await expect(page.getByRole("navigation", { name: "Étapes de création" })).toBeVisible();
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
   await choose(page.getByLabel("Statut"), "active");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 2 : période et programmes
+  await page.getByRole("spinbutton").first().click();
+  await page.keyboard.type("0109202630092026");
   await page.getByLabel("Compagnons", { exact: false }).press("Space");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 3 : sources, récapitulatif puis création
   await page.getByRole("button", { name: "Ajouter une source" }).click();
   await page.getByLabel("Nom de la source 1").fill("Webinaire");
   await choose(page.getByLabel("Type de la source 1"), "webinar");
   await choose(page.getByLabel("Plateforme de la source 1"), "web");
+  const recap = page.getByLabel("Récapitulatif");
+  await expect(recap).toContainText("Rentrée 2027");
+  await expect(recap).toContainText("01/09/2026 → 30/09/2026");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
-  await expect(page).toHaveURL(/\/campaigns\/7$/);
+  // La fiche est compilée au premier accès par le serveur de développement.
+  await expect(page).toHaveURL(/\/campaigns\/7$/, { timeout: 30_000 });
   await expect
     .poll(() => calls.requests)
     .toContainEqual({
@@ -300,8 +312,8 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
         name: "Rentrée 2027",
         description: null,
         status: "active",
-        start_date: null,
-        end_date: null,
+        start_date: "2026-09-01T00:00:00Z",
+        end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
         sources: [
           {
@@ -315,18 +327,18 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
     });
 });
 
-test("dates incohérentes : création bloquée", async ({ page }) => {
+test("création : le nom est requis pour continuer et le retour conserve la saisie", async ({ page }) => {
   await mockApi(page);
   await login(page, "/campaigns/new");
-  await page.getByLabel("Nom de la campagne").fill("X");
-  await page.getByLabel("Date de début").fill("2026-10-10");
-  await page.getByLabel("Date de fin").fill("2026-09-01");
-  await expect(
-    page.getByText("La date de fin doit être postérieure"),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Créer la campagne" }),
-  ).toBeDisabled();
+  const next = page.getByRole("button", { name: "Continuer" });
+  await expect(next).toBeDisabled();
+  await page.getByLabel("Nom de la campagne").fill("Campagne test");
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveCount(0);
+  await page.getByRole("button", { name: "Retour" }).click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveValue("Campagne test");
+  await expect(page.getByRole("button", { name: /Informations/ })).toHaveAttribute("aria-current", "step");
 });
 
 test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospects", async ({

@@ -71,6 +71,7 @@ export default function NewCampaignPage() {
           initial={EMPTY_VALUES}
           targets={targets.data}
           withSources
+          steps
           submitLabel="Créer la campagne"
           busy={busy}
           error={error}
