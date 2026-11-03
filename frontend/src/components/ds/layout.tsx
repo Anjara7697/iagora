@@ -10,10 +10,16 @@ import { reveal } from "./motion";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
+/** Épaisseur du fondu des `ScrollShadow` (px) : une seule valeur pour la page et les tableaux (40 par défaut dans HeroUI). */
+export const SCROLL_SHADOW_SIZE = 15;
+
 /**
  * Racine d'un écran. Avec `scroll`, le contenu défile dans un `ScrollShadow` vertical (fondu en haut et en bas quand
  * il reste du contenu) dont la hauteur est bornée à celle de la fenêtre, sous l'en-tête de l'application.
- * `hideScrollBar` masque la barre de défilement. Hauteurs : en-tête 3.5rem + marges de `<main>` d'`AppShell`.
+ * `hideScrollBar` masque la barre de défilement.
+ * Hauteurs (≥ 601 px) : en-tête 3.5rem + marge haute de `<main>` 1.75rem + 1rem laissé en bas = 6.25rem ; la marge basse
+ * de `<main>` (4rem) est annulée par `-mb-12` pour que la fenêtre ne défile pas en plus du conteneur.
+ * Sous 601 px : en-tête 3.5rem + marges de `<main>` (1.25rem en haut, 3rem en bas) = 8.25rem.
  */
 export function Screen({
   children,
@@ -37,9 +43,10 @@ export function Screen({
   return (
     <ScrollShadow
       orientation="vertical"
+      size={SCROLL_SHADOW_SIZE}
       hideScrollBar={hideScrollBar}
       // -m-1 / p-1 : l'ombre des cartes et l'anneau de focus ne sont pas coupés par le conteneur.
-      className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:max-h-[calc(100dvh-9.25rem)]"
+      className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:-mb-12 min-[601px]:max-h-[calc(100dvh-6.25rem)]"
     >
       {content}
     </ScrollShadow>

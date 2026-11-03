@@ -83,7 +83,40 @@ async function mockApi(
     } else if (path === "/campaigns" && method === "POST") {
       calls.requests.push({ method, path, body: request.postDataJSON() });
       code = 201;
-      body = campaign({ id: 7, name: "Nouvelle" });
+      body = campaign({
+        id: 7,
+        name: "Nouvelle",
+        targets: [{ id: 2, code: "compagnons_pros", name: "Professionnels Les Compagnons" }],
+        sources: [
+          { id: 21, name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { id: 22, name: "Formulaire du site", type: "form", platform: "web", external_id: null },
+        ],
+      });
+    } else if (path === "/integrations/meta" && method === "GET") {
+      body = {
+        configured: true,
+        enabled: true,
+        app_id: "app-1",
+        api_version: "v21.0",
+        app_secret_set: true,
+        page_access_token_set: true,
+        verify_token_set: true,
+        mappings: [],
+        webhook_path: "/api/v1/webhooks/meta",
+        last_event_at: null,
+        last_success_at: null,
+        last_error: null,
+        received: 0,
+        processed: 0,
+        failed: 0,
+      };
+    } else if (path === "/integrations/meta" && method === "PUT") {
+      calls.requests.push({ method, path, body: request.postDataJSON() });
+      body = { configured: true };
+    } else if (path === "/integrations/tokens") {
+      body = [];
+    } else if (path === "/integrations/email") {
+      body = { configured: false, enabled: false, send_enabled: false, sender: null, imap_host: "", smtp_host: "", sandbox_recipients: [], last_run_at: null };
     } else if (path === "/campaigns/overview")
       body = [
         {
@@ -277,20 +310,36 @@ test("un conseiller consulte sans pouvoir créer ni modifier", async ({
   await expect(page.getByRole("button", { name: "Retirer" })).toHaveCount(0);
 });
 
-test("création : formulaire, programmes et sources envoyés à l'API", async ({
+test("création en trois étapes : informations, période et ciblage, sources envoyés à l'API", async ({
   page,
 }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/new");
+  // Étape 1 : informations
+  await expect(page.getByRole("navigation", { name: "Étapes de création" })).toBeVisible();
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
   await choose(page.getByLabel("Statut"), "active");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 2 : période et programmes
+  await page.getByRole("spinbutton").first().click();
+  await page.keyboard.type("0109202630092026");
   await page.getByLabel("Compagnons", { exact: false }).press("Space");
-  await page.getByRole("button", { name: "Ajouter une source" }).click();
-  await page.getByLabel("Nom de la source 1").fill("Webinaire");
-  await choose(page.getByLabel("Type de la source 1"), "webinar");
-  await choose(page.getByLabel("Plateforme de la source 1"), "web");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  // Étape 3 : connecteurs de sources, récapitulatif puis création
+  await expect(page.getByRole("region", { name: "Connecteurs disponibles" }).getByText("Connectée")).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter Meta Lead Ads" }).click();
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("À finaliser");
+  await page.getByLabel("Identifiant du formulaire Meta 1").fill("123456");
+  await expect(page.getByLabel("Source 1 : Meta Lead Ads")).toContainText("Formulaire associé");
+  await page.getByRole("button", { name: "Ajouter Formulaire du site ou n8n" }).click();
+  await expect(page.getByLabel("Source 2 : Formulaire du site ou n8n")).toContainText("Jeton à créer");
+  await expect(page.getByRole("button", { name: "Ajouter LinkedIn Lead Gen" })).toBeDisabled();
+  const recap = page.getByLabel("Récapitulatif");
+  await expect(recap).toContainText("Rentrée 2027");
+  await expect(recap).toContainText("01/09/2026 → 30/09/2026");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
-  await expect(page).toHaveURL(/\/campaigns\/7$/);
+  // La fiche est compilée au premier accès par le serveur de développement.
+  await expect(page).toHaveURL(/\/campaigns\/7$/, { timeout: 30_000 });
   await expect
     .poll(() => calls.requests)
     .toContainEqual({
@@ -300,33 +349,38 @@ test("création : formulaire, programmes et sources envoyés à l'API", async ({
         name: "Rentrée 2027",
         description: null,
         status: "active",
-        start_date: null,
-        end_date: null,
+        start_date: "2026-09-01T00:00:00Z",
+        end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
         sources: [
-          {
-            name: "Webinaire",
-            type: "webinar",
-            platform: "web",
-            external_id: null,
-          },
+          { name: "Meta Lead Ads", type: "ads", platform: "meta", external_id: "123456" },
+          { name: "Formulaire du site", type: "form", platform: "web", external_id: null },
         ],
       },
     });
+  // Le formulaire Meta saisi est associé à la campagne créée (source et programme unique).
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT" && r.path === "/integrations/meta")?.body)
+    .toMatchObject({
+      mappings: [
+        { form_id: "123456", campaign_id: 7, source_id: 21, target_code: "compagnons_pros", enabled: true },
+      ],
+      app_secret: null,
+    });
 });
 
-test("dates incohérentes : création bloquée", async ({ page }) => {
+test("création : le nom est requis pour continuer et le retour conserve la saisie", async ({ page }) => {
   await mockApi(page);
   await login(page, "/campaigns/new");
-  await page.getByLabel("Nom de la campagne").fill("X");
-  await page.getByLabel("Date de début").fill("2026-10-10");
-  await page.getByLabel("Date de fin").fill("2026-09-01");
-  await expect(
-    page.getByText("La date de fin doit être postérieure"),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Créer la campagne" }),
-  ).toBeDisabled();
+  const next = page.getByRole("button", { name: "Continuer" });
+  await expect(next).toBeDisabled();
+  await page.getByLabel("Nom de la campagne").fill("Campagne test");
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveCount(0);
+  await page.getByRole("button", { name: "Retour" }).click();
+  await expect(page.getByLabel("Nom de la campagne")).toHaveValue("Campagne test");
+  await expect(page.getByRole("button", { name: /Informations/ })).toHaveAttribute("aria-current", "step");
 });
 
 test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospects", async ({

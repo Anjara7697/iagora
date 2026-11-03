@@ -2,7 +2,7 @@
 
 import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { cx } from "./layout";
+import { SCROLL_SHADOW_SIZE, cx } from "./layout";
 
 export type DataColumn = {
   id: string;
@@ -46,7 +46,7 @@ export function DataTable({
 }) {
   return (
     <Table className={cx("rounded-lg", className)} style={style}>
-      <ScrollShadow orientation="horizontal" hideScrollBar={hideScrollBar}>
+      <ScrollShadow orientation="horizontal" size={SCROLL_SHADOW_SIZE} hideScrollBar={hideScrollBar}>
         <Table.Content aria-label={label} style={{ minWidth }}>
           <Table.Header>
             {columns.map((c, i) => (
