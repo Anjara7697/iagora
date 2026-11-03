@@ -19,7 +19,7 @@ import { Drawer } from "@/components/Drawer";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { CAMPAIGN_TABS, campaignHref, readCampaignView, replaceUrl, type CampaignView } from "@/lib/campaignNav";
-import { CAMPAIGN_STATUS, formatDay, label } from "@/lib/labels";
+import { CAMPAIGN_STATUS, CAMPAIGN_STATUS_EFFECT, formatPeriod, label } from "@/lib/labels";
 import type { Campaign, CampaignStats, Target } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -104,9 +104,10 @@ function CampaignDetail() {
                   <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarDays className="size-3.5" aria-hidden="true" />
-                    {c.start_date || c.end_date ? `${formatDay(c.start_date)} → ${formatDay(c.end_date)}` : "Sans dates"}
+                    {formatPeriod(c.start_date, c.end_date)}
                   </span>
                 </span>
+                <span className="text-sm text-muted">{label(CAMPAIGN_STATUS_EFFECT, c.status)}</span>
                 {c.description && <span>{c.description}</span>}
               </span>
             }
@@ -118,30 +119,30 @@ function CampaignDetail() {
                       trigger={
                         <Btn variant="danger-soft" className="rounded-lg" disabled={busy}>
                           <Pause className="size-4" aria-hidden="true" />
-                          Désactiver
+                          Mettre en pause
                         </Btn>
                       }
-                      title="Désactiver la campagne ?"
-                      description="Les nouveaux prospects ne seront plus rattachés à ses sources."
-                      confirmLabel="Désactiver"
+                      title="Mettre la campagne en pause ?"
+                      description="Les nouveaux prospects ne seront plus rattachés à ses sources. Vous pourrez la réactiver à tout moment."
+                      confirmLabel="Mettre en pause"
                       onConfirm={() => void patch({ status: "inactive" })}
                     />
                   ) : (
                     <ConfirmDialog
                       trigger={
-                        <Btn variant="secondary" className="rounded-lg" disabled={busy}>
+                        <Btn variant="primary" className="rounded-lg" disabled={busy}>
                           <Play className="size-4" aria-hidden="true" />
-                          Activer
+                          {c.status === "inactive" ? "Réactiver" : "Activer"}
                         </Btn>
                       }
                       status="accent"
-                      title="Activer la campagne ?"
+                      title={c.status === "inactive" ? "Réactiver la campagne ?" : "Activer la campagne ?"}
                       description={
                         c.sources.length
                           ? "Les prospects qui arrivent par ses sources seront rattachés à la campagne et pris en charge par l’agent."
                           : "Elle n’a encore aucune source : aucun prospect n’arrivera tant que vous n’en ajoutez pas."
                       }
-                      confirmLabel="Activer"
+                      confirmLabel={c.status === "inactive" ? "Réactiver" : "Activer"}
                       onConfirm={() => void patch({ status: "active" })}
                     />
                   ))}
@@ -157,9 +158,10 @@ function CampaignDetail() {
                     Modifier la campagne
                   </Btn>
                 )}
-                <LinkButton variant="primary" className="rounded-lg" href={`/prospects?campaign=${c.id}`}>
+                {/* Page Prospects complète (filtres avancés, export) ; l'onglet Prospects reste le chemin principal. */}
+                <LinkButton variant="secondary" className="rounded-lg" href={`/prospects?campaign=${c.id}`}>
                   <Users className="size-4" aria-hidden="true" />
-                  Voir les prospects
+                  Ouvrir dans Prospects
                 </LinkButton>
               </>
             }

@@ -416,7 +416,7 @@ test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospe
   await expect(
     sources.getByRole("row", { name: /LinkedIn Ads/ }).getByRole("gridcell", { name: "9", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Voir les prospects" }).click();
+  await page.getByRole("link", { name: "Ouvrir dans Prospects" }).click();
   await expect(page).toHaveURL(/\/prospects\?campaign=1$/);
   await expect
     .poll(() => calls.queries.some((q) => q.includes("campaign_id=1")))
@@ -577,10 +577,10 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
   expect(calls.requests.some((r) => (r.body as { status?: string })?.status === "active")).toBe(false);
   await page.getByRole("button", { name: "Activer" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Activer" }).click();
-  await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
-  await page.getByRole("button", { name: "Désactiver" }).click();
+  await expect(page.getByRole("button", { name: "Mettre en pause" })).toBeVisible();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
   const dialog = page.getByRole("alertdialog");
-  await expect(dialog.getByText("Désactiver la campagne ?")).toBeVisible();
+  await expect(dialog.getByText("Mettre la campagne en pause ?")).toBeVisible();
   await dialog.getByRole("button", { name: "Annuler" }).click();
   await expect(dialog).toHaveCount(0);
   expect(
@@ -588,8 +588,8 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
       (r) => (r.body as { status?: string })?.status === "inactive",
     ),
   ).toHaveLength(0);
-  await page.getByRole("button", { name: "Désactiver" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Mettre en pause" }).click();
   await expect
     .poll(() =>
       calls.requests.some(
@@ -764,7 +764,7 @@ test("liste : premier usage, filtre sans résultat, chargement et erreur", async
   // Filtre sans résultat (la campagne simulée est un brouillon) : action pour tout réafficher.
   await login(page, "/campaigns?status=inactive");
   await expect(page.getByText("Aucune campagne ne correspond à ces filtres")).toBeVisible();
-  await expect(page.getByText("Filtres actifs : Inactives.")).toBeVisible();
+  await expect(page.getByText("Filtres actifs : En pause.")).toBeVisible();
   await page.getByRole("button", { name: "Afficher toutes les campagnes" }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
   await expect(page.getByRole("row", { name: /Recrutement eBIHAR 2026/ })).toBeVisible();
@@ -782,4 +782,25 @@ test("liste : premier usage, filtre sans résultat, chargement et erreur", async
   // Même panne : une seule alerte (son « Réessayer » recharge aussi les chiffres).
   await expect(page.getByRole("alert").filter({ hasText: "Chiffres clés indisponibles" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Chiffres clés" }).getByText("—")).toHaveCount(4);
+});
+
+test("statut expliqué, période ouverte lisible et ouverture d'une campagne au clavier", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  // Clavier : la ligne prend le focus et Entrée ouvre la fiche.
+  const row = page.getByRole("row", { name: /Recrutement eBIHAR 2026/ });
+  await expect(row).toContainText("Depuis le 01/09/2026");
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/campaigns\/1$/, { timeout: 15_000 });
+  await expect(page.getByText("Ne reçoit pas encore de prospects : activez-la pour démarrer.")).toBeVisible();
+  await expect(page.getByText("Depuis le 01/09/2026")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Indicateurs de la campagne" }).getByText("sur 100")).toBeVisible();
+  // Mise en pause : libellé « En pause » et bouton « Réactiver ».
+  await page.getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Mettre en pause" }).click();
+  await expect(page.getByText("En pause", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réactiver" })).toBeVisible();
 });

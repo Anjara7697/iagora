@@ -22,7 +22,7 @@ const STATUS_FILTERS = [
   { value: "", text: "Toutes" },
   { value: "active", text: "Actives" },
   { value: "draft", text: "Brouillons" },
-  { value: "inactive", text: "Inactives" },
+  { value: "inactive", text: "En pause" },
 ];
 const CAMPAIGN_FILTER_LABELS = Object.fromEntries(STATUS_FILTERS.map((f) => [f.value, f.text]));
 

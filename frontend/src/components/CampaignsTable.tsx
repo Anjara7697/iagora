@@ -5,7 +5,7 @@ import { Tag, type Tone } from "@/components/ds/controls";
 import { reveal } from "@/components/ds/motion";
 import { SourceAvatars } from "@/components/ds/SourceAvatars";
 import { DataTable, Table } from "@/components/ds/table";
-import { CAMPAIGN_STATUS, TARGETS, formatDay, label } from "@/lib/labels";
+import { CAMPAIGN_STATUS, TARGETS, formatPeriod, label } from "@/lib/labels";
 import type { Campaign, CampaignOverview } from "@/lib/types";
 
 const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
@@ -56,7 +56,7 @@ export default function CampaignsTable({
                 <span className="text-xs text-muted">Responsable : {c.responsible_advisor_name ?? "Non affecté"}</span>
                 <span className="text-xs text-muted">
                   {c.targets.map((t) => label(TARGETS, t.code)).join(", ") || "Aucun programme"}
-                  {c.start_date || c.end_date ? ` · ${formatDay(c.start_date)} → ${formatDay(c.end_date)}` : ""}
+                  {c.start_date || c.end_date ? ` · ${formatPeriod(c.start_date, c.end_date)}` : ""}
                 </span>
               </span>
             </Table.Cell>

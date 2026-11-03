@@ -79,6 +79,8 @@ export default function CampaignForm({
   const valid = v.name.trim().length > 0;
   const stepValid = step === 0 ? valid : true;
   const show = (index: number) => !steps || step === index;
+  // Champs `secondary` (gris) sur la carte blanche de la page ; `primary` (blancs) dans le panneau latéral, déjà gris.
+  const fieldVariant = framed ? "secondary" : "primary";
   const dirty = JSON.stringify(v) !== JSON.stringify(initial);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +112,7 @@ export default function CampaignForm({
         <section className="flex flex-col gap-4" aria-label={steps ? STEPS[0].title : undefined}>
           <Field label="Nom de la campagne">
             <TextInput
-              variant="secondary"
+              variant={fieldVariant}
               value={v.name}
               maxLength={200}
               onChange={(e) => set("name", e.target.value)}
@@ -119,7 +121,7 @@ export default function CampaignForm({
             />
           </Field>
           <Field label="Description" hint="Visible par l’équipe ; l’agent ne l’envoie jamais au prospect.">
-            <TextBox variant="secondary" value={v.description} onChange={(e) => set("description", e.target.value)} />
+            <TextBox variant={fieldVariant} value={v.description} onChange={(e) => set("description", e.target.value)} />
           </Field>
         </section>
       )}
@@ -127,7 +129,7 @@ export default function CampaignForm({
       {show(1) && (
         <section className="flex flex-col gap-5" aria-label={steps ? STEPS[1].title : undefined}>
           <DateRangeField
-            variant="secondary"
+            variant={fieldVariant}
             label="Période de la campagne"
             hint={
               Boolean(v.start_date) !== Boolean(v.end_date)
