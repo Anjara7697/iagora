@@ -1,19 +1,48 @@
 "use client";
 
-import { Button, Card, Meter } from "@heroui/react";
+import { Button, Card, Meter, ScrollShadow } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { KpiBadge } from "@/lib/kpi";
 import { Box } from "./card";
+import { reveal } from "./motion";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** Racine d'un écran refait : soustrait le sous-arbre à l'ancienne feuille de style. */
-export function Screen({ children, className, wide }: { children: ReactNode; className?: string; wide?: boolean }) {
-  return (
+/**
+ * Racine d'un écran. Avec `scroll`, le contenu défile dans un `ScrollShadow` vertical (fondu en haut et en bas quand
+ * il reste du contenu) dont la hauteur est bornée à celle de la fenêtre, sous l'en-tête de l'application.
+ * `hideScrollBar` masque la barre de défilement. Hauteurs : en-tête 3.5rem + marges de `<main>` d'`AppShell`.
+ */
+export function Screen({
+  children,
+  className,
+  wide,
+  scroll = false,
+  hideScrollBar = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  wide?: boolean;
+  scroll?: boolean;
+  hideScrollBar?: boolean;
+}) {
+  const content = (
     <div className={cx("mx-auto flex w-full flex-col gap-6", wide ? "max-w-none" : "max-w-[1400px]", className)}>
       {children}
     </div>
+  );
+  if (!scroll) return content;
+  return (
+    <ScrollShadow
+      orientation="vertical"
+      hideScrollBar={hideScrollBar}
+      // -m-1 / p-1 : l'ombre des cartes et l'anneau de focus ne sont pas coupés par le conteneur.
+      className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:max-h-[calc(100dvh-9.25rem)]"
+    >
+      {content}
+    </ScrollShadow>
   );
 }
 
@@ -29,15 +58,17 @@ export function PageHeader({
   subtitle,
   actions,
   className,
+  style,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-3", className)}>
+    <header className={cx("flex flex-wrap items-end gap-3", className)} style={style}>
       <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h1 className="text-[26px]/[32px] font-semibold tracking-[-0.02em] text-foreground sm:text-[28px]/[34px]">{title}</h1>
@@ -124,6 +155,13 @@ export function EmptyPanel({
   );
 }
 
+/** Couleurs de texte du chiffre selon le ton (variantes « soft-foreground » du thème : contraste >= 6,5:1 sur blanc). */
+const TONE_TEXT = {
+  success: "text-success-soft-foreground",
+  warning: "text-warning-soft-foreground",
+  danger: "text-danger-soft-foreground",
+} as const;
+
 /** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
   label,
@@ -132,6 +170,9 @@ export function KpiCard({
   href,
   dot,
   pending,
+  badge,
+  className,
+  style,
 }: {
   label: ReactNode;
   value?: ReactNode;
@@ -139,6 +180,10 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
+  badge?: KpiBadge;
+  className?: string;
+  style?: CSSProperties;
 }) {
   const body = (
     <>
@@ -149,20 +194,65 @@ export function KpiCard({
       {pending ? (
         <Card.Description>Pas encore mesuré</Card.Description>
       ) : (
-        <Card.Title render={(props) => <span {...props} />} className="text-3xl tabular-nums">
-          {value}
-        </Card.Title>
+        <>
+          <Card.Title
+            render={(props) => <span {...props} />}
+            className={cx("text-3xl tabular-nums", badge && TONE_TEXT[badge.tone])}
+          >
+            {value}
+          </Card.Title>
+          {badge && <span className="sr-only">{badge.label}</span>}
+        </>
       )}
       {hint && <Card.Description>{hint}</Card.Description>}
     </>
   );
   if (href)
     return (
-      <Box as={Link} href={href}>
+      <Box as={Link} href={href} className={className} style={style}>
         {body}
       </Box>
     );
-  return <Box variant={pending ? "transparent" : undefined}>{body}</Box>;
+  return (
+    <Box variant={pending ? "transparent" : undefined} className={className} style={style}>
+      {body}
+    </Box>
+  );
+}
+
+export type KpiItem = {
+  key: string;
+  label: ReactNode;
+  value?: ReactNode;
+  hint?: ReactNode;
+  href?: string;
+  dot?: string;
+  pending?: boolean;
+  badge?: KpiBadge;
+};
+
+/** Bandeau de chiffres clés : grille de `KpiCard` (rayon « lg »), apparition échelonnée à partir de `startIndex`. */
+export function KpiStrip({
+  label,
+  items,
+  startIndex = 0,
+  cardClassName = "rounded-lg",
+  className,
+}: {
+  label: string;
+  items: KpiItem[];
+  startIndex?: number;
+  cardClassName?: string;
+  className?: string;
+}) {
+  return (
+    <section className={cx("grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4", className)} aria-label={label}>
+      {items.map(({ key, ...item }, i) => {
+        const motion = reveal(startIndex + i);
+        return <KpiCard key={key} {...item} className={cx(cardClassName, motion.className)} style={motion.style} />;
+      })}
+    </section>
+  );
 }
 
 /** Répartition en barres : libellé, barre, valeur en mono. La valeur porte l'information. */

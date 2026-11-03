@@ -2,7 +2,6 @@
 
 import { Skeleton as HeroSkeleton } from "@heroui/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
 import type { ApiError } from "@/lib/api";
 import { isDemoEmail } from "@/lib/labels";
 import { DemoChip } from "./ds/badges";
@@ -74,16 +73,6 @@ export function DemoBadge({ email }: { email: string | null | undefined }) {
 }
 
 export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./ds/badges";
-
-export function ProspectLink({
-  id,
-  children,
-}: {
-  id: number;
-  children: React.ReactNode;
-}) {
-  return <Link href={`/prospects/${id}`}>{children}</Link>;
-}
 
 export function Pager({
   total,

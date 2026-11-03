@@ -239,11 +239,14 @@ test("liste des campagnes avec chiffres clés, programmes et statut", async ({
 }) => {
   const calls = await mockApi(page);
   await login(page);
-  const card = page.getByRole("link", { name: /Recrutement eBIHAR 2026/ });
+  const card = page.getByRole("row", { name: /Recrutement eBIHAR 2026/ });
   await expect(card.getByText("Brouillon")).toBeVisible();
   await expect(card.getByText("eBIHAR — étudiants")).toBeVisible();
   await expect(card.getByText("2 sources")).toBeVisible();
-  await expect(card.getByText("12 · 5 · 1")).toBeVisible();
+  const figures = card.getByRole("gridcell");
+  await expect(figures.nth(2)).toHaveText("12");
+  await expect(figures.nth(3)).toHaveText("5");
+  await expect(figures.nth(4)).toHaveText("1");
   const strip = page.getByRole("region", { name: "Chiffres clés" });
   await expect(strip.getByText("0 / 1")).toBeVisible();
   await expect(strip.getByText("42 %")).toBeVisible();
@@ -264,7 +267,7 @@ test("un conseiller consulte sans pouvoir créer ni modifier", async ({
   await expect(
     page.getByRole("link", { name: "Nouvelle campagne" }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: /Recrutement eBIHAR 2026/ }).click();
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
   await expect(
     page.getByRole("heading", { name: "Recrutement eBIHAR 2026" }),
   ).toBeVisible();

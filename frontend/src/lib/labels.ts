@@ -53,12 +53,6 @@ export const CONSENT: Record<string, string> = {
   opted_out: "Désinscrit",
 };
 
-export const ROLES: Record<string, string> = {
-  prospect: "Prospect",
-  agent: "Agent",
-  advisor: "Conseiller",
-};
-
 export const label = (
   map: Record<string, string>,
   key: string | null | undefined,
@@ -120,13 +114,6 @@ export function relativeTime(
     month: "short",
   });
 }
-
-export const TODO_KINDS: Record<string, string> = {
-  validation: "Validation requise",
-  escalation: "Escalade",
-  kb_gap: "Lacune KB",
-  incident: "Incident",
-};
 
 export const PRIORITIES: Record<string, string> = {
   critical: "Critique",
@@ -252,37 +239,6 @@ export const PROFILE_FIELDS: Record<string, string> = {
   company: "Entreprise",
   experience: "Expérience",
 };
-
-const PAGE_SUBTITLES: [string, string][] = [
-  ["/appointments", "À venir et passés"],
-  ["/campaigns/new", "Segments, sources et statuts"],
-  ["/campaigns", "Segments, sources et statuts"],
-  ["/prospects/", "Parcours, échanges et décisions de l’agent"],
-  ["/prospects", "Pipeline et table"],
-  ["/conversations", "Inbox unifiée"],
-  ["/todo", "Réponses à valider et demandes de conseiller"],
-  ["/knowledge", "Connaissances de l’agent"],
-  ["/integrations", "Canaux et synchronisation"],
-  ["/team", "Membres, rôles et accès"],
-  ["/settings/testing", "Essais de l’agent avec des données fictives"],
-  ["/settings", "IA, relances, emails et rendez-vous"],
-  ["/account", "Profil et mot de passe"],
-  ["/simulator", "Tests et démonstration"],
-];
-
-export function pageSubtitle(pathname: string): string {
-  if (pathname === "/")
-    return new Date().toLocaleDateString("fr-FR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
-  return (
-    PAGE_SUBTITLES.find(
-      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
-    )?.[1] ?? ""
-  );
-}
 
 /** État d'exécution d'un brouillon décidé : lisible après traitement. */
 export const EXECUTION: Record<string, string> = {
