@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Meter, ScrollShadow } from "@heroui/react";
+import { Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -177,6 +177,7 @@ export function KpiCard({
   href,
   dot,
   pending,
+  loading,
   badge,
   className,
   style,
@@ -187,6 +188,8 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  /** Chiffre en cours de chargement : `Skeleton` HeroUI à la place du chiffre et de la précision (taille conservée). */
+  loading?: boolean;
   /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
   badge?: KpiBadge;
   className?: string;
@@ -200,6 +203,12 @@ export function KpiCard({
       </Card.Description>
       {pending ? (
         <Card.Description>Pas encore mesuré</Card.Description>
+      ) : loading ? (
+        <>
+          <Skeleton className="my-1 h-7 w-20 rounded-lg" />
+          <Skeleton className="h-3 w-32 rounded-lg" />
+          <span className="sr-only">Chargement</span>
+        </>
       ) : (
         <>
           <Card.Title
@@ -211,7 +220,7 @@ export function KpiCard({
           {badge && <span className="sr-only">{badge.label}</span>}
         </>
       )}
-      {hint && <Card.Description>{hint}</Card.Description>}
+      {hint && !loading && <Card.Description>{hint}</Card.Description>}
     </>
   );
   if (href)
@@ -235,6 +244,7 @@ export type KpiItem = {
   href?: string;
   dot?: string;
   pending?: boolean;
+  loading?: boolean;
   badge?: KpiBadge;
 };
 

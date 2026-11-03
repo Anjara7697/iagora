@@ -79,7 +79,12 @@ async function mockApi(
       };
     else if (path === "/campaigns" && method === "GET") {
       calls.queries.push(url.search);
-      body = { items: [current], total: 1, limit: 100, offset: 0 };
+      // Filtre de statut et pagination comme l'API (limit / offset, total).
+      const status = url.searchParams.get("status");
+      const all = [current].filter((c) => !status || c.status === status);
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      body = { items: all.slice(offset, offset + limit), total: all.length, limit, offset };
     } else if (path === "/campaigns" && method === "POST") {
       calls.requests.push({ method, path, body: request.postDataJSON() });
       code = 201;
@@ -722,4 +727,59 @@ test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à 
   await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
   // Une URL de retour étrangère n'est jamais suivie.
   await expect(page.getByRole("link", { name: "← Campagnes" })).toHaveAttribute("href", "/campaigns");
+});
+
+test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {
+  await mockApi(page);
+  const many = Array.from({ length: 8 }, (_, i) =>
+    campaign({ id: 100 + i, name: `Campagne ${i + 1}`, status: i < 3 ? "active" : "draft" }),
+  );
+  const queries: string[] = [];
+  await page.route("**/api/v1/campaigns?**", (route) => {
+    const url = new URL(route.request().url());
+    queries.push(url.search);
+    const status = url.searchParams.get("status");
+    const all = many.filter((c) => !status || c.status === status);
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    return route.fulfill({ json: { items: all.slice(offset, offset + limit), total: all.length, limit, offset } });
+  });
+  await login(page);
+  const strip = page.getByRole("region", { name: "Chiffres clés" });
+  await expect(strip.getByText("3 / 8")).toBeVisible();
+  await expect(strip.getByText("5 brouillon(s)")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 1\b/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 7/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Page 2", exact: true }).click();
+  await expect(page).toHaveURL(/\/campaigns\?page=2$/);
+  await expect(page.getByRole("row", { name: /Campagne 7/ })).toBeVisible();
+  expect(queries.some((q) => q.includes("limit=6") && q.includes("offset=6"))).toBe(true);
+  // Une page hors limites revient à la dernière page.
+  await page.goto("/campaigns?page=9");
+  await expect(page).toHaveURL(/\/campaigns\?page=2$/, { timeout: 15_000 });
+});
+
+test("liste : premier usage, filtre sans résultat, chargement et erreur", async ({ page }) => {
+  await mockApi(page);
+  // Filtre sans résultat (la campagne simulée est un brouillon) : action pour tout réafficher.
+  await login(page, "/campaigns?status=inactive");
+  await expect(page.getByText("Aucune campagne ne correspond à ces filtres")).toBeVisible();
+  await expect(page.getByText("Filtres actifs : Inactives.")).toBeVisible();
+  await page.getByRole("button", { name: "Afficher toutes les campagnes" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/);
+  await expect(page.getByRole("row", { name: /Recrutement eBIHAR 2026/ })).toBeVisible();
+
+  // Premier usage : bouton de création dans l'état vide.
+  await page.route("**/api/v1/campaigns?**", (route) => route.fulfill({ json: { items: [], total: 0, limit: 6, offset: 0 } }));
+  await page.reload();
+  await expect(page.getByText("Aucune campagne pour l’instant")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Nouvelle campagne" })).toHaveCount(2);
+
+  // Erreur : message explicite, chiffres en « — », nouvelle tentative.
+  await page.route("**/api/v1/campaigns?**", (route) => route.fulfill({ status: 500, json: { detail: "Erreur interne" } }));
+  await page.reload();
+  await expect(page.getByRole("alert").filter({ hasText: "Impossible de charger les campagnes : Erreur interne" })).toBeVisible();
+  // Même panne : une seule alerte (son « Réessayer » recharge aussi les chiffres).
+  await expect(page.getByRole("alert").filter({ hasText: "Chiffres clés indisponibles" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Chiffres clés" }).getByText("—")).toHaveCount(4);
 });
