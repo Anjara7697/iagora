@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
-import { Btn, CheckCardGroup, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { Btn, CheckCardGroup, ErrorText, FIELD_RADIUS, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { DateRangeField } from "@/components/ds/DateRangeField";
 import { ActionsBar } from "@/components/ds/settings";
 import { Stepper, type Step } from "@/components/ds/Stepper";
@@ -36,8 +36,6 @@ const STEPS: Step[] = [
   { id: "sources", title: "Sources", description: "D’où viennent les prospects" },
 ];
 
-/** Champs en `rounded-lg` : le rayon des champs HeroUI se règle par cette variable, pour tous les composants du formulaire. */
-const FIELD_RADIUS = { "--field-radius": "var(--radius-lg)" } as CSSProperties;
 
 /**
  * Nom, description, période et programmes visés ; les sources seulement à la création.
