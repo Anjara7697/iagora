@@ -87,6 +87,57 @@
   --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
   --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
 }
+
+/* == Thème IAGORA (sombre) ==
+   Choisi dans le menu du compte (clair, sombre ou système) : `data-theme` sur <html>, posé avant l'affichage
+   (voir lib/theme.ts). Mêmes jetons que le thème clair, adaptés au fond foncé ; la palette métier (agent, niveaux
+   d'intérêt) garde ses teintes. Les jetons non redéfinis ici viennent du thème sombre de HeroUI.
+   Couleurs pleines vives avec texte foncé dessus : lisibles à la fois en fond de bouton et en texte (WCAG AA). */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #111113;
+  --foreground: #f4f4f5;
+  --surface: #1b1b1e;
+  --surface-secondary: #232327;
+  --surface-tertiary: #2b2b30;
+  --overlay: #1f1f23;
+  --muted: #a1a1aa;
+  --default: #27272b;
+  --default-foreground: #f4f4f5;
+  --border: #2e2e33;
+  --separator: #29292e;
+  --segment: #3a3a41;
+  --focus: var(--accent);
+  --link: var(--accent);
+  --accent: #6b93ff;
+  --accent-foreground: #111113;
+  --accent-soft: #1b2543;
+  --accent-soft-foreground: #a9c0ff;
+  --success: #2fb866;
+  --success-foreground: #111113;
+  --success-soft: #13291c;
+  --success-soft-foreground: #7fdca2;
+  --warning: #f5a524;
+  --warning-foreground: #18181b;
+  --warning-soft: #2e2412;
+  --warning-soft-foreground: #f6c76f;
+  --danger: #f2574c;
+  --danger-foreground: #111113;
+  --danger-soft: #3a1714;
+  --danger-soft-foreground: #ff9d93;
+  --agent: #a984ff;
+  --agent-foreground: #111113;
+  --agent-soft: #271b42;
+  --agent-soft-foreground: #cbb2ff;
+  --level-cold: #7c8aa0;
+  --level-warm: #fdba74;
+  --level-hot: #fb8a3c;
+  --level-very-hot: #f0722f;
+  --level-very-hot-foreground: #111113;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --surface-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 14px 28px 0 rgba(0, 0, 0, 0.45);
+}
 :root {
   /* Rayon « S » (small) : les autres rayons en dérivent (xl = 6 px, 2xl = 8 px). */
   --radius: 0.25rem;
@@ -159,5 +210,12 @@
   .card,
   .alert {
     border-radius: var(--radius-lg);
+  }
+  /* Onglet survolé : texte plus foncé plutôt qu'une opacité réduite (HeroUI), qui faisait passer le texte sous le
+     contraste AA, surtout en thème sombre. */
+  .tabs__tab:not([data-selected="true"]):not([data-disabled="true"]):hover,
+  .tabs__tab[data-hovered="true"]:not([data-selected="true"]):not([data-disabled="true"]) {
+    opacity: 1;
+    color: var(--foreground);
   }
 }

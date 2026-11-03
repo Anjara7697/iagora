@@ -504,23 +504,25 @@ test("observateur : consultation seule", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Valider la réponse", exact: true }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /Arrêt d'urgence/ }),
-  ).toHaveCount(0);
+  // L'observateur voit l'état de l'agent, sans pouvoir l'arrêter.
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toContainText("Validation requise");
+  await expect(page.getByRole("button", { name: /Arrêt d.urgence/ })).toHaveCount(0);
 });
 
 test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
-  let asked = "";
-  page.once("dialog", (dialog) => {
-    asked = dialog.message();
-    void dialog.accept();
-  });
-  await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
-  expect(asked).toContain("y compris les messages déjà validés");
+  // État de l'agent dans le menu du compte (point sur l'avatar) ; l'arrêt d'urgence passe par une confirmation HeroUI.
+  const status = page.getByRole("button", { name: /agent : validation requise/ });
+  await expect(status).toBeVisible();
+  await status.click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Arrêt d’urgence" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Arrêt d’urgence ?" });
+  await expect(confirm).toContainText("y compris les messages déjà validés");
+  await confirm.getByRole("button", { name: "Arrêter l’agent" }).click();
+  await expect(page.getByText("Agent arrêté")).toBeVisible();
+  await expect(page.getByRole("button", { name: /agent : arrêté/ })).toBeVisible();
   await expect
     .poll(() => calls.posts)
     .toContainEqual({
@@ -528,16 +530,17 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
       method: "PUT",
       body: { mode: "manual" },
     });
-  page.once("dialog", (dialog) => void dialog.dismiss());
-  await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  // Reprise : Annuler ne change rien, Reprendre revient au mode assisté.
+  await page.getByRole("button", { name: /agent : arrêté/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Reprendre en mode assisté" }).click();
+  const resume = page.getByRole("alertdialog", { name: "Reprendre en mode assisté ?" });
+  await expect(resume).toContainText("messages déjà validés");
+  await resume.getByRole("button", { name: "Annuler" }).click();
   expect(calls.posts).toHaveLength(1);
-  page.once("dialog", (dialog) => {
-    expect(dialog.message()).toContain("messages déjà validés");
-    void dialog.accept();
-  });
-  await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
+  await page.getByRole("button", { name: /agent : arrêté/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Reprendre en mode assisté" }).click();
+  await page.getByRole("alertdialog", { name: "Reprendre en mode assisté ?" }).getByRole("button", { name: "Reprendre" }).click();
+  await expect(page.getByRole("button", { name: /agent : validation requise/ })).toBeVisible();
 });
 
 test("l'arrêt d'urgence est également disponible en mode automatique", async ({
@@ -545,10 +548,11 @@ test("l'arrêt d'urgence est également disponible en mode automatique", async (
 }) => {
   const calls = await mockApi(page, { role: "ADMIN", mode: "auto" });
   await open(page);
-  await expect(page.getByText("Agent — Mode automatique")).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  await page.getByRole("button", { name: /agent : automatique/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toContainText("Automatique");
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Arrêt d’urgence" }).click();
+  await page.getByRole("alertdialog", { name: "Arrêt d’urgence ?" }).getByRole("button", { name: "Arrêter l’agent" }).click();
+  await expect(page.getByRole("button", { name: /agent : arrêté/ })).toBeVisible();
   await expect
     .poll(() => calls.posts)
     .toContainEqual({

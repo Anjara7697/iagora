@@ -423,7 +423,7 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
   await page.getByRole("button", { name: /Menu du compte/ }).click();
-  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),
@@ -509,11 +509,12 @@ test("mobile : menu repliable et absence de débordement de page", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await login(page);
-  const menu = page.locator('button[aria-controls="app-navigation"]');
-  await menu.click();
-  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  // Menu mobile : Drawer HeroUI, refermé par Échap.
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ouvrir le menu" })).toHaveAttribute("aria-expanded", "false");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -977,8 +978,9 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await selectFilter(page, "Étape", "qualified");
   await page.goBack();
   await expect(page.getByLabel("Étape", { exact: true })).toHaveAttribute("data-value", "");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).fill("inexistant");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).press("Enter");
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("inexistant");
+  await page.keyboard.press("Enter");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("inexistant");
   await expect(page.getByRole("heading", { name: "Aucun prospect ne correspond" })).toBeVisible();
   await page.goBack();

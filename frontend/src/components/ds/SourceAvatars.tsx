@@ -29,12 +29,13 @@ const LOGOS: Record<string, () => ReactNode> = {
   email: () => <Mail className="size-3/5" aria-hidden="true" />,
 };
 
-/** Avatar HeroUI d'une plateforme de source (logo officiel, ou pictogramme pour site web et email). */
+/** Avatar HeroUI d'une plateforme de source (logo officiel, ou pictogramme pour site web et email). Fond blanc et
+ *  pictogramme sombre fixes, quel que soit le thème : les logos officiels sont prévus sur fond clair. */
 export function SourceAvatar({ platform, name }: { platform: string | null | undefined; name?: string }) {
   const logo = LOGOS[platform ?? ""];
   return (
     <Avatar size="sm" title={name ?? labelOf(PLATFORMS, platform)}>
-      <Avatar.Fallback className="bg-white text-foreground">{logo ? logo() : "•"}</Avatar.Fallback>
+      <Avatar.Fallback className="bg-white text-zinc-900">{logo ? logo() : "•"}</Avatar.Fallback>
     </Avatar>
   );
 }

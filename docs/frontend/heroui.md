@@ -12,6 +12,8 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   de filtre, cartes et alertes (HeroUI : `3xl`) ainsi que les champs (`--field-radius`) : ne pas écrire `rounded-lg`
   sur ces composants. Une classe utilitaire (`rounded-full`…) reste prioritaire. Les pastilles de statut (`Tag`)
   et les fenêtres de confirmation gardent leur rayon HeroUI. Ne pas fixer de rayon en pixels.
+- **Thème sombre** : jetons IAGORA sous `[data-theme="dark"]` ; couleurs pleines vives avec texte foncé dessus,
+  pour rester lisibles en fond de bouton comme en texte (contraste AA vérifié par axe).
 - **Police mono** réservée au code, aux identifiants et aux valeurs techniques. Dates, compteurs et
   sur-titres sont en police sans-serif avec `tabular-nums`.
 - **Champs, listes, interrupteurs** : apparence HeroUI par défaut, sans surcharge du thème (pas de bordure ajoutée).
@@ -43,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes et Base de connaissances, à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -82,6 +84,20 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     (infobulle), plutôt que refusée après le clic.
 15. **États vides, chargement** : `EmptyPanel` avec l'action suivante (et « Afficher tout » quand un filtre
     est actif) ; `Skeleton` ou chargement du tableau, jamais de « … ».
+
+**Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
+
+16. **Barre du haut** : à gauche, la recherche unique (la palette `CommandPalette`, Ctrl K / ⌘ K : prospects,
+    pages, actions) ; à droite, « N à traiter » et le menu du compte. Pas de second champ de recherche dans un
+    écran pour les mêmes données.
+17. **Menu du compte** (`shell/AccountMenu.tsx`, `Popover` HeroUI car il contient des contrôles) : identité,
+    Mon compte, état et contrôle de l'agent (arrêt d'urgence ou reprise après confirmation ; un point de
+    couleur sur l'avatar rappelle l'état), thème clair / sombre / système (`ToggleButtonGroup`, choix gardé
+    dans le navigateur, appliqué avant l'affichage par `lib/theme.ts`), Déconnexion.
+18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Sur bureau, menu
+    réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
+    navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
+19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
