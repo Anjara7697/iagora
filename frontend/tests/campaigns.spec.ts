@@ -902,3 +902,29 @@ test("menu mobile : Drawer HeroUI qui garde le focus et se ferme", async ({ page
   await expect(page).toHaveURL(/\/knowledge$/, { timeout: 15_000 });
   await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
 });
+
+test("accessibilité : barre et menu (complet, réduit, état de l'agent, palette, mobile)", async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+  await auditA11y(page, "barre et menu complet");
+  await page.getByRole("button", { name: /État de l’agent/ }).click();
+  await expect(page.getByRole("dialog", { name: "État de l’agent" })).toBeVisible();
+  await auditA11y(page, "menu de l'état de l'agent");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await expect(page.getByRole("dialog", { name: "Recherche rapide" })).toBeVisible();
+  await auditA11y(page, "palette de recherche");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Réduire le menu" }).click();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toBeVisible();
+  await auditA11y(page, "menu réduit");
+  await page.getByRole("button", { name: "Agrandir le menu" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+  await auditA11y(page, "menu mobile");
+});

@@ -43,7 +43,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes et Base de connaissances, à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -82,6 +82,16 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     (infobulle), plutôt que refusée après le clic.
 15. **États vides, chargement** : `EmptyPanel` avec l'action suivante (et « Afficher tout » quand un filtre
     est actif) ; `Skeleton` ou chargement du tableau, jamais de « … ».
+
+**Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
+
+16. **Barre du haut** : recherche unique (la palette `CommandPalette`, Ctrl K / ⌘ K : prospects, pages,
+    actions), état de l'agent (`AgentStatus`, toujours visible, arrêt d'urgence après confirmation),
+    « N à traiter », menu du compte. Pas de second champ de recherche dans un écran pour les mêmes données.
+17. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Sur bureau, menu
+    réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
+    navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
+18. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.

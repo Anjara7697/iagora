@@ -26,7 +26,8 @@ import { visibleGroups } from "./shell/navigation";
 import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
-import { ReplyDraftsProvider, confirmLogoutWithDrafts, useHasUnsentReplies } from "./ReplyDrafts";
+import { ReplyDraftsProvider, useHasUnsentReplies } from "./ReplyDrafts";
+import { ConfirmDialog } from "./ds/ConfirmDialog";
 import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
 import type { User } from "@/lib/types";
 
@@ -354,7 +355,18 @@ function AccountMenu({
 }) {
   const hasUnsentReplies = useHasUnsentReplies();
   const [open, setOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   return (
+    <>
+    <ConfirmDialog
+      isOpen={confirmLogout}
+      onOpenChange={setConfirmLogout}
+      title="Se déconnecter ?"
+      description="Vous avez des réponses non envoyées : la déconnexion les efface."
+      cancelLabel="Rester connecté"
+      confirmLabel="Se déconnecter"
+      onConfirm={onLogout}
+    />
     <Dropdown isOpen={open} onOpenChange={setOpen}>
       <Button
         variant="ghost"
@@ -378,27 +390,26 @@ function AccountMenu({
         <Dropdown.Menu
           aria-label="Compte"
           onAction={(key) => {
-            if (key === "account") {
-                  setOpen(false);
-                  onAccount();
-                }
-            // Déconnexion annulée : le menu reste ouvert, comme la saisie.
-                if (key === "logout" && confirmLogoutWithDrafts(hasUnsentReplies())) {
-                  setOpen(false);
-                  onLogout();
-                }
+            setOpen(false);
+            if (key === "account") onAccount();
+            // Des réponses non envoyées seraient effacées : confirmation HeroUI d'abord.
+            if (key === "logout") {
+              if (hasUnsentReplies()) setConfirmLogout(true);
+              else onLogout();
+            }
           }}
         >
           <Dropdown.Item id="account" textValue="Mon compte">
             <UserRound className="size-4 text-muted" aria-hidden="true" />
             <Label>Mon compte</Label>
           </Dropdown.Item>
-          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger" shouldCloseOnSelect={false}>
+          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger">
             <LogOut className="size-4" aria-hidden="true" />
             <Label>Déconnexion</Label>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>
+    </>
   );
 }

@@ -483,11 +483,15 @@ test("déconnexion : confirmation avec une réponse non envoyée et aucune resta
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await page.getByLabel("Votre réponse").fill("Texte privé non envoyé.");
   await page.getByRole("button", { name: /Menu du compte/ }).click();
-  page.once("dialog", dialog => dialog.dismiss());
   await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  // Confirmation HeroUI : « Rester connecté » garde la saisie.
+  const confirm = page.getByRole("alertdialog", { name: "Se déconnecter ?" });
+  await expect(confirm).toContainText("réponses non envoyées");
+  await confirm.getByRole("button", { name: "Rester connecté" }).click();
   await expect(page.getByLabel("Votre réponse")).toHaveValue("Texte privé non envoyé.");
-  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
   await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await page.getByRole("alertdialog", { name: "Se déconnecter ?" }).getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
