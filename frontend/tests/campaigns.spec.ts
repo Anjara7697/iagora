@@ -804,3 +804,47 @@ test("statut expliqué, période ouverte lisible et ouverture d'une campagne au 
   await expect(page.getByText("En pause", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Réactiver" })).toBeVisible();
 });
+
+test("accessibilité : fiche, onglets, panneau, confirmations, création et états vides", async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+  await login(page, "/campaigns?status=inactive");
+  await expect(page.getByText("Aucune campagne ne correspond à ces filtres")).toBeVisible();
+  await auditA11y(page, "liste filtrée sans résultat");
+
+  await page.goto("/campaigns/1");
+  await expect(page.getByRole("heading", { name: "Recrutement eBIHAR 2026" })).toBeVisible();
+  await auditA11y(page, "fiche : vue d'ensemble");
+  for (const tab of ["Prospects", "Sources", "Réglages"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    await auditA11y(page, `fiche : onglet ${tab}`);
+  }
+
+  await page.getByRole("button", { name: "Activer" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await auditA11y(page, "confirmation d'activation");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Annuler" }).click();
+
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  const drawer = page.getByRole("dialog", { name: "Modifier la campagne" });
+  await drawer.getByLabel("Nom de la campagne").fill("Nouveau nom");
+  await auditA11y(page, "panneau de modification");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await auditA11y(page, "confirmation d'abandon");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+
+  await page.goto("/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await auditA11y(page, "création : informations");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await expect(page.getByLabel("Récapitulatif")).toBeVisible();
+  await auditA11y(page, "création : sources et récapitulatif");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/campaigns/1?tab=sources");
+  await expect(page.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
+  await auditA11y(page, "fiche mobile : sources");
+});
