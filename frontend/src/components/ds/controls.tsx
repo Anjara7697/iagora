@@ -421,6 +421,7 @@ export function Check({
  */
 export function CheckCardGroup({
   label,
+  hideLabel = false,
   description,
   options,
   value,
@@ -429,6 +430,8 @@ export function CheckCardGroup({
   ...rest
 }: Omit<ComponentProps<typeof CheckboxGroup>, "children" | "value" | "onChange" | "aria-label"> & {
   label: string;
+  /** Masque le libellé à l'écran (il reste lu par les lecteurs d'écran) quand un titre l'annonce déjà. */
+  hideLabel?: boolean;
   description?: ReactNode;
   options: { value: string; text: ReactNode; hint?: ReactNode }[];
   value: string[];
@@ -436,7 +439,7 @@ export function CheckCardGroup({
 }) {
   return (
     <CheckboxGroup value={value} onChange={onChange} className={cx("flex flex-col gap-2", typeof className === "string" ? className : undefined)} {...rest}>
-      <Label>{label}</Label>
+      <Label className={hideLabel ? "sr-only" : undefined}>{label}</Label>
       {description && <Description>{description}</Description>}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {options.map((o) => (

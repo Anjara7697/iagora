@@ -29,15 +29,17 @@ export function reveal(index: number, step = 55): { className: string; style: CS
 }
 
 /** Nombre qui monte jusqu'à sa valeur (et suit ses changements). Affiche la valeur finale si les animations sont réduites. */
-export function CountUp({ value, duration = 700, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
+export function CountUp({ value, duration = 700, suffix = "", decimals = 0 }: { value: number; duration?: number; suffix?: string; decimals?: number }) {
   const reduced = useReducedMotion();
+  const scale = 10 ** decimals;
+  const target = Math.round(value * scale);
   const [shown, setShown] = useState(0);
   const from = useRef(0);
 
   useEffect(() => {
     if (reduced) {
-      from.current = value;
-      setShown(value);
+      from.current = target;
+      setShown(target);
       return;
     }
     const origin = from.current;
@@ -46,18 +48,18 @@ export function CountUp({ value, duration = 700, suffix = "" }: { value: number;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
-      const current = Math.round(origin + (value - origin) * eased);
+      const current = Math.round(origin + (target - origin) * eased);
       from.current = current;
       setShown(current);
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [value, duration, reduced]);
+  }, [target, duration, reduced]);
 
   return (
     <span className="tabular-nums">
-      {shown}
+      {decimals > 0 ? (shown / scale).toLocaleString("fr-FR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : shown}
       {suffix}
     </span>
   );

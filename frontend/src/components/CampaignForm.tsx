@@ -121,7 +121,11 @@ export default function CampaignForm({
           <DateRangeField
             variant="secondary"
             label="Période de la campagne"
-            hint="Début et fin. Laissez vide pour une campagne sans dates."
+            hint={
+              Boolean(v.start_date) !== Boolean(v.end_date)
+                ? `Période incomplète : ${v.start_date ? `début le ${formatDay(v.start_date)}` : `fin le ${formatDay(v.end_date)}`}. Choisissez un début et une fin pour la remplacer.`
+                : "Début et fin. Laissez vide pour une campagne sans dates."
+            }
             start={v.start_date}
             end={v.end_date}
             onChange={(start, end) => setV((current) => ({ ...current, start_date: start, end_date: end }))}
