@@ -15,6 +15,26 @@ import type { Campaign, CampaignOverview, Page } from "@/lib/types";
 
 const PAGE_SIZE = 5;
 
+/*
+ * Lecture des chiffres clés. Seuils indicatifs, à ajuster avec l'équipe commerciale :
+ * - campagnes : au moins une active = en cours ; aucune = à lancer ;
+ * - qualification (qualifiés / leads) : >= 40 % bon, >= 20 % moyen, sinon faible ;
+ * - inscription (inscrits / leads) : >= 10 % bon, >= 3 % moyen, sinon faible.
+ * Les leads (volume) n'ont pas de cible : pas de pastille.
+ */
+const QUALIFICATION_GOOD = 40;
+const QUALIFICATION_OK = 20;
+const ENROLMENT_GOOD = 10;
+const ENROLMENT_OK = 3;
+
+type Badge = { tone: "success" | "warning" | "danger"; label: string } | undefined;
+const rate = (value: number, good: number, ok: number): Badge =>
+  value >= good
+    ? { tone: "success", label: "Bon" }
+    : value >= ok
+      ? { tone: "warning", label: "Moyen" }
+      : { tone: "danger", label: "Faible" };
+
 /** Apparition échelonnée + rayon « lg » (cartes de chiffres clés). */
 const lg = (index: number) => {
   const r = reveal(index);
@@ -82,6 +102,13 @@ export default function CampaignsPage() {
         <KpiCard
           {...lg(1)}
           label="Campagnes actives"
+          badge={
+            kpiReady && all.length > 0
+              ? all.some((c) => c.status === "active")
+                ? { tone: "success", label: "En cours" }
+                : { tone: "warning", label: "À lancer" }
+              : undefined
+          }
           value={
             kpiReady ? (
               <>
@@ -102,12 +129,14 @@ export default function CampaignsPage() {
         <KpiCard
           {...lg(3)}
           label="Taux de qualification"
+          badge={kpiReady && totals.leads > 0 ? rate(pct(totals.qualified, totals.leads), QUALIFICATION_GOOD, QUALIFICATION_OK) : undefined}
           value={kpiReady ? <CountUp value={pct(totals.qualified, totals.leads)} suffix=" %" /> : "…"}
           hint={kpiReady ? `${totals.qualified} qualifié(s)` : undefined}
         />
         <KpiCard
           {...lg(4)}
           label="Inscrits"
+          badge={kpiReady && totals.leads > 0 ? rate(pct(totals.converted, totals.leads), ENROLMENT_GOOD, ENROLMENT_OK) : undefined}
           value={kpiReady ? <CountUp value={totals.converted} /> : "…"}
           hint={kpiReady ? `${pct(totals.converted, totals.leads)} % des leads` : undefined}
         />
@@ -165,7 +194,7 @@ export default function CampaignsPage() {
         >
           {pageItems.map((c, i) => {
             const f = figures.get(c.id);
-            const row = reveal(7 + i, 50);
+            const row = reveal(7 + i, 40);
             return (
               <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}`} className={row.className} style={row.style}>
                 <Table.Cell>

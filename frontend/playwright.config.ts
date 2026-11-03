@@ -3,6 +3,8 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  // Le serveur de développement compile chaque page au premier accès : marge pour les navigations.
+  expect: { timeout: 10_000 },
   use: {
     baseURL: "http://localhost:3100",
     browserName: "chromium",

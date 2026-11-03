@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Meter } from "@heroui/react";
+import { Button, Card, Chip, Meter } from "@heroui/react";
 import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -134,6 +134,7 @@ export function KpiCard({
   href,
   dot,
   pending,
+  badge,
   className,
   style,
 }: {
@@ -143,15 +144,24 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  /** Lecture du chiffre : pastille colorée avec un mot (la couleur seule ne porte pas le sens). */
+  badge?: { tone: "success" | "warning" | "danger"; label: string };
   className?: string;
   style?: CSSProperties;
 }) {
   const body = (
     <>
-      <Card.Description className="flex items-center gap-2">
-        {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
-        {label}
-      </Card.Description>
+      <div className="flex items-center justify-between gap-2">
+        <Card.Description className="flex items-center gap-2">
+          {dot && <span className={cx("size-2 rounded-full", dot)} aria-hidden="true" />}
+          {label}
+        </Card.Description>
+        {badge && !pending && (
+          <Chip size="sm" variant="soft" color={badge.tone}>
+            <Chip.Label>{badge.label}</Chip.Label>
+          </Chip>
+        )}
+      </div>
       {pending ? (
         <Card.Description>Pas encore mesuré</Card.Description>
       ) : (

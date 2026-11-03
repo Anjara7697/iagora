@@ -21,15 +21,15 @@ export function useReducedMotion() {
  * Apparition d'un bloc à l'entrée de la page : fondu et léger glissement vers le haut, décalé selon son rang.
  * À répartir sur `className` et `style` du composant : `<KpiCard {...reveal(2)} />`.
  */
-export function reveal(index: number, step = 70): { className: string; style: CSSProperties } {
+export function reveal(index: number, step = 55): { className: string; style: CSSProperties } {
   return {
-    className: "animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-backwards",
+    className: "animate-in fade-in slide-in-from-bottom-2 duration-[400ms] fill-mode-backwards",
     style: { animationDelay: `${Math.min(index, 12) * step}ms` },
   };
 }
 
 /** Nombre qui monte jusqu'à sa valeur (et suit ses changements). Affiche la valeur finale si les animations sont réduites. */
-export function CountUp({ value, duration = 900, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
+export function CountUp({ value, duration = 700, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
   const reduced = useReducedMotion();
   const [shown, setShown] = useState(0);
   const from = useRef(0);
