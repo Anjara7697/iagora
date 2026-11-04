@@ -53,6 +53,27 @@ export function Screen({
   );
 }
 
+/**
+ * Liste qui défile seule dans une colonne de hauteur bornée (file d'« À traiter », liste des conversations, résultats
+ * de recherche) : `ScrollShadow` HeroUI vertical, fondu en haut et en bas quand il reste du contenu. Le titre, les
+ * filtres et la pagination restent hors du défilement. Sans hauteur bornée (mobile), elle prend sa hauteur naturelle.
+ * Colonne collante (`lg:sticky lg:top-20`) : hauteur `calc(100dvh - 9rem)`, soit le haut collant (5rem) et la marge
+ * basse de `<main>` (4rem) ; plus haute, elle remonterait sous la barre en bas de page.
+ */
+export function ListScroll({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <ScrollShadow
+      orientation="vertical"
+      size={SCROLL_SHADOW_SIZE}
+      // min-h-0 : se réduit dans une colonne flex bornée ; -m-1 / p-1 : ombre de carte et anneau de focus non coupés ;
+      // overscroll-contain : arrivé au bout de la liste, la molette ne fait pas défiler la page derrière.
+      className={cx("-m-1 min-h-0 overscroll-contain p-1", className)}
+    >
+      {children}
+    </ScrollShadow>
+  );
+}
+
 /** Ligne mono en capitales « Groupe · Page ». */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return <span className={cx("text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;

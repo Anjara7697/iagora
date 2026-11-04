@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -64,11 +64,15 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Apparence**
 
-7. **Arrondis** : rayon `lg` fourni par le thème (voir « Thème »).
+7. **Arrondis** : rayon `lg` fourni par le thème (voir « Thème »). Seule exception, décidée pour Conversations : les
+   bulles du fil (`ConversationView`) gardent un arrondi de messagerie, plus grand, au coin resserré du côté de
+   l'auteur.
 8. **Champs** : `variant="secondary"` sur la page et dans les cartes blanches ; `variant="primary"` dans un
    panneau latéral (fond gris).
 9. **Animations** : cascade `reveal(rang)` sur chaque écran (en-tête, alertes et chiffres, puis lignes),
-   désactivée quand l'utilisateur demande moins de mouvement.
+   désactivée quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
+   passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
+   écran (`Screen scroll`), tableaux, menu latéral, résultats de recherche, listes des colonnes (`ListScroll`).
 10. **Couleurs métier** conservées : palette du projet, puces « agent » et « très chaud », niveaux `level-*`.
 
 **Retours et états**
@@ -99,16 +103,22 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
 19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
 
-**File de travail** (`app/todo`, `components/todo/`)
+**File de travail** (`app/todo`, `components/todo/` ; `app/conversations`, `components/conversations/`)
 
-20. **Maître-détail** (écart à la règle 4, décidé pour « À traiter ») : quand on traite des éléments l'un après
+20. **Maître-détail** (écart à la règle 4, décidé pour « À traiter », repris pour Conversations) : quand on traite des éléments l'un après
     l'autre, la file reste à gauche et le détail s'ouvre à droite, au lieu d'un tableau et d'un panneau. La file
     est posée sur la page : titre et compteur à droite, onglets, filtres (`FilterChipGroup`), liste sur sa
-    surface, `TablePagination`. Sur mobile, la file ou le détail, avec « ← Liste des éléments ».
+    surface, `TablePagination`. Sur bureau, la colonne est collante (`calc(100dvh - 9rem)`) et seule la liste
+    défile, dans `ListScroll` : titre, filtres et pagination restent visibles. Sur mobile, la file ou le détail,
+    avec « ← Liste des éléments ».
 21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
     d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
     l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
     concernent, jamais une barre collante qui le masque.
+22. **Actions sur l'état** (Conversations) : dans l'en-tête du détail, à côté du statut, l'action principale
+    selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
+    l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
+    le panneau d'« À traiter » (`components/todo/DraftPanel.tsx`), mêmes confirmations.
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.

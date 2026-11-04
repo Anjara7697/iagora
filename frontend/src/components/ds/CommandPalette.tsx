@@ -1,9 +1,10 @@
 "use client";
 
-import { Button, Description, Header, Kbd, Label, ListBox, Modal, SearchField } from "@heroui/react";
+import { Button, Description, Header, Kbd, Label, ListBox, Modal, ScrollShadow, SearchField } from "@heroui/react";
 import { ArrowRight, Search, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SCROLL_SHADOW_SIZE } from "./layout";
 
 export type Command = {
   id: string;
@@ -111,30 +112,33 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
             {items.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted">Aucun résultat pour « {query} »</p>
             ) : (
-              <ListBox
-                aria-label="Résultats"
-                selectionMode="none"
-                className="max-h-[360px] overflow-auto p-2"
-                onAction={(k) => go(String(k))}
-              >
-                {groups.map((g) => (
-                  <ListBox.Section key={g}>
-                    <Header>{g}</Header>
-                    {items
-                      .filter((i) => i.group === g)
-                      .map((c) => (
-                        <ListBox.Item key={c.id} id={c.id} textValue={c.label}>
-                          <c.icon className="size-4 shrink-0 text-muted" aria-hidden="true" />
-                          <div className="flex min-w-0 flex-col">
-                            <Label>{c.label}</Label>
-                            {c.hint && <Description>{c.hint}</Description>}
-                          </div>
-                          <ArrowRight className="ms-auto size-4 text-muted" aria-hidden="true" />
-                        </ListBox.Item>
-                      ))}
-                  </ListBox.Section>
-                ))}
-              </ListBox>
+              // Résultats : défilement dans un ScrollShadow (fondu quand il reste des résultats au-dessus ou en dessous).
+              <ScrollShadow orientation="vertical" size={SCROLL_SHADOW_SIZE} className="max-h-[360px]">
+                <ListBox
+                  aria-label="Résultats"
+                  selectionMode="none"
+                  className="p-2"
+                  onAction={(k) => go(String(k))}
+                >
+                  {groups.map((g) => (
+                    <ListBox.Section key={g}>
+                      <Header>{g}</Header>
+                      {items
+                        .filter((i) => i.group === g)
+                        .map((c) => (
+                          <ListBox.Item key={c.id} id={c.id} textValue={c.label}>
+                            <c.icon className="size-4 shrink-0 text-muted" aria-hidden="true" />
+                            <div className="flex min-w-0 flex-col">
+                              <Label>{c.label}</Label>
+                              {c.hint && <Description>{c.hint}</Description>}
+                            </div>
+                            <ArrowRight className="ms-auto size-4 text-muted" aria-hidden="true" />
+                          </ListBox.Item>
+                        ))}
+                    </ListBox.Section>
+                  ))}
+                </ListBox>
+              </ScrollShadow>
             )}
             <div className="flex items-center gap-3 border-t border-separator px-4 py-2 text-xs text-muted">
               <span>↑↓ pour naviguer</span>
