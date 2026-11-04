@@ -10,6 +10,7 @@ import { CHANNELS, PRIORITIES, formatDate, fullName, label, relativeTime, EXECUT
 import { useApi } from "@/lib/useApi";
 import type { TodoItem, TodoKind, TodoPage, TreatedPage } from "@/lib/types";
 import { Box } from "@/components/ds/card";
+import { ListScroll } from "@/components/ds/layout";
 import { TablePagination } from "@/components/ds/table";
 import type { RefObject } from "react";
 import { KindFilter, revealed, PAGE_SIZE, TASK_LABELS, KIND_ORDER, itemName, KIND_TONE, PRIORITY_TONE, EXECUTION_TONE, PersonMark } from "@/components/todo/shared";
@@ -52,7 +53,8 @@ function Row({
 
 /**
  * File de travail (colonne de gauche), posée sur la page : titre et compteur, onglets « À traiter » et
- * « Traités 24 h », filtres par type, liste sur sa surface et pagination. Toute navigation passe par `onNavigate`,
+ * « Traités 24 h », filtres par type, liste sur sa surface et pagination. Sur bureau, seule la liste défile
+ * (`ListScroll`). Toute navigation passe par `onNavigate`,
  * qui protège une saisie en cours dans le détail.
  */
 export function TodoQueue({
@@ -91,7 +93,7 @@ export function TodoQueue({
       aria-label="Éléments à traiter"
       {...revealed(
         1,
-        `w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto lg:pb-2 ${selectedId ? "hidden" : "flex"}`,
+        `w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:w-[360px] lg:overflow-hidden lg:pb-2 ${selectedId ? "hidden" : "flex"}`,
       )}
     >
       <header className="flex items-baseline gap-2">
@@ -128,34 +130,36 @@ export function TodoQueue({
             </p>
           )}
           {treatedItems.length > 0 && (
-            <Box as="ul" className="gap-0.5 p-1.5">
-              {treatedItems.map((t) => {
-                const name = t.prospect ? fullName(t.prospect) || t.prospect.email || "Prospect" : "Prospect";
-                return (
-                  <li key={t.id}>
-                    <RowButton
-                      selected={t.id === selectedId}
-                      className="py-2.5"
-                      onClick={() => go(`/todo${qs({ tab: "treated", id: t.id })}`)}
-                    >
-                      <PersonMark name={name} />
-                      <span className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className="flex items-baseline gap-2">
-                          <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
-                          <span className="shrink-0 text-xs text-muted">{formatDate(t.decided_at)}</span>
+            <ListScroll>
+              <Box as="ul" className="gap-0.5 p-1.5">
+                {treatedItems.map((t) => {
+                  const name = t.prospect ? fullName(t.prospect) || t.prospect.email || "Prospect" : "Prospect";
+                  return (
+                    <li key={t.id}>
+                      <RowButton
+                        selected={t.id === selectedId}
+                        className="py-2.5"
+                        onClick={() => go(`/todo${qs({ tab: "treated", id: t.id })}`)}
+                      >
+                        <PersonMark name={name} />
+                        <span className="flex min-w-0 flex-1 flex-col gap-1">
+                          <span className="flex items-baseline gap-2">
+                            <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
+                            <span className="shrink-0 text-xs text-muted">{formatDate(t.decided_at)}</span>
+                          </span>
+                          <span className="flex flex-wrap gap-1.5">
+                            <Tag tone={t.decision === "approved" ? "success" : "neutral"}>
+                              {t.decision === "approved" ? "Validé" : "Refusé"}
+                            </Tag>
+                            <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
+                          </span>
                         </span>
-                        <span className="flex flex-wrap gap-1.5">
-                          <Tag tone={t.decision === "approved" ? "success" : "neutral"}>
-                            {t.decision === "approved" ? "Validé" : "Refusé"}
-                          </Tag>
-                          <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
-                        </span>
-                      </span>
-                    </RowButton>
-                  </li>
-                );
-              })}
-            </Box>
+                      </RowButton>
+                    </li>
+                  );
+                })}
+              </Box>
+            </ListScroll>
           )}
         </>
       ) : (
@@ -189,16 +193,18 @@ export function TodoQueue({
             <p className="px-2 py-3 text-[13px] text-muted">Rien à traiter pour le moment.</p>
           )}
           {items.length > 0 && (
-            <Box as="ul" className="gap-0.5 p-1.5">
-              {items.map((i) => (
-                <Row
-                  key={i.id}
-                  item={i}
-                  selected={i.id === selectedId}
-                  onSelect={() => go(`/todo${qs({ kind, page: pageParam, id: i.id })}`)}
-                />
-              ))}
-            </Box>
+            <ListScroll>
+              <Box as="ul" className="gap-0.5 p-1.5">
+                {items.map((i) => (
+                  <Row
+                    key={i.id}
+                    item={i}
+                    selected={i.id === selectedId}
+                    onSelect={() => go(`/todo${qs({ kind, page: pageParam, id: i.id })}`)}
+                  />
+                ))}
+              </Box>
+            </ListScroll>
           )}
           {list.data && (list.data.total > PAGE_SIZE || page > 1) && (
             <TablePagination

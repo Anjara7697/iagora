@@ -716,3 +716,34 @@ test("brouillon en attente : décider sur place, modification protégée au chan
   await expect(discard).toHaveCount(0);
   await expect(page).toHaveURL(/id=c2/);
 });
+
+test("bureau : seule la liste défile, recherche, filtres et pagination restent visibles", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await mockApi(page);
+  const rows = Array.from({ length: 30 }, (_, i) => ({
+    ...summary(`c${i + 1}`, "open"),
+    prospect: { ...summary("c1", "open").prospect, id: i + 1, first_name: `Prospect`, last_name: `${i + 1}` },
+  }));
+  await page.route("**/api/v1/conversations?**", (route) =>
+    route.fulfill({ json: { items: rows, total: 40, limit: 30, offset: 0 } }),
+  );
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Liste des conversations" });
+  const search = list.getByLabel("Rechercher une conversation");
+  await expect(list.getByRole("button", { name: /Prospect 1\b/ })).toBeVisible();
+  // La colonne est collante : une fois la page défilée (en-tête parti), elle tient dans la fenêtre.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.getByRole("button", { name: "Suivant" })).toBeInViewport();
+  // En bas de page, la colonne reste sous la barre du haut (56 px) : son titre reste lisible.
+  const title = await list.getByRole("heading", { name: "Boîte de réception" }).boundingBox();
+  expect(title!.y).toBeGreaterThanOrEqual(56);
+  const before = await search.boundingBox();
+  await list.getByRole("button", { name: /Prospect 3\b/ }).hover();
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 800);
+  await expect(list.getByRole("button", { name: /Prospect 30\b/ })).toBeInViewport();
+  // La liste a défilé dans son ScrollShadow ; la recherche n'a pas bougé et la pagination reste visible.
+  expect(await search.boundingBox()).toEqual(before);
+  await expect(page.getByRole("button", { name: "Suivant" })).toBeInViewport();
+  await expect(list.getByRole("button", { name: /Prospect 1\b/ })).not.toBeInViewport();
+  await auditA11y(page, "conversations, liste longue");
+});

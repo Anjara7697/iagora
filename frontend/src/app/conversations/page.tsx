@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Conversations : liste posée sur la page à gauche, conversation ouverte à droite (maître-détail, règle 20). L'état
+ * Conversations : liste posée sur la page à gauche, conversation ouverte à droite (maître-détail, règle 20). Sur
+ * bureau, seule la liste défile (`ListScroll`) : titre, filtres et pagination restent visibles. L'état
  * de la liste est dans l'adresse (`lib/conversationNav.ts`) ; le détail est dans `components/conversations/`.
  */
 
@@ -10,7 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
-import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
+import { EmptyPanel, ListScroll, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
@@ -110,7 +111,7 @@ function Inbox() {
         <aside
           aria-label="Liste des conversations"
           style={queue.style}
-          className={`w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto lg:pb-2 ${selectedId ? "hidden" : "flex"} ${queue.className}`}
+          className={`w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:w-[360px] lg:overflow-hidden lg:pb-2 ${selectedId ? "hidden" : "flex"} ${queue.className}`}
         >
           <header className="flex items-baseline gap-2">
             <h2 className="flex-1 text-base font-semibold text-foreground">Boîte de réception</h2>
@@ -174,16 +175,18 @@ function Inbox() {
             </div>
           )}
           {items.length > 0 && (
-            <Box as="ul" className="gap-0.5 p-1.5">
-              {items.map((c) => (
-                <ConversationRow
-                  key={c.id}
-                  c={c}
-                  selected={c.id === selectedId}
-                  onSelect={() => select(c.id)}
-                />
-              ))}
-            </Box>
+            <ListScroll>
+              <Box as="ul" className="gap-0.5 p-1.5">
+                {items.map((c) => (
+                  <ConversationRow
+                    key={c.id}
+                    c={c}
+                    selected={c.id === selectedId}
+                    onSelect={() => select(c.id)}
+                  />
+                ))}
+              </Box>
+            </ListScroll>
           )}
           {list.data && (total > LIMIT || view.page > 1) && (
             <TablePagination

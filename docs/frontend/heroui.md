@@ -70,7 +70,9 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 8. **Champs** : `variant="secondary"` sur la page et dans les cartes blanches ; `variant="primary"` dans un
    panneau latéral (fond gris).
 9. **Animations** : cascade `reveal(rang)` sur chaque écran (en-tête, alertes et chiffres, puis lignes),
-   désactivée quand l'utilisateur demande moins de mouvement.
+   désactivée quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
+   passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
+   écran (`Screen scroll`), tableaux, menu latéral, résultats de recherche, listes des colonnes (`ListScroll`).
 10. **Couleurs métier** conservées : palette du projet, puces « agent » et « très chaud », niveaux `level-*`.
 
 **Retours et états**
@@ -106,7 +108,9 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 20. **Maître-détail** (écart à la règle 4, décidé pour « À traiter », repris pour Conversations) : quand on traite des éléments l'un après
     l'autre, la file reste à gauche et le détail s'ouvre à droite, au lieu d'un tableau et d'un panneau. La file
     est posée sur la page : titre et compteur à droite, onglets, filtres (`FilterChipGroup`), liste sur sa
-    surface, `TablePagination`. Sur mobile, la file ou le détail, avec « ← Liste des éléments ».
+    surface, `TablePagination`. Sur bureau, la colonne est collante (`calc(100dvh - 9rem)`) et seule la liste
+    défile, dans `ListScroll` : titre, filtres et pagination restent visibles. Sur mobile, la file ou le détail,
+    avec « ← Liste des éléments ».
 21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
     d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
     l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
