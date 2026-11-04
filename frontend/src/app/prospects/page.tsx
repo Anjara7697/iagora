@@ -1,16 +1,17 @@
 "use client";
 
-import { Avatar as HeroAvatar, Chip } from "@heroui/react";
-import { ChevronLeft, ChevronRight, Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
+import { Avatar as HeroAvatar, Chip, ScrollShadow } from "@heroui/react";
+import { Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Btn, Check, ErrorText, FilterChip, LinkButton, Notice, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
 import { Drawer } from "@/components/Drawer";
 import { replaceUrl } from "@/lib/url";
-import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
-import { DataTable, Table } from "@/components/ds/table";
-import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
+import { EmptyPanel, PageHeader, SCROLL_SHADOW_SIZE, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { DataTable, Table, TablePagination } from "@/components/ds/table";
+import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import {
   formatDate,
   fullName,
@@ -81,67 +82,28 @@ function ConsentTag({ status }: { status: string }) {
   return <Tag tone={CONSENT_TONE[status] ?? "neutral"}>{label(CONSENT, status)}</Tag>;
 }
 
-/** Pipeline défilant : indique qu'il reste des colonnes à droite (ou à gauche). */
+/**
+ * Pipeline : colonnes par étape dans un `ScrollShadow` horizontal (règle 9), fondu sur le bord tant qu'il reste des
+ * colonnes. La zone se fait défiler à la souris, au doigt ou au clavier (flèches une fois focalisée).
+ */
 function PipelineScroller({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () =>
-      setEdges({
-        left: el.scrollLeft > 4,
-        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
-      });
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [children]);
-  const scroll = (direction: 1 | -1) =>
-    ref.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
   return (
-    <div className="relative">
-      <div
-        ref={ref}
-        className="flex snap-x gap-4 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        tabIndex={0}
-        role="region"
-        aria-label="Pipeline des prospects, défilement horizontal"
-      >
-        {children}
-      </div>
-      {edges.left && (
-        <Btn
-          variant="outline"
-          isIconOnly
-          className="absolute top-3 left-2 rounded-full bg-overlay shadow-overlay"
-          aria-label="Étapes précédentes"
-          onClick={() => scroll(-1)}
-        >
-          <ChevronLeft className="size-4" aria-hidden="true" />
-        </Btn>
-      )}
-      {edges.right && (
-        <Btn
-          variant="outline"
-          isIconOnly
-          className="absolute top-3 right-2 rounded-full bg-overlay shadow-overlay"
-          aria-label="Étapes suivantes"
-          onClick={() => scroll(1)}
-        >
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Btn>
-      )}
-    </div>
+    <ScrollShadow
+      orientation="horizontal"
+      size={SCROLL_SHADOW_SIZE}
+      className="flex snap-x gap-4 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      tabIndex={0}
+      role="region"
+      aria-label="Pipeline des prospects, défilement horizontal"
+    >
+      {children}
+    </ScrollShadow>
   );
 }
 
 function Prospects() {
   const params = useSearchParams();
+  const router = useRouter();
   const state = readProspectResults(params);
   const {
     q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
@@ -235,6 +197,7 @@ function Prospects() {
   return (
     <Screen>
       <PageHeader
+        {...reveal(0)}
         eyebrow="Travail · Suivi commercial"
         title="Prospects"
         subtitle="Un parcours, des échanges et une prochaine étape pour chaque prospect."
@@ -256,7 +219,11 @@ function Prospects() {
       />
       {exportError && <ErrorText>{exportError}</ErrorText>}
       {/* Barre au-dessus des résultats (règle 5) : vue, recherche et filtres à gauche, compteur à droite. */}
-      <section className="flex flex-col gap-2" aria-label="Affichage et filtres des prospects">
+      <section
+        className={`flex flex-col gap-2 ${reveal(1).className}`}
+        style={reveal(1).style}
+        aria-label="Affichage et filtres des prospects"
+      >
         <div className="flex flex-wrap items-center gap-2">
           <Segmented
             label="Affichage des prospects"
@@ -400,9 +367,10 @@ function Prospects() {
           </div>
         </div>
       </Drawer>
-      <Loading loading={loading} error={error} onRetry={reload} shape="rows" />
-      {!loading && data && (
-        <>
+      {/* Pendant une mise à jour (recherche, filtre), la liste précédente reste affichée. */}
+      <Loading loading={loading && !data} error={error} onRetry={reload} shape="rows" />
+      {data && (
+        <div className={`flex flex-col gap-6 ${reveal(2).className}`} style={reveal(2).style}>
           {data.items.length === 0 ? (
             <Box as="section" className="p-0">
               <EmptyPanel
@@ -509,7 +477,8 @@ function Prospects() {
                   ]}
                 >
                       {data.items.map((p) => (
-                        <Table.Row key={p.id} id={p.id}>
+                        // Toute la ligne ouvre la fiche (clic et Entrée, règle 4) ; le nom reste un lien.
+                        <Table.Row key={p.id} id={p.id} onAction={() => router.push(profileHref(p.id))} className="cursor-pointer">
                           <Table.Cell>
                             <div className="flex items-center gap-3">
                               <Avatar prospect={p} />
@@ -560,13 +529,15 @@ function Prospects() {
               )}
             </>
           )}
-          <Pager
-            total={data.total}
-            limit={data.limit}
-            offset={data.offset}
-            onChange={(offset) => update({ offset })}
-          />
-        </>
+          {data.total > data.limit && (
+            <TablePagination
+              total={data.total}
+              pageSize={data.limit}
+              page={Math.floor(data.offset / data.limit) + 1}
+              onChange={(next) => update({ offset: (next - 1) * data.limit })}
+            />
+          )}
+        </div>
       )}
     </Screen>
   );
