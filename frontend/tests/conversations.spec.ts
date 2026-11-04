@@ -93,7 +93,8 @@ async function mockApi(
     else if (path === "/todo")
       body = { items: [], total: 1, limit: 1, offset: 0, counts: {} };
     else if (path === "/conversations") {
-      calls.listQueries.push(url.search);
+      // Le total sans filtre (`limit=1`, pour « N sur M ») n'est pas une lecture de la liste.
+      if (url.searchParams.get("limit") !== "1") calls.listQueries.push(url.search);
       const wanted = url.searchParams.get("status");
       const handoff =
         status === "handed_off"
@@ -246,7 +247,7 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
 test("les filtres sont transmis à l'API", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await page.getByRole("tab", { name: "En attente", exact: true }).click();
+  await page.getByRole("button", { name: "En attente", exact: true }).click();
   await page.getByRole("button", { name: "Moi", exact: true }).click();
   await choose(page.getByLabel("Canal"), "facebook");
   await page.getByLabel("Rechercher une conversation").fill("marie");
@@ -261,6 +262,40 @@ test("les filtres sont transmis à l'API", async ({ page }) => {
   await expect(
     page.getByText("Aucune conversation ne correspond"),
   ).toBeVisible();
+  // Filtres dans l'adresse : un rechargement les garde ; « Afficher tout » les retire.
+  await expect(page).toHaveURL(/q=marie/);
+  await expect(page).toHaveURL(/status=handed_off/);
+  await expect(page).toHaveURL(/owner=me/);
+  await expect(page).toHaveURL(/channel=facebook/);
+  await page.reload();
+  await expect(page.getByLabel("Rechercher une conversation")).toHaveValue("marie");
+  await expect(page.getByRole("button", { name: "En attente", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Moi", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Afficher tout" }).click();
+  await expect(page).toHaveURL(/\/conversations$/);
+  await expect(page.getByRole("complementary", { name: "Liste des conversations" }).getByRole("status")).toHaveText("1 conversation");
+});
+
+test("pagination de la liste : page dans l'adresse, conservée à l'ouverture et au rechargement", async ({ page }) => {
+  const calls = await mockApi(page);
+  await page.route("**/api/v1/conversations?**", (route) => {
+    const url = new URL(route.request().url());
+    calls.listQueries.push(url.search);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    const rows = offset ? [{ ...summary("c1", "handed_off"), prospect: { ...summary("c1", "handed_off").prospect, first_name: "Ahmed", last_name: "Belkacem" } }] : [summary("c1", "handed_off")];
+    return route.fulfill({ json: { items: rows, total: 45, limit: 30, offset } });
+  });
+  await open(page);
+  await expect(page.getByText("1-30 sur 45")).toBeVisible();
+  await page.getByRole("button", { name: "Suivant" }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect.poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("offset")).toBe("30");
+  await page.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(page).toHaveURL(/page=2&id=c1/);
+  await page.reload();
+  await expect(page.getByText("31-45 sur 45")).toBeVisible();
+  await page.getByRole("button", { name: "En attente", exact: true }).click();
+  await expect(page).not.toHaveURL(/page=/);
 });
 
 test("observateur : lecture seule", async ({ page }) => {
@@ -432,7 +467,7 @@ test("consentement indisponible : erreur récupérable et réponse désactivée"
 test("rendre la main depuis En attente conserve la conversation sélectionnée et sa confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await page.getByRole("tab", { name: "En attente", exact: true }).click();
+  await page.getByRole("button", { name: "En attente", exact: true }).click();
   await expect.poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("status")).toBe("handed_off");
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   const detail = page.getByRole("region", { name: "Conversation avec Marie Dupont" });

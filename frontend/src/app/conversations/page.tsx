@@ -1,7 +1,7 @@
 "use client";
 
 import { Avatar, Button, Dropdown, toast } from "@heroui/react";
-import { ArrowRight, Bot, ChevronLeft, ChevronRight, Ellipsis, Hand, Inbox as InboxIcon, MessageSquareQuote, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
+import { ArrowRight, Bot, Ellipsis, Hand, Inbox as InboxIcon, MessageSquareQuote, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
@@ -11,16 +11,17 @@ import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import {
   Btn,
   ErrorText,
-  FilterChip,
+  FilterChipGroup,
   LinkButton,
   SelectBox,
-  Segmented,
   Tag,
   TextBox,
   TextInput,
   RowButton,
 } from "@/components/ds/controls";
-import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
+import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { TablePagination } from "@/components/ds/table";
 import { Collapse } from "@/components/ds/collapse";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
@@ -40,6 +41,15 @@ import {
   relativeTime,
 } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
+import {
+  OWNER_FILTERS,
+  STATUS_FILTERS,
+  conversationHref,
+  isFiltered,
+  readConversationView,
+  type ConversationView as InboxView,
+} from "@/lib/conversationNav";
+import { replaceUrl } from "@/lib/url";
 import type {
   Conversation,
   ConversationSummary,
@@ -49,21 +59,8 @@ import type {
 } from "@/lib/types";
 import { Box } from "@/components/ds/card";
 
+/** Conversations par page de la liste. */
 const LIMIT = 30;
-type StatusFilter = "" | "handed_off" | "open" | "closed";
-type OwnerFilter = "" | "me" | "none";
-
-const STATUS_FILTERS: { value: StatusFilter; text: string }[] = [
-  { value: "", text: "Toutes" },
-  { value: "handed_off", text: "En attente" },
-  { value: "open", text: "Ouvertes" },
-  { value: "closed", text: "Clôturées" },
-];
-const OWNER_FILTERS: { value: OwnerFilter; text: string }[] = [
-  { value: "", text: "Tous" },
-  { value: "me", text: "Moi" },
-  { value: "none", text: "Non assigné" },
-];
 const CHANNEL_FILTERS = [
   { value: "", text: "Tous les canaux" },
   ...Object.entries(CHANNELS).map(([value, text]) => ({ value, text })),
@@ -567,33 +564,47 @@ function Detail({
 
 function Inbox() {
   const user = useCurrentUser();
-  const router = useRouter();
-  const params = useSearchParams();
-  const selectedId = params.get("id");
-  const [status, setStatus] = useState<StatusFilter>(
-    (["open", "handed_off", "closed"].includes(params.get("status") ?? "")
-      ? params.get("status")
-      : "") as StatusFilter,
-  );
-  const [owner, setOwner] = useState<OwnerFilter>("");
-  const [channel, setChannel] = useState("");
-  const [q, setQ] = useState("");
-  const [offset, setOffset] = useState(0);
+  // État de la liste dans l'adresse (règle 6) : recherche, filtres, page et conversation ouverte.
+  const view = readConversationView(useSearchParams());
+  const selectedId = view.id;
 
+  // Brouillon de l'agent modifié dans le détail : changer de conversation demande confirmation.
+  const dirty = useRef(false);
+  const onDirtyChange = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const { guard, dialog: discardDialog } = useDiscardGuard(() => dirty.current);
+  const navigate = (patch: Partial<InboxView>) =>
+    replaceUrl(conversationHref({ ...readConversationView(new URLSearchParams(window.location.search)), ...patch }));
+  // Changer de filtre revient à la page 1 ; la conversation ouverte reste affichée.
+  const filter = (patch: Partial<InboxView>) => navigate({ ...patch, page: 1 });
+  const select = (id: string | null) => {
+    if (id === selectedId) return;
+    guard(() => {
+      dirty.current = false;
+      navigate({ id });
+    });
+  };
+
+  const offset = (view.page - 1) * LIMIT;
   const list = useApi<Page<ConversationSummary>>(
     `/conversations${qs({
-      status,
-      channel,
-      q,
-      advisor_id: owner === "me" ? user?.id : undefined,
-      unassigned: owner === "none" ? "true" : undefined,
+      status: view.status,
+      channel: view.channel,
+      q: view.q,
+      advisor_id: view.owner === "me" ? user?.id : undefined,
+      unassigned: view.owner === "none" ? "true" : undefined,
       limit: LIMIT,
       offset,
     })}`,
     { keepPrevious: true },
   );
+  const filtered = isFiltered(view);
+  // Total sans filtre, pour « N sur M » (règle 5).
+  const all = useApi<Page<ConversationSummary>>(filtered ? "/conversations?limit=1" : null);
 
   const items = list.data?.items ?? [];
+  const total = list.data?.total ?? 0;
   const inPage = items.find((c) => c.id === selectedId) ?? null;
   const direct = useApi<ConversationSummary>(
     selectedId
@@ -603,135 +614,121 @@ function Inbox() {
   );
   const selected =
     inPage ?? (direct.data?.id === selectedId ? direct.data : null);
-  // Brouillon de l'agent modifié dans le détail : changer de conversation demande confirmation.
-  const dirty = useRef(false);
-  const onDirtyChange = useCallback((value: boolean) => {
-    dirty.current = value;
-  }, []);
-  const { guard, dialog: discardDialog } = useDiscardGuard(() => dirty.current);
-  const go = (url: string) =>
-    guard(() => {
-      dirty.current = false;
-      router.replace(url, { scroll: false });
-    });
-  const select = (id: string) => {
-    if (id !== selectedId) go(`/conversations?id=${id}`);
-  };
-  const reset = (apply: () => void) => {
-    apply();
-    setOffset(0);
-  };
+  const header = reveal(0);
+  const queue = reveal(1);
 
   return (
     <Screen wide className="gap-4">
-      <div className="sr-only">
-        <span>Travail · Boîte de réception</span>
-        <h1>Conversations</h1>
-        <p>Tous les échanges des prospects avec l&apos;agent, au même endroit.</p>
-      </div>
+      <PageHeader
+        eyebrow="Travail · Boîte de réception"
+        title="Conversations"
+        subtitle={
+          // Sur mobile, une conversation ouverte prend la place.
+          <span className={selectedId ? "max-lg:hidden" : undefined}>
+            Tous les échanges des prospects avec l’agent et les conseillers, au même endroit.
+          </span>
+        }
+        className={header.className}
+        style={header.style}
+      />
       {selectedId && (
         <div className="lg:hidden">
-          <Btn
-            variant="ghost"
-            onClick={() => go("/conversations")}
-          >
+          <Btn variant="ghost" onClick={() => select(null)}>
             ← Liste des conversations
           </Btn>
         </div>
       )}
-      <div className="flex items-start gap-6">
-        <Box
-          as="aside"
-          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7.5rem)] lg:w-[380px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+      <div className="flex items-start gap-5">
+        {/* File posée sur la page (règle 20) : titre et compteur, recherche et filtres, liste sur sa surface,
+            pagination. */}
+        <aside
           aria-label="Liste des conversations"
+          style={queue.style}
+          className={`w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto lg:pb-2 ${selectedId ? "hidden" : "flex"} ${queue.className}`}
         >
-          <div className="flex flex-col gap-2.5 px-1 pt-1">
-            <TextInput
-              type="search"
-              aria-label="Rechercher une conversation"
-              placeholder="Nom ou email…"
-              value={q}
-              onChange={(e) => reset(() => setQ(e.target.value))}
+          <header className="flex items-baseline gap-2">
+            <h2 className="flex-1 text-base font-semibold text-foreground">Boîte de réception</h2>
+            <span className="text-[13px] text-muted tabular-nums" role="status">
+              {list.data
+                ? `${total} conversation${total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
+                : ""}
+            </span>
+          </header>
+          <TextInput
+            variant="secondary"
+            type="search"
+            aria-label="Rechercher une conversation"
+            placeholder="Nom ou email…"
+            value={view.q}
+            onChange={(e) => filter({ q: e.target.value })}
+          />
+          <FilterChipGroup
+            label="Statut"
+            options={[...STATUS_FILTERS]}
+            value={view.status}
+            onChange={(status) => filter({ status })}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterChipGroup
+              label="Responsable"
+              options={[...OWNER_FILTERS]}
+              value={view.owner}
+              onChange={(owner) => filter({ owner })}
             />
-            <Segmented
-              label="Statut"
-              className="w-full"
-              value={status}
-              options={STATUS_FILTERS}
-              onChange={(v) => reset(() => setStatus(v))}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <div role="group" aria-label="Responsable" className="flex flex-wrap gap-1.5">
-                {OWNER_FILTERS.map((o) => (
-                  <FilterChip key={o.value} pressed={owner === o.value} onClick={() => reset(() => setOwner(o.value))}>
-                    {o.text}
-                  </FilterChip>
-                ))}
-              </div>
-              <SelectBox
-                aria-label="Canal"
-                className="min-w-[150px] flex-1"
-                value={channel}
-                onChange={(e) => reset(() => setChannel(e.target.value))}
-              >
-                {CHANNEL_FILTERS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.text}
-                  </option>
-                ))}
-              </SelectBox>
-            </div>
+            <SelectBox
+              variant="secondary"
+              aria-label="Canal"
+              className="min-w-[150px] flex-1"
+              value={view.channel}
+              onChange={(e) => filter({ channel: e.target.value })}
+            >
+              {CHANNEL_FILTERS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.text}
+                </option>
+              ))}
+            </SelectBox>
           </div>
           <Loading
-            loading={list.loading}
+            loading={list.loading && !list.data}
             error={list.error}
             onRetry={list.reload}
             shape="rows"
           />
           {list.data && items.length === 0 && (
-            <p className="px-2 py-3 text-[13px] text-muted">
-              Aucune conversation ne correspond à ces filtres.
-            </p>
-          )}
-          <ul className="flex flex-col gap-0.5">
-            {items.map((c) => (
-              <InboxRow
-                key={c.id}
-                c={c}
-                selected={c.id === selectedId}
-                onSelect={() => select(c.id)}
-              />
-            ))}
-          </ul>
-          {list.data && list.data.total > LIMIT && (
-            <div className="flex items-center justify-between gap-2 border-t border-separator px-1 pt-3">
-              <Btn
-                size="sm"
-                variant="ghost"
-                isIconOnly
-                aria-label="Conversations précédentes"
-                disabled={offset === 0}
-                onClick={() => setOffset(Math.max(0, offset - LIMIT))}
-              >
-                <ChevronLeft className="size-4" />
-              </Btn>
-              <span className="text-xs text-muted tabular-nums">
-                {offset + 1}-{Math.min(offset + LIMIT, list.data.total)} sur{" "}
-                {list.data.total}
-              </span>
-              <Btn
-                size="sm"
-                variant="ghost"
-                isIconOnly
-                aria-label="Conversations suivantes"
-                disabled={offset + LIMIT >= list.data.total}
-                onClick={() => setOffset(offset + LIMIT)}
-              >
-                <ChevronRight className="size-4" />
-              </Btn>
+            <div className="flex flex-col items-start gap-2 px-2 py-3">
+              <p className="text-[13px] text-muted">
+                {filtered ? "Aucune conversation ne correspond à ces filtres." : "Aucune conversation pour le moment."}
+              </p>
+              {filtered && (
+                <Btn size="sm" variant="secondary" onClick={() => filter({ q: "", status: "", owner: "", channel: "" })}>
+                  Afficher tout
+                </Btn>
+              )}
             </div>
           )}
-        </Box>
+          {items.length > 0 && (
+            <Box as="ul" className="gap-0.5 p-1.5">
+              {items.map((c) => (
+                <InboxRow
+                  key={c.id}
+                  c={c}
+                  selected={c.id === selectedId}
+                  onSelect={() => select(c.id)}
+                />
+              ))}
+            </Box>
+          )}
+          {list.data && (total > LIMIT || view.page > 1) && (
+            <TablePagination
+              className="flex-wrap justify-center gap-2"
+              total={total}
+              pageSize={LIMIT}
+              page={view.page}
+              onChange={(page) => navigate({ page })}
+            />
+          )}
+        </aside>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {selected ? (
             <Detail
@@ -742,6 +739,7 @@ function Inbox() {
               onChanged={() => {
                 list.reload();
                 direct.reload();
+                all.reload();
               }}
             />
           ) : selectedId ? (
