@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -98,6 +98,17 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
     navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
 19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
+
+**File de travail** (`app/todo`, `components/todo/`)
+
+20. **Maître-détail** (écart à la règle 4, décidé pour « À traiter ») : quand on traite des éléments l'un après
+    l'autre, la file reste à gauche et le détail s'ouvre à droite, au lieu d'un tableau et d'un panneau. La file
+    est posée sur la page : titre et compteur à droite, onglets, filtres (`FilterChipGroup`), liste sur sa
+    surface, `TablePagination`. Sur mobile, la file ou le détail, avec « ← Liste des éléments ».
+21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
+    d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
+    l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
+    concernent, jamais une barre collante qui le masque.
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
