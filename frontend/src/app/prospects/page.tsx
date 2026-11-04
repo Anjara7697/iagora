@@ -1,11 +1,13 @@
 "use client";
 
-import { Avatar as HeroAvatar } from "@heroui/react";
+import { Avatar as HeroAvatar, Chip } from "@heroui/react";
 import { ChevronLeft, ChevronRight, Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Btn, Check, ErrorText, Field, FilterChip, LinkButton, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, FilterChip, LinkButton, Notice, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
+import { Drawer } from "@/components/Drawer";
+import { replaceUrl } from "@/lib/url";
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
 import { DataTable, Table } from "@/components/ds/table";
 import { DemoBadge, Loading, Pager, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
@@ -147,77 +149,56 @@ function Prospects() {
   } = state;
   const pending = useApi<Page<Prospect>>("/prospects?pending_campaign=true&limit=1");
   const user = useCurrentUser();
+  const canWrite = !!user && user.role !== "VIEWER";
   const [exportError, setExportError] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const limit = view === "pipeline" ? PIPELINE_LIMIT : LIMIT;
   const resultsHref = prospectResultsHref(state);
   const profileHref = (id: number) =>
     `/prospects/${id}?from=${encodeURIComponent(resultsHref)}`;
 
-  function update(patch: Partial<ProspectResults>, replace = false) {
-    // Read the latest URL so successive input events never overwrite another filter.
-    const current = readProspectResults(
-      new URLSearchParams(window.location.search),
-    );
-    const href = prospectResultsHref({ ...current, offset: 0, ...patch });
-    if (href === window.location.pathname + window.location.search) return;
-    // Next.js synchronizes native history changes with useSearchParams.
-    if (replace) window.history.replaceState(null, "", href);
-    else window.history.pushState(null, "", href);
+  // État de la liste dans l'adresse, sans entrée d'historique (règle 6) : « Retour » ramène à l'écran précédent.
+  function update(patch: Partial<ProspectResults>) {
+    // Relit l'adresse courante : deux saisies rapprochées ne s'écrasent pas.
+    const current = readProspectResults(new URLSearchParams(window.location.search));
+    replaceUrl(prospectResultsHref({ ...current, offset: 0, ...patch }));
   }
-  const advanced = [
-    {
-      title: "Programme",
-      id: "target-filter",
-      value: targetCode,
-      set: (value: string) => update({ targetCode: value }),
-      options: TARGETS,
-      all: "Tous les programmes",
-    },
-    {
-      title: "Intérêt",
-      id: "level-filter",
-      value: levelFilter,
-      set: (value: string) => update({ levelFilter: value }),
-      options: LEVELS,
-      all: "Tous les niveaux",
-    },
-    {
-      title: "Canal",
-      id: "channel-filter",
-      value: channelFilter,
-      set: (value: string) => update({ channelFilter: value }),
-      options: CHANNELS,
-      all: "Tous les canaux",
-    },
-    {
-      title: "Consentement",
-      id: "consent-filter",
-      value: consentFilter,
-      set: (value: string) => update({ consentFilter: value }),
-      options: CONSENT,
-      all: "Tous",
-    },
+  const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
+  const campaignName = (id: string) => campaigns.data?.items.find((c) => String(c.id) === id)?.name ?? `Campagne ${id}`;
+  const sourceName = (id: string) =>
+    campaigns.data?.items.find((c) => String(c.id) === campaign)?.sources?.find((s) => String(s.id) === id)?.name ?? `Source ${id}`;
+  // Filtres du panneau ; chacun actif s'affiche en puce retirable sous la barre.
+  const panelFilters = [
+    { title: "Étape", value: stage, text: label(STAGES, stage), clear: () => update({ stage: "" }) },
+    { title: "Campagne", value: campaign, text: campaignName(campaign), clear: () => update({ campaign: "", sourceFilter: "" }) },
+    { title: "Source", value: sourceFilter, text: sourceName(sourceFilter), clear: () => update({ sourceFilter: "" }) },
+    { title: "Programme", value: targetCode, text: label(TARGETS, targetCode), clear: () => update({ targetCode: "" }) },
+    { title: "Intérêt", value: levelFilter, text: label(LEVELS, levelFilter), clear: () => update({ levelFilter: "" }) },
+    { title: "Canal", value: channelFilter, text: label(CHANNELS, channelFilter), clear: () => update({ channelFilter: "" }) },
+    { title: "Consentement", value: consentFilter, text: label(CONSENT, consentFilter), clear: () => update({ consentFilter: "" }) },
   ];
-  const activeAdvanced = advanced.filter((f) => f.value);
-  const activeFilterCount = [
-    q,
-    stage,
-    campaign,
-    sourceFilter,
-    targetCode,
-    levelFilter,
-    channelFilter,
-    consentFilter,
-    hideDemo ? "demo" : "",
-  ].filter(Boolean).length;
-  const [moreOpen, setMoreOpen] = useState(false);
+  const activePanel = panelFilters.filter((f) => f.value);
+  const panelCount = activePanel.length + (hideDemo ? 1 : 0);
+  const filtered = !!(q || mine || pendingCampaign || panelCount);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
     `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
     { keepPrevious: true },
   );
-  const campaigns = useApi<Page<Campaign>>("/campaigns?limit=200");
+  // Total sans filtre, pour « N sur M » (règle 5).
+  const all = useApi<Page<Prospect>>(filtered ? "/prospects?limit=1" : null);
   function reset() {
     update({ ...readProspectResults(new URLSearchParams()), view });
+  }
+  async function exportCsv() {
+    setExportError(null);
+    try {
+      await download(
+        `/prospects/export${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, demo: hideDemo ? "exclude" : "all" })}`,
+        "prospects.csv",
+      );
+    } catch (err) {
+      setExportError(err instanceof ApiError ? err.message : "Échec de l’export");
+    }
   }
   function membershipsOf(p: Prospect): Membership[] {
     return p.campaigns.filter(
@@ -247,6 +228,10 @@ function Prospects() {
       column.stages.includes(m.conversion_stage),
     );
   }
+  const option = (options: Record<string, string>, all: string) => [
+    { value: "", label: all },
+    ...Object.entries(options).map(([value, text]) => ({ value, label: text })),
+  ];
   return (
     <Screen>
       <PageHeader
@@ -254,142 +239,140 @@ function Prospects() {
         title="Prospects"
         subtitle="Un parcours, des échanges et une prochaine étape pour chaque prospect."
         actions={
-          user &&
-          user.role !== "VIEWER" && (
-            <LinkButton href="/prospects/import" variant="primary">
-              <Upload className="size-4" aria-hidden="true" />
-              Importer un CSV
-            </LinkButton>
+          canWrite && (
+            <>
+              {/* Sur mobile, « Exporter » seul : les deux actions tiennent sur une ligne (nom accessible complet). */}
+              <Btn variant="secondary" aria-label="Exporter en CSV (Excel)" onClick={() => void exportCsv()}>
+                <Download className="size-4" aria-hidden="true" />
+                Exporter<span className="max-sm:hidden"> en CSV (Excel)</span>
+              </Btn>
+              <LinkButton href="/prospects/import" variant="primary">
+                <Upload className="size-4" aria-hidden="true" />
+                Importer un CSV
+              </LinkButton>
+            </>
           )
         }
       />
-      <Box as="section"
-        className="flex-row flex-wrap items-center gap-2 p-3"
-        aria-label="Affichage et périmètre des prospects"
-      >
-        <Segmented
-          label="Affichage des prospects"
-          value={view}
-          onChange={(v) => update({ view: v })}
-          options={[
-            { value: "pipeline", text: "Pipeline" },
-            { value: "table", text: "Table" },
-          ]}
-        />
-        <span className="mx-1 hidden h-6 w-px bg-separator sm:block" aria-hidden="true" />
-        {user && user.role !== "VIEWER" && (
-          <FilterChip
-            pressed={mine}
-            onClick={() => {
-              update({ mine: !mine });
-            }}
-          >
-            Mes prospects
-          </FilterChip>
-        )}
-        <FilterChip
-          pressed={pendingCampaign}
-          onClick={() => {
-            update({
-              pendingCampaign: !pendingCampaign,
-              campaign: "",
-              sourceFilter: "",
-              stage: "",
-            });
-          }}
-        >
-          À attribuer{pending.data ? ` (${pending.data.total})` : ""}
-        </FilterChip>
-        <span className="flex-1" />
-        <span className="text-[13px] text-muted tabular-nums" aria-live="polite">
-          {!loading && data
-            ? `${data.total} prospect${data.total > 1 ? "s" : ""}`
-            : "Chargement…"}
-        </span>
-        {user && user.role !== "VIEWER" && (
-          <Btn
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              setExportError(null);
-              try {
-                await download(
-                  `/prospects/export${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, demo: hideDemo ? "exclude" : "all" })}`,
-                  "prospects.csv",
-                );
-              } catch (err) {
-                setExportError(
-                  err instanceof ApiError ? err.message : "Échec de l’export",
-                );
-              }
-            }}
-          >
-            <Download className="size-4" aria-hidden="true" />
-            Exporter en CSV (Excel)
-          </Btn>
-        )}
-      </Box>
-      {pendingCampaign && (
-        <p className="rounded-lg bg-warning-soft px-5 py-3.5 text-sm text-warning-soft-foreground">
-          Ces prospects attendent une campagne et une source. Ouvrez une fiche
-          pour les attribuer ; l’agent attend cette attribution avant de
-          répondre automatiquement.
-        </p>
-      )}
-      <Box as="form" className="gap-4 p-4" onSubmit={(e) => e.preventDefault()}>
+      {exportError && <ErrorText>{exportError}</ErrorText>}
+      {/* Barre au-dessus des résultats (règle 5) : vue, recherche et filtres à gauche, compteur à droite. */}
+      <section className="flex flex-col gap-2" aria-label="Affichage et filtres des prospects">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-semibold text-foreground">Filtres</h2>
-          {activeFilterCount > 0 && (
-            <Tag tone="accent">
-              {activeFilterCount} actif{activeFilterCount > 1 ? "s" : ""}
-            </Tag>
+          <Segmented
+            label="Affichage des prospects"
+            value={view}
+            onChange={(v) => update({ view: v })}
+            options={[
+              { value: "pipeline", text: "Pipeline" },
+              { value: "table", text: "Table" },
+            ]}
+          />
+          <TextInput
+            variant="secondary"
+            type="search"
+            aria-label="Rechercher"
+            placeholder="Nom, email…"
+            className="w-full sm:w-64"
+            fullWidth={false}
+            value={q}
+            onChange={(e) => update({ q: e.target.value })}
+          />
+          {canWrite && (
+            <FilterChip className="rounded-lg" pressed={mine} onClick={() => update({ mine: !mine })}>
+              Mes prospects
+            </FilterChip>
           )}
-          <span className="flex-1" />
-          <Btn variant="ghost" size="sm" onClick={reset} className="text-link">
-            Réinitialiser
+          <FilterChip
+            className="rounded-lg"
+            pressed={pendingCampaign}
+            onClick={() => update({ pendingCampaign: !pendingCampaign, campaign: "", sourceFilter: "", stage: "" })}
+          >
+            À attribuer{pending.data ? ` (${pending.data.total})` : ""}
+          </FilterChip>
+          <Btn variant="secondary" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
+            <SlidersHorizontal className="size-4" aria-hidden="true" />
+            Filtres
+            {panelCount > 0 && (
+              <Chip size="sm" color="accent" variant="primary" aria-label={`${panelCount} actif${panelCount > 1 ? "s" : ""}`}>
+                <Chip.Label>{panelCount}</Chip.Label>
+              </Chip>
+            )}
           </Btn>
+          <span className="flex-1" />
+          <span className="text-[13px] text-muted tabular-nums" role="status">
+            {data
+              ? `${data.total} prospect${data.total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
+              : ""}
+          </span>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Rechercher" className="min-w-[200px] flex-[2_1_200px]">
-            <TextInput
-              type="search"
-              placeholder="Nom, email…"
-              value={q}
-              onChange={(e) => {
-                update({ q: e.target.value }, true);
-              }}
-            />
-          </Field>
+        {(panelCount > 0 || filtered) && (
+          <div className="flex flex-wrap items-center gap-2" aria-label="Filtres actifs">
+            {activePanel.map((f) => (
+              <Btn key={f.title} size="sm" variant="tertiary" aria-label={`Retirer le filtre ${f.title}`} onClick={f.clear}>
+                {f.title} : {f.text}
+                <X className="size-3.5 text-muted" aria-hidden="true" />
+              </Btn>
+            ))}
+            {hideDemo && (
+              <Btn size="sm" variant="tertiary" aria-label="Retirer le filtre Prospects fictifs" onClick={() => update({ hideDemo: false })}>
+                Prospects fictifs masqués
+                <X className="size-3.5 text-muted" aria-hidden="true" />
+              </Btn>
+            )}
+            <Btn size="sm" variant="ghost" className="text-link" onClick={reset}>
+              Réinitialiser
+            </Btn>
+          </div>
+        )}
+      </section>
+      {pendingCampaign && (
+        <Notice tone="warning">
+          Ces prospects attendent une campagne et une source. Ouvrez une fiche pour les attribuer ; l’agent attend cette
+          attribution avant de répondre automatiquement.
+        </Notice>
+      )}
+      <Drawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        eyebrow="Prospects"
+        title="Filtres"
+        icon={<SlidersHorizontal aria-hidden="true" />}
+      >
+        {/* Chaque choix s'applique tout de suite ; la liste se met à jour derrière le panneau. */}
+        <div className="flex flex-col gap-4">
           <SelectInput
             id="stage-filter"
             label="Étape"
-            className="min-w-[160px] flex-[1_1_160px]"
             value={stage}
             onChange={(value) => update({ stage: value })}
-            options={[
-              { value: "", label: "Toutes les étapes" },
-              ...Object.entries(STAGES).map(([value, text]) => ({ value, label: text })),
-            ]}
+            options={option(STAGES, "Toutes les étapes")}
           />
           <SelectInput
             id="campaign-filter"
             label="Campagne"
-            className="min-w-[160px] flex-[1_1_160px]"
             value={campaign}
             disabled={campaigns.loading || !!campaigns.error}
             onChange={(value) => update({ campaign: value, sourceFilter: "" })}
             options={[
               { value: "", label: "Toutes" },
-              ...(campaigns.data?.items.map((c) => ({
-                value: String(c.id),
-                label: c.name,
-              })) ?? []),
+              ...(campaigns.data?.items.map((c) => ({ value: String(c.id), label: c.name })) ?? []),
             ]}
           />
+          {campaigns.error && (
+            <ErrorText>
+              {`Filtre des campagnes indisponible : ${campaigns.error.message}`}
+            </ErrorText>
+          )}
+          {campaigns.error && (
+            <div>
+              <Btn size="sm" variant="secondary" onClick={campaigns.reload}>
+                Réessayer les campagnes
+              </Btn>
+            </div>
+          )}
           <SelectInput
             id="source-filter"
             label="Source"
-            className="min-w-[160px] flex-[1_1_160px]"
             value={sourceFilter}
             disabled={!campaign || campaigns.loading || !!campaigns.error}
             onChange={(value) => update({ sourceFilter: value })}
@@ -400,81 +383,23 @@ function Prospects() {
                 ?.sources?.map((s) => ({ value: String(s.id), label: s.name })) ?? []),
             ]}
           />
-          <Btn
-            aria-expanded={moreOpen}
-            aria-controls="more-filters"
-            onClick={() => setMoreOpen(!moreOpen)}
-            className={moreOpen ? "bg-accent-soft text-accent-soft-foreground" : undefined}
-          >
-            <SlidersHorizontal className="size-4" aria-hidden="true" />
-            Plus de filtres
-            {activeAdvanced.length > 0 && (
-              <span
-                className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-medium text-accent-foreground"
-                aria-label={`${activeAdvanced.length} actif${activeAdvanced.length > 1 ? "s" : ""}`}
-              >
-                {activeAdvanced.length}
-              </span>
-            )}
-          </Btn>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Check
-            checked={hideDemo}
-            onChange={(value) => {
-              update({ hideDemo: value });
-            }}
-          >
+          <SelectInput id="target-filter" label="Programme" value={targetCode} onChange={(value) => update({ targetCode: value })} options={option(TARGETS, "Tous les programmes")} />
+          <SelectInput id="level-filter" label="Intérêt" value={levelFilter} onChange={(value) => update({ levelFilter: value })} options={option(LEVELS, "Tous les niveaux")} />
+          <SelectInput id="channel-filter" label="Canal" value={channelFilter} onChange={(value) => update({ channelFilter: value })} options={option(CHANNELS, "Tous les canaux")} />
+          <SelectInput id="consent-filter" label="Consentement" value={consentFilter} onChange={(value) => update({ consentFilter: value })} options={option(CONSENT, "Tous")} />
+          <Check checked={hideDemo} onChange={(value) => update({ hideDemo: value })}>
             Masquer les prospects fictifs
           </Check>
-        </div>
-        {moreOpen && (
-          <div className="grid grid-cols-1 gap-3 border-t border-separator pt-4 sm:grid-cols-2 xl:grid-cols-4" id="more-filters">
-            {advanced.map((f) => (
-              <SelectInput
-                key={f.id}
-                id={f.id}
-                label={f.title}
-                value={f.value}
-                onChange={f.set}
-                options={[
-                  { value: "", label: f.all },
-                  ...Object.entries(f.options).map(([value, text]) => ({
-                    value,
-                    label: text,
-                  })),
-                ]}
-              />
-            ))}
+          <div className="flex flex-wrap gap-2 border-t border-separator pt-4">
+            <Btn variant="primary" onClick={() => setFiltersOpen(false)}>
+              {data ? `Afficher ${data.total} prospect${data.total > 1 ? "s" : ""}` : "Afficher les prospects"}
+            </Btn>
+            <Btn variant="secondary" disabled={!panelCount} onClick={() => update({ stage: "", campaign: "", sourceFilter: "", targetCode: "", levelFilter: "", channelFilter: "", consentFilter: "", hideDemo: false })}>
+              Retirer ces filtres
+            </Btn>
           </div>
-        )}
-        {!moreOpen && activeAdvanced.length > 0 && (
-          <div className="flex flex-wrap gap-2" aria-label="Filtres actifs">
-            {activeAdvanced.map((f) => (
-              <Btn
-                key={f.id}
-                size="sm"
-                aria-label={`Retirer le filtre ${f.title}`}
-                onClick={() => {
-                  f.set("");
-                }}
-              >
-                {f.title} : {label(f.options, f.value)}
-                <X className="size-3.5 text-muted" aria-hidden="true" />
-              </Btn>
-            ))}
-          </div>
-        )}
-      </Box>
-      {exportError && <ErrorText>{exportError}</ErrorText>}
-      {campaigns.error && (
-        <div className="flex flex-wrap items-center gap-3">
-          <p role="alert" className="text-sm text-danger-soft-foreground">
-            Filtre campagnes indisponible : {campaigns.error.message}
-          </p>
-          <Btn size="sm" onClick={campaigns.reload}>Réessayer les campagnes</Btn>
         </div>
-      )}
+      </Drawer>
       <Loading loading={loading} error={error} onRetry={reload} shape="rows" />
       {!loading && data && (
         <>
