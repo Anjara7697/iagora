@@ -3,7 +3,7 @@
 import { Avatar, Button, Dropdown, toast } from "@heroui/react";
 import { ArrowRight, Bot, ChevronLeft, ChevronRight, Ellipsis, Hand, Inbox as InboxIcon, MessageSquareQuote, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";
@@ -18,12 +18,14 @@ import {
   Tag,
   TextBox,
   TextInput,
-  TextLink,
   RowButton,
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
 import { Collapse } from "@/components/ds/collapse";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
+import { DraftPanel } from "@/components/todo/DraftPanel";
+import type { DecisionResult } from "@/components/todo/shared";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -43,6 +45,7 @@ import type {
   ConversationSummary,
   Page,
   Prospect,
+  TodoItem,
 } from "@/lib/types";
 import { Box } from "@/components/ds/card";
 
@@ -156,11 +159,17 @@ function InboxRow({
 function Detail({
   summary,
   onChanged,
+  onDirtyChange,
+  guard,
 }: {
   summary: ConversationSummary;
   onChanged: () => void;
+  /** Brouillon de l'agent modifié et non validé : la page protège alors le changement de conversation. */
+  onDirtyChange: (dirty: boolean) => void;
+  guard: (action: () => void) => void;
 }) {
   const user = useCurrentUser();
+  const router = useRouter();
   const conversation = useApi<Conversation>(`/conversations/${summary.id}`, {
     keepPrevious: true,
   });
@@ -240,6 +249,28 @@ function Detail({
   const pendingId = conv?.messages.find(
     (m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending",
   )?.id;
+  // Le brouillon en attente se décide ici, avec le panneau d'« À traiter » (même API, mêmes confirmations).
+  // Un brouillon décidé ici disparaît aussitôt, sans attendre le rechargement du fil ; un nouveau brouillon
+  // (après « Régénérer ») a un autre identifiant et s'affiche de nouveau.
+  const [decided, setDecided] = useState<string | null>(null);
+  const draftId = pendingId && `draft:${summary.id}:${pendingId}` !== decided ? `draft:${summary.id}:${pendingId}` : null;
+  const draftItem = useApi<TodoItem>(draftId ? `/todo/item${qs({ id: draftId })}` : null);
+  function onDraftDone(result: DecisionResult) {
+    const treatedId = result.treatedId;
+    toast.success(result.title, {
+      description: result.description,
+      actionProps: treatedId
+        ? {
+            children: "Voir la décision",
+            onPress: () => router.push(`/todo${qs({ tab: "treated", id: treatedId })}`),
+          }
+        : undefined,
+    });
+    onDirtyChange(false);
+    setDecided(draftId);
+    conversation.reload();
+    onChanged();
+  }
 
   return (
     <section
@@ -253,8 +284,9 @@ function Detail({
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h2 className="text-xl font-semibold tracking-[-0.01em] text-foreground">{name}</h2>
           <div className="flex flex-wrap gap-1.5">
-            <Tag tone={STATUS_TONE[summary.status as keyof typeof STATUS_TONE] ?? "neutral"}>
-              {label(CONVERSATION_STATUS, summary.status)}
+            {/* Statut de la conversation chargée (celui sur lequel portent les actions), sinon celui de la liste. */}
+            <Tag tone={STATUS_TONE[(conv?.status ?? summary.status) as keyof typeof STATUS_TONE] ?? "neutral"}>
+              {label(CONVERSATION_STATUS, conv?.status ?? summary.status)}
             </Tag>
             <Tag>{label(CHANNELS, summary.channel)}</Tag>
           </div>
@@ -425,22 +457,6 @@ function Detail({
           </div>
         </div>
 </Collapse>
-      {pendingDraft && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-agent-soft px-5 py-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <Eyebrow className="text-agent-soft-foreground">À vous de décider</Eyebrow>
-            <h3 className="text-sm font-semibold text-foreground">Une réponse est prête à être relue.</h3>
-            <p className="text-sm text-foreground/85">
-              Un brouillon de l&apos;agent attend votre validation :{" "}
-              <TextLink href={`/todo?id=${encodeURIComponent(`draft:${summary.id}:${pendingId}`)}`}>
-                le traiter dans « À traiter »
-              </TextLink>
-              .
-            </p>
-          </div>
-          <Tag tone="warning">Validation requise</Tag>
-        </div>
-      )}
       {conv && (
         <Box as="section" className="gap-4 p-5" aria-label="Fil de la conversation">
           <div className="flex items-baseline gap-2">
@@ -455,6 +471,21 @@ function Detail({
             channel={conv.channel}
           />
         </Box>
+      )}
+      {pendingDraft && draftId && (
+        <>
+          <Loading loading={draftItem.loading && !draftItem.data} error={draftItem.error} onRetry={draftItem.reload} />
+          {draftItem.data?.id === draftId && draftItem.data.draft && (
+            <DraftPanel
+              key={draftId}
+              item={draftItem.data}
+              conversationLink={false}
+              onDone={onDraftDone}
+              onDirtyChange={onDirtyChange}
+              guard={guard}
+            />
+          )}
+        </>
       )}
 
       {readOnly && (
@@ -572,8 +603,20 @@ function Inbox() {
   );
   const selected =
     inPage ?? (direct.data?.id === selectedId ? direct.data : null);
-  const select = (id: string) =>
-    router.replace(`/conversations?id=${id}`, { scroll: false });
+  // Brouillon de l'agent modifié dans le détail : changer de conversation demande confirmation.
+  const dirty = useRef(false);
+  const onDirtyChange = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const { guard, dialog: discardDialog } = useDiscardGuard(() => dirty.current);
+  const go = (url: string) =>
+    guard(() => {
+      dirty.current = false;
+      router.replace(url, { scroll: false });
+    });
+  const select = (id: string) => {
+    if (id !== selectedId) go(`/conversations?id=${id}`);
+  };
   const reset = (apply: () => void) => {
     apply();
     setOffset(0);
@@ -590,7 +633,7 @@ function Inbox() {
         <div className="lg:hidden">
           <Btn
             variant="ghost"
-            onClick={() => router.replace("/conversations", { scroll: false })}
+            onClick={() => go("/conversations")}
           >
             ← Liste des conversations
           </Btn>
@@ -694,6 +737,8 @@ function Inbox() {
             <Detail
               key={selected.id}
               summary={selected}
+              onDirtyChange={onDirtyChange}
+              guard={guard}
               onChanged={() => {
                 list.reload();
                 direct.reload();
@@ -724,6 +769,7 @@ function Inbox() {
           )}
         </div>
       </div>
+      {discardDialog}
     </Screen>
   );
 }

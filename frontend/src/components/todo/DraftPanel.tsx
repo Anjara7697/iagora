@@ -14,7 +14,16 @@ import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { Box } from "@/components/ds/card";
 import { PanelProps, useReportDirty, itemName } from "@/components/todo/shared";
 
-export function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
+export function DraftPanel({
+  item,
+  onDone,
+  onDirtyChange,
+  guard,
+  conversationLink = true,
+}: PanelProps & {
+  /** Faux dans la conversation elle-même : le lien « Voir l'échange complet » y mènerait à la même page. */
+  conversationLink?: boolean;
+}) {
   const user = useCurrentUser();
   const draft = item.draft!;
   const [text, setText] = useState(draft.content);
@@ -136,9 +145,11 @@ export function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
           >
             Refuser le brouillon
           </Btn>
-          <TextLink href={`/conversations?id=${item.conversation_id}`} className="ms-auto px-1 text-sm max-sm:ms-0 max-sm:basis-full">
-            Voir l’échange complet →
-          </TextLink>
+          {conversationLink && (
+            <TextLink href={`/conversations?id=${item.conversation_id}`} className="ms-auto px-1 text-sm max-sm:ms-0 max-sm:basis-full">
+              Voir l’échange complet →
+            </TextLink>
+          )}
         </div>
       )}
       <p className="border-t border-separator px-5 py-3 text-xs/[18px] text-muted">

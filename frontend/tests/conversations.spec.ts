@@ -595,3 +595,89 @@ test("une confirmation tardive ne supprime pas la nouvelle saisie après retour 
   await expect(page.getByLabel("Votre réponse")).toBeEnabled();
   await expect(page.getByLabel("Votre réponse")).toHaveValue("Nouvelle réponse encore en rédaction.");
 });
+
+test("brouillon en attente : décider sur place, modification protégée au changement de conversation", async ({ page }) => {
+  await mockApi(page);
+  let decided = false;
+  const approvals: unknown[] = [];
+  const second = { ...summary("c2", "open"), prospect_id: 2, prospect: { ...prospect, id: 2, first_name: "Ahmed", last_name: "Belkacem" } };
+  await page.route("**/api/v1/conversations?**", (route) =>
+    route.fulfill({ json: { items: [summary("c1", "open"), second], total: 2, limit: 30, offset: 0 } }),
+  );
+  await page.route("**/api/v1/conversations/c1", (route) => {
+    const base = conversation("open");
+    return route.fulfill({
+      json: {
+        ...base,
+        messages: [
+          ...base.messages,
+          {
+            id: "m2",
+            role: "agent",
+            content: "Bonjour Marie, le CPF est possible.",
+            created_at: "2026-10-01T10:05:00Z",
+            metadata: decided
+              ? { delivery: "not_sent", draft: { status: "approved", edited: true } }
+              : { delivery: "draft", draft: { status: "pending" } },
+          },
+        ],
+      },
+    });
+  });
+  await page.route("**/api/v1/conversations/c2", (route) =>
+    route.fulfill({ json: { ...conversation("open"), id: "c2", prospect_id: 2 } }),
+  );
+  await page.route("**/api/v1/prospects/2", (route) =>
+    route.fulfill({ json: { ...prospect, id: 2, first_name: "Ahmed", last_name: "Belkacem", campaigns: [], profile: {} } }),
+  );
+  await page.route("**/api/v1/todo/item?**", (route) =>
+    route.fulfill({
+      json: {
+        id: "draft:c1:m2",
+        kind: "validation",
+        conversation_id: "c1",
+        prospect: { ...prospect, total_score: 80, level: "very_hot" },
+        channel: "email",
+        priority: "high",
+        title: "Brouillon de réponse à valider",
+        detail: "Puis-je financer avec mon CPF ?",
+        created_at: "2026-10-01T10:05:00Z",
+        recommendation: null,
+        handoff: null,
+        draft: { message_id: "m2", content: "Bonjour Marie, le CPF est possible.", subject: null, footer: null },
+      },
+    }),
+  );
+  await page.route("**/api/v1/conversations/c1/drafts/m2/approve", (route) => {
+    approvals.push(route.request().postDataJSON());
+    decided = true;
+    return route.fulfill({ json: { ok: true } });
+  });
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Liste des conversations" });
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  const draft = page.getByRole("region", { name: "Brouillon de l'agent" });
+  await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
+  // Déjà dans la conversation : pas de lien vers elle-même.
+  await expect(draft.getByRole("link", { name: "Voir l’échange complet →" })).toHaveCount(0);
+
+  await draft.getByRole("button", { name: "Modifier", exact: true }).click();
+  await draft.getByLabel("Texte du brouillon").fill("Bonjour Marie, oui : le CPF finance ce programme.");
+  await list.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  const discard = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await discard.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page).toHaveURL(/id=c1/);
+  await expect(draft.getByLabel("Texte du brouillon")).toHaveValue("Bonjour Marie, oui : le CPF finance ce programme.");
+  await auditA11y(page, "conversations, brouillon");
+
+  await draft.getByRole("button", { name: "Valider la version modifiée" }).click();
+  await expect.poll(() => approvals).toEqual([{ content: "Bonjour Marie, oui : le CPF finance ce programme." }]);
+  await expect(page.getByText("Réponse validée", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voir la décision" })).toBeVisible();
+  await expect(draft).toHaveCount(0);
+  await expect(page.getByText(/Agent IA · validé par un conseiller/)).toBeVisible();
+  // Plus rien à protéger : changer de conversation est immédiat.
+  await list.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(discard).toHaveCount(0);
+  await expect(page).toHaveURL(/id=c2/);
+});
