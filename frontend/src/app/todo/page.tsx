@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, toast } from "@heroui/react";
+import { Alert, Avatar, toast } from "@heroui/react";
 import {
   AlertTriangle,
   BookOpen,
@@ -23,6 +23,7 @@ import {
   Field,
   FilterChip,
   LinkButton,
+  Notice,
   SelectBox,
   Segmented,
   Tag,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { Collapse } from "@/components/ds/collapse";
+import { reveal } from "@/components/ds/motion";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
@@ -65,6 +67,11 @@ import type {
 import { Box } from "@/components/ds/card";
 
 type KindFilter = "" | TodoKind;
+/** Classes d'un bloc et entrée en cascade (`reveal`) réunies. */
+function revealed(index: number, className = "") {
+  const motion = reveal(index);
+  return { className: `${className} ${motion.className}`.trim(), style: motion.style };
+}
 /** Cible du focus quand la file est vide après une décision. */
 const QUEUE = "queue";
 /** Résultat d'une décision, annoncé par un Toast : `treatedId` ajoute « Voir la décision ». */
@@ -240,7 +247,7 @@ function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
   }
 
   return (
-    <section className="draft-panel gap-0 p-0" aria-label="Brouillon de l'agent">
+    <Box as="section" className="gap-0 overflow-hidden p-0" aria-label="Brouillon de l'agent">
       <header className="flex flex-wrap items-center gap-2 border-b border-separator px-5 py-3.5">
         <strong className="flex-1 text-sm font-semibold text-foreground">
           Réponse proposée — {label(CHANNELS, item.channel)}
@@ -252,6 +259,7 @@ function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
         {editing ? (
           <TextBox
             aria-label="Texte du brouillon"
+            variant="secondary"
             value={text}
             onChange={(e) => setText(e.target.value)}
             className="min-h-40"
@@ -260,7 +268,7 @@ function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
           <div className="text-sm/6 whitespace-pre-wrap text-foreground">{text}</div>
         )}
         {draft.footer && (
-          <div className="flex flex-col gap-1 rounded-xl bg-surface-secondary px-4 py-3">
+          <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary px-4 py-3">
             <Eyebrow>Pied de message — ajouté automatiquement, non modifiable</Eyebrow>
             <p className="text-[13px] whitespace-pre-wrap text-muted">{draft.footer}</p>
           </div>
@@ -272,65 +280,61 @@ function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
         {error && <ErrorText>{error}</ErrorText>}
       </div>
       {readOnly ? (
-        <p className="border-t border-separator px-5 py-3 text-[13px] text-muted">
-          Votre accès observateur permet de consulter les brouillons.
-        </p>
+        <div className="border-t border-separator px-5 py-4">
+          <Notice tone="info">Votre accès observateur permet de consulter les brouillons.</Notice>
+        </div>
       ) : (
-        <div className="draft-actions sticky bottom-3 z-10 mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/95 px-3 py-3 shadow-overlay backdrop-blur-md">
-          <div className="draft-decision flex flex-wrap gap-2 max-sm:w-full">
-            <Btn
-              variant="primary"
-              className="max-sm:basis-full"
-              disabled={busy || !text.trim()}
-              onClick={() => act("approve", { content: editing ? text : null })}
-            >
-              <Check className="size-4" aria-hidden="true" />
-              {busy
-                ? "Traitement en cours…"
-                : editing
-                  ? "Valider la version modifiée"
-                  : "Valider la réponse"}
-            </Btn>
-            <Btn
-              className="max-sm:flex-1"
-              disabled={busy}
-              onClick={() =>
-                editing
-                  ? guard(() => {
-                      setText(draft.content);
-                      setEditing(false);
-                    })
-                  : setEditing(true)
-              }
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-              {editing ? "Annuler la modification" : "Modifier"}
-            </Btn>
-          </div>
-          <span className="flex-1 max-sm:hidden" />
-          <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
-            <Btn
-              variant="ghost"
-              disabled={busy}
-              onClick={() => (changed ? setConfirmRegenerate(true) : void act("regenerate"))}
-            >
-              <RefreshCw className="size-4" aria-hidden="true" />
-              Régénérer
-            </Btn>
-            <Btn
-              variant="danger-soft"
-              disabled={busy}
-              onClick={() => {
-                setReason("");
-                setRejecting(true);
-              }}
-            >
-              Refuser le brouillon
-            </Btn>
-            <TextLink href={`/conversations?id=${item.conversation_id}`} className="px-1 max-sm:basis-full">
-              Voir l’échange complet →
-            </TextLink>
-          </div>
+        // Actions sous le texte, sans effet collant : rien ne cache ce qui partira. Mobile : Valider sur toute la
+        // largeur, les autres actions en dessous.
+        <div className="flex flex-wrap items-center gap-2 border-t border-separator px-5 py-4" aria-label="Décision" role="group">
+          <Btn
+            variant="primary"
+            className="max-sm:basis-full"
+            disabled={busy || !text.trim()}
+            onClick={() => act("approve", { content: editing ? text : null })}
+          >
+            <Check className="size-4" aria-hidden="true" />
+            {busy ? "Traitement en cours…" : editing ? "Valider la version modifiée" : "Valider la réponse"}
+          </Btn>
+          <Btn
+            variant="secondary"
+            className="max-sm:flex-1"
+            disabled={busy}
+            onClick={() =>
+              editing
+                ? guard(() => {
+                    setText(draft.content);
+                    setEditing(false);
+                  })
+                : setEditing(true)
+            }
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+            {editing ? "Annuler la modification" : "Modifier"}
+          </Btn>
+          <Btn
+            variant="secondary"
+            className="max-sm:flex-1"
+            disabled={busy}
+            onClick={() => (changed ? setConfirmRegenerate(true) : void act("regenerate"))}
+          >
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Régénérer
+          </Btn>
+          <Btn
+            variant="danger-soft"
+            className="max-sm:basis-full"
+            disabled={busy}
+            onClick={() => {
+              setReason("");
+              setRejecting(true);
+            }}
+          >
+            Refuser le brouillon
+          </Btn>
+          <TextLink href={`/conversations?id=${item.conversation_id}`} className="ms-auto px-1 text-sm max-sm:ms-0 max-sm:basis-full">
+            Voir l’échange complet →
+          </TextLink>
         </div>
       )}
       <p className="border-t border-separator px-5 py-3 text-xs/[18px] text-muted">
@@ -368,7 +372,7 @@ function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
           />
         </Field>
       </ConfirmDialog>
-    </section>
+    </Box>
   );
 }
 
@@ -470,17 +474,14 @@ function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
         onRetry={prospect.reload}
       />
       {user?.role === "VIEWER" ? (
-        <p className="text-[13px] text-muted">
-          Un conseiller ou administrateur peut confirmer cette candidature.
-        </p>
+        <Notice tone="info">Un conseiller ou administrateur peut confirmer cette candidature.</Notice>
       ) : (
         prospect.data && (
           <>
             {choices.length === 0 ? (
-              <p className="text-[13px] text-muted">
-                Aucun parcours ouvert pour ce prospect. Attribuez d’abord une
-                campagne depuis sa fiche.
-              </p>
+              <Notice tone="warning">
+                Aucun parcours ouvert pour ce prospect. Attribuez d’abord une campagne depuis sa fiche.
+              </Notice>
             ) : (
               <>
                 <CheckBox checked={checked} onChange={setChecked}>
@@ -488,6 +489,7 @@ function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 </CheckBox>
                 <Field label="Parcours concerné">
                   <SelectBox
+                    variant="secondary"
                     value={selected ? String(selected.id) : ""}
                     onChange={(e) => setMembershipId(e.target.value)}
                   >
@@ -505,6 +507,7 @@ function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 {needsStage && (
                   <Field label="Motif enregistré dans l’historique">
                     <TextBox
+                      variant="secondary"
                       value={reason}
                       maxLength={2000}
                       onChange={(e) => setReason(e.target.value)}
@@ -600,19 +603,18 @@ function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
         onRetry={prospect.reload}
       />
       {user?.role === "VIEWER" ? (
-        <p className="text-[13px] text-muted">
-          Un conseiller ou administrateur peut confirmer cette inscription.
-        </p>
+        <Notice tone="info">Un conseiller ou administrateur peut confirmer cette inscription.</Notice>
       ) : (
         <>
           {prospect.data && eligible.length === 0 && (
-            <p className="text-[13px] text-muted">
+            <Notice tone="warning">
               Aucun parcours n’est à l’étape « Candidature déposée ». La demande reste ouverte.
-            </p>
+            </Notice>
           )}
           {eligible.length > 0 && (
             <Field label="Parcours confirmé par la preuve">
               <SelectBox
+                variant="secondary"
                 value={membershipId}
                 onChange={(event) => setMembershipId(event.target.value)}
               >
@@ -627,6 +629,7 @@ function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           )}
           <Field label="Référence de la preuve">
             <TextInput
+              variant="secondary"
               value={reference}
               maxLength={300}
               onChange={(event) => setReference(event.target.value)}
@@ -634,6 +637,7 @@ function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           </Field>
           <Field label="Note facultative">
             <TextBox
+              variant="secondary"
               value={note}
               maxLength={1000}
               onChange={(event) => setNote(event.target.value)}
@@ -678,7 +682,7 @@ function DetailHead({
     if (autoFocus) title.current?.focus({ preventScroll: true });
   }, [autoFocus]);
   return (
-    <header className="flex flex-wrap items-start gap-3">
+    <header {...revealed(0, "flex flex-wrap items-start gap-3")}>
       <PersonMark name={name} incident={incident} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <h2 ref={title} tabIndex={-1} className="text-xl font-semibold tracking-[-0.01em] text-foreground outline-none">
@@ -735,11 +739,11 @@ function Detail({
         }
       />
 
-      <Box as="div" className="gap-2 p-5">
+      <Box as="div" {...revealed(1, "gap-2 p-5")}>
         <span className="sr-only">La demande à examiner</span>
         <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
         {item.detail && (
-          <blockquote className="rounded-xl border-l-2 border-border bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
+          <blockquote className="rounded-lg border-l-2 border-border bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
             « {item.detail} »
           </blockquote>
         )}
@@ -750,9 +754,13 @@ function Detail({
 
       <div className="flex flex-col gap-4">
         {rec && (
-          <Box as="section"
-            className="gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]"
+          <Box
+            as="section"
             aria-label="Éléments pour décider"
+            {...revealed(
+              2,
+              "gap-0 overflow-hidden p-0 shadow-[var(--surface-shadow),inset_0_0_0_1px_color-mix(in_oklab,var(--agent)_22%,transparent)]",
+            )}
           >
             <div className="flex flex-col gap-3 bg-agent-soft px-5 py-4">
               <div className="flex items-center gap-2">
@@ -844,19 +852,27 @@ function Detail({
           </Box>
         )}
 
-        {item.draft && <DraftPanel key={item.id} {...panel} />}
+        {item.draft && (
+          <div {...reveal(3)}>
+            <DraftPanel key={item.id} {...panel} />
+          </div>
+        )}
       </div>
 
       {item.kind === "application" && (
-        <ApplicationReview {...panel} />
+        <div {...reveal(3)}>
+          <ApplicationReview {...panel} />
+        </div>
       )}
 
       {item.kind === "enrollment" && (
-        <EnrollmentReview {...panel} />
+        <div {...reveal(3)}>
+          <EnrollmentReview {...panel} />
+        </div>
       )}
 
       {item.handoff && rec && (
-        <p>
+        <p {...reveal(4)}>
           <TextLink href={`/conversations?id=${item.conversation_id}`}>
             Répondre dans la conversation →
           </TextLink>
@@ -864,18 +880,13 @@ function Detail({
       )}
 
       {item.handoff && !rec && (
-        <div className="flex flex-col gap-2 rounded-xl bg-warning-soft px-5 py-4 text-sm text-foreground">
-          <p>
-            <strong className="font-semibold">Fiche de transfert</strong> —{" "}
-            {label(HANDOFF_REASONS, item.handoff.reason)}
-          </p>
-          <p>{item.handoff.summary}</p>
-          <p>
-            <TextLink href={`/conversations?id=${item.conversation_id}`}>
-              Répondre dans la conversation →
-            </TextLink>
-          </p>
-        </div>
+        <Notice tone="warning" {...reveal(3)}>
+          <Alert.Title>Fiche de transfert — {label(HANDOFF_REASONS, item.handoff.reason)}</Alert.Title>
+          <Alert.Description className="flex flex-col items-start gap-2">
+            <span>{item.handoff.summary}</span>
+            <TextLink href={`/conversations?id=${item.conversation_id}`}>Répondre dans la conversation →</TextLink>
+          </Alert.Description>
+        </Notice>
       )}
     </section>
   );
@@ -943,7 +954,7 @@ function TreatedDetail({
           </LinkButton>
         }
       />
-      <Box as="section" className="gap-3 p-5" aria-label="État d’envoi">
+      <Box as="section" aria-label="État d’envoi" {...revealed(1, "gap-3 p-5")}>
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex flex-1 flex-col gap-1">
             <Eyebrow>État d’envoi</Eyebrow>
@@ -971,7 +982,7 @@ function TreatedDetail({
         <p className="text-sm text-foreground">{EXECUTION_HELP[item.execution]}</p>
         {item.reason && <p className="text-sm text-foreground">Motif du refus : {item.reason}</p>}
         {item.execution_detail && (
-          <p className="rounded-xl bg-surface-secondary px-3 py-2 text-xs text-muted">{item.execution_detail}</p>
+          <p className="rounded-lg bg-surface-secondary px-3 py-2 text-xs text-muted">{item.execution_detail}</p>
         )}
         {canRetry && (
           <div>
@@ -982,12 +993,12 @@ function TreatedDetail({
         )}
         {error && <ErrorText>{error}</ErrorText>}
       </Box>
-      <section className="draft-panel gap-0 overflow-hidden p-0" aria-label="Message traité">
+      <Box as="section" aria-label="Message traité" {...revealed(2, "gap-0 overflow-hidden p-0")}>
         <header className="border-b border-separator px-5 py-3.5">
           <strong className="text-sm font-semibold text-foreground">Message — {label(CHANNELS, item.channel)}</strong>
         </header>
         <div className="px-5 py-4 text-sm/6 whitespace-pre-wrap text-foreground">{item.content}</div>
-      </section>
+      </Box>
     </section>
   );
 }
@@ -1079,7 +1090,12 @@ function Todo() {
       <PageHeader
         eyebrow="Travail · Décisions"
         title="À traiter"
-        subtitle="Examinez le contexte préparé par l’agent, puis validez la prochaine action."
+        subtitle={
+          // Sur mobile, un élément ouvert prend la place : la réponse à relire apparaît sans défiler.
+          <span className={selectedId ? "max-lg:hidden" : undefined}>
+            Examinez le contexte préparé par l’agent, puis validez la prochaine action.
+          </span>
+        }
       />
       {selectedId && (
         <div className="lg:hidden">

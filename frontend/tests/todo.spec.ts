@@ -377,9 +377,12 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
   const evidence = detail.getByRole("region", { name: "Éléments pour décider" });
   const draft = detail.getByRole("region", { name: "Brouillon de l'agent" });
+  // Les éléments pour décider précèdent le brouillon.
+  const draftNode = await draft.elementHandle();
   expect(
-    await evidence.evaluate((el) =>
-      Boolean(el.compareDocumentPosition(el.parentElement!.querySelector(".draft-panel")!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    await evidence.evaluate(
+      (el, node) => Boolean(node && el.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING),
+      draftNode,
     ),
   ).toBe(true);
   await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
