@@ -10,6 +10,10 @@ type ConfirmProps = {
   cancelLabel?: string;
   status?: "default" | "accent" | "success" | "warning" | "danger";
   onConfirm: () => void;
+  /** Contenu sous la description (ex. un champ « Motif » à remplir avant de confirmer). */
+  children?: ReactNode;
+  /** Bouton de confirmation inactif tant que le contenu n'est pas valide. */
+  confirmDisabled?: boolean;
 };
 
 /**
@@ -17,6 +21,7 @@ type ConfirmProps = {
  * bouton de confirmation ; Annuler et un clic sur le voile ferment sans rien faire.
  * - avec `trigger` : le bouton qui l'ouvre ;
  * - sans `trigger` : ouverture pilotée par `isOpen` et `onOpenChange` (ex. confirmation avant de quitter une saisie).
+ * `children` ajoute un contenu sous la description (un champ à remplir), `confirmDisabled` bloque la confirmation.
  */
 export function ConfirmDialog({
   trigger,
@@ -40,6 +45,8 @@ function ConfirmBackdrop({
   cancelLabel = "Annuler",
   status = "danger",
   onConfirm,
+  children,
+  confirmDisabled = false,
   isOpen,
   onOpenChange,
 }: ConfirmProps & { isOpen?: boolean; onOpenChange?: (open: boolean) => void }) {
@@ -54,12 +61,18 @@ function ConfirmBackdrop({
           </AlertDialog.Header>
           <AlertDialog.Body>
             <p>{description}</p>
+            {children}
           </AlertDialog.Body>
           <AlertDialog.Footer>
             <Button slot="close" variant="tertiary">
               {cancelLabel}
             </Button>
-            <Button slot="close" variant={status === "danger" ? "danger" : "primary"} onPress={onConfirm}>
+            <Button
+              slot="close"
+              variant={status === "danger" ? "danger" : "primary"}
+              isDisabled={confirmDisabled}
+              onPress={onConfirm}
+            >
               {confirmLabel}
             </Button>
           </AlertDialog.Footer>

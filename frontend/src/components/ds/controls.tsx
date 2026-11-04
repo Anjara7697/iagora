@@ -130,13 +130,17 @@ export function FilterChip({
   return <ToggleButton size="sm" isSelected={pressed} onChange={() => onClick?.()} {...rest} />;
 }
 
-/** Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des pastilles avant. */
+/**
+ * Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des
+ * pastilles avant, `trailing` après (ex. « Autres types »).
+ */
 export function FilterChipGroup<T extends string>({
   label,
   options,
   value,
   onChange,
   leading,
+  trailing,
   chipClassName = "rounded-lg",
   className,
   style,
@@ -146,6 +150,7 @@ export function FilterChipGroup<T extends string>({
   value: T;
   onChange: (value: T) => void;
   leading?: ReactNode;
+  trailing?: ReactNode;
   chipClassName?: string;
   className?: string;
   style?: CSSProperties;
@@ -158,6 +163,7 @@ export function FilterChipGroup<T extends string>({
           {o.text}
         </FilterChip>
       ))}
+      {trailing}
     </div>
   );
 }
