@@ -1,11 +1,10 @@
 "use client";
 
-import { Avatar } from "@heroui/react";
+import { Avatar, toast } from "@heroui/react";
 import {
   AlertTriangle,
   BookOpen,
   Check,
-  CircleCheck,
   ExternalLink,
   History,
   ListChecks,
@@ -15,7 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import {
   Btn,
@@ -25,7 +24,6 @@ import {
   FilterChip,
   LinkButton,
   SelectBox,
-  Notice,
   Segmented,
   Tag,
   TextBox,
@@ -36,6 +34,8 @@ import {
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { Collapse } from "@/components/ds/collapse";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -65,7 +65,23 @@ import type {
 import { Box } from "@/components/ds/card";
 
 type KindFilter = "" | TodoKind;
-type DecisionResult = { message: string; prospectName: string; treatedId?: string };
+/** Cible du focus quand la file est vide après une décision. */
+const QUEUE = "queue";
+/** Résultat d'une décision, annoncé par un Toast : `treatedId` ajoute « Voir la décision ». */
+type DecisionResult = { title: string; description: string; treatedId?: string };
+/** Ce que reçoit chaque panneau de décision : la fin du traitement, le signal « saisie modifiée » et la garde. */
+type PanelProps = {
+  item: TodoItem;
+  onDone: (result: DecisionResult) => void;
+  onDirtyChange: (dirty: boolean) => void;
+  guard: (action: () => void) => void;
+};
+
+/** Signale à la page qu'une saisie du panneau n'est pas enregistrée (et plus rien quand le panneau disparaît). */
+function useReportDirty(dirty: boolean, onDirtyChange: (dirty: boolean) => void) {
+  useLayoutEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+}
 const EXECUTION_HELP: Record<TreatedItem["execution"], string> = {
   approved: "La réponse est validée, mais aucun envoi n’est encore confirmé.",
   sending: "L’envoi est en cours. Actualisez pour connaître le résultat.",
@@ -187,23 +203,20 @@ function Row({
   );
 }
 
-function DraftPanel({
-  item,
-  onDone,
-}: {
-  item: TodoItem;
-  onDone: (result: DecisionResult) => void;
-}) {
+function DraftPanel({ item, onDone, onDirtyChange, guard }: PanelProps) {
   const user = useCurrentUser();
   const draft = item.draft!;
   const [text, setText] = useState(draft.content);
   const [editing, setEditing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const readOnly = user?.role === "VIEWER";
   const base = `/conversations/${item.conversation_id}/drafts/${draft.message_id}`;
+  const changed = editing && text !== draft.content;
+  useReportDirty(changed, onDirtyChange);
 
   async function act(path: string, body?: unknown) {
     setBusy(true);
@@ -211,16 +224,14 @@ function DraftPanel({
     try {
       await api(`${base}/${path}`, { method: "POST", body: body ?? {} });
       notifyWorkQueueChanged();
-      onDone({
-        prospectName: itemName(item),
-        message:
-          path === "approve"
-            ? "Message validé. Son état d’envoi est disponible dans « Traités »."
-            : path === "reject"
-              ? "Brouillon refusé. Aucun envoi n’a été demandé."
-              : "Régénération demandée. Consultez la file pour retrouver la nouvelle réponse.",
-        treatedId: path === "regenerate" ? undefined : item.id,
-      });
+      const name = itemName(item);
+      onDone(
+        path === "approve"
+          ? { title: "Réponse validée", description: `${name} : son état d’envoi est suivi dans « Traités ».`, treatedId: item.id }
+          : path === "reject"
+            ? { title: "Brouillon refusé", description: `${name} : aucun envoi n’a été demandé.`, treatedId: item.id }
+            : { title: "Nouvelle réponse demandée", description: `${name} : la réponse régénérée reviendra dans la file.` },
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de l'opération");
     } finally {
@@ -264,28 +275,6 @@ function DraftPanel({
         <p className="border-t border-separator px-5 py-3 text-[13px] text-muted">
           Votre accès observateur permet de consulter les brouillons.
         </p>
-      ) : rejecting ? (
-        <div className="flex flex-col gap-3 border-t border-separator px-5 py-4">
-          <Field label="Motif du refus">
-            <TextInput
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex. ton trop familier"
-            />
-          </Field>
-          <div className="flex flex-wrap gap-2">
-            <Btn
-              variant="danger"
-              disabled={busy || reason.trim().length < 3}
-              onClick={() => act("reject", { reason: reason.trim() })}
-            >
-              Confirmer le refus
-            </Btn>
-            <Btn disabled={busy} onClick={() => setRejecting(false)}>
-              Annuler
-            </Btn>
-          </div>
-        </div>
       ) : (
         <div className="draft-actions sticky bottom-3 z-10 mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/95 px-3 py-3 shadow-overlay backdrop-blur-md">
           <div className="draft-decision flex flex-wrap gap-2 max-sm:w-full">
@@ -307,7 +296,10 @@ function DraftPanel({
               disabled={busy}
               onClick={() =>
                 editing
-                  ? (setText(draft.content), setEditing(false))
+                  ? guard(() => {
+                      setText(draft.content);
+                      setEditing(false);
+                    })
                   : setEditing(true)
               }
             >
@@ -317,11 +309,22 @@ function DraftPanel({
           </div>
           <span className="flex-1 max-sm:hidden" />
           <div className="flex flex-wrap items-center gap-2 max-sm:w-full">
-            <Btn variant="ghost" disabled={busy} onClick={() => act("regenerate")}>
+            <Btn
+              variant="ghost"
+              disabled={busy}
+              onClick={() => (changed ? setConfirmRegenerate(true) : void act("regenerate"))}
+            >
               <RefreshCw className="size-4" aria-hidden="true" />
               Régénérer
             </Btn>
-            <Btn variant="danger-soft" disabled={busy} onClick={() => setRejecting(true)}>
+            <Btn
+              variant="danger-soft"
+              disabled={busy}
+              onClick={() => {
+                setReason("");
+                setRejecting(true);
+              }}
+            >
               Refuser le brouillon
             </Btn>
             <TextLink href={`/conversations?id=${item.conversation_id}`} className="px-1 max-sm:basis-full">
@@ -335,6 +338,36 @@ function DraftPanel({
         dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
         en arrêt d’urgence. Son état reste lisible dans « Traités ».
       </p>
+      <ConfirmDialog
+        isOpen={confirmRegenerate}
+        onOpenChange={setConfirmRegenerate}
+        status="warning"
+        title="Régénérer la réponse ?"
+        description="Votre version modifiée sera perdue : l’agent propose une nouvelle réponse à la place."
+        cancelLabel="Garder ma version"
+        confirmLabel="Régénérer"
+        onConfirm={() => void act("regenerate")}
+      />
+      <ConfirmDialog
+        isOpen={rejecting}
+        onOpenChange={setRejecting}
+        title="Refuser le brouillon ?"
+        description="Le message ne sera pas envoyé. Le motif est gardé dans la trace de la décision."
+        cancelLabel="Annuler"
+        confirmLabel="Refuser le brouillon"
+        confirmDisabled={reason.trim().length < 3}
+        onConfirm={() => void act("reject", { reason: reason.trim() })}
+      >
+        <Field label="Motif du refus" hint="3 caractères minimum." className="pt-3">
+          <TextInput
+            variant="secondary"
+            autoFocus
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ex. ton trop familier"
+          />
+        </Field>
+      </ConfirmDialog>
     </section>
   );
 }
@@ -367,22 +400,18 @@ function ReviewCard({ label: aria, title, intro, children }: { label: string; ti
   );
 }
 
-function ApplicationReview({
-  item,
-  onDone,
-}: {
-  item: TodoItem;
-  onDone: (result: DecisionResult) => void;
-}) {
+function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
   const user = useCurrentUser();
   const prospect = useApi<Prospect>(
     item.prospect ? `/prospects/${item.prospect.id}` : null,
   );
   const [membershipId, setMembershipId] = useState("");
   const [checked, setChecked] = useState(false);
-  const [reason, setReason] = useState(
+  const [initialReason] = useState(
     `Dossier de candidature reçu le ${formatDate(item.created_at)}, vérifié dans la boîte email.`,
   );
+  const [reason, setReason] = useState(initialReason);
+  useReportDirty(reason !== initialReason, onDirtyChange);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const memberships = prospect.data?.campaigns ?? [];
@@ -418,10 +447,10 @@ function ApplicationReview({
       });
       notifyWorkQueueChanged();
       onDone({
-        prospectName: itemName(item),
-        message: needsStage
-          ? "Parcours passé à « Candidature déposée ». La demande a quitté la file."
-          : "Candidature vérifiée sur le parcours choisi. La demande a quitté la file.",
+        title: "Candidature vérifiée",
+        description: needsStage
+          ? `${itemName(item)} : parcours passé à « Candidature déposée ». La demande a quitté la file.`
+          : `${itemName(item)} : candidature vérifiée sur le parcours choisi. La demande a quitté la file.`,
       });
     } catch (err) {
       prospect.reload();
@@ -512,13 +541,7 @@ function ApplicationReview({
   );
 }
 
-function EnrollmentReview({
-  item,
-  onDone,
-}: {
-  item: TodoItem;
-  onDone: (result: DecisionResult) => void;
-}) {
+function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
   const user = useCurrentUser();
   const prospect = useApi<Prospect>(
     item.prospect ? `/prospects/${item.prospect.id}` : null,
@@ -530,6 +553,7 @@ function EnrollmentReview({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useReportDirty(reference !== (item.handoff?.evidence_reference ?? "") || note.trim() !== "", onDirtyChange);
   const eligible =
     prospect.data?.campaigns.filter((m) =>
       ["applied", "converted"].includes(m.conversion_stage),
@@ -554,8 +578,8 @@ function EnrollmentReview({
       );
       notifyWorkQueueChanged();
       onDone({
-        prospectName: itemName(item),
-        message: "Inscription confirmée avec sa preuve. La demande a quitté la file.",
+        title: "Inscription confirmée",
+        description: `${itemName(item)} : preuve enregistrée, la demande a quitté la file.`,
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Confirmation impossible");
@@ -640,17 +664,26 @@ function DetailHead({
   incident,
   chips,
   action,
+  autoFocus = false,
 }: {
   name: string;
   incident?: boolean;
   chips: React.ReactNode;
   action?: React.ReactNode;
+  /** Après une décision, le focus passe sur le titre de l'élément suivant (lu par les lecteurs d'écran). */
+  autoFocus?: boolean;
 }) {
+  const title = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (autoFocus) title.current?.focus({ preventScroll: true });
+  }, [autoFocus]);
   return (
     <header className="flex flex-wrap items-start gap-3">
       <PersonMark name={name} incident={incident} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <h2 className="text-xl font-semibold tracking-[-0.01em] text-foreground">{name}</h2>
+        <h2 ref={title} tabIndex={-1} className="text-xl font-semibold tracking-[-0.01em] text-foreground outline-none">
+          {name}
+        </h2>
         <div className="flex flex-wrap items-center gap-1.5">{chips}</div>
       </div>
       {action}
@@ -659,20 +692,18 @@ function DetailHead({
 }
 
 function Detail({
-  item,
-  onDone,
   kind,
-}: {
-  item: TodoItem;
-  onDone: (result: DecisionResult) => void;
-  kind: KindFilter;
-}) {
+  autoFocus,
+  ...panel
+}: PanelProps & { kind: KindFilter; autoFocus: boolean }) {
+  const { item } = panel;
   const name = itemName(item);
   const rec = item.recommendation;
   return (
     <section className="mx-auto flex w-full max-w-[980px] min-w-0 flex-1 flex-col gap-4" aria-label={`À traiter : ${name}`}>
       <DetailHead
         name={name}
+        autoFocus={autoFocus}
         incident={item.kind === "incident"}
         chips={
           <>
@@ -813,15 +844,15 @@ function Detail({
           </Box>
         )}
 
-        {item.draft && <DraftPanel key={item.id} item={item} onDone={onDone} />}
+        {item.draft && <DraftPanel key={item.id} {...panel} />}
       </div>
 
       {item.kind === "application" && (
-        <ApplicationReview item={item} onDone={onDone} />
+        <ApplicationReview {...panel} />
       )}
 
       {item.kind === "enrollment" && (
-        <EnrollmentReview item={item} onDone={onDone} />
+        <EnrollmentReview {...panel} />
       )}
 
       {item.handoff && rec && (
@@ -862,7 +893,6 @@ function TreatedDetail({
   const user = useCurrentUser();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const messageId = item.id.split(":")[2];
   const name = item.prospect
     ? fullName(item.prospect) || item.prospect.email || "Prospect"
@@ -875,7 +905,6 @@ function TreatedDetail({
   async function retry() {
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await api(
         `/conversations/${item.conversation_id}/messages/${messageId}/retry-delivery`,
@@ -883,7 +912,9 @@ function TreatedDetail({
           method: "POST",
         },
       );
-      setNotice("Nouvelle tentative demandée.");
+      toast.success("Nouvelle tentative demandée", {
+        description: `${name} : l’état d’envoi se met à jour ici.`,
+      });
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec");
@@ -950,7 +981,6 @@ function TreatedDetail({
           </div>
         )}
         {error && <ErrorText>{error}</ErrorText>}
-        {notice && <Notice>{notice}</Notice>}
       </Box>
       <section className="draft-panel gap-0 overflow-hidden p-0" aria-label="Message traité">
         <header className="border-b border-separator px-5 py-3.5">
@@ -970,19 +1000,32 @@ function Todo() {
   const kind: KindFilter = KIND_ORDER.includes(params.get("kind") as TodoKind)
     ? (params.get("kind") as TodoKind)
     : "";
-  function setKind(value: KindFilter) {
-    router.replace(`/todo${qs({ kind: value, id: selectedId })}`, {
-      scroll: false,
+  const [offset, setOffset] = useState(0);
+  // Saisie non enregistrée dans le panneau ouvert : changer d'élément, d'onglet ou de filtre demande confirmation.
+  const dirty = useRef(false);
+  const onDirtyChange = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const { guard, dialog: discardDialog } = useDiscardGuard(() => dirty.current);
+  // Après une décision, le focus va au titre de l'élément suivant, ou à celui de la file quand elle est vide.
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const queueTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (focusId !== QUEUE || selectedId) return;
+    queueTitle.current?.focus({ preventScroll: true });
+    setFocusId(null);
+  }, [focusId, selectedId]);
+  function go(url: string, then?: () => void) {
+    guard(() => {
+      dirty.current = false;
+      setFocusId(null);
+      then?.();
+      router.replace(url, { scroll: false });
     });
   }
-  const [offset, setOffset] = useState(0);
-  const [notice, setNotice] = useState<DecisionResult | null>(null);
-  const noticeRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!notice) return;
-    noticeRef.current?.focus({ preventScroll: true });
-    noticeRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
-  }, [notice]);
+  function setKind(value: KindFilter) {
+    go(`/todo${qs({ kind: value, id: selectedId })}`, () => setOffset(0));
+  }
   const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
@@ -1038,40 +1081,11 @@ function Todo() {
         title="À traiter"
         subtitle="Examinez le contexte préparé par l’agent, puis validez la prochaine action."
       />
-      {notice && (
-        <div
-          ref={noticeRef}
-          tabIndex={-1}
-          className="flex flex-wrap items-center gap-3 rounded-xl bg-success-soft px-5 py-3.5 text-success-soft-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          role="status"
-          aria-label="Résultat de la décision"
-        >
-          <CircleCheck className="size-5 shrink-0" aria-hidden="true" />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <strong className="text-sm font-semibold">{notice.prospectName}</strong>
-            <p className="text-sm">✓ {notice.message}</p>
-          </div>
-          {notice.treatedId && (
-            <LinkButton
-              size="sm"
-              variant="outline"
-              href={`/todo${qs({ tab: "treated", id: notice.treatedId })}`}
-            >
-              Consulter la décision →
-            </LinkButton>
-          )}
-        </div>
-      )}
       {selectedId && (
         <div className="lg:hidden">
           <Btn
             variant="ghost"
-            onClick={() =>
-              router.replace(
-                `/todo${qs({ kind, tab: tab === "treated" ? "treated" : undefined })}`,
-                { scroll: false },
-              )
-            }
+            onClick={() => go(`/todo${qs({ kind, tab: tab === "treated" ? "treated" : undefined })}`)}
           >
             ← Liste des éléments
           </Btn>
@@ -1084,7 +1098,9 @@ function Todo() {
           aria-label="Éléments à traiter"
         >
           <header className="flex items-center gap-2 px-2 pt-1">
-            <h2 className="flex-1 text-base font-semibold text-foreground">Votre file de travail</h2>
+            <h2 ref={queueTitle} tabIndex={-1} className="flex-1 text-base font-semibold text-foreground outline-none">
+              Votre file de travail
+            </h2>
             <span className="text-[13px] text-muted" aria-label="Éléments en attente">
               <strong className="font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
             </span>
@@ -1093,7 +1109,7 @@ function Todo() {
             label="Affichage"
             className="w-full"
             value={tab}
-            onChange={(v) => router.replace(v === "treated" ? "/todo?tab=treated" : "/todo", { scroll: false })}
+            onChange={(v) => go(v === "treated" ? "/todo?tab=treated" : "/todo")}
             options={[
               { value: "todo", text: "À traiter" },
               { value: "treated", text: `Traités (24 h) (${treated.data?.total ?? "—"})` },
@@ -1122,14 +1138,7 @@ function Todo() {
                       <RowButton
                         selected={t.id === selectedId}
                         className="py-2.5"
-                        onClick={() =>
-                          router.replace(
-                            `/todo?tab=treated&id=${encodeURIComponent(t.id)}`,
-                            {
-                              scroll: false,
-                            },
-                          )
-                        }
+                        onClick={() => go(`/todo${qs({ tab: "treated", id: t.id })}`)}
                       >
                         <PersonMark name={name} />
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -1154,10 +1163,7 @@ function Todo() {
           <div className="flex flex-wrap gap-1.5 px-1" role="group" aria-label="Type" hidden={tab === "treated"}>
             <FilterChip
               pressed={kind === ""}
-              onClick={() => {
-                setKind("");
-                setOffset(0);
-              }}
+              onClick={() => setKind("")}
             >
               Tout ({total})
             </FilterChip>
@@ -1167,10 +1173,7 @@ function Todo() {
               <FilterChip
                 key={k}
                 pressed={kind === k}
-                onClick={() => {
-                  setKind(k);
-                  setOffset(0);
-                }}
+                onClick={() => setKind(k)}
               >
                 {TASK_LABELS[k]} ({counts[k] ?? 0})
               </FilterChip>
@@ -1202,11 +1205,7 @@ function Todo() {
                 key={i.id}
                 item={i}
                 selected={i.id === selectedId}
-                onSelect={() =>
-                  router.replace(`/todo${qs({ kind, id: i.id })}`, {
-                    scroll: false,
-                  })
-                }
+                onSelect={() => go(`/todo${qs({ kind, id: i.id })}`)}
               />
             ))}
           </ul>
@@ -1218,7 +1217,7 @@ function Todo() {
                   size="sm"
                   variant="ghost"
                   disabled={offset === 0 || list.loading}
-                  onClick={() => setOffset(Math.max(0, offset - 50))}
+                  onClick={() => guard(() => setOffset(Math.max(0, offset - 50)))}
                 >
                   Éléments précédents
                 </Btn>
@@ -1230,7 +1229,7 @@ function Todo() {
                   size="sm"
                   variant="ghost"
                   disabled={offset + 50 >= list.data.total || list.loading}
-                  onClick={() => setOffset(offset + 50)}
+                  onClick={() => guard(() => setOffset(offset + 50))}
                 >
                   Éléments suivants
                 </Btn>
@@ -1276,9 +1275,24 @@ function Todo() {
               key={selected.id}
               item={selected}
               kind={kind}
+              autoFocus={focusId === selected.id}
+              onDirtyChange={onDirtyChange}
+              guard={guard}
               onDone={(result) => {
-                setNotice(result);
-                router.replace(`/todo${qs({ kind })}`, { scroll: false });
+                // La décision est enregistrée : Toast, puis l'élément suivant de la file s'ouvre pour enchaîner.
+                const rest = items.filter((i) => i.id !== selected.id);
+                const index = items.findIndex((i) => i.id === selected.id);
+                const next = rest[Math.max(0, index)] ?? rest[rest.length - 1] ?? null;
+                const treatedId = result.treatedId;
+                toast.success(result.title, {
+                  description: result.description,
+                  actionProps: treatedId
+                    ? { children: "Voir la décision", onPress: () => go(`/todo${qs({ tab: "treated", id: treatedId })}`) }
+                    : undefined,
+                });
+                dirty.current = false;
+                setFocusId(next?.id ?? QUEUE);
+                router.replace(`/todo${qs({ kind, id: next?.id })}`, { scroll: false });
                 refresh();
               }}
             />
@@ -1309,11 +1323,7 @@ function Todo() {
                     {tab === "todo" && items[0] && (
                       <Btn
                         variant="primary"
-                        onClick={() =>
-                          router.replace(`/todo${qs({ kind, id: items[0].id })}`, {
-                            scroll: false,
-                          })
-                        }
+                        onClick={() => go(`/todo${qs({ kind, id: items[0].id })}`)}
                       >
                         Examiner la première demande →
                       </Btn>
@@ -1330,6 +1340,7 @@ function Todo() {
           )}
         </div>
       </div>
+      {discardDialog}
     </Screen>
   );
 }
