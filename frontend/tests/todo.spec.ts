@@ -244,10 +244,20 @@ test("pagination et lien direct vers une tâche hors de la page courante", async
     }),
   );
   await open(page);
-  await page.getByRole("button", { name: "Éléments suivants" }).click();
+  await expect(page.getByText("1-50 sur 51")).toBeVisible();
+  await page.getByRole("button", { name: "Suivant" }).click();
   await expect(
     page.getByRole("button", { name: /Ahmed Belkacem/ }),
   ).toBeVisible();
+  // La page est dans l'URL : ouvrir un élément puis revenir garde la page 2.
+  await expect(page).toHaveURL(/page=2/);
+  await page.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(page).toHaveURL(/page=2&id=handoff%3Ac2/);
+  await page.reload();
+  await expect(page.getByText("51-51 sur 51")).toBeVisible();
+  await page.getByRole("button", { name: "Page 1" }).click();
+  await expect(page).not.toHaveURL(/page=/);
+  await expect(page.getByRole("button", { name: /Marie Dupont/ })).toBeVisible();
   await page.goto("/todo?id=handoff%3Aold");
   await expect(
     page.getByText("Question sans extrait validé.").first(),
@@ -456,7 +466,7 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(delivery).toContainText("aucun envoi n’est encore confirmé");
   await expect(page.getByRole("region", { name: "Message traité" })).toContainText("Bonjour Marie, version relue.");
   expect(calls.posts).toHaveLength(1);
-  await page.getByRole("tab", { name: "À traiter", exact: true }).click();
+  await page.getByRole("tab", { name: "À traiter · 1" }).click();
   await page.getByRole("button", { name: "Examiner la première demande →" }).click();
   await expect(
     page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
@@ -717,7 +727,10 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("tab", { name: "Traités (24 h) (2)" }).click();
+  await page.getByRole("tab", { name: "Traités 24 h · 2" }).click();
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("status")).toHaveText(
+    "2 décisions sur 24 h",
+  );
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();

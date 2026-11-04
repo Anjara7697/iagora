@@ -22,6 +22,7 @@ import {
   ErrorText,
   Field,
   FilterChip,
+  FilterChipGroup,
   LinkButton,
   Notice,
   SelectBox,
@@ -65,6 +66,7 @@ import type {
   Membership,
 } from "@/lib/types";
 import { Box } from "@/components/ds/card";
+import { TablePagination } from "@/components/ds/table";
 
 type KindFilter = "" | TodoKind;
 /** Classes d'un bloc et entrée en cascade (`reveal`) réunies. */
@@ -72,6 +74,8 @@ function revealed(index: number, className = "") {
   const motion = reveal(index);
   return { className: `${className} ${motion.className}`.trim(), style: motion.style };
 }
+/** Éléments par page de la file. */
+const PAGE_SIZE = 50;
 /** Cible du focus quand la file est vide après une décision. */
 const QUEUE = "queue";
 /** Résultat d'une décision, annoncé par un Toast : `treatedId` ajoute « Voir la décision ». */
@@ -1011,7 +1015,10 @@ function Todo() {
   const kind: KindFilter = KIND_ORDER.includes(params.get("kind") as TodoKind)
     ? (params.get("kind") as TodoKind)
     : "";
-  const [offset, setOffset] = useState(0);
+  // Page de la file dans l'URL (comme le filtre et l'élément ouvert) : lien partageable, retour arrière fidèle.
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
+  const pageParam = page > 1 ? page : undefined;
   // Saisie non enregistrée dans le panneau ouvert : changer d'élément, d'onglet ou de filtre demande confirmation.
   const dirty = useRef(false);
   const onDirtyChange = useCallback((value: boolean) => {
@@ -1035,9 +1042,9 @@ function Todo() {
     });
   }
   function setKind(value: KindFilter) {
-    go(`/todo${qs({ kind: value, id: selectedId })}`, () => setOffset(0));
+    go(`/todo${qs({ kind: value, id: selectedId })}`);
   }
-  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: 50, offset })}`);
+  const list = useApi<TodoPage>(`/todo${qs({ kind, limit: PAGE_SIZE, offset })}`);
   const all = useApi<TodoPage>("/todo?limit=1");
   const tab = params.get("tab") === "treated" ? "treated" : "todo";
   const treated = useApi<TreatedPage>("/todo/treated", { keepPrevious: true });
@@ -1101,157 +1108,142 @@ function Todo() {
         <div className="lg:hidden">
           <Btn
             variant="ghost"
-            onClick={() => go(`/todo${qs({ kind, tab: tab === "treated" ? "treated" : undefined })}`)}
+            onClick={() =>
+              go(`/todo${qs(tab === "treated" ? { tab: "treated" } : { kind, page: pageParam })}`)
+            }
           >
             ← Liste des éléments
           </Btn>
         </div>
       )}
       <div className="flex items-start gap-5">
-        <Box
-          as="aside"
-          className={`w-full shrink-0 gap-3 p-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto ${selectedId ? "hidden" : "flex"}`}
+        {/* File posée sur la page (règle des parcours) : titre et compteur, onglets, filtres, puis la liste sur sa
+            surface et la pagination. */}
+        <aside
           aria-label="Éléments à traiter"
+          {...revealed(
+            1,
+            `w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[360px] lg:overflow-y-auto lg:pb-2 ${selectedId ? "hidden" : "flex"}`,
+          )}
         >
-          <header className="flex items-center gap-2 px-2 pt-1">
+          <header className="flex items-baseline gap-2">
             <h2 ref={queueTitle} tabIndex={-1} className="flex-1 text-base font-semibold text-foreground outline-none">
               Votre file de travail
             </h2>
-            <span className="text-[13px] text-muted" aria-label="Éléments en attente">
-              <strong className="font-medium text-foreground tabular-nums">{all.data ? total : "—"}</strong> en attente
+            <span className="text-[13px] text-muted tabular-nums" role="status">
+              {tab === "treated"
+                ? treated.data
+                  ? `${treated.data.total} décision${treated.data.total > 1 ? "s" : ""} sur 24 h`
+                  : ""
+                : all.data
+                  ? `${total} en attente`
+                  : ""}
             </span>
           </header>
           <Segmented
             label="Affichage"
             className="w-full"
             value={tab}
-            onChange={(v) => go(v === "treated" ? "/todo?tab=treated" : "/todo")}
+            onChange={(v) => go(v === "treated" ? "/todo?tab=treated" : `/todo${qs({ kind })}`)}
             options={[
-              { value: "todo", text: "À traiter" },
-              { value: "treated", text: `Traités (24 h) (${treated.data?.total ?? "—"})` },
+              { value: "todo", text: `À traiter · ${all.data ? total : "—"}` },
+              { value: "treated", text: `Traités 24 h · ${treated.data?.total ?? "—"}` },
             ]}
           />
-          {tab === "treated" && (
+          {tab === "treated" ? (
             <>
-              <Loading
-                loading={treated.loading && !treated.data}
-                error={treated.error}
-                onRetry={treated.reload}
-              />
+              <Loading loading={treated.loading && !treated.data} error={treated.error} onRetry={treated.reload} />
               {treated.data && treatedItems.length === 0 && (
                 <p className="px-2 py-3 text-[13px] text-muted">
-                  Rien de traité pour l’instant. Chaque élément traité vient ici
-                  avec sa trace : qui a agi, quand, et ce qui est parti.
+                  Rien de traité pour l’instant. Chaque élément traité vient ici avec sa trace : qui a agi, quand, et ce
+                  qui est parti.
                 </p>
               )}
-              <ul className="flex flex-col gap-0.5">
-                {treatedItems.map((t) => {
-                  const name = t.prospect
-                    ? fullName(t.prospect) || t.prospect.email || "Prospect"
-                    : "Prospect";
-                  return (
-                    <li key={t.id}>
-                      <RowButton
-                        selected={t.id === selectedId}
-                        className="py-2.5"
-                        onClick={() => go(`/todo${qs({ tab: "treated", id: t.id })}`)}
-                      >
-                        <PersonMark name={name} />
-                        <span className="flex min-w-0 flex-1 flex-col gap-1">
-                          <span className="flex items-baseline gap-2">
-                            <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
-                            <span className="shrink-0 text-xs text-muted">{formatDate(t.decided_at)}</span>
+              {treatedItems.length > 0 && (
+                <Box as="ul" className="gap-0.5 p-1.5">
+                  {treatedItems.map((t) => {
+                    const name = t.prospect ? fullName(t.prospect) || t.prospect.email || "Prospect" : "Prospect";
+                    return (
+                      <li key={t.id}>
+                        <RowButton
+                          selected={t.id === selectedId}
+                          className="py-2.5"
+                          onClick={() => go(`/todo${qs({ tab: "treated", id: t.id })}`)}
+                        >
+                          <PersonMark name={name} />
+                          <span className="flex min-w-0 flex-1 flex-col gap-1">
+                            <span className="flex items-baseline gap-2">
+                              <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
+                              <span className="shrink-0 text-xs text-muted">{formatDate(t.decided_at)}</span>
+                            </span>
+                            <span className="flex flex-wrap gap-1.5">
+                              <Tag tone={t.decision === "approved" ? "success" : "neutral"}>
+                                {t.decision === "approved" ? "Validé" : "Refusé"}
+                              </Tag>
+                              <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
+                            </span>
                           </span>
-                          <span className="flex flex-wrap gap-1.5">
-                            <Tag tone={t.decision === "approved" ? "success" : "neutral"}>
-                              {t.decision === "approved" ? "Validé" : "Refusé"}
-                            </Tag>
-                            <Tag tone={EXECUTION_TONE[t.execution] ?? "neutral"}>{label(EXECUTION, t.execution)}</Tag>
-                          </span>
-                        </span>
-                      </RowButton>
-                    </li>
-                  );
-                })}
-              </ul>
+                        </RowButton>
+                      </li>
+                    );
+                  })}
+                </Box>
+              )}
+            </>
+          ) : (
+            <>
+              <FilterChipGroup
+                label="Type"
+                value={kind}
+                onChange={setKind}
+                options={[
+                  { value: "" as KindFilter, text: `Tout (${total})` },
+                  ...KIND_ORDER.filter((k) => showAllKinds || kind === k || (counts[k] ?? 0) > 0).map((k) => ({
+                    value: k as KindFilter,
+                    text: `${TASK_LABELS[k]} (${counts[k] ?? 0})`,
+                  })),
+                ]}
+                trailing={
+                  KIND_ORDER.some((k) => (counts[k] ?? 0) === 0 && kind !== k) && (
+                    <FilterChip
+                      className="rounded-lg"
+                      pressed={false}
+                      aria-expanded={showAllKinds}
+                      onClick={() => setShowAllKinds(!showAllKinds)}
+                    >
+                      {showAllKinds ? "Masquer les types vides" : "Autres types"}
+                    </FilterChip>
+                  )
+                }
+              />
+              <Loading loading={list.loading} error={list.error} onRetry={list.reload} shape="rows" />
+              {list.data && items.length === 0 && (
+                <p className="px-2 py-3 text-[13px] text-muted">Rien à traiter pour le moment.</p>
+              )}
+              {items.length > 0 && (
+                <Box as="ul" className="gap-0.5 p-1.5">
+                  {items.map((i) => (
+                    <Row
+                      key={i.id}
+                      item={i}
+                      selected={i.id === selectedId}
+                      onSelect={() => go(`/todo${qs({ kind, page: pageParam, id: i.id })}`)}
+                    />
+                  ))}
+                </Box>
+              )}
+              {list.data && (list.data.total > PAGE_SIZE || page > 1) && (
+                <TablePagination
+                  className="flex-wrap justify-center gap-2"
+                  total={list.data.total}
+                  pageSize={PAGE_SIZE}
+                  page={page}
+                  onChange={(next) => go(`/todo${qs({ kind, page: next > 1 ? next : undefined })}`)}
+                />
+              )}
             </>
           )}
-          <div className="flex flex-wrap gap-1.5 px-1" role="group" aria-label="Type" hidden={tab === "treated"}>
-            <FilterChip
-              pressed={kind === ""}
-              onClick={() => setKind("")}
-            >
-              Tout ({total})
-            </FilterChip>
-            {KIND_ORDER.filter(
-              (k) => showAllKinds || kind === k || (counts[k] ?? 0) > 0,
-            ).map((k) => (
-              <FilterChip
-                key={k}
-                pressed={kind === k}
-                onClick={() => setKind(k)}
-              >
-                {TASK_LABELS[k]} ({counts[k] ?? 0})
-              </FilterChip>
-            ))}
-            {KIND_ORDER.some((k) => (counts[k] ?? 0) === 0 && kind !== k) && (
-              <FilterChip
-                pressed={false}
-                aria-expanded={showAllKinds}
-                onClick={() => setShowAllKinds(!showAllKinds)}
-              >
-                {showAllKinds ? "Masquer les types vides" : "Autres types"}
-              </FilterChip>
-            )}
-          </div>
-          {tab === "todo" && (
-            <Loading
-              loading={list.loading}
-              error={list.error}
-              onRetry={list.reload}
-              shape="rows"
-            />
-          )}
-          {tab === "todo" && list.data && items.length === 0 && (
-            <p className="px-2 py-3 text-[13px] text-muted">Rien à traiter pour le moment.</p>
-          )}
-          <ul className="flex flex-col gap-0.5" hidden={tab === "treated"}>
-            {items.map((i) => (
-              <Row
-                key={i.id}
-                item={i}
-                selected={i.id === selectedId}
-                onSelect={() => go(`/todo${qs({ kind, id: i.id })}`)}
-              />
-            ))}
-          </ul>
-          {tab === "todo" &&
-            list.data &&
-            (list.data.total > 50 || offset > 0) && (
-              <div className="flex items-center justify-between gap-2 border-t border-separator px-1 pt-3">
-                <Btn
-                  size="sm"
-                  variant="ghost"
-                  disabled={offset === 0 || list.loading}
-                  onClick={() => guard(() => setOffset(Math.max(0, offset - 50)))}
-                >
-                  Éléments précédents
-                </Btn>
-                <span className="text-xs text-muted tabular-nums">
-                  {offset + 1}–{Math.min(offset + 50, list.data.total)} /{" "}
-                  {list.data.total}
-                </span>
-                <Btn
-                  size="sm"
-                  variant="ghost"
-                  disabled={offset + 50 >= list.data.total || list.loading}
-                  onClick={() => guard(() => setOffset(offset + 50))}
-                >
-                  Éléments suivants
-                </Btn>
-              </div>
-            )}
-        </Box>
+        </aside>
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {tab === "treated" && selectedTreated ? (
             <TreatedDetail
@@ -1308,7 +1300,7 @@ function Todo() {
                 });
                 dirty.current = false;
                 setFocusId(next?.id ?? QUEUE);
-                router.replace(`/todo${qs({ kind, id: next?.id })}`, { scroll: false });
+                router.replace(`/todo${qs({ kind, page: pageParam, id: next?.id })}`, { scroll: false });
                 refresh();
               }}
             />
@@ -1339,7 +1331,7 @@ function Todo() {
                     {tab === "todo" && items[0] && (
                       <Btn
                         variant="primary"
-                        onClick={() => go(`/todo${qs({ kind, id: items[0].id })}`)}
+                        onClick={() => go(`/todo${qs({ kind, page: pageParam, id: items[0].id })}`)}
                       >
                         Examiner la première demande →
                       </Btn>
