@@ -1,109 +1,35 @@
 "use client";
 
-import { Avatar as HeroAvatar, Chip, ScrollShadow } from "@heroui/react";
-import { Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
-import { Btn, Check, ErrorText, FilterChip, LinkButton, Notice, Segmented, SelectInput, Tag, TextInput } from "@/components/ds/controls";
-import { Drawer } from "@/components/Drawer";
-import { replaceUrl } from "@/lib/url";
-import { EmptyPanel, PageHeader, SCROLL_SHADOW_SIZE, Screen } from "@/components/ds/layout";
-import { reveal } from "@/components/ds/motion";
-import { DataTable, Table, TablePagination } from "@/components/ds/table";
-import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
-import {
-  formatDate,
-  fullName,
-  label,
-  CHANNELS,
-  CONSENT,
-  LEVELS,
-  STAGES,
-  TARGETS,
-} from "@/lib/labels";
-import { ApiError, download, qs } from "@/lib/api";
-import { useCurrentUser } from "@/components/AppShell";
-import { useApi } from "@/lib/useApi";
-import {
-  prospectResultsHref,
-  readProspectResults,
-  type ProspectResults,
-} from "@/lib/prospectResults";
-import type { Campaign, Membership, Page, Prospect } from "@/lib/types";
-import { Box } from "@/components/ds/card";
-
-const LIMIT = 25;
-// Le pipeline affiche plus de prospects par page pour que les colonnes soient représentatives.
-const PIPELINE_LIMIT = 100;
-const PIPELINE_COLUMNS = [
-  { key: "unassigned", title: "Sans campagne", stages: [] as string[] },
-  { key: "new", title: "À qualifier", stages: ["new", "to_qualify"] },
-  {
-    key: "conversation",
-    title: "En échange",
-    stages: ["contacted", "in_conversation"],
-  },
-  { key: "qualified", title: "Qualifié", stages: ["qualified"] },
-  {
-    key: "meeting",
-    title: "Rendez-vous",
-    stages: ["meeting_proposed", "meeting_scheduled", "meeting_done"],
-  },
-  { key: "applied", title: "Candidature", stages: ["applied"] },
-  { key: "converted", title: "Converti", stages: ["converted"] },
-  { key: "follow_up", title: "À relancer", stages: ["to_follow_up"] },
-  { key: "exit", title: "Sorties", stages: ["lost"] },
-];
-const level = (t: number) =>
-  t >= 75 ? "very_hot" : t >= 50 ? "hot" : t >= 25 ? "warm" : "cold";
-function Avatar({ prospect, size = "sm" }: { prospect: Prospect; size?: "sm" | "md" }) {
-  return (
-    <HeroAvatar size={size} variant="soft" color="accent" aria-hidden="true">
-      <HeroAvatar.Fallback>
-        {[prospect.first_name, prospect.last_name]
-          .filter(Boolean)
-          .map((s) => s![0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase() || "?"}
-      </HeroAvatar.Fallback>
-    </HeroAvatar>
-  );
-}
-
-const CONSENT_TONE: Record<string, "success" | "danger" | "neutral" | "warning"> = {
-  granted: "success",
-  opted_out: "danger",
-  pending: "warning",
-};
-
-function ConsentTag({ status }: { status: string }) {
-  return <Tag tone={CONSENT_TONE[status] ?? "neutral"}>{label(CONSENT, status)}</Tag>;
-}
-
 /**
- * Pipeline : colonnes par étape dans un `ScrollShadow` horizontal (règle 9), fondu sur le bord tant qu'il reste des
- * colonnes. La zone se fait défiler à la souris, au doigt ou au clavier (flèches une fois focalisée).
+ * Liste des prospects : une barre (vue, recherche, Mes prospects, À attribuer, filtres, compteur), puis le pipeline
+ * ou la table et la pagination. L'état est dans l'adresse (`lib/prospectResults.ts`, `replaceUrl`) ; les vues et le
+ * panneau de filtres sont dans `components/prospects/`.
  */
-function PipelineScroller({ children }: { children: React.ReactNode }) {
-  return (
-    <ScrollShadow
-      orientation="horizontal"
-      size={SCROLL_SHADOW_SIZE}
-      className="flex snap-x gap-4 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      tabIndex={0}
-      role="region"
-      aria-label="Pipeline des prospects, défilement horizontal"
-    >
-      {children}
-    </ScrollShadow>
-  );
-}
+
+import { Chip } from "@heroui/react";
+import { Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useCurrentUser } from "@/components/AppShell";
+import { Box } from "@/components/ds/card";
+import { Btn, ErrorText, FilterChip, LinkButton, Notice, Segmented, TextInput } from "@/components/ds/controls";
+import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { TablePagination } from "@/components/ds/table";
+import { Loading, Skeleton } from "@/components/ui";
+import { ProspectFilters } from "@/components/prospects/ProspectFilters";
+import { ProspectPipeline } from "@/components/prospects/ProspectPipeline";
+import { ProspectTable } from "@/components/prospects/ProspectTable";
+import { LIMIT, PIPELINE_LIMIT, membershipFilter } from "@/components/prospects/shared";
+import { ApiError, download, qs } from "@/lib/api";
+import { CHANNELS, CONSENT, LEVELS, STAGES, TARGETS, label } from "@/lib/labels";
+import { prospectResultsHref, readProspectResults, type ProspectResults } from "@/lib/prospectResults";
+import type { Campaign, Page, Prospect } from "@/lib/types";
+import { replaceUrl } from "@/lib/url";
+import { useApi } from "@/lib/useApi";
 
 function Prospects() {
   const params = useSearchParams();
-  const router = useRouter();
   const state = readProspectResults(params);
   const {
     q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
@@ -162,38 +88,7 @@ function Prospects() {
       setExportError(err instanceof ApiError ? err.message : "Échec de l’export");
     }
   }
-  function membershipsOf(p: Prospect): Membership[] {
-    return p.campaigns.filter(
-      (m) =>
-        (!campaign || m.campaign_id === Number(campaign)) &&
-        (!sourceFilter || m.source_id === Number(sourceFilter)) &&
-        (!stage || m.conversion_stage === stage) &&
-        (!levelFilter || m.interest_status === levelFilter) &&
-        (!mine || m.assigned_advisor_id === user?.id),
-    );
-  }
-  const columns = PIPELINE_COLUMNS.filter(
-    (column) =>
-      (!stage || column.stages.includes(stage) || column.key === "exit") &&
-      (column.key !== "unassigned" ||
-        data?.items.some((p) => p.campaigns.length === 0)),
-  );
-  function inColumn(p: Prospect, column: (typeof PIPELINE_COLUMNS)[number]) {
-    if (column.key === "exit")
-      return (
-        p.consent_status === "opted_out" ||
-        membershipsOf(p).some((m) => m.conversion_stage === "lost")
-      );
-    if (p.consent_status === "opted_out") return false;
-    if (column.key === "unassigned") return p.campaigns.length === 0;
-    return membershipsOf(p).some((m) =>
-      column.stages.includes(m.conversion_stage),
-    );
-  }
-  const option = (options: Record<string, string>, all: string) => [
-    { value: "", label: all },
-    ...Object.entries(options).map(([value, text]) => ({ value, label: text })),
-  ];
+  const memberships = membershipFilter(state, user?.id);
   return (
     <Screen>
       <PageHeader
@@ -300,75 +195,15 @@ function Prospects() {
           attribution avant de répondre automatiquement.
         </Notice>
       )}
-      <Drawer
+      <ProspectFilters
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        eyebrow="Prospects"
-        title="Filtres"
-        icon={<SlidersHorizontal aria-hidden="true" />}
-      >
-        {/* Chaque choix s'applique tout de suite ; la liste se met à jour derrière le panneau. */}
-        <div className="flex flex-col gap-4">
-          <SelectInput
-            id="stage-filter"
-            label="Étape"
-            value={stage}
-            onChange={(value) => update({ stage: value })}
-            options={option(STAGES, "Toutes les étapes")}
-          />
-          <SelectInput
-            id="campaign-filter"
-            label="Campagne"
-            value={campaign}
-            disabled={campaigns.loading || !!campaigns.error}
-            onChange={(value) => update({ campaign: value, sourceFilter: "" })}
-            options={[
-              { value: "", label: "Toutes" },
-              ...(campaigns.data?.items.map((c) => ({ value: String(c.id), label: c.name })) ?? []),
-            ]}
-          />
-          {campaigns.error && (
-            <ErrorText>
-              {`Filtre des campagnes indisponible : ${campaigns.error.message}`}
-            </ErrorText>
-          )}
-          {campaigns.error && (
-            <div>
-              <Btn size="sm" variant="secondary" onClick={campaigns.reload}>
-                Réessayer les campagnes
-              </Btn>
-            </div>
-          )}
-          <SelectInput
-            id="source-filter"
-            label="Source"
-            value={sourceFilter}
-            disabled={!campaign || campaigns.loading || !!campaigns.error}
-            onChange={(value) => update({ sourceFilter: value })}
-            options={[
-              { value: "", label: campaign ? "Toutes" : "Campagne d’abord" },
-              ...(campaigns.data?.items
-                .find((c) => c.id === Number(campaign))
-                ?.sources?.map((s) => ({ value: String(s.id), label: s.name })) ?? []),
-            ]}
-          />
-          <SelectInput id="target-filter" label="Programme" value={targetCode} onChange={(value) => update({ targetCode: value })} options={option(TARGETS, "Tous les programmes")} />
-          <SelectInput id="level-filter" label="Intérêt" value={levelFilter} onChange={(value) => update({ levelFilter: value })} options={option(LEVELS, "Tous les niveaux")} />
-          <SelectInput id="channel-filter" label="Canal" value={channelFilter} onChange={(value) => update({ channelFilter: value })} options={option(CHANNELS, "Tous les canaux")} />
-          <SelectInput id="consent-filter" label="Consentement" value={consentFilter} onChange={(value) => update({ consentFilter: value })} options={option(CONSENT, "Tous")} />
-          <Check checked={hideDemo} onChange={(value) => update({ hideDemo: value })}>
-            Masquer les prospects fictifs
-          </Check>
-          <div className="flex flex-wrap gap-2 border-t border-separator pt-4">
-            <Btn variant="primary" onClick={() => setFiltersOpen(false)}>
-              {data ? `Afficher ${data.total} prospect${data.total > 1 ? "s" : ""}` : "Afficher les prospects"}
-            </Btn>
-            <Btn variant="secondary" disabled={!panelCount} onClick={() => update({ stage: "", campaign: "", sourceFilter: "", targetCode: "", levelFilter: "", channelFilter: "", consentFilter: "", hideDemo: false })}>
-              Retirer ces filtres
-            </Btn>
-          </div>
-        </div>
-      </Drawer>
+        state={state}
+        update={update}
+        campaigns={campaigns}
+        total={data ? data.total : null}
+        panelCount={panelCount}
+      />
       {/* Pendant une mise à jour (recherche, filtre), la liste précédente reste affichée. */}
       <Loading loading={loading && !data} error={error} onRetry={reload} shape="rows" />
       {data && (
@@ -385,149 +220,9 @@ function Prospects() {
           ) : (
             <>
               {view === "pipeline" ? (
-                <>
-                  <p className="text-[13px] text-muted">
-                    {data.total > data.items.length
-                      ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total}. Affinez les filtres ou utilisez la vue Table pour parcourir l’ensemble.`
-                      : `${data.total} prospect${data.total > 1 ? "s" : ""}.`}{" "}
-                    Faites défiler horizontalement pour parcourir les étapes.
-                  </p>
-                  <PipelineScroller>
-                    {columns.map((column) => {
-                      const { key, title } = column;
-                      const items = data.items.filter((p) =>
-                        inColumn(p, column),
-                      );
-                      return (
-                        <section
-                          className={`flex w-[272px] shrink-0 snap-start flex-col gap-2 rounded-lg p-2 ${key === "exit" ? "bg-surface-tertiary/60" : "bg-surface-secondary"}`}
-                          key={key}
-                          aria-label={title}
-                        >
-                          <header className="flex items-center gap-2 px-2 py-1.5">
-                            <h2 className="flex-1 text-sm font-semibold text-foreground">{title}</h2>
-                            <span className="rounded-md bg-surface px-1.5 text-xs text-muted tabular-nums">{items.length}</span>
-                          </header>
-                          {items.map((p) => (
-                            <Link
-                              className="pipeline-card flex flex-col gap-2 rounded-lg bg-surface p-3 shadow-surface outline-none transition-shadow duration-150 hover:shadow-overlay focus-visible:ring-2 focus-visible:ring-focus"
-                              key={p.id}
-                              href={profileHref(p.id)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Avatar prospect={p} />
-                                <strong className="min-w-0 flex-1 text-[13px] font-semibold break-words text-foreground">{fullName(p)}</strong>
-                                <DemoBadge email={p.email} />
-                              </div>
-                              <span className="text-xs break-all text-muted">
-                                {p.email ||
-                                  p.phone ||
-                                  "Coordonnées non renseignées"}
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {membershipsOf(p)
-                                  .filter((m) =>
-                                    column.stages.includes(m.conversion_stage),
-                                  )
-                                  .map((m) => (
-                                    <span key={m.id} className="flex min-w-0 flex-col gap-1">
-                                      <span className="truncate text-xs font-medium text-foreground">
-                                        {m.campaign_name ?? "Campagne"}
-                                      </span>
-                                      <span className="flex flex-wrap gap-1.5">
-                                        <StageBadge stage={m.conversion_stage} />
-                                        <ScoreBadge
-                                          total={m.total_score}
-                                          level={level(m.total_score)}
-                                        />
-                                      </span>
-                                    </span>
-                                  ))}
-                                <ConsentTag status={p.consent_status} />
-                              </div>
-                              <span className="text-xs text-muted">
-                                Créé le {formatDate(p.created_at)}
-                              </span>
-                            </Link>
-                          ))}
-                          {!items.length && (
-                            <p
-                              className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted"
-                              title={
-                                data.total > data.items.length
-                                  ? "Aucun parmi les prospects affichés sur cette page"
-                                  : "Aucun prospect à cette étape"
-                              }
-                            >
-                              Aucun
-                            </p>
-                          )}
-                        </section>
-                      );
-                    })}
-                  </PipelineScroller>
-                </>
+                <ProspectPipeline data={data} stage={stage} memberships={memberships} profileHref={profileHref} />
               ) : (
-                <DataTable
-                  label="Prospects et rattachements aux campagnes"
-                  minWidth={720}
-                  columns={[
-                    { id: "prospect", label: "Prospect" },
-                    { id: "stages", label: "Étapes et scores" },
-                    { id: "consent", label: "Consentement" },
-                    { id: "created", label: "Créé le" },
-                  ]}
-                >
-                      {data.items.map((p) => (
-                        // Toute la ligne ouvre la fiche (clic et Entrée, règle 4) ; le nom reste un lien.
-                        <Table.Row key={p.id} id={p.id} onAction={() => router.push(profileHref(p.id))} className="cursor-pointer">
-                          <Table.Cell>
-                            <div className="flex items-center gap-3">
-                              <Avatar prospect={p} />
-                              <div className="flex min-w-0 flex-col">
-                                <span className="flex flex-wrap items-center gap-2">
-                                  <Link href={profileHref(p.id)} className="rounded font-semibold text-foreground outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus">
-                                    {fullName(p)}
-                                  </Link>
-                                  <DemoBadge email={p.email} />
-                                </span>
-                                <span className="text-xs text-muted">
-                                  {p.email || p.phone || "—"}
-                                </span>
-                              </div>
-                            </div>
-                          </Table.Cell>
-                          <Table.Cell>
-                            {membershipsOf(p).length ? (
-                              <div className="flex flex-col gap-1.5">
-                                {membershipsOf(p).map((m) => (
-                                  <div key={m.id} className="flex flex-col gap-1">
-                                    <span className="text-xs font-medium text-foreground">
-                                      {m.campaign_name ?? "Campagne"}
-                                    </span>
-                                    <span className="flex flex-wrap gap-1.5">
-                                      <StageBadge stage={m.conversion_stage} />
-                                      <ScoreBadge
-                                        total={m.total_score}
-                                        level={level(m.total_score)}
-                                      />
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-[13px] text-muted">Sans campagne</span>
-                            )}
-                          </Table.Cell>
-                          <Table.Cell>
-                            <ConsentTag status={p.consent_status} />
-                          </Table.Cell>
-                          <Table.Cell className="text-xs text-muted tabular-nums">
-                            {formatDate(p.created_at)}
-                          </Table.Cell>
-                        </Table.Row>
-                      ))}
-                </DataTable>
+                <ProspectTable items={data.items} memberships={memberships} profileHref={profileHref} />
               )}
             </>
           )}
