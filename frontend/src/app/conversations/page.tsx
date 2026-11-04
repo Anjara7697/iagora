@@ -1,9 +1,9 @@
 "use client";
 
-import { Avatar } from "@heroui/react";
-import { ArrowRight, ChevronLeft, ChevronRight, Inbox as InboxIcon, MessageSquareQuote, PenLine, Send, Settings2 } from "lucide-react";
+import { Avatar, Button, Dropdown, toast } from "@heroui/react";
+import { ArrowRight, Bot, ChevronLeft, ChevronRight, Ellipsis, Hand, Inbox as InboxIcon, MessageSquareQuote, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, Screen } from "@/components/ds/layout";
 import { Collapse } from "@/components/ds/collapse";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { DemoBadge, Loading, ScoreBadge, StageBadge, Skeleton } from "@/components/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import {
@@ -75,6 +76,38 @@ function rowName(c: ConversationSummary): string {
 }
 
 const STATUS_TONE = { open: "accent", handed_off: "warning", closed: "neutral" } as const;
+
+/** Changements d'état qui demandent confirmation : leur effet est dit avant d'agir. */
+type Confirmable = "give_back" | "agent" | "close" | "clear";
+const CONFIRM: Record<Confirmable, { title: string; description: string; confirmLabel: string; cancelLabel?: string; status: "accent" | "danger" }> = {
+  give_back: {
+    title: "Rendre la main à l’agent ?",
+    description:
+      "L’agent reprend cette conversation : il pourra de nouveau préparer les réponses et les relances, selon son mode (avec ou sans votre validation).",
+    confirmLabel: "Rendre la main",
+    status: "accent",
+  },
+  agent: {
+    title: "Relancer l’agent ?",
+    description:
+      "L’agent relit la conversation et prépare une nouvelle réponse. Selon son mode, elle attendra votre validation ou partira directement.",
+    confirmLabel: "Relancer l’agent",
+    status: "accent",
+  },
+  close: {
+    title: "Clôturer la conversation ?",
+    description: "Les relances et les brouillons en attente seront annulés. Vous pourrez la rouvrir ensuite.",
+    confirmLabel: "Clôturer",
+    status: "danger",
+  },
+  clear: {
+    title: "Effacer la réponse ?",
+    description: "Le texte non envoyé sera perdu.",
+    confirmLabel: "Effacer",
+    cancelLabel: "Garder la réponse",
+    status: "danger",
+  },
+};
 
 function InboxRow({
   c,
@@ -136,14 +169,7 @@ function Detail({
   const [pending, setPending] = useState<"send" | "status" | "agent" | null>(null);
   const busy = pending !== null;
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  // Le message de confirmation s'efface seul : il ne doit pas rester en place
-  // comme un état de la conversation.
-  useEffect(() => {
-    if (!notice) return;
-    const timer = window.setTimeout(() => setNotice(null), 8000);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
+  const [confirm, setConfirm] = useState<Confirmable | null>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const conv = conversation.data;
@@ -158,17 +184,17 @@ function Detail({
   const syncing = conversation.loading || prospect.loading;
   const name = rowName(summary);
 
+  // Chaque action réussie est confirmée par un Toast ; un échec reste affiché près de l'action (ErrorText).
   async function act(
     kind: "send" | "status" | "agent",
     action: () => Promise<unknown>,
-    message: string,
+    result: { title: string; description: string },
   ) {
     setPending(kind);
     setError(null);
-    setNotice(null);
     try {
       await action();
-      setNotice(message);
+      toast.success(result.title, { description: result.description });
       notifyWorkQueueChanged();
       conversation.reload();
       prospect.reload();
@@ -187,10 +213,10 @@ function Detail({
         body: { status },
       }),
       status === "closed"
-        ? "Conversation clôturée."
+        ? { title: "Conversation clôturée", description: `${name} : relances et brouillons en attente annulés.` }
         : status === "handed_off"
-          ? "La conversation est maintenant confiée au conseiller."
-          : "Conversation rouverte pour l’agent.",
+          ? { title: "Conversation confiée au conseiller", description: `${name} : vous avez la main sur les réponses.` }
+          : { title: "Conversation rouverte pour l’agent", description: `${name} : l’agent peut de nouveau préparer les réponses.` },
     );
   const runAgent = () =>
     act("agent", () =>
@@ -198,7 +224,7 @@ function Detail({
         method: "POST",
         body: { conversation_id: summary.id },
       }),
-      "Traitement de l’agent enregistré. Consultez le fil pour retrouver le résultat.",
+      { title: "Agent relancé", description: "Son traitement est enregistré : retrouvez le résultat dans le fil." },
     );
   const send = () =>
     act("send", async () => {
@@ -209,7 +235,7 @@ function Detail({
       });
       // Une réponse HTTP tardive ne doit pas effacer une nouvelle saisie.
       setText((current) => current === submitted ? "" : current);
-    }, "Réponse enregistrée. Consultez son état d’envoi dans le fil.");
+    }, { title: "Réponse enregistrée", description: "Son état d’envoi s’affiche sous le message dans le fil." });
 
   const pendingId = conv?.messages.find(
     (m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending",
@@ -233,9 +259,56 @@ function Detail({
             <Tag>{label(CHANNELS, summary.channel)}</Tag>
           </div>
         </div>
-        <LinkButton size="sm" variant="outline" href={`/prospects/${summary.prospect_id}`}>
-          Ouvrir la fiche
-        </LinkButton>
+        <div className="flex flex-wrap items-center gap-2 max-sm:basis-full">
+          {/* Actions sur l'état de la conversation, près de son statut : l'action principale selon l'état, les
+              autres dans « … ». Rendre la main, relancer l'agent et clôturer demandent confirmation. */}
+          {!readOnly && conv && conv.status === "open" && (
+            <Btn size="sm" variant="secondary" disabled={busy || syncing} onClick={() => void setStatus("handed_off")}>
+              <Hand className="size-4" aria-hidden="true" />
+              Prendre la main
+            </Btn>
+          )}
+          {!readOnly && conv && conv.status === "handed_off" && (
+            <Btn size="sm" variant="secondary" disabled={busy || syncing} onClick={() => setConfirm("give_back")}>
+              <Bot className="size-4" aria-hidden="true" />
+              Rendre la main à l&apos;agent
+            </Btn>
+          )}
+          {!readOnly && conv && conv.status === "closed" && (
+            <Btn size="sm" variant="secondary" disabled={busy || syncing || optedOut} onClick={() => void setStatus("open")}>
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Rouvrir la conversation
+            </Btn>
+          )}
+          {/* Sur mobile, l'icône seule (le nom accessible reste « Ouvrir la fiche ») : les actions tiennent sur une ligne. */}
+          <LinkButton size="sm" variant="outline" href={`/prospects/${summary.prospect_id}`} aria-label="Ouvrir la fiche">
+            <UserRound className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="max-sm:hidden">Ouvrir la fiche</span>
+          </LinkButton>
+          {!readOnly && conv && conv.status !== "closed" && (
+            <Dropdown>
+              <Button size="sm" variant="tertiary" isIconOnly aria-label="Autres actions" isDisabled={busy || syncing}>
+                <Ellipsis className="size-4" aria-hidden="true" />
+              </Button>
+              <Dropdown.Popover placement="bottom end">
+                <Dropdown.Menu
+                  aria-label="Autres actions"
+                  disabledKeys={conv.status !== "open" || !p || optedOut || pendingDraft ? ["agent"] : []}
+                  onAction={(key) => setConfirm(key === "agent" ? "agent" : "close")}
+                >
+                  <Dropdown.Item id="agent" textValue="Relancer l’agent">
+                    <Bot className="size-4 text-muted" aria-hidden="true" />
+                    {pending === "agent" ? "L’agent réfléchit…" : "Relancer l’agent"}
+                  </Dropdown.Item>
+                  <Dropdown.Item id="close" textValue="Clôturer" variant="danger">
+                    <Archive className="size-4" aria-hidden="true" />
+                    Clôturer
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          )}
+        </div>
       </header>
 
       <Loading
@@ -390,18 +463,12 @@ function Detail({
         </p>
       )}
       {error && <ErrorText>{error}</ErrorText>}
-      {notice && (
-        <p className="rounded-xl bg-success-soft px-4 py-3 text-sm text-success-soft-foreground" role="status" aria-label="Résultat de l’action">
-          {notice}
-        </p>
-      )}
 
       {!readOnly && conv && conv.status === "closed" && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-secondary px-5 py-3">
-          <p className="flex-1 text-sm text-muted">Cette conversation est clôturée.</p>
-          <Btn disabled={busy || syncing || optedOut} onClick={() => setStatus("open")}>
-            Rouvrir la conversation
-          </Btn>
+          <p className="flex-1 text-sm text-muted">
+            Cette conversation est clôturée. « Rouvrir la conversation », en haut, permet d’y répondre de nouveau.
+          </p>
         </div>
       )}
       {!readOnly && conv && conv.status !== "closed" && (
@@ -425,9 +492,9 @@ function Detail({
           {text.trim() && (
             <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
               Réponse non envoyée · conservée pendant votre navigation.
-              <Btn size="sm" variant="ghost" disabled={busy} onClick={() => {
-                if (window.confirm("Effacer cette réponse non envoyée ?")) setText("");
-              }}>Effacer la réponse</Btn>
+              <Btn size="sm" variant="ghost" disabled={busy} onClick={() => setConfirm("clear")}>
+                Effacer la réponse
+              </Btn>
             </p>
           )}
           <div className="flex flex-wrap items-center gap-3">
@@ -446,49 +513,22 @@ function Detail({
             </p>
           </div>
 
-          <Collapse
-  title="Gestion de la conversation"
-  icon={<Settings2 className="size-4 text-muted" aria-hidden="true" />}
-  className="border-t border-separator pt-3"
-  triggerClassName="w-fit py-1"
->
-            <div className="flex flex-wrap gap-2 pt-3">
-              {conv.status === "open" ? (
-                <>
-                  <Btn size="sm" disabled={busy || syncing} onClick={() => setStatus("handed_off")}>
-                    Prendre la main
-                  </Btn>
-                  <Btn
-                    size="sm"
-                    disabled={busy || syncing || !p || optedOut || pendingDraft}
-                    onClick={runAgent}
-                  >
-                    {pending === "agent" ? "L'agent réfléchit…" : "Relancer l'agent"}
-                  </Btn>
-                </>
-              ) : (
-                <Btn size="sm" disabled={busy || syncing} onClick={() => setStatus("open")}>
-                  Rendre la main à l&apos;agent
-                </Btn>
-              )}
-              <Btn
-                size="sm"
-                variant="danger-soft"
-                disabled={busy || syncing}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Clôturer la conversation ? Les relances et les brouillons en attente seront annulés.",
-                    )
-                  )
-                    void setStatus("closed");
-                }}
-              >
-                Clôturer
-              </Btn>
-            </div>
-</Collapse>
         </Box>
+      )}
+      {confirm && (
+        <ConfirmDialog
+          isOpen
+          onOpenChange={(open) => {
+            if (!open) setConfirm(null);
+          }}
+          {...CONFIRM[confirm]}
+          onConfirm={() => {
+            if (confirm === "give_back") void setStatus("open");
+            else if (confirm === "close") void setStatus("closed");
+            else if (confirm === "agent") void runAgent();
+            else setText("");
+          }}
+        />
       )}
     </section>
   );

@@ -232,12 +232,12 @@ test("liste, sélection, fiche de transfert et réponse du conseiller", async ({
       },
     });
 
-  await expect(detail.getByRole("status", { name: "Résultat de l’action" })).toContainText("Réponse enregistrée");
-  await expect(detail.getByRole("button", { name: "Rendre la main à l'agent" })).toBeHidden();
-  await detail.getByText("Gestion de la conversation", { exact: true }).click();
-  await detail
-    .getByRole("button", { name: "Rendre la main à l'agent" })
-    .click();
+  await expect(page.getByText("Réponse enregistrée", { exact: true })).toBeVisible();
+  // Rendre la main : confirmation qui dit l'effet, puis « Prendre la main » redevient l'action principale.
+  await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  const giveBack = page.getByRole("alertdialog", { name: "Rendre la main à l’agent ?" });
+  await expect(giveBack).toContainText("L’agent reprend cette conversation");
+  await giveBack.getByRole("button", { name: "Rendre la main" }).click();
   await expect(
     detail.getByRole("button", { name: "Prendre la main" }),
   ).toBeVisible();
@@ -397,7 +397,7 @@ test("enregistrement : texte conservé après échec et confirmation sans annonc
   await send.click();
   await expect(page.getByRole("region", { name: "Conversation avec Marie Dupont" }).getByRole("alert")).toContainText("Enregistrement temporairement indisponible");
   await expect(reply).toHaveValue("Bonjour Marie, je vérifie les possibilités de financement.");
-  await expect(page.getByRole("status", { name: "Résultat de l’action" })).toHaveCount(0);
+  await expect(page.getByText("Réponse enregistrée", { exact: true })).toHaveCount(0);
   failed = false;
   await send.click();
   await expect(page.getByRole("button", { name: "Enregistrement…", exact: true })).toBeDisabled();
@@ -405,7 +405,8 @@ test("enregistrement : texte conservé après échec et confirmation sans annonc
   await expect.poll(() => !!release).toBe(true);
   release!();
   await expect(reply).toHaveValue("");
-  await expect(page.getByRole("status", { name: "Résultat de l’action" })).toContainText("Réponse enregistrée. Consultez son état d’envoi dans le fil.");
+  await expect(page.getByText("Réponse enregistrée", { exact: true })).toBeVisible();
+  await expect(page.getByText("Son état d’envoi s’affiche sous le message dans le fil.")).toBeVisible();
   expect(submitted).toHaveLength(2);
 });
 
@@ -435,11 +436,11 @@ test("rendre la main depuis En attente conserve la conversation sélectionnée e
   await expect.poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("status")).toBe("handed_off");
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   const detail = page.getByRole("region", { name: "Conversation avec Marie Dupont" });
-  await detail.getByText("Gestion de la conversation", { exact: true }).click();
   await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  await page.getByRole("alertdialog", { name: "Rendre la main à l’agent ?" }).getByRole("button", { name: "Rendre la main" }).click();
   await expect(page.getByText("Aucune conversation ne correspond à ces filtres.")).toBeVisible();
   await expect(detail).toBeVisible();
-  await expect(detail.getByRole("status", { name: "Résultat de l’action" })).toContainText("Conversation rouverte pour l’agent.");
+  await expect(page.getByText("Conversation rouverte pour l’agent", { exact: true })).toBeVisible();
   expect(calls.posts).toEqual([{ path: "/conversations/c1", body: { status: "open" } }]);
 });
 
@@ -503,13 +504,72 @@ test("effacer une réponse exige une confirmation et ne transmet aucun message",
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await page.getByLabel("Votre réponse").fill("À conserver.");
-  page.once("dialog", dialog => dialog.dismiss());
+  // Confirmation HeroUI (plus de dialogue natif) : « Garder la réponse » ne touche à rien.
+  page.on("dialog", () => {
+    throw new Error("dialogue natif inattendu");
+  });
+  const clear = page.getByRole("alertdialog", { name: "Effacer la réponse ?" });
   await page.getByRole("button", { name: "Effacer la réponse" }).click();
+  await clear.getByRole("button", { name: "Garder la réponse" }).click();
   await expect(page.getByLabel("Votre réponse")).toHaveValue("À conserver.");
-  page.once("dialog", dialog => dialog.accept());
   await page.getByRole("button", { name: "Effacer la réponse" }).click();
+  await clear.getByRole("button", { name: "Effacer", exact: true }).click();
   await expect(page.getByLabel("Votre réponse")).toHaveValue("");
   expect(calls.posts).toHaveLength(0);
+});
+
+test("en-tête : prendre la main, relancer l'agent et clôturer avec confirmation, puis rouvrir", async ({ page }) => {
+  const calls = await mockApi(page);
+  const runs: unknown[] = [];
+  await page.route("**/api/v1/agent/runs", (route) => {
+    runs.push(route.request().postDataJSON());
+    return route.fulfill({ status: 201, json: { ok: true } });
+  });
+  page.on("dialog", () => {
+    throw new Error("dialogue natif inattendu");
+  });
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  const detail = page.getByRole("region", { name: "Conversation avec Marie Dupont" });
+  await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  await page.getByRole("alertdialog", { name: "Rendre la main à l’agent ?" }).getByRole("button", { name: "Annuler" }).click();
+  expect(calls.posts).toHaveLength(0);
+  await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  await page.getByRole("alertdialog", { name: "Rendre la main à l’agent ?" }).getByRole("button", { name: "Rendre la main" }).click();
+
+  // Prendre la main : immédiat, confirmé par un Toast.
+  await detail.getByRole("button", { name: "Prendre la main" }).click();
+  await expect(page.getByText("Conversation confiée au conseiller", { exact: true })).toBeVisible();
+  await detail.getByRole("button", { name: "Rendre la main à l'agent" }).click();
+  await page.getByRole("alertdialog", { name: "Rendre la main à l’agent ?" }).getByRole("button", { name: "Rendre la main" }).click();
+  await expect(detail.getByRole("button", { name: "Prendre la main" })).toBeVisible();
+
+  // Relancer l'agent depuis « … » : confirmation, puis appel.
+  await detail.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Relancer l’agent" }).click();
+  const rerun = page.getByRole("alertdialog", { name: "Relancer l’agent ?" });
+  await expect(rerun).toContainText("Selon son mode");
+  await rerun.getByRole("button", { name: "Relancer l’agent" }).click();
+  await expect.poll(() => runs).toEqual([{ conversation_id: "c1" }]);
+  await expect(page.getByText("Agent relancé", { exact: true })).toBeVisible();
+
+  // Clôturer : confirmation qui dit l'effet, puis « Rouvrir la conversation » en en-tête.
+  await detail.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Clôturer" }).click();
+  const close = page.getByRole("alertdialog", { name: "Clôturer la conversation ?" });
+  await expect(close).toContainText("relances et les brouillons en attente seront annulés");
+  await auditA11y(page, "conversations, clôture");
+  await close.getByRole("button", { name: "Clôturer" }).click();
+  await expect(page.getByText("Conversation clôturée", { exact: true })).toBeVisible();
+  await detail.getByRole("button", { name: "Rouvrir la conversation" }).click();
+  await expect(detail.getByRole("button", { name: "Prendre la main" })).toBeVisible();
+  expect(calls.posts.map((p) => p.body)).toEqual([
+    { status: "open" },
+    { status: "handed_off" },
+    { status: "open" },
+    { status: "closed" },
+    { status: "open" },
+  ]);
 });
 
 
