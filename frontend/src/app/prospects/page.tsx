@@ -207,7 +207,9 @@ function Prospects() {
               {/* Sur mobile, « Exporter » seul : les deux actions tiennent sur une ligne (nom accessible complet). */}
               <Btn variant="secondary" aria-label="Exporter en CSV (Excel)" onClick={() => void exportCsv()}>
                 <Download className="size-4" aria-hidden="true" />
-                Exporter<span className="max-sm:hidden"> en CSV (Excel)</span>
+                <span>
+                  Exporter<span className="max-sm:hidden"> en CSV (Excel)</span>
+                </span>
               </Btn>
               <LinkButton href="/prospects/import" variant="primary">
                 <Upload className="size-4" aria-hidden="true" />
