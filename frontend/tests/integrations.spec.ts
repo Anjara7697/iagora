@@ -348,8 +348,10 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
   await card.getByLabel("Jeton de vérification du webhook").fill("verify-token");
   await card.getByLabel("Identifiant du formulaire Meta").fill("form-123");
   await card.getByLabel("Nom du formulaire Meta").fill("Formulaire eBIHAR");
-  await choose(card.getByLabel("Campagne"), "4");
-  await choose(card.getByLabel("Source"), "9");
+  await card.getByLabel("Campagne", { exact: true }).click();
+  await page.getByRole("option", { name: "Rentrée 2027", exact: true }).click();
+  await card.getByLabel("Source", { exact: true }).click();
+  await page.getByRole("option", { name: "Site", exact: true }).click();
   await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
   await card.getByLabel("Activer la réception des leads Meta").press("Space");
   await card.getByRole("button", { name: "Enregistrer Meta" }).click();
@@ -377,6 +379,43 @@ test("l'import CSV ouvre sa page", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Ouvrir Import de fichier CSV" }),
   ).toHaveAttribute("href", "/prospects/import");
+});
+
+test("lien de campagne : destination validée préremplie et jeton correctement rattaché", async ({ page }) => {
+  const saved: unknown[] = [];
+  await mockApi(page, { saved });
+  await open(page);
+  await page.goto("/integrations?c=leads&campaign=4&source=9");
+  const drawer = page.getByRole("dialog", { name: "Formulaire du site et outils" });
+  await expect(drawer.getByLabel("Campagne", { exact: true })).toHaveAttribute("data-value", "4");
+  await expect(drawer.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
+  await drawer.getByLabel("Nom du jeton").fill("Formulaire campagne");
+  await drawer.getByRole("button", { name: "Créer un jeton", exact: true }).click();
+  expect(saved[0]).toMatchObject({ token: { name: "Formulaire campagne", campaign_id: 4, source_id: 9 } });
+});
+
+test("plusieurs sources : aucun choix implicite et lien invalide ignoré", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/v1/campaigns?**", route => route.fulfill({ json: {
+    items: [{ id: 4, name: "Rentrée 2027", sources: [
+      { id: 9, name: "Site", type: "form", platform: "web" },
+      { id: 10, name: "Salon", type: "import", platform: "web" },
+    ] }], total: 1, limit: 200, offset: 0,
+  } }));
+  await open(page);
+  await page.goto("/integrations?c=leads&campaign=4&source=999");
+  const drawer = page.getByRole("dialog", { name: "Formulaire du site et outils" });
+  const campaign = drawer.getByLabel("Campagne", { exact: true });
+  await expect(campaign).toBeEnabled();
+  await expect(campaign).toHaveAttribute("data-value", "");
+  await campaign.click();
+  await page.getByRole("option", { name: "Rentrée 2027", exact: true }).click();
+  await expect(drawer.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "");
+  await drawer.getByLabel("Nom du jeton").fill("Formulaire campagne");
+  await expect(drawer.getByRole("button", { name: "Créer un jeton", exact: true })).toBeDisabled();
+  await drawer.getByLabel("Source", { exact: true }).click();
+  await page.getByRole("option", { name: "Salon", exact: true }).click();
+  await expect(drawer.getByRole("button", { name: "Créer un jeton", exact: true })).toBeEnabled();
 });
 
 test("lancer un passage demande confirmation quand l'envoi est activé", async ({
@@ -556,7 +595,8 @@ test("créer un jeton pour le formulaire du site : affiché une seule fois", asy
   await openConnector(page, "Formulaire du site et outils");
   const card = page.getByRole("region", { name: "Formulaire et outils" });
   await card.getByLabel("Nom du jeton").fill("Formulaire du site");
-  await choose(card.getByLabel("Campagne"), { label: "Rentrée 2027" });
+  await card.getByLabel("Campagne", { exact: true }).click();
+  await page.getByRole("option", { name: "Rentrée 2027", exact: true }).click();
   await card.getByRole("button", { name: "Créer un jeton" }).click();
   const shown = card.getByRole("status", { name: "Nouveau jeton" });
   await expect(shown.getByText("iag_abcdefSECRET").first()).toBeVisible();

@@ -14,6 +14,7 @@ import { api, ApiError } from "@/lib/api";
 import { PLATFORMS, SOURCE_TYPES, label } from "@/lib/labels";
 import { linkMetaForms } from "@/lib/metaForms";
 import type { Campaign, CampaignStats } from "@/lib/types";
+import { SourceReception } from "./SourceReception";
 
 const plural = (n: number) => (n > 1 ? `${n} prospects proviennent` : "1 prospect provient");
 
@@ -72,11 +73,12 @@ export default function CampaignSources({
 
   return (
     <div className="flex flex-col gap-6">
+      <SourceReception campaign={campaign} canEdit={canEdit} />
       <section aria-label="Sources" className="flex flex-col gap-3">
         <DataTable
           label="Sources de la campagne"
           minWidth={560}
-          emptyState={<EmptyText>Aucune source rattachée : aucun prospect ne peut entrer dans cette campagne.</EmptyText>}
+          emptyState={<EmptyText>Ajoutez une source, puis branchez un formulaire ou importez des contacts.</EmptyText>}
           columns={[
             { id: "source", label: "Source" },
             { id: "platform", label: "Plateforme" },

@@ -10,7 +10,11 @@ async def membership(client):
     camp = (
         await client.post(
             f"{API}/campaigns",
-            json={"name": "eBIHAR", "sources": [{"name": "LI", "type": "ads", "platform": "li"}]},
+            json={
+                "name": "eBIHAR",
+                "status": "active",
+                "sources": [{"name": "LI", "type": "ads", "platform": "li"}],
+            },
         )
     ).json()
     r = await client.post(

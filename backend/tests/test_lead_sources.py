@@ -1,5 +1,6 @@
 """Sources de leads : jetons de service (formulaire du site, n8n) et import CSV."""
 
+import pytest
 from app.models.enums import UserRole
 from app.services import service_tokens
 from app.services.prospect_import import map_columns, read_rows
@@ -88,6 +89,21 @@ async def test_invalid_destination_is_refused_at_creation(client):
         f"{API}/integrations/tokens", json={"name": "x-form", "channel": "pigeon"}
     )
     assert unknown.status_code == 422
+
+
+@pytest.mark.parametrize("status", ["draft", "inactive"])
+async def test_token_cannot_receive_into_a_paused_campaign(client, make_client, status):
+    created, cid = await _token(client)
+    await client.patch(f"{API}/campaigns/{cid}", json={"status": status})
+    anon = await make_client(None)
+    request = {"email": "source-test@demo.example.com"}
+    headers = {"X-API-Key": created["token"]}
+    result = await anon.post(f"{API}/leads", json=request, headers=headers)
+    assert result.status_code == 422
+    assert (await client.get(f"{API}/prospects")).json()["total"] == 0
+    await client.patch(f"{API}/campaigns/{cid}", json={"status": "active"})
+    result = await anon.post(f"{API}/leads", json=request, headers=headers)
+    assert result.status_code == 201
 
 
 def test_rate_limit_per_token():

@@ -76,7 +76,7 @@ async def _enrich(session: AsyncSession, prospect: Prospect, data: ProspectInges
 
 
 async def _resolve_campaign_source(
-    session: AsyncSession, data: ProspectIngest
+    session: AsyncSession, data: ProspectIngest, *, require_active: bool = False
 ) -> CampaignSource | None:
     if data.campaign_id is None and data.source_id is None:
         return None
@@ -90,6 +90,17 @@ async def _resolve_campaign_source(
     )
     if cs is None:
         raise ValidationFailure("Cette source n'est pas rattachée à cette campagne")
+    if require_active:
+        campaign = await session.get(Campaign, cs.campaign_id)
+        source = await session.get(Source, cs.source_id)
+        if (
+            campaign is None
+            or campaign.status is not CampaignStatus.ACTIVE
+            or source is None
+            or not source.is_active
+            or cs.status != "active"
+        ):
+            raise ValidationFailure("Choisir une source active d'une campagne active")
     return cs
 
 
@@ -147,7 +158,7 @@ async def ingest_prospect(
 
     channel = await references.get_channel(session, data.channel)
     target = await references.get_target(session, data.target_code)
-    campaign_source = await _resolve_campaign_source(session, data)
+    campaign_source = await _resolve_campaign_source(session, data, require_active=True)
 
     if channel is not None and data.external_id:
         entry = await session.scalar(

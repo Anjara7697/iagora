@@ -51,6 +51,17 @@ const TARGET_LIST = [
   { id: 2, code: "compagnons_pros", name: "Professionnels Les Compagnons" },
 ];
 
+test("sources : distinguer LinkedIn manuel, formulaire connecté et import avec destination", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=sources");
+  const linkedin = page.getByRole("region", { name: "Réception · LinkedIn Ads", exact: true });
+  await expect(linkedin.getByText("LinkedIn : réception manuelle", { exact: true })).toBeVisible();
+  await expect(linkedin.getByRole("link", { name: "Importer dans cette source" })).toHaveAttribute("href", "/prospects/import?campaign=1&source=10");
+  const form = page.getByRole("region", { name: "Réception · Landing", exact: true });
+  await expect(form.getByRole("link", { name: "Brancher le formulaire" })).toHaveAttribute("href", "/integrations?c=leads&campaign=1&source=11");
+  await expect(form.getByRole("link", { name: "Voir les contacts reçus" })).toHaveAttribute("href", "/prospects?campaign=1&source=11");
+});
+
 type Calls = {
   requests: { method: string; path: string; body: unknown }[];
   queries: string[];
