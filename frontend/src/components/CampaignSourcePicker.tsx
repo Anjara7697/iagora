@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Btn, ErrorText } from "@/components/ds/controls";
-import { SelectField } from "@/components/ds/SelectField";
+import { Btn, ErrorText, SelectInput } from "@/components/ds/controls";
 import { api } from "@/lib/api";
 import type { Campaign, Page } from "@/lib/types";
 
@@ -43,7 +42,7 @@ export function CampaignSourcePicker({
   const campaign = campaigns.find((c) => c.id === value.campaign_id);
   return (
     <>
-      <SelectField label="Campagne" className="min-w-0 flex-1 basis-48"
+      <SelectInput label="Campagne" className="min-w-0 flex-1 basis-48"
         value={String(value.campaign_id ?? "")} disabled={loading || error}
         onChange={(v) => {
           const id = v ? Number(v) : null;
@@ -54,7 +53,7 @@ export function CampaignSourcePicker({
           ...campaigns.map((c) => ({ value: String(c.id), label: c.name }))]}
       />
       {campaign && (
-        <SelectField label="Source" className="min-w-0 flex-1 basis-40"
+        <SelectInput label="Source" className="min-w-0 flex-1 basis-40"
             value={String(value.source_id ?? "")}
             disabled={campaign.sources.length === 0}
             options={[{ value: "", label: campaign.sources.length ? "Choisir une source" : "Aucune source dans cette campagne" },

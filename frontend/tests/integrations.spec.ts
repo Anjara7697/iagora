@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const status = (over: Record<string, unknown> = {}) => ({
   configured: true,
@@ -291,11 +292,11 @@ test("rechercher et filtrer les connecteurs", async ({ page }) => {
   await page.getByLabel("Rechercher un connecteur").fill("introuvable");
   await expect(page.getByText(/Aucun connecteur ne correspond/)).toBeVisible();
   await page.getByLabel("Rechercher un connecteur").fill("");
-  await page.getByRole("button", { name: "Bientôt", exact: true }).click();
+  await page.getByRole("tab", { name: "Bientôt", exact: true }).click();
   await expect(cards).toHaveCount(1);
-  await page.getByRole("button", { name: "Configurés", exact: true }).click();
+  await page.getByRole("tab", { name: "Configurés", exact: true }).click();
   await expect(cards).toHaveCount(2); // messagerie + import CSV
-  await page.getByRole("button", { name: "À configurer", exact: true }).click();
+  await page.getByRole("tab", { name: "À configurer", exact: true }).click();
   await expect(cards).toHaveCount(4); // agenda, Zoom, jetons, Meta
 });
 
@@ -352,7 +353,7 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
   await card.getByLabel("Source", { exact: true }).click();
   await page.getByRole("option", { name: "Site", exact: true }).click();
   await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
-  await card.getByLabel("Activer la réception des leads Meta").check();
+  await card.getByLabel("Activer la réception des leads Meta").press("Space");
   await card.getByRole("button", { name: "Enregistrer Meta" }).click();
   await expect(card.getByText("Configuration Meta enregistrée.")).toBeVisible();
   expect(saved[0]).toMatchObject({
@@ -517,9 +518,7 @@ test("configurer une boîte depuis la console : détection, test, dossier, enreg
   await expect(
     form.getByLabel("Résultat du test des paramètres"),
   ).toContainText("IMAP : ✓ connecté");
-  await form
-    .getByLabel("Dossier surveillé")
-    .selectOption({ label: "Programmé" });
+  await choose(form.getByLabel("Dossier surveillé"), { label: "Programmé" });
   await form.getByRole("button", { name: "Enregistrer" }).click();
   await expect(form.getByText(/Boîte enregistrée/)).toBeVisible();
   expect(saved).toHaveLength(1);
@@ -540,7 +539,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
   await open(page);
   await openConnector(page, "Agenda des conseillers");
   const card = page.getByRole("region", { name: "Agenda" });
-  await card.getByLabel("Mode").selectOption("google");
+  await choose(card.getByLabel("Mode"), "google");
   await expect(
     card.getByText("/api/v1/calendar/google/callback"),
   ).toBeVisible();
@@ -548,9 +547,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
     .getByLabel("Identifiant client OAuth Google")
     .fill("cid.apps.googleusercontent.com");
   await card.getByLabel("Code secret du client").fill("secret-123");
-  await card
-    .getByLabel("Agenda par défaut (prospect sans conseiller)")
-    .selectOption({ label: "paul" });
+  await choose(card.getByLabel("Agenda par défaut (prospect sans conseiller)"), { label: "paul" });
   await card.getByRole("button", { name: "Enregistrer l’agenda" }).click();
   await expect(card.getByText(/Agenda enregistré/)).toBeVisible();
   expect(saved).toContainEqual({
@@ -569,7 +566,7 @@ test("brancher le compte Zoom de l'école", async ({ page }) => {
   await open(page);
   await openConnector(page, "Zoom");
   const card = page.getByRole("region", { name: "Zoom" });
-  await card.getByLabel("Mode").selectOption("account");
+  await choose(card.getByLabel("Mode"), "account");
   await card.getByLabel("Account ID").fill("acc-1");
   await card.getByLabel("Client ID").fill("cid-1");
   await card.getByLabel("Client secret").fill("sec-1");
@@ -662,9 +659,7 @@ test("serveurs sur mobile : test périmé retiré et ports enregistrés", async 
     .getByText("Paramètres avancés des serveurs", { exact: true })
     .click();
   await form.getByLabel("Port SMTP", { exact: true }).fill("465");
-  await form
-    .getByRole("combobox", { name: "Sécurité SMTP", exact: true })
-    .selectOption("ssl");
+  await choose(form.getByLabel("Sécurité SMTP", { exact: true }), "ssl");
   await expect(form.getByLabel("Résultat du test des paramètres")).toHaveCount(
     0,
   );

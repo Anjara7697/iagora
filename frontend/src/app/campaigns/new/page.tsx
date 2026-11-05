@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import CampaignForm, {
   EMPTY_VALUES,
   type CampaignValues,
@@ -10,6 +10,9 @@ import { useCurrentUser } from "@/components/AppShell";
 import { TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
+import { toast } from "@heroui/react";
+import { linkMetaForms } from "@/lib/metaForms";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, Target } from "@/lib/types";
@@ -22,6 +25,9 @@ export default function NewCampaignPage() {
   const targets = useApi<Target[]>("/targets");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dirty = useRef(false);
+  // Pas d'avertissement une fois la campagne créée : la redirection vers sa fiche n'abandonne rien.
+  const { guard, dialog } = useDiscardGuard(() => dirty.current && !busy);
 
   if (user && user.role !== "ADMIN") {
     return (
@@ -41,7 +47,7 @@ export default function NewCampaignPage() {
         body: {
           name: v.name.trim(),
           description: v.description.trim() || null,
-          status: v.status,
+          status: "draft",
           start_date: toIso(v.start_date),
           end_date: toIso(v.end_date),
           target_codes: v.target_codes,
@@ -55,6 +61,9 @@ export default function NewCampaignPage() {
             })),
         },
       });
+      const warning = await linkMetaForms(created, v.sources);
+      if (warning) toast.warning("Campagne créée", { description: warning });
+      else toast.success("Campagne créée", { description: "En brouillon : activez-la depuis sa fiche pour recevoir des prospects." });
       router.push(`/campaigns/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Échec de la création");
@@ -63,7 +72,7 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <Screen className="max-w-[960px]">
+    <Screen className="max-w-[960px]" scroll>
       <PageHeader eyebrow="Pilotage · Campagnes" title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
       <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
@@ -71,13 +80,16 @@ export default function NewCampaignPage() {
           initial={EMPTY_VALUES}
           targets={targets.data}
           withSources
+          steps
           submitLabel="Créer la campagne"
           busy={busy}
           error={error}
           onSubmit={create}
-          onCancel={() => router.push("/campaigns")}
+          onCancel={() => guard(() => router.push("/campaigns"))}
+          dirtyRef={dirty}
         />
       )}
+      {dialog}
     </Screen>
   );
 }

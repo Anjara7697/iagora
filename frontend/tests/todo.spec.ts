@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const prospect = {
   id: 1,
@@ -122,13 +123,12 @@ test("candidature directe : le conseiller voit la demande et ses indices", async
   const finish = page.getByRole("button", {
     name: "Passer à « Candidature déposée » et terminer",
   });
-  await expect(page.getByLabel("Parcours concerné")).toHaveValue("17");
+  await expect(page.getByLabel("Parcours concerné")).toHaveAttribute("data-value", "17");
   await expect(finish).toBeDisabled();
-  await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").check();
+  await page.getByLabel("J’ai contrôlé le dossier original dans la boîte email").press("Space");
   await finish.click();
-  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText(
-    "Candidature déposée",
-  );
+  await expect(page.getByText("Candidature vérifiée", { exact: true })).toBeVisible();
+  await expect(page.getByText("parcours passé à « Candidature déposée »")).toBeVisible();
   expect(stagePatch).toMatchObject({ conversion_stage: "applied" });
   expect(resolved).toBe(true);
   await auditA11y(page, "À traiter");
@@ -207,14 +207,12 @@ test("email d'admission : le conseiller confirme le bon parcours avec la preuve"
     .getByRole("complementary", { name: "Éléments à traiter" })
     .getByRole("button", { name: /Lina Dupont/ })
     .click();
-  await page.getByLabel("Parcours confirmé par la preuve").selectOption("27");
+  await choose(page.getByLabel("Parcours confirmé par la preuve"), "27");
   await page.getByLabel("Note facultative").fill("Identité vérifiée");
   await page
     .getByRole("button", { name: "Confirmer l'inscription", exact: true })
     .click();
-  await expect(page.getByRole("status", { name: "Résultat de la décision" })).toContainText(
-    "Inscription confirmée",
-  );
+  await expect(page.getByText("Inscription confirmée", { exact: true })).toBeVisible();
   expect(submitted).toEqual({
     membership_id: 27,
     evidence_reference: "email de admissions@school.example.com reçu le 28/10/2026",
@@ -246,10 +244,20 @@ test("pagination et lien direct vers une tâche hors de la page courante", async
     }),
   );
   await open(page);
-  await page.getByRole("button", { name: "Éléments suivants" }).click();
+  await expect(page.getByText("1-50 sur 51")).toBeVisible();
+  await page.getByRole("button", { name: "Suivant" }).click();
   await expect(
     page.getByRole("button", { name: /Ahmed Belkacem/ }),
   ).toBeVisible();
+  // La page est dans l'URL : ouvrir un élément puis revenir garde la page 2.
+  await expect(page).toHaveURL(/page=2/);
+  await page.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(page).toHaveURL(/page=2&id=handoff%3Ac2/);
+  await page.reload();
+  await expect(page.getByText("51-51 sur 51")).toBeVisible();
+  await page.getByRole("button", { name: "Page 1" }).click();
+  await expect(page).not.toHaveURL(/page=/);
+  await expect(page.getByRole("button", { name: /Marie Dupont/ })).toBeVisible();
   await page.goto("/todo?id=handoff%3Aold");
   await expect(
     page.getByText("Question sans extrait validé.").first(),
@@ -379,17 +387,19 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
   const evidence = detail.getByRole("region", { name: "Éléments pour décider" });
   const draft = detail.getByRole("region", { name: "Brouillon de l'agent" });
+  // Les éléments pour décider précèdent le brouillon.
+  const draftNode = await draft.elementHandle();
   expect(
-    await evidence.evaluate((el) =>
-      Boolean(el.compareDocumentPosition(el.parentElement!.querySelector(".draft-panel")!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    await evidence.evaluate(
+      (el, node) => Boolean(node && el.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING),
+      draftNode,
     ),
   ).toBe(true);
   await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
   await expect(detail.getByText("Risque : faible", { exact: true })).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeHidden();
   const sources = detail.getByText("Sources, confiance et contexte", { exact: true });
-  await sources.focus();
-  await page.keyboard.press("Enter");
+  await sources.click();
   await expect(detail.getByText("Financement & OPCO v3").first()).toBeVisible();
   await expect(detail.getByLabel("Confiance 91 %")).toBeVisible();
   await expect(
@@ -440,22 +450,23 @@ test("approuver une version modifiée envoie le texte au serveur", async ({
   await expect(page.getByRole("button", { name: /Marie Dupont/ })).toHaveCount(
     0,
   );
-  await expect(
-    page.getByRole("status", { name: "Résultat de la décision" }),
-  ).toContainText("Message validé");
+  await expect(page.getByText("Réponse validée", { exact: true })).toBeVisible();
+  // L'élément suivant s'ouvre pour enchaîner, son titre reçoit le focus.
+  await expect(page.getByRole("heading", { name: "Ahmed Belkacem" })).toBeFocused();
+  await expect(page).toHaveURL(/id=handoff%3Ac2/);
   await expect(page.getByRole("navigation", { name: "Navigation principale" }).getByLabel("1 en attente")).toBeVisible();
   await expect(page.getByRole("banner").getByRole("link", { name: "1 à traiter" })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Brouillon de l'agent" }),
   ).toHaveCount(0);
-  await page.getByRole("link", { name: "Consulter la décision →" }).click();
+  await page.getByRole("button", { name: "Voir la décision" }).click();
   await expect(page).toHaveURL(/tab=treated&id=draft%3Ac1%3Am1/);
   await expect(page.getByRole("group", { name: "Type", exact: true })).toBeHidden();
   const delivery = page.getByRole("region", { name: "État d’envoi" });
   await expect(delivery).toContainText("aucun envoi n’est encore confirmé");
   await expect(page.getByRole("region", { name: "Message traité" })).toContainText("Bonjour Marie, version relue.");
   expect(calls.posts).toHaveLength(1);
-  await page.getByRole("button", { name: "À traiter", exact: true }).click();
+  await page.getByRole("tab", { name: "À traiter · 1" }).click();
   await page.getByRole("button", { name: "Examiner la première demande →" }).click();
   await expect(
     page.getByRole("region", { name: "À traiter : Ahmed Belkacem" }),
@@ -466,17 +477,25 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
   const calls = await mockApi(page);
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  // Brouillon non modifié : régénérer part sans confirmation.
   await page.getByRole("button", { name: "Régénérer" }).click();
   await expect
     .poll(() => calls.posts.some((p) => p.path.endsWith("/regenerate")))
     .toBe(true);
-  await expect(page.getByRole("link", { name: "Consulter la décision →" })).toHaveCount(0);
+  await expect(page.getByText("Nouvelle réponse demandée", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Voir la décision" })).toHaveCount(0);
 
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await page.getByRole("button", { name: "Refuser le brouillon" }).click();
-  const confirm = page.getByRole("button", { name: "Confirmer le refus" });
+  const dialog = page.getByRole("alertdialog", { name: "Refuser le brouillon ?" });
+  const confirm = dialog.getByRole("button", { name: "Refuser le brouillon" });
+  await expect(dialog.getByLabel("Motif du refus")).toBeFocused();
   await expect(confirm).toBeDisabled();
-  await page.getByLabel("Motif du refus").fill("Ton trop familier");
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(calls.posts.some((p) => p.path.endsWith("/reject"))).toBe(false);
+  await page.getByRole("button", { name: "Refuser le brouillon" }).click();
+  await dialog.getByLabel("Motif du refus").fill("Ton trop familier");
   await confirm.click();
   await expect
     .poll(() => calls.posts)
@@ -485,11 +504,55 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
       method: "POST",
       body: { reason: "Ton trop familier" },
     });
-  await page.getByRole("link", { name: "Consulter la décision →" }).click();
+  await expect(page.getByText("Brouillon refusé", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Voir la décision" }).click();
   const delivery = page.getByRole("region", { name: "État d’envoi" });
   await expect(delivery).toContainText("aucun envoi n’a été demandé");
   await expect(delivery).toContainText("Motif du refus : Ton trop familier");
   await expect(delivery.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
+});
+
+test("brouillon modifié : aucune perte sans confirmation", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByRole("button", { name: "Modifier", exact: true }).click();
+  await page.getByLabel("Texte du brouillon").fill("Bonjour Marie, version relue.");
+  const discard = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+
+  // Changer d'élément : confirmation, « Continuer la saisie » garde le texte.
+  await page.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(discard).toBeVisible();
+  await discard.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page).not.toHaveURL(/handoff/);
+  await expect(page.getByLabel("Texte du brouillon")).toHaveValue("Bonjour Marie, version relue.");
+
+  // Changer de filtre ou d'onglet : même garde.
+  await page.getByRole("button", { name: "Réponses à compléter (1)" }).click();
+  await expect(discard).toBeVisible();
+  await discard.getByRole("button", { name: "Continuer la saisie" }).click();
+  await page.getByRole("tab", { name: /Traités/ }).click();
+  await expect(discard).toBeVisible();
+  await discard.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page.getByLabel("Texte du brouillon")).toHaveValue("Bonjour Marie, version relue.");
+
+  // Régénérer une version modifiée : confirmation dédiée.
+  await page.getByRole("button", { name: "Régénérer" }).click();
+  const regenerate = page.getByRole("alertdialog", { name: "Régénérer la réponse ?" });
+  await regenerate.getByRole("button", { name: "Garder ma version" }).click();
+  expect(calls.posts).toHaveLength(0);
+
+  // Annuler la modification : confirmation, puis retour au texte de l'agent.
+  await page.getByRole("button", { name: "Annuler la modification" }).click();
+  await discard.getByRole("button", { name: "Abandonner" }).click();
+  await expect(page.getByLabel("Texte du brouillon")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Brouillon de l'agent" })).toContainText(draftItem.draft.content);
+
+  // Sans modification, changer d'élément ne demande rien.
+  await page.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  await expect(discard).toHaveCount(0);
+  await expect(page).toHaveURL(/id=handoff%3Ac2/);
+  expect(calls.posts).toHaveLength(0);
 });
 
 test("observateur : consultation seule", async ({ page }) => {
@@ -504,23 +567,25 @@ test("observateur : consultation seule", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Valider la réponse", exact: true }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /Arrêt d'urgence/ }),
-  ).toHaveCount(0);
+  // L'observateur voit l'état de l'agent, sans pouvoir l'arrêter.
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toContainText("Validation requise");
+  await expect(page.getByRole("button", { name: /Arrêt d.urgence/ })).toHaveCount(0);
 });
 
 test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
-  let asked = "";
-  page.once("dialog", (dialog) => {
-    asked = dialog.message();
-    void dialog.accept();
-  });
-  await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
-  expect(asked).toContain("y compris les messages déjà validés");
+  // État de l'agent dans le menu du compte (point sur l'avatar) ; l'arrêt d'urgence passe par une confirmation HeroUI.
+  const status = page.getByRole("button", { name: /agent : validation requise/ });
+  await expect(status).toBeVisible();
+  await status.click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Arrêt d’urgence" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Arrêt d’urgence ?" });
+  await expect(confirm).toContainText("y compris les messages déjà validés");
+  await confirm.getByRole("button", { name: "Arrêter l’agent" }).click();
+  await expect(page.getByText("Agent arrêté")).toBeVisible();
+  await expect(page.getByRole("button", { name: /agent : arrêté/ })).toBeVisible();
   await expect
     .poll(() => calls.posts)
     .toContainEqual({
@@ -528,16 +593,17 @@ test("arrêt d'urgence et reprise du mode assisté", async ({ page }) => {
       method: "PUT",
       body: { mode: "manual" },
     });
-  page.once("dialog", (dialog) => void dialog.dismiss());
-  await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  // Reprise : Annuler ne change rien, Reprendre revient au mode assisté.
+  await page.getByRole("button", { name: /agent : arrêté/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Reprendre en mode assisté" }).click();
+  const resume = page.getByRole("alertdialog", { name: "Reprendre en mode assisté ?" });
+  await expect(resume).toContainText("messages déjà validés");
+  await resume.getByRole("button", { name: "Annuler" }).click();
   expect(calls.posts).toHaveLength(1);
-  page.once("dialog", (dialog) => {
-    expect(dialog.message()).toContain("messages déjà validés");
-    void dialog.accept();
-  });
-  await page.getByRole("button", { name: "Reprendre en mode assisté" }).click();
-  await expect(page.getByText("Agent — Validation requise")).toBeVisible();
+  await page.getByRole("button", { name: /agent : arrêté/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Reprendre en mode assisté" }).click();
+  await page.getByRole("alertdialog", { name: "Reprendre en mode assisté ?" }).getByRole("button", { name: "Reprendre" }).click();
+  await expect(page.getByRole("button", { name: /agent : validation requise/ })).toBeVisible();
 });
 
 test("l'arrêt d'urgence est également disponible en mode automatique", async ({
@@ -545,10 +611,11 @@ test("l'arrêt d'urgence est également disponible en mode automatique", async (
 }) => {
   const calls = await mockApi(page, { role: "ADMIN", mode: "auto" });
   await open(page);
-  await expect(page.getByText("Agent — Mode automatique")).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByRole("button", { name: /Arrêt d'urgence/ }).click();
-  await expect(page.getByText("Agent — Arrêt d'urgence")).toBeVisible();
+  await page.getByRole("button", { name: /agent : automatique/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toContainText("Automatique");
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Arrêt d’urgence" }).click();
+  await page.getByRole("alertdialog", { name: "Arrêt d’urgence ?" }).getByRole("button", { name: "Arrêter l’agent" }).click();
+  await expect(page.getByRole("button", { name: /agent : arrêté/ })).toBeVisible();
   await expect
     .poll(() => calls.posts)
     .toContainEqual({
@@ -660,7 +727,10 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
     },
   );
   await open(page);
-  await page.getByRole("button", { name: "Traités (24 h) (2)" }).click();
+  await page.getByRole("tab", { name: "Traités 24 h · 2" }).click();
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("status")).toHaveText(
+    "2 décisions sur 24 h",
+  );
   await page.getByRole("button", { name: /Karim Sylla/ }).click();
   const detail = page.getByRole("region", { name: "Traité : Karim Sylla" });
   await expect(detail.getByText("Échec d’envoi")).toBeVisible();
@@ -668,7 +738,7 @@ test("traités : trace de la décision, état d'envoi et nouvelle tentative", as
   await expect(detail.getByText("Validé (modifié)")).toBeVisible();
   await detail.getByRole("button", { name: "Réessayer l’envoi" }).click();
   await expect.poll(() => retries.length).toBe(1);
-  await expect(detail.getByRole("status")).toContainText("Nouvelle tentative demandée");
+  await expect(page.getByText("Nouvelle tentative demandée", { exact: true })).toBeVisible();
   await expect(detail.getByRole("heading", { name: "Envoi en cours" })).toBeVisible();
   await expect(detail.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
   execution = "sent";
@@ -705,9 +775,7 @@ test("échec de validation : le brouillon reste accessible et aucune réussite n
   await expect(
     draft.getByRole("button", { name: "Valider la réponse", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByText("Message validé.", { exact: false })).toHaveCount(
-    0,
-  );
+  await expect(page.getByText("Réponse validée", { exact: true })).toHaveCount(0);
 });
 
 for (const role of ["ADVISOR", "VIEWER"]) {
@@ -770,11 +838,11 @@ test("mobile : la confirmation est visible et mène à la décision exacte", asy
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
   await page.getByRole("button", { name: "Valider la réponse", exact: true }).click();
-  const result = page.getByRole("status", { name: "Résultat de la décision" });
-  await expect(result).toContainText("Marie Dupont");
+  const result = page.getByText("Réponse validée", { exact: true });
   await expect(result).toBeInViewport({ ratio: 1 });
-  await expect(result).toBeFocused();
-  await result.getByRole("link", { name: "Consulter la décision →" }).click();
+  await expect(page.getByText("Marie Dupont : son état d’envoi est suivi dans « Traités ».")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ahmed Belkacem" })).toBeFocused();
+  await page.getByRole("button", { name: "Voir la décision" }).click();
   await expect(page.getByRole("region", { name: "Traité : Marie Dupont" })).toBeVisible();
   await expect(page.getByRole("region", { name: "État d’envoi" })).toContainText("aucun envoi n’est encore confirmé");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

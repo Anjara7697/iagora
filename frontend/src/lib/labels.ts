@@ -53,12 +53,6 @@ export const CONSENT: Record<string, string> = {
   opted_out: "Désinscrit",
 };
 
-export const ROLES: Record<string, string> = {
-  prospect: "Prospect",
-  agent: "Agent",
-  advisor: "Conseiller",
-};
-
 export const label = (
   map: Record<string, string>,
   key: string | null | undefined,
@@ -121,13 +115,6 @@ export function relativeTime(
   });
 }
 
-export const TODO_KINDS: Record<string, string> = {
-  validation: "Validation requise",
-  escalation: "Escalade",
-  kb_gap: "Lacune KB",
-  incident: "Incident",
-};
-
 export const PRIORITIES: Record<string, string> = {
   critical: "Critique",
   high: "Élevée",
@@ -168,7 +155,14 @@ export const TARGETS: Record<string, string> = {
 export const CAMPAIGN_STATUS: Record<string, string> = {
   draft: "Brouillon",
   active: "Active",
-  inactive: "Inactive",
+  inactive: "En pause",
+};
+
+/** Effet du statut sur l'arrivée des prospects (seule une campagne active en reçoit). */
+export const CAMPAIGN_STATUS_EFFECT: Record<string, string> = {
+  draft: "Ne reçoit pas encore de prospects : activez-la pour démarrer.",
+  active: "Reçoit les prospects qui arrivent par ses sources.",
+  inactive: "Ne reçoit plus de nouveaux prospects tant qu’elle n’est pas réactivée.",
 };
 
 export const SOURCE_TYPES: Record<string, string> = {
@@ -203,6 +197,14 @@ export const FUNNEL: { title: string; stages: string[] }[] = [
 
 export function formatDay(iso: string | null | undefined): string {
   return iso ? new Date(iso).toLocaleDateString("fr-FR") : "-";
+}
+
+/** Période lisible, y compris ouverte : « 01/09/2026 → 30/09/2026 », « Depuis le … », « Jusqu’au … », « Sans dates ». */
+export function formatPeriod(start: string | null | undefined, end: string | null | undefined): string {
+  if (start && end) return `${formatDay(start)} → ${formatDay(end)}`;
+  if (start) return `Depuis le ${formatDay(start)}`;
+  if (end) return `Jusqu’au ${formatDay(end)}`;
+  return "Sans dates";
 }
 
 /** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
@@ -252,37 +254,6 @@ export const PROFILE_FIELDS: Record<string, string> = {
   company: "Entreprise",
   experience: "Expérience",
 };
-
-const PAGE_SUBTITLES: [string, string][] = [
-  ["/appointments", "À venir et passés"],
-  ["/campaigns/new", "Segments, sources et statuts"],
-  ["/campaigns", "Segments, sources et statuts"],
-  ["/prospects/", "Parcours, échanges et décisions de l’agent"],
-  ["/prospects", "Pipeline et table"],
-  ["/conversations", "Inbox unifiée"],
-  ["/todo", "Réponses à valider et demandes de conseiller"],
-  ["/knowledge", "Connaissances de l’agent"],
-  ["/integrations", "Canaux et synchronisation"],
-  ["/team", "Membres, rôles et accès"],
-  ["/settings/testing", "Essais de l’agent avec des données fictives"],
-  ["/settings", "IA, relances, emails et rendez-vous"],
-  ["/account", "Profil et mot de passe"],
-  ["/simulator", "Tests et démonstration"],
-];
-
-export function pageSubtitle(pathname: string): string {
-  if (pathname === "/")
-    return new Date().toLocaleDateString("fr-FR", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
-  return (
-    PAGE_SUBTITLES.find(
-      ([prefix]) => pathname === prefix || pathname.startsWith(prefix),
-    )?.[1] ?? ""
-  );
-}
 
 /** État d'exécution d'un brouillon décidé : lisible après traitement. */
 export const EXECUTION: Record<string, string> = {

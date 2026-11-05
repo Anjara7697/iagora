@@ -6,6 +6,7 @@ import { LinkButton, TextLink } from "@/components/ds/controls";
 import { Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { canUseSimulator } from "@/lib/access";
 import { SIMULATOR_ENABLED } from "@/lib/api";
+import { Box } from "@/components/ds/card";
 
 export default function TestingPage() {
   const user = useCurrentUser();
@@ -41,8 +42,8 @@ export default function TestingPage() {
           </p>
         </div>
       </div>
-      <section
-        className="card card--default flex-row flex-wrap items-center gap-5 p-6"
+      <Box as="section"
+        className="flex-row flex-wrap items-center gap-5 p-6"
         aria-label="Simulateur de conversation"
       >
         <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent-soft-foreground" aria-hidden="true">
@@ -60,7 +61,7 @@ export default function TestingPage() {
           Ouvrir le simulateur
           <ArrowRight className="size-4" aria-hidden="true" />
         </LinkButton>
-      </section>
+      </Box>
     </Screen>
   );
 }

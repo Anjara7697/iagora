@@ -58,7 +58,7 @@ export default function AccountPage() {
           {initials(user.username)}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="font-mono text-xs tracking-[0.06em] text-muted uppercase">Mon compte</span>
+          <span className="text-xs tracking-[0.06em] text-muted uppercase">Mon compte</span>
           <h1 className="text-[28px]/[34px] font-semibold tracking-[-0.02em] text-foreground">{user.username}</h1>
           <p className="text-sm text-muted">
             {user.email} · {ROLE_LABELS[user.role]}

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditA11y } from "./a11y";
+import { choose } from "./select";
 
 const member: Record<string, unknown> = {
   id: 11,
@@ -92,6 +93,19 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/\/prospects$/);
 }
 
+/** Choisit un filtre dans le panneau « Filtres » (ouvert puis refermé). */
+async function selectFilter(page: Page, label: string, value: string) {
+  const panel = page.getByRole("dialog", { name: "Filtres" });
+  await page.getByRole("button", { name: /^Filtres/ }).click();
+  await panel.getByLabel(label, { exact: true }).click();
+  await page.locator(`[role="option"][data-value="${value}"]`).click();
+  await expect(page.getByRole("listbox", { name: label })).toHaveCount(0);
+  await panel.getByRole("button", { name: /^Afficher/ }).click();
+  await expect(panel).toHaveCount(0);
+}
+/** Puce d'un filtre actif, sous la barre. */
+const activeFilter = (page: Page, title: string) => page.getByRole("button", { name: `Retirer le filtre ${title}` });
+
 test("campagne et source : seuls les parcours filtrés apparaissent, export identique", async ({
   page,
 }) => {
@@ -126,11 +140,11 @@ test("campagne et source : seuls les parcours filtrés apparaissent, export iden
     });
   });
   await login(page);
-  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
-  await page.getByLabel("Source", { exact: true }).selectOption("7");
+  await selectFilter(page, "Campagne", "3");
+  await selectFilter(page, "Source", "7");
   const board = page.getByRole("region", { name: /Pipeline des prospects/ });
   await expect(board.getByText("Alice Martin", { exact: true })).toHaveCount(1);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   const row = page.getByRole("row", { name: /Alice Martin/ });
   await expect(row.getByText("Qualifié", { exact: true })).toBeVisible();
   await expect(row.getByText("Contacté", { exact: true })).toHaveCount(0);
@@ -144,8 +158,9 @@ test("campagne et source : seuls les parcours filtrés apparaissent, export iden
   await page
     .getByRole("button", { name: "Réinitialiser", exact: true })
     .click();
-  await expect(page.getByLabel("Source", { exact: true })).toHaveValue("");
-  await expect(page.getByLabel("Source", { exact: true })).toBeDisabled();
+  await expect(activeFilter(page, "Source")).toHaveCount(0);
+  await expect(activeFilter(page, "Campagne")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/prospects(\?view=table)?$/);
   await auditA11y(page, "prospects");
 });
 
@@ -196,13 +211,13 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
     exact: true,
   });
-  await follow.getByLabel("Conseiller responsable").selectOption("8");
+  await choose(follow.getByLabel("Conseiller responsable"), "8");
   await follow
     .getByRole("button", { name: "Enregistrer l’affectation" })
     .click();
@@ -245,13 +260,13 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
   await page.goto("/prospects/1");
   await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const stage = page.getByRole("form", {
     name: "Étape du parcours 11",
     exact: true,
   });
-  await stage.getByLabel("Nouvelle étape").selectOption("applied");
+  await choose(stage.getByLabel("Nouvelle étape"), "applied");
   await stage.getByLabel("Motif du changement").fill("Justification conservée");
   await stage.getByRole("button", { name: "Enregistrer l’étape" }).click();
   await expect(
@@ -370,7 +385,7 @@ test("exception individuelle : retour au responsable de la campagne", async ({
   await login(page);
   await page.goto("/prospects/1");
   await page
-    .locator('summary[data-membership="11"]')
+    .locator('button[data-membership="11"]')
     .click();
   const follow = page.getByRole("region", {
     name: "Suivi du parcours 11",
@@ -398,9 +413,9 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
       .getByRole("region", { name: /Pipeline des prospects/ })
       .getByText("Alice Martin"),
   ).toHaveCount(2);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   await expect(
-    page.getByRole("table").getByText("Très chaud", { exact: false }),
+    page.getByRole("grid").getByText("Très chaud", { exact: false }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Alice Martin" }).click();
   await expect(
@@ -416,7 +431,7 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
   await page.getByRole("button", { name: /Menu du compte/ }).click();
-  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),
@@ -444,8 +459,8 @@ test("recherche, filtres transmis à l’API, pagination et état vide", async (
     (r) =>
       r.url().includes("stage=qualified") && r.url().includes("campaign_id=3"),
   );
-  await page.getByLabel("Étape", { exact: true }).selectOption("qualified");
-  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
+  await selectFilter(page, "Étape", "qualified");
+  await selectFilter(page, "Campagne", "3");
   await request;
   const next = page.waitForRequest((r) => r.url().includes("offset=25"));
   await page.getByRole("button", { name: "Suivant" }).click();
@@ -502,11 +517,12 @@ test("mobile : menu repliable et absence de débordement de page", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
   await login(page);
-  const menu = page.locator('button[aria-controls="app-navigation"]');
-  await menu.click();
-  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  // Menu mobile : Drawer HeroUI, refermé par Échap.
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Ouvrir le menu" })).toHaveAttribute("aria-expanded", "false");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -638,7 +654,7 @@ test("fiche : effacer un prospect (administrateur) et lister ce qui reste à la 
   });
   await expect(confirmButton).toBeDisabled();
   await panel.getByLabel("Adresse email du prospect").fill("alice@example.com");
-  await panel.getByLabel("Motif").selectOption("other");
+  await choose(panel.getByRole("button", { name: /Motif/ }), "other");
   await confirmButton.click();
   await expect(
     page.getByRole("heading", { name: "Prospect effacé" }),
@@ -720,11 +736,10 @@ test("filtres programme, intérêt, canal et consentement transmis à l'API", as
     await route.fallback();
   });
   await login(page);
-  await page.getByRole("button", { name: /Plus de filtres/ }).click();
-  await page.getByLabel("Programme").selectOption("ebihar_students");
-  await page.getByLabel("Intérêt").selectOption("very_hot");
-  await page.getByLabel("Canal", { exact: true }).selectOption("email");
-  await page.getByLabel("Consentement").selectOption("granted");
+  await selectFilter(page, "Programme", "ebihar_students");
+  await selectFilter(page, "Intérêt", "very_hot");
+  await selectFilter(page, "Canal", "email");
+  await selectFilter(page, "Consentement", "granted");
   await expect
     .poll(() =>
       queries.some(
@@ -736,27 +751,32 @@ test("filtres programme, intérêt, canal et consentement transmis à l'API", as
       ),
     )
     .toBe(true);
-  await page.getByRole("button", { name: "Réinitialiser" }).click();
-  await expect(page.getByLabel("Programme")).toHaveValue("");
+  await expect(activeFilter(page, "Programme")).toBeVisible();
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
+  await expect(activeFilter(page, "Programme")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/prospects$/);
 });
 
-test("filtres avancés repliés : nombre de filtres actifs et puces retirables", async ({
+test("panneau de filtres : nombre de filtres actifs, puces retirables et compteur « N sur M »", async ({
   page,
 }) => {
   await mockApi(page);
   await login(page);
-  const more = page.getByRole("button", { name: /Plus de filtres/ });
-  await expect(more).toHaveAttribute("aria-expanded", "false");
+  const open = page.getByRole("button", { name: /^Filtres/ });
   await expect(page.getByLabel("Intérêt")).toHaveCount(0);
-  await more.click();
-  await page.getByLabel("Intérêt").selectOption("very_hot");
-  await more.click();
-  await expect(more).toContainText("1");
-  const chip = page.getByRole("button", { name: "Retirer le filtre Intérêt" });
+  await open.click();
+  const panel = page.getByRole("dialog", { name: "Filtres" });
+  await expect(panel.getByLabel("Étape", { exact: true })).toBeVisible();
+  await auditA11y(page, "prospects, panneau de filtres");
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  await selectFilter(page, "Intérêt", "very_hot");
+  await expect(open).toHaveAccessibleName(/1 actif/);
+  const chip = activeFilter(page, "Intérêt");
   await expect(chip).toContainText("Très chaud");
+  await expect(page.getByRole("region", { name: "Affichage et filtres des prospects" }).getByRole("status")).toHaveText("26 prospects sur 26");
   await chip.click();
   await expect(chip).toHaveCount(0);
-  await expect(more).not.toContainText("1");
+  await expect(open).not.toHaveAccessibleName(/actif/);
 });
 
 test("export CSV : téléchargement avec les filtres, absent pour un observateur", async ({
@@ -776,8 +796,7 @@ test("export CSV : téléchargement avec les filtres, absent pour un observateur
     });
   });
   await login(page);
-  await page.getByRole("button", { name: /Plus de filtres/ }).click();
-  await page.getByLabel("Programme").selectOption("ebihar_students");
+  await selectFilter(page, "Programme", "ebihar_students");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Exporter en CSV (Excel)" }).click(),
@@ -854,11 +873,11 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Campagne d’attribution").selectOption("3");
+  await choose(form.getByLabel("Campagne d’attribution"), "3");
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
   ).toBeDisabled();
-  await form.getByLabel("Source d’attribution").selectOption("7");
+  await choose(form.getByLabel("Source d’attribution"), "7");
   await form
     .getByRole("button", { name: "Attribuer et démarrer le suivi" })
     .click();
@@ -902,20 +921,20 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
   const queries: URLSearchParams[] = [];
   page.on("request", request => {
     const url = new URL(request.url());
-    if (url.pathname === "/api/v1/prospects") queries.push(url.searchParams);
+    // Les totaux (« À attribuer », « N sur M ») sont lus avec limit=1 : seules les lectures de la liste comptent.
+    if (url.pathname === "/api/v1/prospects" && url.searchParams.get("limit") !== "1") queries.push(url.searchParams);
   });
   await login(page);
-  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
   await page.getByLabel("Rechercher", { exact: true }).fill("Alice");
-  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
-  await page.getByLabel("Source", { exact: true }).selectOption("7");
-  await page.getByLabel("Étape", { exact: true }).selectOption("qualified");
+  await selectFilter(page, "Campagne", "3");
+  await selectFilter(page, "Source", "7");
+  await selectFilter(page, "Étape", "qualified");
   await page.getByRole("button", { name: "Mes prospects", exact: true }).click();
-  await page.getByRole("button", { name: /Plus de filtres/ }).click();
-  await page.getByLabel("Programme", { exact: true }).selectOption("ebihar_students");
-  await page.getByLabel("Intérêt", { exact: true }).selectOption("very_hot");
-  await page.getByLabel("Canal", { exact: true }).selectOption("email");
-  await page.getByLabel("Consentement", { exact: true }).selectOption("granted");
+  await selectFilter(page, "Programme", "ebihar_students");
+  await selectFilter(page, "Intérêt", "very_hot");
+  await selectFilter(page, "Canal", "email");
+  await selectFilter(page, "Consentement", "granted");
   await page.getByRole("button", { name: "Suivant" }).click();
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
   const results = page.url();
@@ -929,11 +948,11 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
   await page.reload();
   await page.getByRole("link", { name: "← Retour aux résultats", exact: true }).click();
   await expect(page).toHaveURL(results);
-  await expect(page.getByRole("button", { name: "Table", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
-  await expect(page.getByLabel("Source", { exact: true })).toHaveValue("7");
+  await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
+  await expect(activeFilter(page, "Source")).toContainText("Formulaire");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("Alice");
-  await expect(page.getByRole("button", { name: "Retirer le filtre Intérêt" })).toBeVisible();
+  await expect(activeFilter(page, "Intérêt")).toBeVisible();
   await page.reload();
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
   for (const [key, value] of Object.entries(expected)) expect(queries.at(-1)?.get(key)).toBe(value);
@@ -954,28 +973,33 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
 test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une liste déjà ouverte", async ({ page }) => {
   await mockApi(page);
   await login(page);
-  await page.getByLabel("Campagne", { exact: true }).selectOption("3");
+  await selectFilter(page, "Campagne", "3");
   const results = page.url();
   await page.locator(".pipeline-card").first().click();
   await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(results);
-  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   await page.goForward();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "← Retour aux résultats" }).click();
   await expect(page).toHaveURL(results);
-  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
-  await page.getByLabel("Étape", { exact: true }).selectOption("qualified");
+  await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
+  // Règle 6 : un filtre remplace l'adresse sans entrée d'historique ; « Retour » quitte la liste.
+  await selectFilter(page, "Étape", "qualified");
+  await expect(page).toHaveURL(/stage=qualified/);
   await page.goBack();
-  await expect(page.getByLabel("Étape", { exact: true })).toHaveValue("");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).fill("inexistant");
-  await page.getByLabel("Rechercher un prospect", { exact: true }).press("Enter");
+  await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await expect(page).toHaveURL(results);
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("inexistant");
+  await page.keyboard.press("Enter");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("inexistant");
   await expect(page.getByRole("heading", { name: "Aucun prospect ne correspond" })).toBeVisible();
   await page.goBack();
-  await expect(page.getByLabel("Campagne", { exact: true })).toHaveValue("3");
+  await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("");
 });
 
@@ -983,11 +1007,16 @@ test("liens directs : paramètres invalides ignorés et retour limité aux prosp
   await mockApi(page);
   await login(page);
   await page.goto("/prospects?view=incorrect&offset=-25&stage=invented&campaign=no&source=7&mine=true&demo=exclude&pending_campaign=true");
-  await expect(page.getByRole("button", { name: "Pipeline", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("button", { name: "Mes prospects", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Masquer les prospects fictifs")).toBeChecked();
-  await expect(page.getByLabel("Étape", { exact: true })).toHaveValue("");
-  await expect(page.getByLabel("Source", { exact: true })).toBeDisabled();
+  await expect(activeFilter(page, "Prospects fictifs")).toBeVisible();
+  await expect(activeFilter(page, "Étape")).toHaveCount(0);
+  await page.getByRole("button", { name: /^Filtres/ }).click();
+  const panel = page.getByRole("dialog", { name: "Filtres" });
+  await expect(panel.getByLabel("Masquer les prospects fictifs")).toBeChecked();
+  await expect(panel.getByLabel("Étape", { exact: true })).toHaveAttribute("data-value", "");
+  await expect(panel.getByLabel("Source", { exact: true })).toBeDisabled();
+  await panel.getByRole("button", { name: "Fermer" }).click();
   await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
   await expect(page).toHaveURL(/\/prospects$/);
   for (const from of ["https://example.com", "//example.com", "/prospects/other", "/prospects/../settings"]) {

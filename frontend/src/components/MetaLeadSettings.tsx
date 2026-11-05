@@ -9,6 +9,7 @@ import { CampaignSourcePicker } from "./CampaignSourcePicker";
 import { Btn, Check, ErrorText, TextInput, TextLink } from "./ds/controls";
 import { Eyebrow } from "./ds/layout";
 import { ActionsBar, CodeBlock, Feedback, InfoRow, SettingRow as Field, StatePill, Stats } from "./ds/settings";
+import { Box } from "@/components/ds/card";
 
 type Secrets = {
   app_secret: string;
@@ -156,9 +157,8 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
   const webhookUrl = `${API_URL.replace(/\/$/, "")}/webhooks/meta`;
 
   return (
-    <section
-     
-      className={embedded ? "flex flex-col gap-4" : "card card--default gap-4 p-5"}
+    <Box as="section"
+      className={embedded ? "gap-4 rounded-none bg-transparent p-0 shadow-none" : "gap-4 p-5"}
       aria-label="Meta Lead Ads"
     >
       {!embedded && (
@@ -320,6 +320,6 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
         )}
       </ActionsBar>
       <Feedback notice={notice} error={error} />
-    </section>
+    </Box>
   );
 }

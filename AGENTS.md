@@ -10,6 +10,7 @@ Projet : Agent Intelligent Commercial 2.0 (cahier des charges v1.0). Voir `READM
 ## Code
 - Backend : Python/FastAPI. Avant de proposer une PR : `ruff check .`, `ruff format --check .`, `mypy`, `pytest` (dans `backend/`).
 - Frontend : `npm run lint && npm run typecheck && npm run build` (dans `frontend/`).
+- Interface : appliquer les « Règles des parcours » de `docs/frontend/heroui.md` à chaque écran refait ; un écart se décide avec le responsable du projet.
 - `app/graph` et `app/agents` ne dépendent d'aucune API ou SDK de plateforme : tout passe par `app/integrations` (NF-01, NF-02).
 - Le LLM n'invente jamais de prix, date, condition ou disponibilité (NF-10).
 

@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, Check, ErrorText, Field, NativeSelect, Segmented, Tag, type Tone } from "@/components/ds/controls";
+import { Btn, Check, ErrorText, Field, LinkButton, SelectBox, Segmented, Tag, type Tone } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
 import { DemoBadge, Loading, Pager, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { APPOINTMENT_STATUS, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, Page } from "@/lib/types";
+import { Box } from "@/components/ds/card";
 
 const TONES: Record<string, Tone> = {
   proposed: "warning", scheduled: "accent", done: "success",
@@ -89,17 +90,17 @@ function Appointments() {
           onChange={(value) => update({ when: value })}
         />
         <span className="flex-1" />
-        <span className="font-mono text-[13px] text-muted tabular-nums" role="status">
+        <span className="text-[13px] text-muted tabular-nums" role="status">
           {!list.loading && list.data ? `${list.data.total} rendez-vous` : ""}
         </span>
       </div>
-      <form
-        className="card card--default flex-row flex-wrap items-end gap-4 px-5 py-4"
+      <Box as="form"
+        className="flex-row flex-wrap items-end gap-4 px-5 py-4"
         aria-label="Filtres des rendez-vous"
         onSubmit={(event) => event.preventDefault()}
       >
         <Field label="Conseiller" className="w-full sm:w-56">
-          <NativeSelect id="appointment-advisor" value={advisor} onChange={(event) => update({ advisor: event.target.value })}>
+          <SelectBox id="appointment-advisor" value={advisor} onChange={(event) => update({ advisor: event.target.value })}>
             <option value="all">Tous les conseillers</option>
             <option value="me">Mes rendez-vous</option>
             {/^\d+$/.test(advisor) && !advisors.data?.items.some((a) => String(a.id) === advisor) && (
@@ -110,17 +111,17 @@ function Appointments() {
                 {a.username}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Field label="Statut" className="w-full sm:w-48">
-          <NativeSelect id="appointment-status" value={status} onChange={(event) => update({ status: event.target.value })}>
+          <SelectBox id="appointment-status" value={status} onChange={(event) => update({ status: event.target.value })}>
             <option value="">Tous les statuts</option>
             {Object.entries(APPOINTMENT_STATUS).map(([value, text]) => (
               <option key={value} value={value}>
                 {text}
               </option>
             ))}
-          </NativeSelect>
+          </SelectBox>
         </Field>
         <Check
           className="h-9 items-center"
@@ -134,7 +135,7 @@ function Appointments() {
           <RotateCcw className="size-4" aria-hidden="true" />
           Réinitialiser les filtres
         </Btn>
-      </form>
+      </Box>
       {advisors.error && (
         <div className="flex flex-wrap items-center gap-3">
           <ErrorText>La liste des conseillers est indisponible.</ErrorText>
@@ -161,7 +162,7 @@ function Appointments() {
       {!list.loading && timeZone && list.data && (
         <>
           {list.data.items.length ? (
-            <ul className="card card--default gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés">
+            <Box as="ul" className="gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés">
               {list.data.items.map((appointment, index, items) => {
                 const url = meetingLink(appointment.meeting_url);
                 const dayLabel = day(appointment.start_at);
@@ -179,7 +180,7 @@ function Appointments() {
                     <li
                       className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t border-separator px-5 py-4 md:grid-cols-[110px_minmax(0,1.4fr)_minmax(0,1fr)_120px_auto] ${dead ? "opacity-70" : ""}`}
                     >
-                      <span className="flex flex-col font-mono text-[13px] tabular-nums">
+                      <span className="flex flex-col text-[13px] tabular-nums">
                         <time dateTime={appointment.start_at} className="text-base font-medium text-foreground">
                           {hour(appointment.start_at)}
                         </time>
@@ -217,16 +218,17 @@ function Appointments() {
                       </span>
                       <span className="col-span-2 md:col-span-1 md:justify-self-end">
                         {url ? (
-                          <a
-                            className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-accent-soft px-3 text-[13px] font-medium text-accent-soft-foreground outline-none transition-colors hover:bg-accent-soft-hover focus-visible:ring-2 focus-visible:ring-focus"
+                          <LinkButton
                             href={url}
+                            variant="secondary"
+                            size="sm"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Ouvrir la visio de ${name} dans un nouvel onglet`}
                           >
                             <Video className="size-4" aria-hidden="true" />
                             Ouvrir la visio
-                          </a>
+                          </LinkButton>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
                             <VideoOff className="size-4" aria-hidden="true" />
@@ -238,9 +240,9 @@ function Appointments() {
                   </Fragment>
                 );
               })}
-            </ul>
+            </Box>
           ) : (
-            <section className="card card--default p-0">
+            <Box as="section" className="p-0">
               <EmptyPanel
                 icon={CalendarDays}
                 title={list.data.total > 0 ? "Aucun rendez-vous sur cette page" : "Aucun rendez-vous pour cette sélection"}
@@ -255,7 +257,7 @@ function Appointments() {
                   )
                 }
               />
-            </section>
+            </Box>
           )}
           {list.data.items.length > 0 && (
             <Pager

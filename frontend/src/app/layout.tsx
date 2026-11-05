@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
+import { Providers } from "@/components/ds/Providers";
 import { Toaster } from "@/components/ds/Toaster";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./heroui.css";
 
 export const metadata: Metadata = {
@@ -10,9 +12,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" data-theme="light">
+    // Le thème (clair, sombre, système) est posé par le script ci-dessous avant l'affichage : l'attribut de <html>
+    // peut donc différer du rendu serveur.
+    <html lang="fr" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
         <Toaster />
       </body>
     </html>

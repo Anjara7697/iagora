@@ -3,118 +3,40 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
-  CalendarDays,
-  ChevronDown,
-  ChevronRight,
-  CircleDashed,
   FlaskConical,
-  LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   Upload,
   UserRound,
-  ListChecks,
-  Megaphone,
-  MessageSquare,
-  Plug,
-  Settings,
-  Sun,
-  Users,
-  UsersRound,
-  type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
-import { canAccessSettings, canUseSimulator } from "@/lib/access";
-import { pageTitle } from "@/lib/labels";
-import { Avatar, Button, Card, Chip, Dropdown, Label, SearchField, Spinner } from "@heroui/react";
-import AgentModeCard from "./AgentModeCard";
+import { canUseSimulator } from "@/lib/access";
+import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
+import AccountMenu from "./shell/AccountMenu";
+import AppNav from "./shell/AppNav";
+import { visibleGroups } from "./shell/navigation";
+import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
-import { ReplyDraftsProvider, confirmLogoutWithDrafts, useHasUnsentReplies } from "./ReplyDrafts";
+import { ReplyDraftsProvider } from "./ReplyDrafts";
 import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
 import type { User } from "@/lib/types";
 
 const UserContext = createContext<User | null>(null);
 export const useCurrentUser = () => useContext(UserContext);
-const ROLE_LABELS = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
-type NavItem = {
-  href?: string;
-  label: string;
-  /** Pictogramme Lucide, décoratif : le libellé porte le sens. */
-  icon?: LucideIcon;
-  badge?: boolean;
-  /** Écran prévu par la maquette, pas encore développé : affiché grisé, sans lien. */
-  soon?: boolean;
-  adminOnly?: boolean;
-};
-const NAV_GROUPS: { name: string; items: NavItem[] }[] = [
-  {
-    name: "Travail",
-    items: [
-      { href: "/", label: "Aujourd’hui", icon: Sun },
-      { href: "/todo", label: "À traiter", icon: ListChecks, badge: true },
-      { href: "/conversations", label: "Conversations", icon: MessageSquare },
-      { href: "/appointments", label: "Rendez-vous", icon: CalendarDays },
-      { href: "/prospects", label: "Prospects", icon: Users },
-    ],
-  },
-  {
-    name: "Pilotage",
-    items: [
-      { href: "/campaigns", label: "Campagnes", icon: Megaphone },
-      { label: "Dashboard", soon: true },
-      { label: "Analytics", soon: true },
-    ],
-  },
-  {
-    name: "Intelligence",
-    items: [
-      { label: "Agent", soon: true },
-      { href: "/knowledge", label: "Knowledge Base", icon: BookOpen },
-    ],
-  },
-  {
-    name: "Administration",
-    items: [
-      { href: "/team", label: "Équipe", icon: UsersRound, adminOnly: true },
-      { href: "/integrations", label: "Intégrations", icon: Plug, adminOnly: true },
-      { href: "/settings", label: "Paramètres", icon: Settings },
-    ],
-  },
-];
+const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
 
 /** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
 export const firstNameOf = (username: string) => {
   const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
   return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
 };
-const displayNameOf = (username: string) =>
-  username
-    .split("@")[0]
-    .split(/[.\s_-]+/)
-    .filter(Boolean)
-    .map((p) => p[0].toUpperCase() + p.slice(1).toLowerCase())
-    .join(" ");
 
-const initialsOf = (name: string) => {
-  const parts = name.split(/[.\s_-]+/).filter(Boolean);
-  return (
-    parts.length > 1
-      ? parts
-          .slice(0, 2)
-          .map((p) => p[0])
-          .join("")
-      : name.slice(0, 2)
-  ).toUpperCase();
-};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -124,7 +46,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
   const [waiting, setWaiting] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
   const isLogin = pathname === "/login";
 
   useEffect(() => {
@@ -183,14 +104,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(retry);
   }, [blocked, router]);
 
+  // Menu réduit (bureau) : préférence de ce navigateur, sans effet si le stockage est indisponible.
+  const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
-    if (!navOpen) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setNavOpen(false);
-    };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [navOpen]);
+    try {
+      setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
+    } catch {
+      /* stockage indisponible : menu complet */
+    }
+  }, []);
+  const toggleCollapsed = () =>
+    setCollapsed((value) => {
+      try {
+        window.localStorage.setItem(NAV_COLLAPSED_KEY, value ? "0" : "1");
+      } catch {
+        /* préférence non mémorisée */
+      }
+      return !value;
+    });
 
   if (isLogin) return <>{children}</>;
   if (!user)
@@ -218,18 +149,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user.role === "ADMIN";
   const inSimulator = pathname === "/simulator" && canUseSimulator(user.role);
-  const groups = NAV_GROUPS.map((g) => ({
-    ...g,
-    items: g.items.filter(
-      (i) =>
-        i.href &&
-        (isAdmin || !i.adminOnly) &&
-        (i.href !== "/settings" || canAccessSettings(user.role)),
-    ),
-  })).filter((g) => g.items.length > 0);
-  // Écrans prévus mais pas encore développés : regroupés dans une seule ligne repliée.
-  const upcoming = NAV_GROUPS.flatMap((g) => g.items.filter((i) => i.soon));
-  const title = pageTitle(pathname);
+  const groups = visibleGroups(user);
   const commands: Command[] = [
     ...groups.flatMap((g) =>
       g.items.map((i) => ({
@@ -253,138 +173,77 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <UserContext.Provider value={user}>
       <ReplyDraftsProvider key={user.id}>
       <a
-       
         className="fixed top-[-80px] left-3 z-[100] rounded-xl bg-surface px-3 py-2 text-sm font-medium text-foreground shadow-overlay focus:top-3"
         href="#main-content"
       >
         Aller au contenu
       </a>
       <div className="flex min-h-dvh bg-background">
-        <button
-         
-          className={`fixed inset-0 z-40 bg-backdrop transition-opacity duration-200 lg:hidden ${navOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
-          aria-label="Fermer le menu"
-          aria-hidden={!navOpen}
-          tabIndex={navOpen ? 0 : -1}
-          onClick={() => setNavOpen(false)}
-        />
+        {/* Bureau : menu fixe, réductible à ses icônes ; le choix est mémorisé dans le navigateur. */}
         <aside
-         
           id="app-navigation"
-          className={`fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col gap-3 border-r border-border bg-surface p-3 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0 ${navOpen ? "translate-x-0 shadow-overlay" : "-translate-x-full"}`}
+          aria-label="Menu"
+          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-3 border-r border-border bg-surface p-3 transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-16" : "w-[240px]"}`}
         >
-          <div className="px-2 pt-2">
-            <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
-              <Brand />
+          {/* Marque et bouton de réduction en haut du menu (le bas reste libre pour le défilement). */}
+          <div className={`flex items-center gap-2 pt-2 pb-3 ${collapsed ? "flex-col" : "justify-between pl-2"}`}>
+            <Link href="/" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+              <Brand compact={collapsed} />
             </Link>
+            <Tooltip delay={200} closeDelay={0}>
+              <Button
+                variant="ghost"
+                size="sm"
+                isIconOnly
+                className="text-muted"
+                aria-label={collapsed ? "Agrandir le menu" : "Réduire le menu"}
+                aria-expanded={!collapsed}
+                aria-controls="app-navigation"
+                onPress={toggleCollapsed}
+              >
+                {collapsed ? <PanelLeftOpen className="size-4" aria-hidden="true" /> : <PanelLeftClose className="size-4" aria-hidden="true" />}
+              </Button>
+              <Tooltip.Content placement="right" showArrow>
+                <Tooltip.Arrow />
+                {collapsed ? "Agrandir le menu" : "Réduire le menu"}
+              </Tooltip.Content>
+            </Tooltip>
           </div>
-          <CommandPalette commands={commands} />
-          <nav aria-label="Navigation principale" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1">
-            {groups.map((group) => (
-              <div key={group.name} className="flex flex-col gap-0.5">
-                <p className="px-2 pb-1 font-mono text-xs tracking-[0.06em] text-muted uppercase">
-                  {group.name === "Administration" && !isAdmin
-                    ? "Réglages"
-                    : group.name}
-                </p>
-                {group.items.map((link) => {
-                  if (!link.href) return null;
-                  const active =
-                    pathname === link.href ||
-                    (link.href !== "/" &&
-                      pathname.startsWith(`${link.href}/`)) ||
-                    (link.href === "/settings" && inSimulator);
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      aria-current={active ? "page" : undefined}
-                      className={`flex h-9 items-center gap-2.5 rounded-lg px-2 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-focus ${active ? "bg-accent-soft font-medium text-accent-soft-foreground" : "text-foreground hover:bg-surface-secondary"}`}
-                      onClick={() => setNavOpen(false)}
-                    >
-                      {Icon && <Icon className={`size-4 shrink-0 ${active ? "text-accent" : "text-muted"}`} aria-hidden="true" />}
-                      <span className="flex-1">{link.label}</span>
-                      {link.badge && waiting ? (
-                        <span
-                          className={`rounded-md px-1.5 font-mono text-[11px] tabular-nums ${active ? "bg-accent text-accent-foreground" : "bg-warning-soft text-warning-soft-foreground"}`}
-                          aria-label={`${waiting} en attente`}
-                        >
-                          {waiting}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
-            {upcoming.length > 0 && (
-              <details className="group rounded-lg border-t border-separator pt-2">
-                <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg px-2 text-sm text-muted hover:bg-surface-secondary [&::-webkit-details-marker]:hidden">
-                  <span className="flex-1">À venir</span>
-                  <span className="rounded-md bg-surface-secondary px-1.5 font-mono text-[11px]">{upcoming.length}</span>
-                  <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" aria-hidden="true" />
-                </summary>
-                <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">
-                  {upcoming.map((item) => (
-                    <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 text-sm text-muted">
-                      <CircleDashed className="size-4" aria-hidden="true" />
-                      <span>{item.label}</span>
-                      <span className="ms-auto text-[11px]" aria-hidden="true">Bientôt</span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </nav>
-          {!mustChange && (
-            <AgentModeCard
-              readOnly={user.role === "VIEWER"}
-              refreshKey={pathname}
-            />
-          )}
+          <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} collapsed={collapsed} />
         </aside>
+        {/* Mobile et tablette : Drawer HeroUI (focus gardé dans le menu, Échap, voile et bouton Fermer). */}
+        <Drawer.Backdrop isOpen={navOpen} onOpenChange={setNavOpen}>
+          <Drawer.Content placement="left" className="w-[280px] max-w-[85vw]">
+            <Drawer.Dialog aria-label="Menu" className="flex h-full flex-col gap-3 p-3">
+              <Drawer.Header className="flex flex-row items-center justify-between gap-2 px-2 pt-2 pb-1">
+                <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                  <Brand />
+                </Link>
+                <Drawer.CloseTrigger aria-label="Fermer le menu" />
+              </Drawer.Header>
+              <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} onNavigate={() => setNavOpen(false)} />
+            </Drawer.Dialog>
+          </Drawer.Content>
+        </Drawer.Backdrop>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-           
-            className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur-md lg:px-7"
+            className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:px-7"
           >
             <Button
               variant="ghost"
               isIconOnly
               className="lg:hidden"
-              aria-label={navOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-label="Ouvrir le menu"
               aria-expanded={navOpen}
-              aria-controls="app-navigation"
-              onPress={() => setNavOpen(!navOpen)}
+              onPress={() => setNavOpen(true)}
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>
-            <strong className="min-w-0 truncate text-base font-semibold text-foreground lg:hidden">
-              {title}
-            </strong>
+            {/* Recherche et commandes à gauche (la palette : prospects, pages, actions) ; icône seule sur téléphone. */}
+            <div role="search" className="flex min-w-0 md:w-[300px] xl:w-[340px]">
+              <CommandPalette commands={commands} />
+            </div>
             <span className="flex-1" />
-            <form
-              className="hidden w-full max-w-[320px] md:block"
-              role="search"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <SearchField
-                aria-label="Rechercher un prospect"
-                value={search}
-                onChange={setSearch}
-                onSubmit={() => {
-                  const q = search.trim();
-                  router.push(q ? `/prospects?q=${encodeURIComponent(q)}` : "/prospects");
-                }}
-              >
-                <SearchField.Group>
-                  <SearchField.SearchIcon />
-                  <SearchField.Input placeholder="Nom ou email du prospect…" />
-                  <SearchField.ClearButton />
-                </SearchField.Group>
-              </SearchField>
-            </form>
             {inSimulator ? (
               <Chip
                 color="warning"
@@ -393,25 +252,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 aria-label="Mode du simulateur"
               >
                 <FlaskConical className="size-3.5" aria-hidden="true" />
-                <Chip.Label>Test · données fictives</Chip.Label>
+                <Chip.Label>
+                  Test<span className="hidden sm:inline"> · données fictives</span>
+                </Chip.Label>
               </Chip>
             ) : (
               waiting !== null && (
-                <Link
+                <LinkButton
                   href="/todo"
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-surface px-3 text-sm font-medium text-foreground shadow-surface outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+                  variant="tertiary"
+                  className="h-9 shrink-0 gap-2 px-3"
+                  aria-label={waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
                 >
-                  <span
-                    className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`}
-                    aria-hidden="true"
-                  />
-                  {waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
-                </Link>
+                  <span className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`} aria-hidden="true" />
+                  {waiting > 0 ? (
+                    <>
+                      {waiting}
+                      <span className="hidden sm:inline">à traiter</span>
+                    </>
+                  ) : (
+                    <span className="hidden sm:inline">Rien à traiter</span>
+                  )}
+                </LinkButton>
               )
             )}
             <AccountMenu
               user={user}
-              onAccount={() => router.push("/account")}
+              refreshKey={pathname}
+              showAgent={!mustChange}
               onLogout={() => {
                 setToken(null);
                 setUser(null);
@@ -440,66 +308,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       </ReplyDraftsProvider>
     </UserContext.Provider>
-  );
-}
-
-/** Menu du compte (avatar) : identité, Mon compte, Déconnexion (avec garde des réponses en cours). */
-function AccountMenu({
-  user,
-  onAccount,
-  onLogout,
-}: {
-  user: User;
-  onAccount: () => void;
-  onLogout: () => void;
-}) {
-  const hasUnsentReplies = useHasUnsentReplies();
-  const [open, setOpen] = useState(false);
-  return (
-    <Dropdown isOpen={open} onOpenChange={setOpen}>
-      <Button
-        variant="ghost"
-        className="h-10 gap-2 px-1.5 sm:px-2"
-        aria-label={`Menu du compte : ${displayNameOf(user.username)}, ${ROLE_LABELS[user.role]}`}
-      >
-        <Avatar size="sm" variant="soft" color="accent">
-          <Avatar.Fallback>{initialsOf(user.username)}</Avatar.Fallback>
-        </Avatar>
-        <span className="hidden flex-col items-start leading-tight sm:flex">
-          <span className="text-sm font-medium text-foreground">{displayNameOf(user.username)}</span>
-          <span className="text-xs font-normal text-muted">{ROLE_LABELS[user.role]}</span>
-        </span>
-        <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden="true" />
-      </Button>
-      <Dropdown.Popover placement="bottom end" className="min-w-[240px]">
-        <div className="flex flex-col gap-0.5 border-b border-separator px-3 py-2.5">
-          <span className="text-sm font-semibold text-foreground">{user.username}</span>
-          <span className="text-xs text-muted">{user.email}</span>
-        </div>
-        <Dropdown.Menu
-          aria-label="Compte"
-          onAction={(key) => {
-            if (key === "account") {
-                  setOpen(false);
-                  onAccount();
-                }
-            // Déconnexion annulée : le menu reste ouvert, comme la saisie.
-                if (key === "logout" && confirmLogoutWithDrafts(hasUnsentReplies())) {
-                  setOpen(false);
-                  onLogout();
-                }
-          }}
-        >
-          <Dropdown.Item id="account" textValue="Mon compte">
-            <UserRound className="size-4 text-muted" aria-hidden="true" />
-            <Label>Mon compte</Label>
-          </Dropdown.Item>
-          <Dropdown.Item id="logout" textValue="Déconnexion" variant="danger" shouldCloseOnSelect={false}>
-            <LogOut className="size-4" aria-hidden="true" />
-            <Label>Déconnexion</Label>
-          </Dropdown.Item>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown>
   );
 }
