@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
 import CampaignOwnership from "@/components/CampaignOwnership";
+import { SelectField } from "@/components/ds/SelectField";
+import { sourceReception, sourceDestinationUrl } from "@/lib/campaignSources";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, ErrorText, LinkButton, NativeSelect, Tag, TextInput, TextLink, type Tone } from "@/components/ds/controls";
 import { BarList, EmptyText, ErrorState, Eyebrow, KpiCard, Panel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
@@ -107,8 +109,8 @@ function Sources({
 }) {
   const [draft, setDraft] = useState({
     name: "",
-    type: "ads",
-    platform: "linkedin",
+    type: "form",
+    platform: "web",
     external_id: "",
   });
   const [busy, setBusy] = useState(false);
@@ -132,14 +134,20 @@ function Sources({
 
   return (
     <Panel title="Sources de prospects" label="Sources" bodyClassName="gap-4 px-5 py-4">
+      <p className="text-sm text-muted">
+        Une source indique d’où viennent les contacts. L’ajouter ici ne crée ni publicité,
+        ni formulaire, ni connexion automatique. Choisissez ensuite son mode de réception.
+      </p>
+      {campaign.status !== "active" && <p role="status" className="rounded-lg bg-warning-soft p-3 text-sm text-warning-soft-foreground">
+        La campagne n’est pas active. Vous pouvez préparer ses branchements ; activez-la avant de recevoir ou importer des contacts.
+      </p>}
       {campaign.sources.length === 0 ? (
         <EmptyText>
-          Aucune source rattachée : aucun prospect ne peut entrer dans cette
-          campagne.
+          Ajoutez une source, puis branchez un formulaire ou importez des contacts.
         </EmptyText>
       ) : (
         <div
-          className="overflow-x-auto rounded-xl border border-separator outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          className="overflow-x-auto rounded-lg border border-separator outline-none focus-visible:ring-2 focus-visible:ring-focus"
           tabIndex={0}
           role="region"
           aria-label="Sources de la campagne, défilement horizontal"
@@ -197,37 +205,46 @@ function Sources({
           </table>
         </div>
       )}
+      {campaign.sources.length > 0 && (
+        <div className="grid gap-3 lg:grid-cols-2" aria-label="Mise en service des sources">
+          {campaign.sources.map((s) => {
+            const reception = sourceReception(s);
+            return <section key={s.id} aria-label={`Réception · ${s.name}`} className="flex flex-col gap-3 rounded-lg border border-separator p-4">
+              <div><h3 className="text-sm font-semibold">{s.name}</h3>
+                <p className="text-xs text-muted">{reception.label}</p></div>
+              <p className="text-sm text-muted">{reception.description}</p>
+              {canEdit && <div className="mt-auto flex flex-wrap gap-2">
+                {reception.connector && <LinkButton size="sm" href={sourceDestinationUrl(`/integrations?c=${reception.connector}`, campaign.id, s.id)}>
+                  {reception.connector === "meta" ? "Associer un formulaire Meta" : reception.connector === "email" ? "Configurer la boîte email" : "Brancher le formulaire"}
+                </LinkButton>}
+                <LinkButton size="sm" variant="outline" href={sourceDestinationUrl("/prospects/import", campaign.id, s.id)}>Importer dans cette source</LinkButton>
+              </div>}
+              <TextLink href={`/prospects?campaign=${campaign.id}&source=${s.id}`} className="text-sm">Voir les contacts reçus</TextLink>
+            </section>;
+          })}
+        </div>
+      )}
       {error && <ErrorText>{error}</ErrorText>}
       {canEdit && (
-        <div className="grid grid-cols-1 gap-2 rounded-xl bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
+        <div className="grid grid-cols-1 gap-2 rounded-lg bg-surface-secondary p-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <TextInput
             aria-label="Nom de la nouvelle source"
             placeholder="Nouvelle source (ex. Webinaire d'octobre)"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-          <NativeSelect
-            aria-label="Type de la nouvelle source"
+          <SelectField
+            label="Type de la nouvelle source"
             value={draft.type}
-            onChange={(e) => setDraft({ ...draft, type: e.target.value })}
-          >
-            {Object.entries(SOURCE_TYPES).map(([k, text]) => (
-              <option key={k} value={k}>
-                {text}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            aria-label="Plateforme de la nouvelle source"
+            onChange={(v) => setDraft({ ...draft, type: v })}
+            options={Object.entries(SOURCE_TYPES).map(([value, label]) => ({value, label}))}
+          />
+          <SelectField
+            label="Plateforme de la nouvelle source"
             value={draft.platform}
-            onChange={(e) => setDraft({ ...draft, platform: e.target.value })}
-          >
-            {Object.entries(PLATFORMS).map(([k, text]) => (
-              <option key={k} value={k}>
-                {text}
-              </option>
-            ))}
-          </NativeSelect>
+            onChange={(v) => setDraft({ ...draft, platform: v })}
+            options={Object.entries(PLATFORMS).map(([value, label]) => ({value, label}))}
+          />
           <Btn
             variant="primary"
             disabled={busy || !draft.name.trim()}

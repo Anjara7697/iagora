@@ -64,7 +64,11 @@ async def test_same_prospect_in_two_campaigns(client, campaign):
     other = (
         await client.post(
             f"{API}/campaigns",
-            json={"name": "Autre", "sources": [{"name": "FB", "type": "ads", "platform": "meta"}]},
+            json={
+                "name": "Autre",
+                "status": "active",
+                "sources": [{"name": "FB", "type": "ads", "platform": "meta"}],
+            },
         )
     ).json()
     await _ingest(client, **campaign)
