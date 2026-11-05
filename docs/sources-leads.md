@@ -1,5 +1,64 @@
 # Sources de leads : formulaire du site, outils (n8n…) et import CSV
 
+## Fonctionnement d'une source de campagne
+
+Une **campagne IAGORA** organise le suivi d'un recrutement. Une **source** identifie la provenance des
+contacts dans cette campagne. La créer n'ouvre aucun compte publicitaire et ne publie rien sur Meta
+ou LinkedIn. La publicité, son budget, son audience et le formulaire public sont gérés sur le service
+extérieur. Le connecteur transmet ensuite les contacts à IAGORA.
+
+Depuis **Campagnes → une campagne → Sources**, chaque source propose son parcours de réception et
+un lien vers ses contacts. Les liens de configuration et d'import conservent campagne et source ;
+la destination n'est préremplie qu'après vérification de leur association dans les données chargées.
+Avec plusieurs sources, le choix reste explicite. Le type « Import » propose le CSV quelle que soit
+la plateforme : une provenance LinkedIn peut aussi être alimentée par un export manuel.
+
+| Origine | À préparer à l'extérieur | Branchement IAGORA | Déclenchement de l'agent |
+|---|---|---|---|
+| Formulaire du site / landing page | Page et formulaire avec traitement serveur | Jeton de service lié à la campagne/source, puis `POST /api/v1/leads` | Le message fourni peut déclencher le traitement ; sans message, réception de la fiche seulement |
+| Meta Lead Ads | Publicité et formulaire instantané, application et permissions Meta, abonnement de la page aux notifications `leadgen` | Application et webhook, puis correspondance du formulaire vers campagne/source | Le message extrait des réponses peut déclencher le traitement ; pas de campagne de démarchage automatique des contacts sans message |
+| LinkedIn Lead Gen | Formulaire et export autorisé sur LinkedIn | CSV aujourd'hui ; connecteur direct non livré | Aucun message au seul import |
+| Publicité vers le site | Publicité externe renvoyant vers la landing page | Jeton du formulaire du site, même si la provenance est LinkedIn ou Meta | Selon la présence d'un message |
+| Salon / webinaire / liste | Fichier obtenu par l'organisateur, ou formulaire d'inscription | CSV ou API avec jeton propre à cette source | Aucun message au seul import ; API selon le message fourni |
+| Email | Boîte IMAP/SMTP dédiée | Connecteur email global ; vérification du rattachement par le conseiller si ambigu | Message reçu, sous réserve des réglages et garde-fous |
+
+**Source d'acquisition et canal de réponse sont distincts.** Un contact acquis sur Meta peut ensuite
+échanger par email. Choisir la plateforme « Meta » ne fournit pas un canal Messenger et choisir
+« LinkedIn » ne permet pas d'envoyer des messages privés LinkedIn.
+
+### Activation et erreurs
+
+Les configurations peuvent être préparées en brouillon. La réception dans une destination exige une
+campagne active, une source active et un rattachement actif. Une réception refusée par l'API retourne
+`422` avant de créer ou enrichir une fiche ; le système émetteur doit conserver le contact et le
+renvoyer après correction. Les dates de campagne sont descriptives : elles ne constituent pas un
+planificateur d'activation automatique.
+
+Si une source a été retirée après la création d'un jeton ou d'une correspondance Meta, sa destination
+devient invalide. Il faut corriger le branchement ; IAGORA ne choisit pas une autre source en silence.
+La reprise Meta existante reste limitée à trois essais sur renotification : une campagne désactivée
+longtemps nécessite une surveillance et éventuellement une reprise manuelle. Le rejeu automatique
+illimité n'est pas implémenté.
+
+### Recette de bout en bout
+
+1. Créer la campagne, ses programmes et une source au nom précis ; l'activer pour la réception.
+2. Depuis la source, ouvrir le branchement et vérifier campagne/source préremplies.
+3. Pour un formulaire, créer le jeton, le conserver côté serveur puis transmettre un contact de test
+   identifiable avec un `external_id` stable. Ne pas exposer le jeton dans le navigateur public.
+4. Pour Meta, enregistrer les paramètres, tester d'abord le rangement avec le simulateur, puis utiliser
+   l'outil Lead Ads de Meta avec les comptes autorisés. Un essai simulé ne valide pas les permissions.
+5. Contrôler la fiche, la campagne, la source et le message. Rejouer le même événement : pas de seconde
+   fiche ni d'interaction supplémentaire lorsque l'identifiant de réception est conservé.
+6. En mode assisté, contrôler le brouillon et sa destination avant toute validation. La distribution
+   email dépend du connecteur et de ses réglages ; recevoir un lead ne prouve pas un envoi réussi.
+7. Désactiver la campagne puis vérifier le refus d'une nouvelle réception. Réactiver et renvoyer le
+   contact conservé par l'émetteur.
+
+Les tests automatisés avec services simulés vérifient ces contrats internes. La recette réelle Meta
+attend toujours l'application, la page, les permissions et le formulaire autorisés. LinkedIn reste
+manuel via CSV ou formulaire du site tant que son adaptateur API officiel n'est pas livré.
+
 ## Jetons de service (formulaire du site, n8n, Zapier…)
 
 **Intégrations → Formulaire du site et outils** (administrateur) : créer un jeton en lui donnant un nom

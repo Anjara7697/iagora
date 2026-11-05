@@ -8,8 +8,12 @@ d'origine ne sont plus une référence : l'apparence se règle dans le thème, p
 Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, polices auto-hébergées
 (Instrument Sans, IBM Plex Mono) et jetons du thème clair (`--accent`, `--surface`, `--success`, etc.).
 
-- **Rayon « S »** : `--radius: 0.25rem`. Les autres rayons en dérivent (champs 6 px, cartes 8 px).
-  Ne pas fixer de rayon en pixels : utiliser l'échelle (`rounded-lg`, `rounded-xl`).
+- **Rayon « S »** : `--radius: 0.25rem`, dont dérive l'échelle. Le thème met au rayon `lg` les boutons, pastilles
+  de filtre, cartes et alertes (HeroUI : `3xl`) ainsi que les champs (`--field-radius`) : ne pas écrire `rounded-lg`
+  sur ces composants. Une classe utilitaire (`rounded-full`…) reste prioritaire. Les pastilles de statut (`Tag`)
+  et les fenêtres de confirmation gardent leur rayon HeroUI. Ne pas fixer de rayon en pixels.
+- **Thème sombre** : jetons IAGORA sous `[data-theme="dark"]` ; couleurs pleines vives avec texte foncé dessus,
+  pour rester lisibles en fond de bouton comme en texte (contraste AA vérifié par axe).
 - **Police mono** réservée au code, aux identifiants et aux valeurs techniques. Dates, compteurs et
   sur-titres sont en police sans-serif avec `tabular-nums`.
 - **Champs, listes, interrupteurs** : apparence HeroUI par défaut, sans surcharge du thème (pas de bordure ajoutée).
@@ -22,16 +26,105 @@ Les écrans importent ces composants, qui enveloppent HeroUI, plutôt que des é
 
 | Fichier | Contenu |
 |---|---|
-| `controls.tsx` | `Btn`, `LinkButton`, `RowButton`, `Segmented`, `FilterChip`, `Field`, `TextInput`, `TextBox`, `SelectInput` (liste avec libellé visible), `SelectBox` (liste à interface de `<select>`), `FileInput`, `Check`, `Tag`, `Notice`, `ErrorText` (`Alert`) |
+| `controls.tsx` | `Btn`, `LinkButton`, `RowButton`, `Segmented`, `FilterChip`, `FilterChipGroup`, `Field`, `TextInput`, `TextBox`, `SelectInput` (liste avec libellé visible), `SelectBox` (liste à interface de `<select>`), `FileInput`, `Check`, `CheckCardGroup`, `Tag`, `Notice`, `ErrorText` (`Alert`), `TAB_RADIUS` |
+| `ConfirmDialog.tsx` | `ConfirmDialog` : `AlertDialog` HeroUI, avec bouton déclencheur ou piloté par `isOpen` |
+| `useDiscardGuard.tsx` | « Abandonner les modifications ? » avant de quitter une saisie, et avertissement à la fermeture de l'onglet |
+| `motion.tsx` | `reveal(rang)` (cascade d'apparition), `CountUp`, `useReducedMotion` |
 | `card.tsx` | `Box` : `Card` HeroUI rendue dans l'élément voulu (`section`, `aside`, `article`, `form`…) |
 | `collapse.tsx` | `Collapse` : zone repliable sur le `Disclosure` HeroUI |
 | `table.tsx` | `DataTable` au-dessus du `Table` HeroUI |
-| `layout.tsx` | `Screen`, `PageHeader`, `Panel`, `KpiCard`, `BarList` (`Meter`), états vides |
+| `layout.tsx` | `Screen`, `PageHeader`, `Panel`, `KpiCard` / `KpiStrip`, `BarList` (`Meter`), `EmptyPanel`, `ErrorState` (`Alert` danger + « Réessayer ») |
 | `settings.tsx` | `SettingsCard`, `InfoRow`, `Toggle`, `Stats`, `ActionsBar` |
 | `badges.tsx` | `StageBadge`, `ScoreBadge`, `HeatMeter`, `LevelBadge`, `DemoChip` |
 
+Le panneau latéral est `components/Drawer.tsx` ; l'état d'une page dans l'adresse passe par `lib/url.ts`
+(`replaceUrl`) et un module par parcours (`lib/campaignNav.ts`, `lib/knowledgeNav.ts`).
+
 Éléments HTML natifs conservés : listes de définitions `dl`, listes `ul`/`li` sémantiques,
 onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
+
+## Règles des parcours
+
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), à appliquer à chaque écran refait. Un écart à une
+règle se décide avec le responsable du projet, puis s'écrit ici.
+
+**Structure**
+
+1. **Fiche et création** : page dédiée quand l'élément a plusieurs sections (onglets) ou que la création compte
+   plusieurs étapes ; sinon, panneau latéral. Modifier un élément se fait toujours dans un panneau.
+2. **Panneau latéral** : icône du module (la même que dans le menu), sur-titre (« Campagne », « Document »,
+   « Modification »), puis titre.
+3. **Onglets** : `Tabs` HeroUI avec `TAB_RADIUS`, l'onglet ouvert dans l'adresse (`?tab=…`).
+4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
+   Toute la ligne ouvre l'élément (clic et Entrée).
+5. **Barre au-dessus d'un tableau** : recherche et filtres à gauche, compteur à droite (« N éléments », ou
+   « N sur M » quand un filtre est actif). Quand les filtres sont nombreux (Prospects), seuls la recherche et les
+   pastilles de périmètre restent dans la barre ; les autres passent dans un panneau latéral ouvert par
+   « Filtres · N », qui s'applique tout de suite, et chaque filtre actif s'affiche en puce retirable sous la barre,
+   avec « Réinitialiser ».
+6. **Adresse** : onglet, filtres, page et élément ouvert sont dans l'URL, mise à jour sans entrée d'historique
+   (`replaceUrl`). Une adresse de retour est reconstruite à partir des valeurs connues, jamais suivie telle quelle.
+
+**Apparence**
+
+7. **Arrondis** : rayon `lg` fourni par le thème (voir « Thème »). Seule exception, décidée pour Conversations : les
+   bulles du fil (`ConversationView`) gardent un arrondi de messagerie, plus grand, au coin resserré du côté de
+   l'auteur.
+8. **Champs** : `variant="secondary"` sur la page et dans les cartes blanches ; `variant="primary"` dans un
+   panneau latéral (fond gris).
+9. **Animations** : cascade `reveal(rang)` sur chaque écran (en-tête, alertes et chiffres, puis lignes),
+   désactivée quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
+   passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
+   écran (`Screen scroll`), tableaux, menu latéral, résultats de recherche, listes des colonnes (`ListScroll`).
+10. **Couleurs métier** conservées : palette du projet, puces « agent » et « très chaud », niveaux `level-*`.
+
+**Retours et états**
+
+11. **Succès** : toute écriture réussie (créer, enregistrer, activer, retirer, supprimer…) est confirmée par
+    un Toast HeroUI court.
+12. **Erreurs** : une seule apparence, l'`Alert` HeroUI danger (`ErrorState` pour un chargement, avec
+    « Réessayer » ; `ErrorText` pour une action). Le message dit ce qui a échoué avant le détail du serveur.
+13. **États durables** (service non configuré, éléments à recalculer…) : `Alert` HeroUI annoncée poliment
+    (`role="status"`), avec l'action qui résout.
+14. **Confirmations** : `ConfirmDialog` avant une action destructive ou à conséquence, qui en dit l'effet ;
+    `useDiscardGuard` avant d'abandonner une saisie. Une action impossible est désactivée avec sa raison
+    (infobulle), plutôt que refusée après le clic.
+15. **États vides, chargement** : `EmptyPanel` avec l'action suivante (et « Afficher tout » quand un filtre
+    est actif) ; `Skeleton` ou chargement du tableau, jamais de « … ».
+
+**Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
+
+16. **Barre du haut** : à gauche, la recherche unique (la palette `CommandPalette`, Ctrl K / ⌘ K : prospects,
+    pages, actions) ; à droite, « N à traiter » et le menu du compte. Pas de second champ de recherche dans un
+    écran pour les mêmes données.
+17. **Menu du compte** (`shell/AccountMenu.tsx`, `Popover` HeroUI car il contient des contrôles) : identité,
+    Mon compte, état et contrôle de l'agent (arrêt d'urgence ou reprise après confirmation ; un point de
+    couleur sur l'avatar rappelle l'état), thème clair / sombre / système (`ToggleButtonGroup`, choix gardé
+    dans le navigateur, appliqué avant l'affichage par `lib/theme.ts`), Déconnexion.
+18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Sur bureau, menu
+    réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
+    navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
+19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
+
+**File de travail** (`app/todo`, `components/todo/` ; `app/conversations`, `components/conversations/`)
+
+20. **Maître-détail** (écart à la règle 4, décidé pour « À traiter », repris pour Conversations) : quand on traite des éléments l'un après
+    l'autre, la file reste à gauche et le détail s'ouvre à droite, au lieu d'un tableau et d'un panneau. La file
+    est posée sur la page : titre et compteur à droite, onglets, filtres (`FilterChipGroup`), liste sur sa
+    surface, `TablePagination`. Sur bureau, la colonne est collante (`calc(100dvh - 9rem)`) et seule la liste
+    défile, dans `ListScroll` : titre, filtres et pagination restent visibles. Sur mobile, la file ou le détail,
+    avec « ← Liste des éléments ».
+21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
+    d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
+    l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
+    concernent, jamais une barre collante qui le masque.
+22. **Actions sur l'état** (Conversations) : dans l'en-tête du détail, à côté du statut, l'action principale
+    selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
+    l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
+    le panneau d'« À traiter » (`components/todo/DraftPanel.tsx`), mêmes confirmations.
+
+**Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
+le parcours est capturé avant / après.
 
 ## Tests
 

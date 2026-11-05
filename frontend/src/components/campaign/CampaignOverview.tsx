@@ -22,7 +22,7 @@ function Funnel({ stats }: { stats: CampaignStats }) {
     value: step.stages.reduce((sum, s) => sum + (stats.by_stage[s] ?? 0), 0),
   }));
   return (
-    <Panel title="Entonnoir" label="Entonnoir" className="rounded-lg">
+    <Panel title="Entonnoir" label="Entonnoir">
       {stats.prospects === 0 ? <EmptyText>Aucun prospect pour l&apos;instant.</EmptyText> : <BarList rows={rows} labelWidth={130} />}
     </Panel>
   );
@@ -31,7 +31,7 @@ function Funnel({ stats }: { stats: CampaignStats }) {
 function Levels({ stats }: { stats: CampaignStats }) {
   const order = ["very_hot", "hot", "warm", "cold", "none"];
   return (
-    <Panel title="Niveaux d'intérêt" label="Niveaux d'intérêt" className="rounded-lg">
+    <Panel title="Niveaux d'intérêt" label="Niveaux d'intérêt">
       <BarList
         labelWidth={130}
         rows={order.map((k) => ({
@@ -59,13 +59,13 @@ export default function CampaignOverview({ stats }: { stats: CampaignStats }) {
         label="Indicateurs de la campagne"
         items={[
           { key: "prospects", label: "Prospects", value: <CountUp value={stats.prospects} /> },
-          { key: "score", label: "Score moyen", value: <CountUp value={stats.average_score} decimals={1} /> },
+          { key: "score", label: "Score moyen", value: <CountUp value={stats.average_score} decimals={1} />, hint: "sur 100" },
           { key: "meetings", label: "Rendez-vous", value: <CountUp value={stats.meetings} /> },
           {
             key: "converted",
             label: "Convertis",
             value: <CountUp value={stats.converted} />,
-            hint: stats.prospects > 0 ? `${conversion} % des prospects` : undefined,
+            hint: stats.prospects > 0 ? `${conversion} % des prospects · repère ${RATE_THRESHOLDS.enrolment.good} %` : undefined,
             badge: stats.prospects > 0 ? rateBadge(conversion, RATE_THRESHOLDS.enrolment) : undefined,
           },
         ]}

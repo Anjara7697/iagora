@@ -40,6 +40,31 @@ async function mockApi(page: Page, calls: string[]) {
   });
 }
 
+test("import depuis une source : conserver la destination dans l’aperçu et l’enregistrement", async ({ page }) => {
+  await mockApi(page, []);
+  await page.route("**/api/v1/campaigns?**", route => route.fulfill({ json: {
+    items: [{ id: 4, name: "Rentrée", sources: [{ id: 9, name: "Salon" }] }],
+    total: 1, limit: 200, offset: 0,
+  } }));
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("paul");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/prospects/import?campaign=4&source=9");
+  await expect(page.getByLabel("Campagne", { exact: true })).toHaveAttribute("data-value", "4");
+  await expect(page.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
+  await page.getByLabel("Fichier CSV (2 Mo, 5000 lignes maximum)").setInputFiles({
+    name: "salon.csv", mimeType: "text/csv", buffer: Buffer.from("email\ntest@demo.example.com\n"),
+  });
+  for (const action of ["Aperçu", "Importer"]) {
+    const request = page.waitForRequest(r => r.url().endsWith("/prospects/import") && r.method() === "POST");
+    await page.getByRole("button", { name: action, exact: true }).click();
+    const body = (await request).postData() ?? "";
+    expect(body).toMatch(/name="campaign_id"\r\n\r\n4/);
+    expect(body).toMatch(/name="source_id"\r\n\r\n9/);
+  }
+});
+
 test("import CSV : aperçu obligatoire puis import", async ({ page }) => {
   const calls: string[] = [];
   await mockApi(page, calls);

@@ -116,7 +116,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
         </div>
       </InfoRow>
       <ActionsBar className="border-t border-separator pt-4">
-        <Btn variant="primary" onClick={create} disabled={busy || name.trim().length < 2}>
+        <Btn variant="primary" onClick={create} disabled={busy || name.trim().length < 2 || (!!dest.campaign_id && !dest.source_id)}>
           <KeyRound className="size-4" aria-hidden="true" />
           Créer un jeton
         </Btn>

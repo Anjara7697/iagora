@@ -96,23 +96,28 @@ export function usePagination<T>(items: T[], pageSize: number) {
   };
 }
 
-/** Pagination HeroUI pour `Table.Footer` : résumé « 1-10 sur 23 », précédent, pages, suivant. */
+/**
+ * Pagination HeroUI pour `Table.Footer` : résumé « 1-10 sur 23 », précédent, pages, suivant. `className` règle
+ * la mise en page (ex. `flex-wrap` dans une colonne étroite).
+ */
 export function TablePagination({
   total,
   pageSize,
   page,
   onChange,
+  className = "",
 }: {
   total: number;
   pageSize: number;
   page: number;
   onChange: (page: number) => void;
+  className?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   return (
-    <Pagination size="sm" className="w-full">
+    <Pagination size="sm" className={`w-full ${className}`.trim()}>
       <Pagination.Summary>
         {from}-{to} sur {total}
       </Pagination.Summary>

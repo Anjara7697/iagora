@@ -1,10 +1,11 @@
 "use client";
 
-import { toast } from "@heroui/react";
+import { buttonVariants, toast, Tooltip } from "@heroui/react";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Box } from "@/components/ds/card";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { EmptyText } from "@/components/ds/layout";
 import { SourceAvatar } from "@/components/ds/SourceAvatars";
 import { DataTable, Table } from "@/components/ds/table";
@@ -13,12 +14,17 @@ import { api, ApiError } from "@/lib/api";
 import { PLATFORMS, SOURCE_TYPES, label } from "@/lib/labels";
 import { linkMetaForms } from "@/lib/metaForms";
 import type { Campaign, CampaignStats } from "@/lib/types";
+import { SourceReception } from "./SourceReception";
+
+const plural = (n: number) => (n > 1 ? `${n} prospects proviennent` : "1 prospect provient");
 
 type Draft = { connector: Connector; name: string; external_id: string };
 
 /**
  * Sources d'une campagne : tableau (logo de la plateforme, effectifs) et, pour l'administrateur, ajout depuis le
  * catalogue de connecteurs. Un identifiant de formulaire Meta saisi est associé à la campagne comme à la création.
+ * Retirer : impossible (bouton désactivé, raison en infobulle) quand des prospects proviennent de la source, règle
+ * du serveur ; sinon après confirmation.
  */
 export default function CampaignSources({
   campaign,
@@ -61,16 +67,18 @@ export default function CampaignSources({
     });
     const warning = await linkMetaForms(updated, [{ connector: d.connector.id, name: d.name, external_id: d.external_id }]);
     if (warning) toast.warning("Source ajoutée", { description: warning });
+    else toast.success("Source ajoutée", { description: `« ${d.name.trim()} » est rattachée à la campagne.` });
     setDraft(null);
   }
 
   return (
     <div className="flex flex-col gap-6">
+      <SourceReception campaign={campaign} canEdit={canEdit} />
       <section aria-label="Sources" className="flex flex-col gap-3">
         <DataTable
           label="Sources de la campagne"
           minWidth={560}
-          emptyState={<EmptyText>Aucune source rattachée : aucun prospect ne peut entrer dans cette campagne.</EmptyText>}
+          emptyState={<EmptyText>Ajoutez une source, puis branchez un formulaire ou importez des contacts.</EmptyText>}
           columns={[
             { id: "source", label: "Source" },
             { id: "platform", label: "Plateforme" },
@@ -91,17 +99,36 @@ export default function CampaignSources({
               <Table.Cell className="text-muted">{label(SOURCE_TYPES, s.type)}</Table.Cell>
               <Table.Cell className="text-right tabular-nums">{counts.get(s.id) ?? 0}</Table.Cell>
               <Table.Cell className="text-right">
-                {canEdit && (
-                  <Btn
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-lg"
-                    disabled={busy}
-                    onClick={() => act(() => api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" }))}
-                  >
-                    Retirer
-                  </Btn>
-                )}
+                {canEdit &&
+                  ((counts.get(s.id) ?? 0) > 0 ? (
+                    <Tooltip delay={200}>
+                      {/* Bouton désactivé mais focalisable (aria-disabled) : la raison reste lisible au survol et au clavier. */}
+                      <Tooltip.Trigger tabIndex={0} aria-disabled="true" className={buttonVariants({ variant: "ghost", size: "sm", className: "rounded-lg cursor-not-allowed pointer-events-auto!" })}>
+                        Retirer
+                      </Tooltip.Trigger>
+                      <Tooltip.Content showArrow className="max-w-64 break-normal">
+                        <Tooltip.Arrow />
+                        {plural(counts.get(s.id) ?? 0)} de cette source : elle ne peut pas être retirée.
+                      </Tooltip.Content>
+                    </Tooltip>
+                  ) : (
+                    <ConfirmDialog
+                      trigger={
+                        <Btn variant="ghost" size="sm" disabled={busy}>
+                          Retirer
+                        </Btn>
+                      }
+                      title={`Retirer « ${s.name} » ?`}
+                      description="La source ne sera plus rattachée à cette campagne. Vous pourrez l’ajouter à nouveau depuis le catalogue."
+                      confirmLabel="Retirer"
+                      onConfirm={() =>
+                        void act(async () => {
+                          await api(`/campaigns/${campaign.id}/sources/${s.id}`, { method: "DELETE" });
+                          toast.success("Source retirée", { description: `« ${s.name} » n’est plus rattachée à la campagne.` });
+                        })
+                      }
+                    />
+                  ))}
               </Table.Cell>
             </Table.Row>
           ))}
@@ -139,11 +166,11 @@ export default function CampaignSources({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Btn variant="primary" type="submit" className="rounded-lg" disabled={busy || !draft.name.trim()}>
+                  <Btn variant="primary" type="submit" disabled={busy || !draft.name.trim()}>
                     <Plus className="size-4" aria-hidden="true" />
                     Ajouter à la campagne
                   </Btn>
-                  <Btn variant="ghost" className="rounded-lg" disabled={busy} onClick={() => setDraft(null)}>
+                  <Btn variant="ghost" disabled={busy} onClick={() => setDraft(null)}>
                     Annuler
                   </Btn>
                 </div>

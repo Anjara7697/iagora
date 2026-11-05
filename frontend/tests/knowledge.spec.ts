@@ -117,20 +117,29 @@ async function open(page: Page) {
 test("liste des documents, détail et marque « Fictif »", async ({ page }) => {
   await mockApi(page);
   await open(page);
+  // Le testeur et les réglages techniques sont dans l'onglet « Tester une question ».
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   const model = page.getByText("gemini/gemini-embedding-001", { exact: true });
   await expect(model).toBeHidden();
   await page
     .getByText("Réglages techniques de la recherche", { exact: true })
     .click();
   await expect(model).toBeVisible();
+  await page.getByRole("tab", { name: "Documents" }).click();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR" }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(page.getByText("Fictif", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
-  const detail = page.getByRole("region", { name: "Document ebihar" });
-  await expect(detail.getByText("Le programme dure 18 mois.")).toBeVisible();
   await auditA11y(page, "base de connaissances");
+  // Le document s'ouvre dans un panneau latéral, à l'écran, et son adresse est partageable.
+  await page.getByRole("row", { name: /Programme eBIHAR/ }).click();
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await expect(panel.getByText("Le programme dure 18 mois.")).toBeInViewport();
+  await expect(page).toHaveURL(/\/knowledge\?doc=ebihar$/);
+  await auditA11y(page, "base de connaissances : document ouvert");
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(page).toHaveURL(/\/knowledge$/);
 });
 
 test("tester une question affiche les scores et le verdict du seuil", async ({
@@ -138,11 +147,14 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
 }) => {
   const calls = await mockApi(page);
   await open(page);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
   await page.getByRole("button", { name: "Tester" }).click();
-  await expect(page.getByText("0.846")).toBeVisible();
+  // Notation française, et une synthèse avec le seuil ; le programme par défaut est « Tous les programmes ».
+  await expect(page.getByText("Pertinence 0,85")).toBeVisible();
+  await expect(page.getByText("2 extraits trouvés · 1 retenu (seuil de pertinence 0,60)")).toBeVisible();
   await expect(page.getByText("Retenu", { exact: true })).toBeVisible();
   await expect(page.getByText("Écarté (sous le seuil)")).toBeVisible();
   await expect
@@ -152,7 +164,7 @@ test("tester une question affiche les scores et le verdict du seuil", async ({
       path: "/knowledge/search",
       body: {
         query: "Combien de temps dure le programme ?",
-        target_code: "ebihar_students",
+        target_code: null,
         limit: 6,
       },
     });
@@ -162,36 +174,99 @@ test("l'administrateur ajoute un document", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
   await page.getByRole("button", { name: "Ajouter un document" }).click();
-  await page.getByLabel("Identifiant du document").fill("Mon Nouveau Doc");
-  await expect(page.getByLabel("Identifiant du document")).toHaveValue(
-    "mon-nouveau-doc",
-  );
-  await page
-    .getByLabel("Contenu du document")
-    .fill("---\ntitle: Nouveau\n---\n## A\nUn fait.");
-  await page.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(page.getByText("Document enregistré.")).toBeVisible();
+  const panel = page.getByRole("dialog", { name: "Ajouter un document" });
+  // L'identifiant se déduit du titre ; l'en-tête est généré à partir des champs.
+  await panel.getByLabel("Titre").fill("Mon Nouveau Doc");
+  await expect(panel.getByLabel("Identifiant")).toHaveValue("mon-nouveau-doc");
+  await choose(panel.getByRole("button", { name: /Programme$/ }), "compagnons_pros");
+  await panel.getByLabel("Contenu").fill("## A\nUn fait vérifié.");
+  await panel.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Document enregistré")).toBeVisible();
   await expect
     .poll(() => calls.requests)
     .toContainEqual({
       method: "PUT",
       path: "/knowledge/documents/mon-nouveau-doc",
-      body: { content: "---\ntitle: Nouveau\n---\n## A\nUn fait." },
+      body: { content: "---\ntitle: Mon Nouveau Doc\ntarget: compagnons_pros\n---\n## A\nUn fait vérifié." },
     });
+});
+
+test("création : un identifiant déjà utilisé est refusé, avec un lien vers le document", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: "Ajouter un document" }).click();
+  const panel = page.getByRole("dialog", { name: "Ajouter un document" });
+  await panel.getByLabel("Titre").fill("eBIHAR");
+  await panel.getByLabel("Contenu").fill("## A\nUn fait vérifié.");
+  await expect(panel.getByText("Un document porte déjà cet identifiant.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Enregistrer" })).toBeDisabled();
+  expect(calls.requests.some((r) => r.method === "PUT")).toBe(false);
+  // Ouvrir le document existant abandonne la saisie : confirmation d'abord.
+  await panel.getByRole("button", { name: "Ouvrir ce document" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
+  await expect(page).toHaveURL(/\?doc=ebihar$/);
+});
+
+test("modifier : champs pré-remplis dans le panneau et confirmation avant d'abandonner", async ({ page }) => {
+  const calls = await mockApi(page);
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("admin");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/knowledge?doc=ebihar");
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await panel.getByRole("button", { name: "Modifier" }).click();
+  await expect(panel.getByLabel("Titre")).toHaveValue("Programme eBIHAR");
+  await expect(panel.getByLabel("Identifiant")).toBeDisabled();
+  await expect(panel.getByRole("button", { name: /Programme$/ })).toContainText("eBIHAR — étudiants");
+  await expect(panel.getByLabel("Contenu")).toHaveValue("## Durée\n18 mois.");
+  await expect(panel.getByLabel("Contenu")).toBeInViewport();
+  // Sans modification, Annuler revient à la fiche ; avec une modification, confirmation.
+  await panel.getByRole("button", { name: "Annuler" }).click();
+  await expect(panel.getByRole("button", { name: "Modifier" })).toBeVisible();
+  await panel.getByRole("button", { name: "Modifier" }).click();
+  await panel.getByLabel("Contenu").fill("## Durée\n24 mois.");
+  await page.keyboard.press("Escape");
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Abandonner les modifications ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(panel.getByLabel("Contenu")).toHaveValue("## Durée\n24 mois.");
+  await panel.getByRole("button", { name: "Enregistrer" }).click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT")?.body)
+    .toEqual({ content: "---\ntitle: Programme eBIHAR\ntarget: ebihar_students\n---\n## Durée\n24 mois." });
+  // Après l'enregistrement, le panneau revient à la fiche.
+  await expect(panel.getByRole("button", { name: "Modifier" })).toBeVisible();
+});
+
+test("adresse d'un document : identifiant invalide ignoré", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("admin");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.goto("/knowledge?doc=..%2Fsecret");
+  await expect(page.getByRole("row", { name: /Programme eBIHAR/ })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("la suppression demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
-  // La suppression se fait depuis le détail du document.
+  // La suppression se fait depuis le panneau du document, après confirmation HeroUI.
   await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Programme eBIHAR" }).click();
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Supprimer" }).click();
+  await page.getByRole("row", { name: /Programme eBIHAR/ }).click();
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await panel.getByRole("button", { name: "Supprimer" }).click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Supprimer « Programme eBIHAR » ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Annuler" }).click();
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(0);
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Supprimer" }).click();
-  await expect(page.getByText("Document supprimé.")).toBeVisible();
+  await panel.getByRole("button", { name: "Supprimer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Supprimer" }).click();
+  await expect(page.getByText("Document supprimé")).toBeVisible();
+  await expect(panel).toHaveCount(0);
   expect(calls.requests.filter((r) => r.method === "DELETE")).toHaveLength(1);
 });
 
@@ -202,6 +277,7 @@ test("un conseiller consulte et teste, sans modifier", async ({ page }) => {
     page.getByRole("button", { name: "Ajouter un document" }),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await expect(page.getByRole("button", { name: "Tester" })).toBeVisible();
 });
 
@@ -210,11 +286,11 @@ test("embeddings non configurés : avertissement et recherche bloquée", async (
 }) => {
   await mockApi(page, { configured: false });
   await open(page);
-  await expect(
-    page.getByText("le service de recherche n’est pas configuré", {
-      exact: false,
-    }),
-  ).toBeVisible();
+  // Alerte HeroUI annoncée poliment (état durable), avec le lien vers les paramètres pour l'administrateur.
+  const alert = page.getByRole("status").filter({ hasText: "Recherche indisponible" });
+  await expect(alert).toContainText("Le service de recherche n’est pas configuré");
+  await expect(alert.getByRole("link", { name: "Configurer dans les paramètres" })).toHaveAttribute("href", "/settings?section=ia");
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page.getByLabel("Question du prospect").fill("une question");
   await expect(page.getByRole("button", { name: "Tester" })).toBeDisabled();
 });
@@ -224,13 +300,14 @@ test("documents à recalculer : bannière et recalcul", async ({ page }) => {
     docs: [doc({ needs_reindex: true, embedding_model: "ancien/modele" })],
   });
   await open(page);
-  await expect(
-    page.getByText("Certains documents doivent être actualisés", {
-      exact: false,
-    }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Actualiser les documents" }).click();
-  await expect(page.getByText("Documents actualisés.")).toBeVisible();
+  await expect(page.getByText("1 document à recalculer")).toBeVisible();
+  await expect(page.getByText("l’agent ne l’utilise pas tant qu’il n’est pas recalculé")).toBeVisible();
+  // « Afficher ce document » filtre la liste sur les documents à recalculer.
+  await page.getByRole("button", { name: "Afficher ce document" }).click();
+  await expect(page).toHaveURL(/status=reindex/);
+  await expect(page.getByRole("button", { name: "À recalculer (1)" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Recalculer", exact: true }).click();
+  await expect(page.getByText("Documents recalculés")).toBeVisible();
   expect(calls.requests.some((r) => r.path === "/knowledge/reindex")).toBe(
     true,
   );
@@ -257,7 +334,7 @@ test("bannière de lacune, filtre par programme et statut de chaque document", a
   );
   await open(page);
   await expect(
-    page.getByText("1 demande nécessite une source fiable"),
+    page.getByText("1 question sans source fiable"),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Traiter la demande" }),
@@ -269,10 +346,10 @@ test("bannière de lacune, filtre par programme et statut de chaque document", a
     .getByRole("button", { name: "Master eBIHAR — candidats" })
     .click();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR" }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("grid").getByRole("button", { name: "Master eBIHAR" }),
+    page.getByRole("row", { name: /Master eBIHAR/ }),
   ).toBeVisible();
 });
 
@@ -295,23 +372,23 @@ test("recherche, documents communs et remise à zéro sur mobile", async ({
     .getByRole("button", { name: "Documents communs", exact: true })
     .click();
   await expect(
-    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    library.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toHaveCount(0);
   await expect(
-    library.getByRole("button", { name: "Charte de référence", exact: true }),
+    library.getByRole("row", { name: /Charte de référence/ }),
   ).toBeVisible();
   await page.getByLabel("Rechercher un document").fill("introuvable");
   await expect(
-    page.getByText("Aucun document ne correspond à ces critères.", {
+    page.getByText("Aucun document ne correspond", {
       exact: false,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Réinitialiser les filtres" }).click();
+  await page.getByRole("button", { name: "Afficher tous les documents" }).click();
   await expect(
-    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    library.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(
-    library.getByRole("button", { name: "Charte de référence", exact: true }),
+    library.getByRole("row", { name: /Charte de référence/ }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -329,11 +406,13 @@ test("sans service configuré, ajout bloqué et lecture préservée", async ({
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Programme eBIHAR", exact: true })
+    .getByRole("row", { name: /Programme eBIHAR/ })
     .click();
-  await expect(
-    page.getByRole("region", { name: "Document ebihar" }),
-  ).toBeVisible();
+  // Lecture préservée dans le panneau ; modifier demande le service de recherche, supprimer non.
+  const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
+  await expect(panel.getByText("Le programme dure 18 mois.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Modifier" })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: "Supprimer" })).toBeVisible();
 });
 
 test("changer de programme retire les résultats de la question précédente", async ({
@@ -341,13 +420,14 @@ test("changer de programme retire les résultats de la question précédente", a
 }) => {
   await mockApi(page);
   await open(page);
+  await page.getByRole("tab", { name: "Tester une question" }).click();
   await page
     .getByLabel("Question du prospect")
     .fill("Combien de temps dure le programme ?");
   await page.getByRole("button", { name: "Tester", exact: true }).click();
-  await expect(page.getByText("0.846", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pertinence 0,85")).toBeVisible();
   await choose(page.getByLabel("Programme du prospect"), "master_candidates");
-  await expect(page.getByText("0.846", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Pertinence 0,85")).toHaveCount(0);
 });
 
 test("panne du statut de recherche : lecture possible et nouvelle tentative", async ({
@@ -379,7 +459,7 @@ test("panne du statut de recherche : lecture possible et nouvelle tentative", as
       .filter({ hasText: "Service de recherche indisponible" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Programme eBIHAR", exact: true }),
+    page.getByRole("row", { name: /Programme eBIHAR/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
@@ -389,4 +469,86 @@ test("panne du statut de recherche : lecture possible et nouvelle tentative", as
   await expect(
     page.getByRole("button", { name: "Ajouter un document", exact: true }),
   ).toBeEnabled();
+});
+
+test("onglets, filtres dans l'adresse, tableau complet et ouverture au clavier", async ({ page }) => {
+  await mockApi(page, {
+    docs: [doc(), doc({ slug: "charte", title: "Charte de référence", target_code: null, is_demo: false })],
+  });
+  await open(page);
+  // Bureau : toutes les colonnes, dont le statut, sont visibles sans défiler.
+  await expect(page.getByRole("columnheader", { name: "Statut" })).toBeInViewport({ ratio: 1 });
+  // Recherche et programme dans l'adresse, conservés au rechargement.
+  await page.getByRole("group", { name: "Programme" }).getByRole("button", { name: "Documents communs" }).click();
+  await page.getByLabel("Rechercher un document").fill("charte");
+  await expect(page).toHaveURL(/\/knowledge\?q=charte&programme=common$/);
+  await page.reload();
+  await expect(page.getByLabel("Rechercher un document")).toHaveValue("charte");
+  await expect(page.getByRole("row", { name: /Programme eBIHAR/ })).toHaveCount(0);
+  // Clavier : la ligne prend le focus, Entrée ouvre le document ; la fermeture garde les filtres.
+  await page.getByRole("row", { name: /Charte de référence/ }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\?q=charte&programme=common&doc=charte$/);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/knowledge\?q=charte&programme=common$/);
+  // Onglet du testeur dans l'adresse.
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await expect(page).toHaveURL(/tab=test/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Tester une question" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Question du prospect")).toBeVisible();
+});
+
+test("état de la page : erreur de chargement explicite et testeur expliqué sans service", async ({ page }) => {
+  await mockApi(page, { configured: false });
+  await page.route("**/api/v1/knowledge/documents", (route) => route.fulfill({ status: 500, json: { detail: "Erreur interne" } }));
+  await open(page);
+  await expect(page.getByRole("alert").filter({ hasText: "Impossible de charger les documents : Erreur interne" })).toBeVisible();
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await expect(page.getByText("Test indisponible : le service de recherche n’est pas configuré.")).toBeVisible();
+  // Plusieurs questions en attente : libellé au pluriel.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  await mockApi(page);
+  await page.route("**/api/v1/todo**", (route) =>
+    route.fulfill({ json: { items: [], total: 2, limit: 1, offset: 0, counts: { kb_gap: 2 } } }),
+  );
+  await page.goto("/knowledge");
+  await expect(page.getByText("2 questions sans source fiable")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Traiter les demandes" })).toBeVisible();
+});
+
+test("accessibilité : alertes, panneau, éditeur, testeur, états vides et mobile", async ({ page }) => {
+  test.setTimeout(120_000);
+  await mockApi(page, {
+    docs: [doc(), doc({ slug: "compagnons", title: "Les Compagnons", target_code: "compagnons_pros", is_demo: false, needs_reindex: true })],
+  });
+  await page.route("**/api/v1/todo**", (route) =>
+    route.fulfill({ json: { items: [], total: 2, limit: 1, offset: 0, counts: { kb_gap: 2 } } }),
+  );
+  await open(page);
+  await expect(page.getByText("1 document à recalculer")).toBeVisible();
+  await auditA11y(page, "base de connaissances : alertes et liste");
+  await page.getByLabel("Rechercher un document").fill("introuvable");
+  await expect(page.getByText("Aucun document ne correspond")).toBeVisible();
+  await auditA11y(page, "base de connaissances : recherche sans résultat");
+  await page.getByLabel("Rechercher un document").fill("");
+
+  await page.getByRole("button", { name: "Ajouter un document" }).click();
+  const add = page.getByRole("dialog", { name: "Ajouter un document" });
+  await add.getByLabel("Titre").fill("eBIHAR");
+  await expect(add.getByText("Un document porte déjà cet identifiant.")).toBeVisible();
+  await auditA11y(page, "base de connaissances : création, identifiant pris");
+  await page.keyboard.press("Escape");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+
+  await page.getByRole("tab", { name: "Tester une question" }).click();
+  await page.getByLabel("Question du prospect").fill("Combien de temps dure le programme ?");
+  await page.getByRole("button", { name: "Tester" }).click();
+  await expect(page.getByText("Retenu", { exact: true })).toBeVisible();
+  await auditA11y(page, "base de connaissances : testeur avec résultats");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/knowledge?doc=ebihar");
+  await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
+  await auditA11y(page, "base de connaissances : document sur mobile");
 });

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, Card, Meter, ScrollShadow } from "@heroui/react";
-import { AlertTriangle, RefreshCw, type LucideIcon } from "lucide-react";
+import { Alert, Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
+import { RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import type { KpiBadge } from "@/lib/kpi";
@@ -49,6 +49,27 @@ export function Screen({
       className="-m-1 max-h-[calc(100dvh-8.25rem)] p-1 min-[601px]:-mb-12 min-[601px]:max-h-[calc(100dvh-6.25rem)]"
     >
       {content}
+    </ScrollShadow>
+  );
+}
+
+/**
+ * Liste qui défile seule dans une colonne de hauteur bornée (file d'« À traiter », liste des conversations, résultats
+ * de recherche) : `ScrollShadow` HeroUI vertical, fondu en haut et en bas quand il reste du contenu. Le titre, les
+ * filtres et la pagination restent hors du défilement. Sans hauteur bornée (mobile), elle prend sa hauteur naturelle.
+ * Colonne collante (`lg:sticky lg:top-20`) : hauteur `calc(100dvh - 9rem)`, soit le haut collant (5rem) et la marge
+ * basse de `<main>` (4rem) ; plus haute, elle remonterait sous la barre en bas de page.
+ */
+export function ListScroll({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <ScrollShadow
+      orientation="vertical"
+      size={SCROLL_SHADOW_SIZE}
+      // min-h-0 : se réduit dans une colonne flex bornée ; -m-1 / p-1 : ombre de carte et anneau de focus non coupés ;
+      // overscroll-contain : arrivé au bout de la liste, la molette ne fait pas défiler la page derrière.
+      className={cx("-m-1 min-h-0 overscroll-contain p-1", className)}
+    >
+      {children}
     </ScrollShadow>
   );
 }
@@ -116,18 +137,21 @@ export function Panel({
 }
 
 /** Erreur de chargement lisible, avec nouvelle tentative. */
+/** Erreur de chargement : `Alert` HeroUI danger (même apparence que `ErrorText`), avec « Réessayer » à droite. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground">
-      <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-      <span className="flex-1">{message}</span>
+    <Alert role="alert" status="danger" className="flex-wrap items-center">
+      <Alert.Indicator />
+      <Alert.Content className="min-w-[200px] flex-1">
+        <Alert.Title>{message}</Alert.Title>
+      </Alert.Content>
       {onRetry && (
         <Button size="sm" variant="tertiary" onPress={onRetry}>
           <RefreshCw className="size-4" aria-hidden="true" />
           Réessayer
         </Button>
       )}
-    </div>
+    </Alert>
   );
 }
 
@@ -177,6 +201,7 @@ export function KpiCard({
   href,
   dot,
   pending,
+  loading,
   badge,
   className,
   style,
@@ -187,6 +212,8 @@ export function KpiCard({
   href?: string;
   dot?: string;
   pending?: boolean;
+  /** Chiffre en cours de chargement : `Skeleton` HeroUI à la place du chiffre et de la précision (taille conservée). */
+  loading?: boolean;
   /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
   badge?: KpiBadge;
   className?: string;
@@ -200,6 +227,12 @@ export function KpiCard({
       </Card.Description>
       {pending ? (
         <Card.Description>Pas encore mesuré</Card.Description>
+      ) : loading ? (
+        <>
+          <Skeleton className="my-1 h-7 w-20 rounded-lg" />
+          <Skeleton className="h-3 w-32 rounded-lg" />
+          <span className="sr-only">Chargement</span>
+        </>
       ) : (
         <>
           <Card.Title
@@ -211,7 +244,7 @@ export function KpiCard({
           {badge && <span className="sr-only">{badge.label}</span>}
         </>
       )}
-      {hint && <Card.Description>{hint}</Card.Description>}
+      {hint && !loading && <Card.Description>{hint}</Card.Description>}
     </>
   );
   if (href)
@@ -235,6 +268,7 @@ export type KpiItem = {
   href?: string;
   dot?: string;
   pending?: boolean;
+  loading?: boolean;
   badge?: KpiBadge;
 };
 

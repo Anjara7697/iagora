@@ -130,13 +130,17 @@ export function FilterChip({
   return <ToggleButton size="sm" isSelected={pressed} onChange={() => onClick?.()} {...rest} />;
 }
 
-/** Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des pastilles avant. */
+/**
+ * Groupe de pastilles de filtre à choix unique (`aria-pressed`), rayon « lg » par défaut ; `leading` ajoute des
+ * pastilles avant, `trailing` après (ex. « Autres types »).
+ */
 export function FilterChipGroup<T extends string>({
   label,
   options,
   value,
   onChange,
   leading,
+  trailing,
   chipClassName = "rounded-lg",
   className,
   style,
@@ -146,6 +150,7 @@ export function FilterChipGroup<T extends string>({
   value: T;
   onChange: (value: T) => void;
   leading?: ReactNode;
+  trailing?: ReactNode;
   chipClassName?: string;
   className?: string;
   style?: CSSProperties;
@@ -158,6 +163,7 @@ export function FilterChipGroup<T extends string>({
           {o.text}
         </FilterChip>
       ))}
+      {trailing}
     </div>
   );
 }
@@ -496,6 +502,15 @@ export function Tag({
   );
 }
 
+/** Texte seul : titre de l'alerte, à la couleur de son statut ; contenu riche (paragraphes, boutons) : tel quel. */
+function AlertBody({ children }: { children: ReactNode }) {
+  return (
+    <Alert.Content>
+      {typeof children === "string" || typeof children === "number" ? <Alert.Title>{children}</Alert.Title> : children}
+    </Alert.Content>
+  );
+}
+
 /** Message de réussite ou d'information (`Alert` HeroUI, toutes ses propriétés ; `tone` choisit le statut). */
 export function Notice({
   tone = "success",
@@ -505,7 +520,8 @@ export function Notice({
 }: Omit<ComponentProps<typeof Alert>, "status"> & { tone?: "success" | "info" | "warning" }) {
   return (
     <Alert role="status" status={tone === "info" ? "accent" : tone} className={className} {...rest}>
-      <Alert.Content>{children}</Alert.Content>
+      <Alert.Indicator />
+      <AlertBody>{children}</AlertBody>
     </Alert>
   );
 }
@@ -514,7 +530,8 @@ export function Notice({
 export function ErrorText({ children, className, ...rest }: Omit<ComponentProps<typeof Alert>, "status">) {
   return (
     <Alert role="alert" status="danger" className={className} {...rest}>
-      <Alert.Content>{children}</Alert.Content>
+      <Alert.Indicator />
+      <AlertBody>{children}</AlertBody>
     </Alert>
   );
 }

@@ -51,6 +51,17 @@ const TARGET_LIST = [
   { id: 2, code: "compagnons_pros", name: "Professionnels Les Compagnons" },
 ];
 
+test("sources : distinguer LinkedIn manuel, formulaire connecté et import avec destination", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=sources");
+  const linkedin = page.getByRole("region", { name: "Réception · LinkedIn Ads", exact: true });
+  await expect(linkedin.getByText("LinkedIn : réception manuelle", { exact: true })).toBeVisible();
+  await expect(linkedin.getByRole("link", { name: "Importer dans cette source" })).toHaveAttribute("href", "/prospects/import?campaign=1&source=10");
+  const form = page.getByRole("region", { name: "Réception · Landing", exact: true });
+  await expect(form.getByRole("link", { name: "Brancher le formulaire" })).toHaveAttribute("href", "/integrations?c=leads&campaign=1&source=11");
+  await expect(form.getByRole("link", { name: "Voir les contacts reçus" })).toHaveAttribute("href", "/prospects?campaign=1&source=11");
+});
+
 type Calls = {
   requests: { method: string; path: string; body: unknown }[];
   queries: string[];
@@ -79,7 +90,12 @@ async function mockApi(
       };
     else if (path === "/campaigns" && method === "GET") {
       calls.queries.push(url.search);
-      body = { items: [current], total: 1, limit: 100, offset: 0 };
+      // Filtre de statut et pagination comme l'API (limit / offset, total).
+      const status = url.searchParams.get("status");
+      const all = [current].filter((c) => !status || c.status === status);
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      body = { items: all.slice(offset, offset + limit), total: all.length, limit, offset };
     } else if (path === "/campaigns" && method === "POST") {
       calls.requests.push({ method, path, body: request.postDataJSON() });
       code = 201;
@@ -140,8 +156,10 @@ async function mockApi(
       };
       body = current;
     } else if (path === "/campaigns/1/sources" && method === "POST") {
-      calls.requests.push({ method, path, body: request.postDataJSON() });
+      const added = request.postDataJSON() as { name: string; type: string; platform: string; external_id: string | null };
+      calls.requests.push({ method, path, body: added });
       code = 201;
+      current = { ...current, sources: [...current.sources, { id: 12, ...added, external_id: null }] };
       body = current;
     } else if (
       path.startsWith("/campaigns/1/sources/") &&
@@ -286,6 +304,8 @@ test("liste des campagnes avec chiffres clés, programmes et statut", async ({
   const strip = page.getByRole("region", { name: "Chiffres clés" });
   await expect(strip.getByText("0 / 1")).toBeVisible();
   await expect(strip.getByText("42 %")).toBeVisible();
+  // Compteur à droite de la barre de filtres.
+  await expect(page.getByRole("status").filter({ hasText: /^1 campagne$/ })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Nouvelle campagne" }),
   ).toBeVisible();
@@ -321,7 +341,8 @@ test("création en trois étapes : informations, période et ciblage, sources en
   // Étape 1 : informations
   await expect(page.getByRole("navigation", { name: "Étapes de création" })).toBeVisible();
   await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
-  await choose(page.getByLabel("Statut"), "active");
+  // Le statut ne se choisit plus à la création : la campagne naît en brouillon.
+  await expect(page.getByLabel("Statut")).toHaveCount(0);
   await page.getByRole("button", { name: "Continuer" }).click();
   // Étape 2 : période et programmes
   await page.getByRole("spinbutton").first().click();
@@ -340,6 +361,7 @@ test("création en trois étapes : informations, période et ciblage, sources en
   const recap = page.getByLabel("Récapitulatif");
   await expect(recap).toContainText("Rentrée 2027");
   await expect(recap).toContainText("01/09/2026 → 30/09/2026");
+  await expect(recap).toContainText("Brouillon");
   await page.getByRole("button", { name: "Créer la campagne" }).click();
   // La fiche est compilée au premier accès par le serveur de développement.
   await expect(page).toHaveURL(/\/campaigns\/7$/, { timeout: 30_000 });
@@ -351,7 +373,7 @@ test("création en trois étapes : informations, période et ciblage, sources en
       body: {
         name: "Rentrée 2027",
         description: null,
-        status: "active",
+        status: "draft",
         start_date: "2026-09-01T00:00:00Z",
         end_date: "2026-09-30T00:00:00Z",
         target_codes: ["compagnons_pros"],
@@ -407,7 +429,7 @@ test("fiche : entonnoir, niveaux, sources avec effectifs et lien vers les prospe
   await expect(
     sources.getByRole("row", { name: /LinkedIn Ads/ }).getByRole("gridcell", { name: "9", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Voir les prospects" }).click();
+  await page.getByRole("link", { name: "Ouvrir dans Prospects" }).click();
   await expect(page).toHaveURL(/\/prospects\?campaign=1$/);
   await expect
     .poll(() => calls.queries.some((q) => q.includes("campaign_id=1")))
@@ -420,6 +442,11 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
   const calls = await mockApi(page, { removeConflict: true });
   await login(page, "/campaigns/1");
   await page.getByRole("button", { name: "Activer" }).click();
+  const activate = page.getByRole("alertdialog");
+  await expect(activate.getByText("Activer la campagne ?")).toBeVisible();
+  await activate.getByRole("button", { name: "Activer" }).click();
+  // Règle des parcours : toute écriture réussie est confirmée par un Toast.
+  await expect(page.getByText("Campagne activée")).toBeVisible();
   await expect(page.getByText("Active", { exact: true }).first()).toBeVisible();
   await expect
     .poll(() => calls.requests)
@@ -460,14 +487,26 @@ test("administrateur : activer, modifier les programmes, ajouter et retirer une 
       ),
     )
     .toBe(true);
+  await expect(page.getByText("Source ajoutée")).toBeVisible();
 
-  await page
-    .getByRole("row", { name: /LinkedIn Ads/ })
-    .getByRole("button", { name: "Retirer" })
-    .click();
-  await expect(
-    page.getByText("9 prospect(s) proviennent de cette source"),
-  ).toBeVisible();
+  // Source avec prospects : retrait impossible, raison en infobulle, aucun appel.
+  const linkedin = page.getByRole("row", { name: /LinkedIn Ads/ });
+  await expect(linkedin.getByRole("button", { name: "Retirer", exact: true })).toBeDisabled();
+  await linkedin.getByRole("button", { name: "Retirer", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("9 prospects proviennent de cette source");
+  // Source sans prospect : confirmation d'abord ; Annuler n'appelle rien.
+  const webinar = page.getByRole("row", { name: /Webinaire d'octobre/ });
+  await webinar.getByRole("button", { name: "Retirer", exact: true }).click();
+  const remove = page.getByRole("alertdialog");
+  await expect(remove.getByText("Retirer « Webinaire d'octobre » ?")).toBeVisible();
+  await remove.getByRole("button", { name: "Annuler" }).click();
+  await expect(remove).toHaveCount(0);
+  expect(calls.requests.some((r) => r.method === "DELETE")).toBe(false);
+  // Confirmé : appel envoyé ; un refus du serveur (chiffres périmés) reste affiché.
+  await webinar.getByRole("button", { name: "Retirer", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Retirer", exact: true }).click();
+  await expect.poll(() => calls.requests.some((r) => r.method === "DELETE" && r.path === "/campaigns/1/sources/12")).toBe(true);
+  await expect(page.getByRole("alert").filter({ hasText: "ne peut pas être retirée" })).toBeVisible();
 });
 
 test("fiche : les prospects de la campagne sont listés sous les sources", async ({
@@ -535,18 +574,29 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
     .poll(() => queries.some((q) => q.includes("stage=qualified")))
     .toBe(true);
   expect(queries.some((q) => q.includes("campaign_id=1"))).toBe(true);
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/);
   await row.click();
-  await expect(page).toHaveURL(/\/prospects\/5$/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/prospects\/5\?from=/, { timeout: 15000 });
+  // Le retour ramène à la campagne, sur l'onglet et l'étape quittés.
+  await page.getByRole("link", { name: "← Retour à la campagne" }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/, { timeout: 15000 });
+  await expect(page.getByRole("tab", { name: "Prospects" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("region", { name: "Prospects de la campagne" }).getByLabel("Étape")).toContainText("Qualifié");
 });
 
 test("désactiver une campagne demande confirmation", async ({ page }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/1");
+  // Activer demande aussi confirmation ; Annuler n'envoie rien.
   await page.getByRole("button", { name: "Activer" }).click();
-  await expect(page.getByRole("button", { name: "Désactiver" })).toBeVisible();
-  await page.getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Annuler" }).click();
+  expect(calls.requests.some((r) => (r.body as { status?: string })?.status === "active")).toBe(false);
+  await page.getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Activer" }).click();
+  await expect(page.getByRole("button", { name: "Mettre en pause" })).toBeVisible();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
   const dialog = page.getByRole("alertdialog");
-  await expect(dialog.getByText("Désactiver la campagne ?")).toBeVisible();
+  await expect(dialog.getByText("Mettre la campagne en pause ?")).toBeVisible();
   await dialog.getByRole("button", { name: "Annuler" }).click();
   await expect(dialog).toHaveCount(0);
   expect(
@@ -554,8 +604,8 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
       (r) => (r.body as { status?: string })?.status === "inactive",
     ),
   ).toHaveLength(0);
-  await page.getByRole("button", { name: "Désactiver" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Mettre en pause" }).click();
   await expect
     .poll(() =>
       calls.requests.some(
@@ -563,16 +613,6 @@ test("désactiver une campagne demande confirmation", async ({ page }) => {
       ),
     )
     .toBe(true);
-});
-
-test("l'en-tête porte le titre de chaque écran", async ({ page }) => {
-  await mockApi(page);
-  await login(page, "/campaigns/new");
-  await expect(page.locator("header strong")).toHaveText("Nouvelle campagne");
-  await page.goto("/campaigns/1");
-  await expect(page.locator("header strong")).toHaveText("Campagne");
-  await page.goto("/integrations");
-  await expect(page.locator("header strong")).toHaveText("Intégrations");
 });
 
 test("menu en quatre groupes, écrans à venir regroupés et recherche globale", async ({
@@ -590,11 +630,372 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
   // Écrans prévus : regroupés dans une ligne « À venir » repliée, sans lien.
   const upcoming = nav.getByText("À venir");
   await expect(upcoming).toBeVisible();
-  await expect(nav.getByText("Dashboard", { exact: true })).toBeHidden();
+  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeHidden();
   await upcoming.click();
-  await expect(nav.getByText("Dashboard", { exact: true })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
-  await page.getByLabel("Rechercher un prospect").fill("alice");
-  await page.getByLabel("Rechercher un prospect").press("Enter");
+  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Tableau de bord" })).toHaveCount(0);
+  // Recherche unique de la barre du haut : la palette, qui cherche aussi les prospects.
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("alice");
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/prospects\?q=alice$/);
+});
+
+test("création : Annuler sans saisie quitte, avec saisie demande confirmation", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/new");
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/, { timeout: 15_000 });
+
+  await page.goto("/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await page.getByRole("button", { name: "Annuler" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Abandonner les modifications ?")).toBeVisible();
+  await dialog.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/\/campaigns\/new$/);
+  await expect(page.getByLabel("Nom de la campagne")).toHaveValue("Rentrée 2027");
+
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/, { timeout: 15_000 });
+});
+
+test("création : une erreur de l'API s'affiche en alerte", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/v1/campaigns", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 422, json: { detail: "Programme inconnu" } })
+      : route.fallback(),
+  );
+  await login(page, "/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Créer la campagne" }).click();
+  const alert = page.getByRole("alert").filter({ hasText: "Programme inconnu" });
+  await expect(alert).toBeVisible();
+  await expect(alert).toBeInViewport();
+  await expect(page).toHaveURL(/\/campaigns\/new$/);
+});
+
+test("fiche : fermer le panneau de modification avec une saisie demande confirmation", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1");
+  const drawer = page.getByRole("dialog", { name: "Modifier la campagne" });
+  // Sans modification, Échap ferme directement.
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  await drawer.getByLabel("Nom de la campagne").fill("Nouveau nom");
+  await page.keyboard.press("Escape");
+  const confirm = page.getByRole("alertdialog");
+  await expect(confirm.getByText("Abandonner les modifications ?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(drawer.getByLabel("Nom de la campagne")).toHaveValue("Nouveau nom");
+
+  await drawer.getByRole("button", { name: "Annuler" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+  await expect(drawer).toHaveCount(0);
+  expect(calls.requests.some((r) => r.method === "PATCH" && (r.body as { name?: string }).name === "Nouveau nom")).toBe(false);
+});
+
+test("liste : filtres dans l'URL, conservés au retour depuis une fiche", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.getByRole("button", { name: "Brouillons", exact: true }).click();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/);
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?from=%2Fcampaigns%3Fstatus%3Ddraft$/, { timeout: 15_000 });
+  // Lien « ← Campagnes » : retour à la liste filtrée.
+  await page.getByRole("link", { name: "← Campagnes" }).click();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // Retour du navigateur : même résultat, et l'onglet de la fiche est conservé.
+  await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
+  await page.getByRole("tab", { name: "Sources" }).click();
+  await expect(page).toHaveURL(/\/campaigns\/1\?tab=sources&from=/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goForward();
+  await expect(page.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à la vue d'ensemble", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  await expect(page.getByRole("tab", { name: "Réglages" })).toHaveAttribute("aria-selected", "true");
+  await page.goto("/campaigns/1?tab=inconnu&from=https%3A%2F%2Fexemple.test");
+  await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
+  // Une URL de retour étrangère n'est jamais suivie.
+  await expect(page.getByRole("link", { name: "← Campagnes" })).toHaveAttribute("href", "/campaigns");
+});
+
+test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {
+  await mockApi(page);
+  const many = Array.from({ length: 8 }, (_, i) =>
+    campaign({ id: 100 + i, name: `Campagne ${i + 1}`, status: i < 3 ? "active" : "draft" }),
+  );
+  const queries: string[] = [];
+  await page.route("**/api/v1/campaigns?**", (route) => {
+    const url = new URL(route.request().url());
+    queries.push(url.search);
+    const status = url.searchParams.get("status");
+    const all = many.filter((c) => !status || c.status === status);
+    const limit = Number(url.searchParams.get("limit"));
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    return route.fulfill({ json: { items: all.slice(offset, offset + limit), total: all.length, limit, offset } });
+  });
+  await login(page);
+  const strip = page.getByRole("region", { name: "Chiffres clés" });
+  await expect(strip.getByText("3 / 8")).toBeVisible();
+  await expect(strip.getByText("5 brouillon(s)")).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 1\b/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 7/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Page 2", exact: true }).click();
+  await expect(page).toHaveURL(/\/campaigns\?page=2$/);
+  await expect(page.getByRole("row", { name: /Campagne 7/ })).toBeVisible();
+  expect(queries.some((q) => q.includes("limit=6") && q.includes("offset=6"))).toBe(true);
+  // Une page hors limites revient à la dernière page.
+  await page.goto("/campaigns?page=9");
+  await expect(page).toHaveURL(/\/campaigns\?page=2$/, { timeout: 15_000 });
+});
+
+test("liste : premier usage, filtre sans résultat, chargement et erreur", async ({ page }) => {
+  await mockApi(page);
+  // Filtre sans résultat (la campagne simulée est un brouillon) : action pour tout réafficher.
+  await login(page, "/campaigns?status=inactive");
+  await expect(page.getByText("Aucune campagne ne correspond à ces filtres")).toBeVisible();
+  await expect(page.getByText("Filtres actifs : En pause.")).toBeVisible();
+  await page.getByRole("button", { name: "Afficher toutes les campagnes" }).click();
+  await expect(page).toHaveURL(/\/campaigns$/);
+  await expect(page.getByRole("row", { name: /Recrutement eBIHAR 2026/ })).toBeVisible();
+
+  // Premier usage : bouton de création dans l'état vide.
+  await page.route("**/api/v1/campaigns?**", (route) => route.fulfill({ json: { items: [], total: 0, limit: 6, offset: 0 } }));
+  await page.reload();
+  await expect(page.getByText("Aucune campagne pour l’instant")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Nouvelle campagne" })).toHaveCount(2);
+
+  // Erreur : message explicite, chiffres en « — », nouvelle tentative.
+  await page.route("**/api/v1/campaigns?**", (route) => route.fulfill({ status: 500, json: { detail: "Erreur interne" } }));
+  await page.reload();
+  await expect(page.getByRole("alert").filter({ hasText: "Impossible de charger les campagnes : Erreur interne" })).toBeVisible();
+  // Même panne : une seule alerte (son « Réessayer » recharge aussi les chiffres).
+  await expect(page.getByRole("alert").filter({ hasText: "Chiffres clés indisponibles" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Chiffres clés" }).getByText("—")).toHaveCount(4);
+});
+
+test("statut expliqué, période ouverte lisible et ouverture d'une campagne au clavier", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  // Clavier : la ligne prend le focus et Entrée ouvre la fiche.
+  const row = page.getByRole("row", { name: /Recrutement eBIHAR 2026/ });
+  await expect(row).toContainText("Depuis le 01/09/2026");
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/campaigns\/1$/, { timeout: 15_000 });
+  await expect(page.getByText("Ne reçoit pas encore de prospects : activez-la pour démarrer.")).toBeVisible();
+  await expect(page.getByText("Depuis le 01/09/2026")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Indicateurs de la campagne" }).getByText("sur 100")).toBeVisible();
+  // Mise en pause : libellé « En pause » et bouton « Réactiver ».
+  await page.getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Activer" }).click();
+  await page.getByRole("button", { name: "Mettre en pause" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Mettre en pause" }).click();
+  await expect(page.getByText("En pause", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réactiver" })).toBeVisible();
+});
+
+test("accessibilité : fiche, onglets, panneau, confirmations, création et états vides", async ({ page }) => {
+  test.setTimeout(90_000);
+  await mockApi(page);
+  await login(page, "/campaigns?status=inactive");
+  await expect(page.getByText("Aucune campagne ne correspond à ces filtres")).toBeVisible();
+  await auditA11y(page, "liste filtrée sans résultat");
+
+  await page.goto("/campaigns/1");
+  await expect(page.getByRole("heading", { name: "Recrutement eBIHAR 2026" })).toBeVisible();
+  await auditA11y(page, "fiche : vue d'ensemble");
+  for (const tab of ["Prospects", "Sources", "Réglages"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    await expect(page.getByRole("tab", { name: tab })).toHaveAttribute("aria-selected", "true");
+    await auditA11y(page, `fiche : onglet ${tab}`);
+  }
+
+  await page.getByRole("button", { name: "Activer" }).click();
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await auditA11y(page, "confirmation d'activation");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Annuler" }).click();
+
+  await page.getByRole("button", { name: "Modifier la campagne" }).click();
+  const drawer = page.getByRole("dialog", { name: "Modifier la campagne" });
+  await drawer.getByLabel("Nom de la campagne").fill("Nouveau nom");
+  await auditA11y(page, "panneau de modification");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("alertdialog")).toBeVisible();
+  await auditA11y(page, "confirmation d'abandon");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Abandonner" }).click();
+
+  await page.goto("/campaigns/new");
+  await page.getByLabel("Nom de la campagne").fill("Rentrée 2027");
+  await auditA11y(page, "création : informations");
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await page.getByRole("button", { name: "Continuer" }).click();
+  await expect(page.getByLabel("Récapitulatif")).toBeVisible();
+  await auditA11y(page, "création : sources et récapitulatif");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/campaigns/1?tab=sources");
+  await expect(page.getByRole("tab", { name: "Sources" })).toHaveAttribute("aria-selected", "true");
+  await auditA11y(page, "fiche mobile : sources");
+});
+
+test("menu : intitulés en français, réduit à ses icônes avec infobulles et choix mémorisé", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  const nav = page.getByRole("navigation", { name: "Navigation principale" });
+  await expect(nav.getByRole("link", { name: "Base de connaissances" })).toBeVisible();
+  // Tout le menu tient dans un écran de portable, Paramètres compris.
+  await expect(nav.getByRole("link", { name: "Paramètres" })).toBeInViewport();
+  await page.getByRole("button", { name: "Réduire le menu" }).click();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toHaveAttribute("aria-expanded", "false");
+  // Réduit : le lien garde son nom et l'intitulé apparaît en infobulle.
+  const campaigns = nav.getByRole("link", { name: "Campagnes" });
+  await expect(campaigns).toHaveAttribute("aria-current", "page");
+  await campaigns.hover();
+  await expect(page.getByRole("tooltip")).toHaveText("Campagnes");
+  // Choix mémorisé au rechargement.
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toBeVisible();
+  await page.getByRole("button", { name: "Agrandir le menu" }).click();
+  await expect(page.getByRole("button", { name: "Réduire le menu" })).toBeVisible();
+});
+
+test("menu mobile : Drawer HeroUI qui garde le focus et se ferme", async ({ page }) => {
+  await mockApi(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "/campaigns");
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu).toBeVisible();
+  // Le focus reste dans le menu tant qu'il est ouvert.
+  for (let i = 0; i < 6; i++) {
+    await page.keyboard.press("Tab");
+    expect(await menu.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  // Bouton Fermer, puis navigation qui referme le menu.
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await page.getByRole("dialog", { name: "Menu" }).getByRole("button", { name: "Fermer le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Base de connaissances" }).click();
+  await expect(page).toHaveURL(/\/knowledge$/, { timeout: 15_000 });
+  await expect(page.getByRole("dialog", { name: "Menu" })).toHaveCount(0);
+});
+
+test("accessibilité : barre et menu (complet, réduit, menu du compte, palette, mobile, thème sombre)", async ({ page }) => {
+  test.setTimeout(120_000);
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+  await auditA11y(page, "barre et menu complet");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await expect(page.getByRole("dialog", { name: "Menu du compte" })).toBeVisible();
+  await auditA11y(page, "menu du compte (agent, thème)");
+  // Thème sombre : mêmes écrans, contrastes du jeu de couleurs sombre.
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("radio", { name: "Sombre" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await auditA11y(page, "menu du compte en thème sombre");
+  await page.keyboard.press("Escape");
+  await auditA11y(page, "liste des campagnes en thème sombre");
+  await page.goto("/campaigns/1");
+  await expect(page.getByRole("heading", { name: "Recrutement eBIHAR 2026" })).toBeVisible();
+  await auditA11y(page, "fiche campagne en thème sombre");
+  await page.goto("/campaigns");
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+  await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
+  await expect(page.getByRole("dialog", { name: "Recherche rapide" })).toBeVisible();
+  await auditA11y(page, "palette de recherche");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Réduire le menu" }).click();
+  await expect(page.getByRole("button", { name: "Agrandir le menu" })).toBeVisible();
+  await auditA11y(page, "menu réduit");
+  await page.getByRole("button", { name: "Agrandir le menu" }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Ouvrir le menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeVisible();
+  await auditA11y(page, "menu mobile");
+});
+
+test("menu du compte : thème clair, sombre ou système, conservé au rechargement", async ({ page }) => {
+  test.setTimeout(60_000);
+  await mockApi(page);
+  await page.emulateMedia({ colorScheme: "light" });
+  await login(page, "/campaigns");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  const menu = page.getByRole("dialog", { name: "Menu du compte" });
+  // Sélection unique : le ToggleButtonGroup HeroUI est un groupe de boutons radio.
+  const theme = menu.getByRole("radiogroup", { name: "Thème" });
+  await expect(theme.getByRole("radio", { name: "Système" })).toHaveAttribute("aria-checked", "true");
+  await theme.getByRole("radio", { name: "Sombre" }).click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  // « Système » suit le réglage de l'appareil, y compris quand il change.
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("radio", { name: "Système" }).click();
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(html).toHaveAttribute("data-theme", "dark");
+});
+
+test("barre : recherche à gauche, menu du compte au clavier", async ({ page }) => {
+  await mockApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await login(page, "/campaigns");
+  const search = page.getByRole("button", { name: /Rechercher un prospect, une page/ });
+  const account = page.getByRole("button", { name: /Menu du compte/ });
+  const [s, a] = [await search.boundingBox(), await account.boundingBox()];
+  expect(s!.x).toBeLessThan(400);
+  expect(s!.x).toBeLessThan(a!.x);
+  // Clavier : Entrée ouvre le menu, Tab parcourt ses entrées, Échap le ferme et rend le focus au bouton.
+  await account.focus();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("dialog", { name: "Menu du compte" });
+  await expect(menu).toBeVisible();
+  const names: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press("Tab");
+    names.push(await page.evaluate(() => (document.activeElement as HTMLElement).getAttribute("aria-label") || (document.activeElement as HTMLElement).innerText.trim()));
+  }
+  // Le groupe de thème est un seul arrêt de tabulation ; les flèches déplacent le focus d'un choix à l'autre. Le focus
+  // reste dans le menu (retour à « Mon compte » après « Déconnexion »).
+  expect(names).toEqual(["Mon compte", "Arrêt d’urgence", "Clair", "Déconnexion", "Mon compte"]);
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  // Flèches pour se déplacer, Espace pour choisir.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Space");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Space");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(account).toBeFocused();
 });

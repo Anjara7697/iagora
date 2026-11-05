@@ -7,27 +7,40 @@ import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { CONSENT, STAGES, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
-import { useState } from "react";
 import type { Campaign, Page, Prospect } from "@/lib/types";
 
 const PAGE_SIZE = 6;
 
-/** Prospects rattachés à la campagne : nom, étape dans CETTE campagne, score, consentement ; la ligne ouvre la fiche. */
-export default function CampaignProspects({ campaign }: { campaign: Campaign }) {
-  const [stage, setStage] = useState("");
-  const [page, setPage] = useState(1);
+/**
+ * Prospects rattachés à la campagne : nom, étape dans CETTE campagne, score, consentement ; la ligne ouvre la fiche
+ * du prospect avec `from=returnHref` (retour à cet onglet, à cette étape et à cette page). Étape et page sont pilotées
+ * par la fiche (URL).
+ */
+export default function CampaignProspects({
+  campaign,
+  stage,
+  page,
+  onChange,
+  returnHref,
+}: {
+  campaign: Campaign;
+  stage: string;
+  page: number;
+  onChange: (next: { stage: string; page: number }) => void;
+  returnHref: string;
+}) {
   const list = useApi<Page<Prospect>>(
     `/prospects${qs({ campaign_id: campaign.id, stage, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })}`,
     { keepPrevious: true },
   );
+  // Total de la campagne, pour « N sur M » quand une étape est choisie.
+  const all = useApi<Page<Prospect>>(stage ? `/prospects${qs({ campaign_id: campaign.id, limit: 1 })}` : null);
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
   return (
     <section aria-label="Prospects de la campagne" className="flex flex-col gap-3">
+      {/* Barre au-dessus du tableau (règle des parcours) : filtre à gauche, compteur à droite. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-sm text-muted" role="status">
-          {list.data ? `${total} prospect${total > 1 ? "s" : ""}${stage ? ` à l’étape « ${label(STAGES, stage)} »` : ""}` : ""}
-        </span>
         <span className="flex items-center gap-2">
           <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
             Étape
@@ -39,10 +52,7 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
             fullWidth={false}
             className="w-44"
             value={stage}
-            onChange={(e) => {
-              setStage(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => onChange({ stage: e.target.value, page: 1 })}
           >
             <option value="">Toutes</option>
             {Object.entries(STAGES).map(([key, text]) => (
@@ -51,6 +61,11 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
               </option>
             ))}
           </SelectBox>
+        </span>
+        <span className="text-[13px] text-muted tabular-nums" role="status">
+          {list.data
+            ? `${total} prospect${total > 1 ? "s" : ""}${stage ? `${all.data ? ` sur ${all.data.total}` : ""} à l’étape « ${label(STAGES, stage)} »` : ""}`
+            : ""}
         </span>
       </div>
       {list.error ? (
@@ -66,7 +81,7 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
               {stage ? "Aucun prospect à cette étape." : "Aucun prospect pour l’instant. Ils arrivent par les sources de la campagne."}
             </EmptyText>
           }
-          footer={total > PAGE_SIZE ? <TablePagination total={total} pageSize={PAGE_SIZE} page={page} onChange={setPage} /> : undefined}
+          footer={total > PAGE_SIZE ? <TablePagination total={total} pageSize={PAGE_SIZE} page={page} onChange={(next) => onChange({ stage, page: next })} /> : undefined}
           columns={[
             { id: "prospect", label: "Prospect" },
             { id: "stage", label: "Étape" },
@@ -80,7 +95,7 @@ export default function CampaignProspects({ campaign }: { campaign: Campaign }) 
               .sort((a, b) => new Date(b.last_seen_at ?? 0).getTime() - new Date(a.last_seen_at ?? 0).getTime() || b.id - a.id)[0];
             const name = fullName(p) || p.email || `#${p.id}`;
             return (
-              <Table.Row key={p.id} id={p.id} href={`/prospects/${p.id}`}>
+              <Table.Row key={p.id} id={p.id} href={`/prospects/${p.id}?from=${encodeURIComponent(returnHref)}`}>
                 <Table.Cell>
                   <span className="flex items-center gap-3">
                     <span

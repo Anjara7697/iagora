@@ -46,6 +46,10 @@ export default function ImportPage() {
 
   async function send(dryRun: boolean) {
     if (!file) return;
+    if (dest.campaign_id && !dest.source_id) {
+      setError("Choisissez une source pour cette campagne avant l’aperçu ou l’import.");
+      return;
+    }
     setBusy(true);
     setError(null);
     const form = new FormData();
