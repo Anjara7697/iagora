@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -58,7 +58,10 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
    Toute la ligne ouvre l'élément (clic et Entrée).
 5. **Barre au-dessus d'un tableau** : recherche et filtres à gauche, compteur à droite (« N éléments », ou
-   « N sur M » quand un filtre est actif).
+   « N sur M » quand un filtre est actif). Quand les filtres sont nombreux (Prospects), seuls la recherche et les
+   pastilles de périmètre restent dans la barre ; les autres passent dans un panneau latéral ouvert par
+   « Filtres · N », qui s'applique tout de suite, et chaque filtre actif s'affiche en puce retirable sous la barre,
+   avec « Réinitialiser ».
 6. **Adresse** : onglet, filtres, page et élément ouvert sont dans l'URL, mise à jour sans entrée d'historique
    (`replaceUrl`). Une adresse de retour est reconstruite à partir des valeurs connues, jamais suivie telle quelle.
 
