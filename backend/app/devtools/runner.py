@@ -230,7 +230,7 @@ def evaluate(
     return checks
 
 
-async def _observe(
+async def observe(
     session: AsyncSession, db: Any, pid: int, mid: int, cid: str
 ) -> tuple[dict[str, Any], list[str], list[str]]:
     membership = await pipeline.get_membership(session, mid)
@@ -313,7 +313,7 @@ async def run_scenario(
                     conversation_id=cid,
                     mode=AgentMode.AUTO,
                 )
-                observed, tail, llm_written = await _observe(session, db, pid, mid, cid)
+                observed, tail, llm_written = await observe(session, db, pid, mid, cid)
                 tr = TurnReport(
                     says=turn.says,
                     action=result.action,
