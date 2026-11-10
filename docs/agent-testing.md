@@ -1,6 +1,6 @@
 # Tester l'agent
 
-Trois outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
+Quatre outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
 (`ENVIRONMENT=production` les refuse) et ne créent que des données fictives en `@demo.example.com`.
 
 | Outil | Commande | Usage |
@@ -8,6 +8,7 @@ Trois outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en 
 | Jeu de données de démo | `python -m app.cli seed-demo` | Peupler la base (14 prospects à tous les stades, conversations, transfert, rendez-vous, relance, opt-out) pour le développement du tableau de bord et les démonstrations |
 | Scénarios de recette | `python -m app.cli scenario` | Rejouer des cas complets et vérifier le comportement de l'agent ; produit un rapport |
 | Simulateur de conversation | `python -m app.cli chat` | Jouer le prospect à la main et voir la décision de l'agent à chaque message |
+| Évaluation quantitative | `python -m app.cli eval-agent` | Mesurer l'agent sur un jeu de cas annotés : intention, décision, transferts, réponses sourcées, chiffres inventés, latence |
 
 Avec Docker : `docker compose exec backend python -m app.cli <commande>`.
 
@@ -89,6 +90,43 @@ profil), `/reset` (nouveau prospect), `/quit`. L'agenda y est une **doublure** (
 modèle, la base de connaissances est le vrai RAG interrogé sur les documents **fictifs** chargés par `seed-demo` ;
 avec `--fake`, un seul fait fictif.
 
+## Évaluation quantitative
+
+```bash
+python -m app.cli eval-agent                                   # tous les cas, faux modèle (hors ligne)
+python -m app.cli eval-agent --live --pause 4 --report eval.md --json eval.json --cleanup
+python -m app.cli eval-agent --live --categorie question_hors_base --categorie prix_sans_source
+python -m app.cli eval-agent --live --ablation sans-garde-chiffres --report eval-sans-garde.md
+python -m app.cli eval-agent --live --prix-entree 0.30 --prix-sortie 2.50   # prix par million de jetons
+```
+
+Les scénarios vérifient des cas un par un ; l'évaluation **mesure**. Le jeu de cas annotés
+(`backend/app/devtools/eval_cases.json`, plus de 40 cas en 12 catégories) indique pour chaque message les intentions et
+décisions acceptables, si un transfert est attendu (et pour quel motif), et le fait que la réponse doit citer. Chaque
+cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vrai workflow ; rien n'est envoyé.
+
+| Mesure | Ce qui est compté |
+|---|---|
+| Intention lue | l'intention lue par le modèle fait partie des intentions annotées |
+| Décision | l'action décidée fait partie des actions annotées |
+| Transfert juste | transfert quand il est attendu (bon motif), aucun sinon ; transferts manqués et inutiles comptés à part |
+| Réponses sourcées | la réponse contient le fait attendu de la base de connaissances |
+| Chiffres non sourcés | dans le texte brut du modèle (avant les garde-fous) et dans les messages réellement enregistrés (après) |
+| Latence, appels, jetons | durée du workflow complet par cas ; jetons **estimés** (≈ 4 caractères par jeton) ; coût seulement si les prix sont passés |
+
+- **Hors ligne (par défaut)**, le faux modèle rejoue l'annotation : 100 % attendu. Cela vérifie l'outil, le jeu de cas
+  et les règles du workflow (ces cas sont aussi joués par la CI), **pas** le modèle. Seul `--live` mesure le modèle.
+- **Base de connaissances** : par défaut, la base FICTIVE de démonstration (`demo_kb/`) avec une recherche lexicale,
+  déterministe et sans clé ; `--rag-reel` utilise la vraie recherche sur les documents de démonstration chargés par
+  `seed-demo`. La qualité de la recherche elle-même se mesure avec `kb-eval`.
+- **Variantes d'ablation** : `sans-rag` (aucun extrait) et `sans-garde-chiffres` (vérification des chiffres désactivée
+  pendant le cas) montrent ce qu'apporte chaque garde-fou. Pour comparer deux modèles, relancer avec un autre
+  `LLM_MODEL` : le rapport indique le modèle utilisé.
+- Un cas où le modèle est indisponible (quota, clé, réseau) est compté **à part** et exclu des taux : une panne de quota
+  n'est pas une erreur de jugement. `--pause` espace les cas pour les formules gratuites.
+- Le rapport Markdown donne la synthèse, le détail par catégorie et chaque écart (message, attendu, observé, réponse) ;
+  le JSON garde les résultats bruts pour comparer plusieurs passages.
+
 ## Nettoyage
 
-`--cleanup` (scénarios) supprime les prospects créés par la recette sans toucher au jeu de démo.
+`--cleanup` (scénarios, évaluation) supprime les prospects créés par la recette sans toucher au jeu de démo.
