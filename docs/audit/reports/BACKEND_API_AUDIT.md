@@ -20,8 +20,8 @@ Le backend est homogène :
 
 Un défaut de reprise ressort : **un lead Meta peut être perdu** s'il reste en `queued` après un redémarrage, et
 un lead en échec n'a aucun moyen d'être rejoué une fois que Meta a cessé de le renvoyer (AUDIT-API-001). Le reste
-concerne l'observabilité (pas d'identifiant de corrélation des requêtes) et une limite de taille des requêtes à
-confirmer côté proxy.
+concerne l'observabilité (pas d'identifiant de corrélation des requêtes) et l'absence de limite de taille des requêtes
+dans la configuration Caddy documentée.
 
 ## 2. Périmètre et méthode
 
@@ -98,13 +98,12 @@ Aucun test exécuté ni service démarré.
 ### AUDIT-API-003 — Taille maximale des requêtes non bornée par l'application
 - Catégorie : robustesse
 - Criticité : P3
-- Confiance : À vérifier (configuration du proxy absente du dépôt)
+- Confiance : Probable (configuration réelle du serveur non consultée)
 - Preuve : aucune limite globale de corps dans `backend/app/main.py` ; les limites Pydantic s'appliquent après la
-  lecture complète du corps ; le Caddyfile du serveur n'est pas versionné.
+  lecture complète du corps ; le bloc Caddy documenté (`docs/deploiement.md` §4) ne fixe aucune limite.
 - Scénario : une requête de plusieurs centaines de Mo sur la route des leads ou `/webhooks/meta` (routes sans connexion)
   est lue en mémoire avant d'être refusée, alors que l'API est limitée à 768 Mo.
-- Recommandation : `request_body max_size` dans Caddy (ex. 3 Mo), et versionner la configuration du proxy
-  (ou la documenter dans `docs/deploiement.md`).
+- Recommandation : `request_body { max_size 3MB }` dans le bloc Caddy documenté, puis sur le serveur.
 - Complexité : S
 
 ### AUDIT-API-004 — Rétablissement du consentement ouvert à tout rôle d'écriture
@@ -134,7 +133,7 @@ Constats liés, décrits ailleurs :
 ## 7. Questions et décisions humaines
 
 1. Qui peut rétablir le consentement d'un prospect opposé, et avec quel justificatif ?
-2. Valeur de la limite de taille des requêtes sur le proxy du serveur (configuration non versionnée).
+2. Valeur de la limite de taille des requêtes sur le proxy du serveur.
 
 ## 8. Recommandations priorisées
 
