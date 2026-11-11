@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), Rendez-vous, Aujourd'hui, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -122,6 +122,17 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
     l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
     le panneau d'« À traiter » (`components/todo/DraftPanel.tsx`), mêmes confirmations.
+
+**Rendez-vous et Aujourd'hui** (`app/appointments`, `app/page.tsx`, `components/appointments/`)
+
+26. **Agenda par jour** (écart à la règle 4, décidé pour Rendez-vous) : les rendez-vous restent une liste groupée
+    par jour, lue comme un agenda, plutôt qu'un tableau. Toute la ligne ouvre la fiche du prospect (clic ; au
+    clavier, le nom du prospect est le lien). Barre : période, conseiller, statut et prospects fictifs à gauche,
+    « Réinitialiser » quand un filtre est actif, compteur « N rendez-vous » (ou « N sur M ») à droite ;
+    pagination `TablePagination`.
+27. **Aujourd'hui** : « Prochains rendez-vous » (les siens pour un conseiller, tous sinon, cinq au plus) avec un
+    lien vers la liste complète. Statut et lien de visio partagés avec Rendez-vous
+    (`components/appointments/shared.tsx`). Pendant le chargement, rien ou un `Skeleton`, jamais « … ».
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
