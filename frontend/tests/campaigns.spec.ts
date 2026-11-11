@@ -635,6 +635,7 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
   await expect(nav.getByText("Analyses", { exact: true })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Analyses" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Tableau de bord" })).toHaveAttribute("href", "/dashboard");
+  await expect(nav.getByRole("link", { name: "Agent", exact: true })).toHaveAttribute("href", "/agent");
   // Recherche unique de la barre du haut : la palette, qui cherche aussi les prospects.
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("alice");
