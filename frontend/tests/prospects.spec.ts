@@ -209,7 +209,7 @@ test("suivi : affectation administrative, étape justifiée et historique actual
     }),
   );
   await login(page);
-  await page.goto("/prospects/1");
+  await page.goto("/prospects/1?tab=journey");
   await page
     .locator('button[data-membership="11"]')
     .click();
@@ -233,6 +233,8 @@ test("suivi : affectation administrative, étape justifiée et historique actual
   await expect(
     page.getByText("Converti", { exact: true }).first(),
   ).toBeVisible();
+  await expect(page.getByText("Inscription confirmée et historisée.").first()).toBeVisible();
+  await page.getByRole("dialog", { name: "Parcours" }).getByRole("button", { name: "Fermer" }).click();
   await page.getByText("Historique du parcours 1", { exact: true }).click();
   await expect(page.getByText(/email admissions du 27 octobre/)).toBeVisible();
   expect(changes).toEqual([
@@ -257,7 +259,7 @@ test("suivi : conseiller sans droit d’affectation, échec visible sans faux su
     route.fulfill({ status: 409, json: { detail: "Modification refusée" } }),
   );
   await login(page);
-  await page.goto("/prospects/1");
+  await page.goto("/prospects/1?tab=journey");
   await expect(page.getByLabel("Conseiller responsable")).toHaveCount(0);
   await page
     .locator('button[data-membership="11"]')
@@ -307,7 +309,7 @@ test("interactions : pagination, contenu canonique lié et lecture seule", async
     });
   });
   await login(page);
-  await page.goto("/prospects/1");
+  await page.goto("/prospects/1?tab=conversation");
   const history = page.getByRole("region", {
     name: "Historique des interactions",
   });
@@ -383,7 +385,7 @@ test("exception individuelle : retour au responsable de la campagne", async ({
     });
   });
   await login(page);
-  await page.goto("/prospects/1");
+  await page.goto("/prospects/1?tab=journey");
   await page
     .locator('button[data-membership="11"]')
     .click();
@@ -421,6 +423,8 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   await expect(
     page.getByRole("heading", { name: "Alice Martin" }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: "Parcours" }).click();
+  await expect(page).toHaveURL(/\/prospects\/1\?tab=journey/);
   await expect(
     page.getByText("Historique du parcours 1", { exact: true }),
   ).toBeVisible();
@@ -481,10 +485,10 @@ test("recherche, filtres transmis à l’API, pagination et état vide", async (
 test("observateur : consultation seule sur la fiche", async ({ page }) => {
   await mockApi(page, "VIEWER");
   await login(page);
-  await page.goto("/prospects/1");
-  await expect(
-    page.getByRole("button", { name: "Lancer l'agent" }),
-  ).toBeDisabled();
+  await page.goto("/prospects/1?tab=conversation");
+  await expect(page.getByText(/accès observateur permet de consulter/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Lancer l'agent" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Autres actions" })).toHaveCount(0);
   await expect(page.getByText("Observateur", { exact: true })).toBeVisible();
 });
 
@@ -597,7 +601,7 @@ test("fiche : désinscription confirmée, campagne liée et lien vers la convers
     });
   });
   await login(page);
-  await page.goto("/prospects/1");
+  await page.goto("/prospects/1?tab=journey");
   await expect(page.getByRole("link", { name: "eBIHAR" })).toHaveAttribute(
     "href",
     "/campaigns/3",
@@ -605,16 +609,16 @@ test("fiche : désinscription confirmée, campagne liée et lien vers la convers
   await expect(
     page.getByRole("link", { name: "Ouvrir dans Conversations" }),
   ).toHaveAttribute("href", "/conversations?id=conversation-1");
+  await page.getByRole("tab", { name: "Conversation" }).click();
   await expect(page.getByText("Ouverte").first()).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.dismiss());
-  await page
-    .getByRole("button", { name: "Enregistrer une désinscription" })
-    .click();
+  const optOut = async () => {
+    await page.getByRole("button", { name: "Autres actions" }).click();
+    await page.getByRole("menuitem", { name: "Enregistrer une désinscription" }).click();
+    return page.getByRole("alertdialog", { name: "Enregistrer la désinscription ?" });
+  };
+  await (await optOut()).getByRole("button", { name: "Annuler" }).click();
   expect(posts).toHaveLength(0);
-  page.once("dialog", (dialog) => void dialog.accept());
-  await page
-    .getByRole("button", { name: "Enregistrer une désinscription" })
-    .click();
+  await (await optOut()).getByRole("button", { name: "Enregistrer la désinscription" }).click();
   await expect(page.getByText("Désinscription enregistrée.")).toBeVisible();
   expect(posts[0].body).toMatchObject({ channel: "email" });
 });
@@ -647,8 +651,9 @@ test("fiche : effacer un prospect (administrateur) et lister ce qui reste à la 
   });
   await login(page);
   await page.goto("/prospects/1");
-  const panel = page.getByRole("region", { name: "Données personnelles" });
-  await panel.getByRole("button", { name: "Effacer ce prospect…" }).click();
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Effacer ce prospect…" }).click();
+  const panel = page.getByRole("dialog", { name: "Effacer ce prospect" });
   const confirmButton = panel.getByRole("button", {
     name: "Effacer définitivement",
   });
@@ -684,8 +689,9 @@ test("fiche : l’effacement est refusé par l’API puis annulable", async ({
   );
   await login(page);
   await page.goto("/prospects/1");
-  const panel = page.getByRole("region", { name: "Données personnelles" });
-  await panel.getByRole("button", { name: "Effacer ce prospect…" }).click();
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Effacer ce prospect…" }).click();
+  const panel = page.getByRole("dialog", { name: "Effacer ce prospect" });
   await panel.getByLabel("Adresse email du prospect").fill("autre@example.com");
   await panel.getByRole("button", { name: "Effacer définitivement" }).click();
   await expect(panel.getByRole("alert")).toContainText("ne correspond pas");
@@ -693,9 +699,8 @@ test("fiche : l’effacement est refusé par l’API puis annulable", async ({
     page.getByRole("heading", { name: "Alice Martin" }),
   ).toBeVisible();
   await panel.getByRole("button", { name: "Annuler" }).click();
-  await expect(
-    panel.getByRole("button", { name: "Effacer ce prospect…" }),
-  ).toBeVisible();
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Alice Martin" })).toBeVisible();
 });
 
 test("fiche : seuls les administrateurs voient l’effacement", async ({
@@ -707,9 +712,9 @@ test("fiche : seuls les administrateurs voient l’effacement", async ({
   await expect(
     page.getByRole("heading", { name: "Alice Martin" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Effacer ce prospect…" }),
-  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Enregistrer une désinscription" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Effacer ce prospect…" })).toHaveCount(0);
 });
 
 test("fiche : un observateur ne voit aucune action de consentement", async ({
@@ -721,9 +726,8 @@ test("fiche : un observateur ne voit aucune action de consentement", async ({
   await expect(
     page.getByRole("heading", { name: "Alice Martin" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /désinscription/ }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Autres actions" })).toHaveCount(0);
+  await expect(page.getByText(/désinscription/)).toHaveCount(0);
 });
 
 test("filtres programme, intérêt, canal et consentement transmis à l'API", async ({
@@ -869,6 +873,8 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   );
   await login(page);
   await page.goto("/prospects/1");
+  await page.getByRole("button", { name: "Attribuer une campagne" }).click();
+  await expect(page).toHaveURL(/tab=journey/);
   const form = page.getByRole("form", { name: "Attribution commerciale" });
   await expect(
     form.getByRole("button", { name: "Attribuer et démarrer le suivi" }),
@@ -906,7 +912,10 @@ test("observateur : file À attribuer accessible, attribution interdite", async 
     )
     .toBe(true);
   await page.goto("/prospects/1");
-  await expect(page.getByText(/À attribuer : choisissez/)).toBeVisible();
+  await expect(page.getByText("Attribuer une campagne et une source")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Attribuer une campagne" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Parcours" }).click();
+  await expect(page.getByText(/Choisissez une campagne et une source/)).toBeVisible();
   await expect(
     page.getByRole("form", { name: "Attribution commerciale" }),
   ).toHaveCount(0);
@@ -1023,4 +1032,81 @@ test("liens directs : paramètres invalides ignorés et retour limité aux prosp
     await page.goto(`/prospects/1?from=${encodeURIComponent(from)}`);
     await expect(page.getByRole("link", { name: "← Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
   }
+});
+
+test("fiche : onglet dans l'adresse, retour conservé après actualisation", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const from = "/prospects?view=table";
+  await page.goto(`/prospects/1?from=${encodeURIComponent(from)}`);
+  await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Décisions de l'agent" }).click();
+  await expect(page).toHaveURL(/tab=decisions/);
+  await expect(page).toHaveURL(new RegExp(`from=${encodeURIComponent(from).replace(/[?]/g, "\\?")}`));
+  await expect(page.getByText("L’agent n’a pas encore traité ce prospect.")).toBeVisible();
+  await auditA11y(page, "fiche prospect, onglet Décisions");
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Décisions de l'agent" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toHaveAttribute(
+    "href",
+    "/prospects?view=table",
+  );
+  await page.goto("/prospects/1?tab=inconnu");
+  await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("fiche : l'agent n'est lancé qu'après confirmation", async ({ page }) => {
+  await mockApi(page);
+  const posts: unknown[] = [];
+  await page.route("**/api/v1/agent/runs", async (route) => {
+    posts.push(route.request().postDataJSON());
+    await route.fulfill({ json: {} });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  await page.getByRole("button", { name: "Lancer l'agent" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Lancer l’agent ?" });
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+  expect(posts).toHaveLength(0);
+  await page.getByRole("button", { name: "Lancer l'agent" }).click();
+  await dialog.getByRole("button", { name: "Lancer l’agent" }).click();
+  await expect(page.getByText("Décision de l’agent enregistrée.")).toBeVisible();
+  expect(posts).toEqual([{ conversation_id: "conversation-1" }]);
+});
+
+test("fiche : lancement impossible, raison lisible", async ({ page }) => {
+  await mockApi(page, "ADMIN", { ...prospect, campaigns: [] });
+  await login(page);
+  await page.goto("/prospects/1");
+  const launch = page.getByRole("button", { name: "Lancer l'agent" });
+  await expect(launch).toBeDisabled();
+  await launch.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Attribuez d’abord une campagne");
+});
+
+test("fiche : consentement saisi dans un panneau, saisie protégée", async ({ page }) => {
+  await mockApi(page, "ADVISOR", { ...prospect, consent_status: "unknown", consent_source: "" });
+  const posts: unknown[] = [];
+  await page.route("**/api/v1/prospects/1/consent", async (route) => {
+    posts.push(route.request().postDataJSON());
+    await route.fulfill({ json: { ...prospect } });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Enregistrer un consentement" }).click();
+  const panel = page.getByRole("dialog", { name: "Enregistrer un consentement" });
+  const save = panel.getByRole("button", { name: "Enregistrer le consentement" });
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Source du consentement").fill("accord donné par téléphone le 12/10");
+  await auditA11y(page, "fiche prospect, panneau Consentement");
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("alertdialog", { name: "Abandonner les modifications ?" })
+    .getByRole("button", { name: "Continuer la saisie" })
+    .click();
+  await expect(panel.getByLabel("Source du consentement")).toHaveValue("accord donné par téléphone le 12/10");
+  await save.click();
+  await expect(page.getByText("Consentement enregistré.")).toBeVisible();
+  await expect(panel).toHaveCount(0);
+  expect(posts).toEqual([{ source: "accord donné par téléphone le 12/10", channel: "email" }]);
 });
