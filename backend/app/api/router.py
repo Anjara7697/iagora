@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     agent,
+    analytics,
     appointments,
     auth,
     calendar,
@@ -54,4 +55,5 @@ api_router.include_router(meta.webhook_router)
 api_router.include_router(demo.router)
 api_router.include_router(simulation.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(analytics.router)
 # Les webhooks publics appliquent leur propre authentification (signature fournisseur).
