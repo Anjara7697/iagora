@@ -32,13 +32,13 @@ export const AGENT_COPY: Record<AgentMode, { short: string; text: string; dot: s
   },
 };
 
-const STOP = {
+export const STOP = {
   title: "Arrêt d’urgence ?",
   description:
     "Les réponses, relances et envois de l’agent sont suspendus, y compris les messages déjà validés. Les conseillers peuvent toujours répondre manuellement. Un email déjà en cours de transmission ne peut pas être rappelé.",
   confirmLabel: "Arrêter l’agent",
 };
-const RESUME = {
+export const RESUME = {
   title: "Reprendre en mode assisté ?",
   description:
     "Les messages déjà validés pourront être envoyés si l’envoi est activé. Les anciens messages automatiques sans validation seront soumis à votre approbation.",

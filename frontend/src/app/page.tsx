@@ -1,9 +1,12 @@
 "use client";
 
-import { Avatar, Chip } from "@heroui/react";
-import { AlertTriangle, ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
+import { Alert, Avatar, Chip } from "@heroui/react";
+import { ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { firstNameOf, useCurrentUser } from "@/components/AppShell";
+import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
+import { LinkButton } from "@/components/ds/controls";
 import {
   BarList,
   EmptyText,
@@ -13,12 +16,15 @@ import {
   PageHeader,
   Panel,
   Screen,
+  cx,
   initialsOf,
 } from "@/components/ds/layout";
-import { LevelBadge } from "@/components/ui";
+import { reveal } from "@/components/ds/motion";
+import { LevelBadge, Loading } from "@/components/ui";
+import { qs } from "@/lib/api";
 import { FUNNEL, PRIORITIES, STAGES, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
-import type { DashboardSummary, Page, TodoItem } from "@/lib/types";
+import type { Appointment, DashboardSummary, Page, TodoItem } from "@/lib/types";
 
 type TodoCounts = Page<TodoItem> & { counts: Record<string, number> };
 
@@ -38,14 +44,25 @@ const TASK_LABELS: Record<TodoItem["kind"], string> = {
   incident: "Résoudre un incident",
 };
 
-const linkButton =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-default px-3 text-sm font-medium text-foreground outline-none transition-colors hover:bg-default-hover focus-visible:ring-2 focus-visible:ring-focus";
+/** Bloc de la page avec son rang dans la cascade d'apparition (règle 9). */
+const rise = (rank: number, className?: string) => ({
+  className: cx(reveal(rank).className, className),
+  style: reveal(rank).style,
+});
 
 export default function Home() {
   const user = useCurrentUser();
   const summary = useApi<DashboardSummary>("/dashboard/summary");
   const todo = useApi<TodoCounts>("/todo?limit=1");
   const incidents = useApi<Page<TodoItem>>("/todo?kind=incident&limit=1");
+  // Prochains rendez-vous : les siens pour un conseiller, tous sinon.
+  const appointments = useApi<Page<Appointment>>(
+    user
+      ? `/appointments${qs({ when: "upcoming", advisor_id: user.role === "ADVISOR" ? user.id : undefined, limit: 5 })}`
+      : null,
+  );
+  const [timeZone, setTimeZone] = useState<string | null>(null);
+  useEffect(() => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone), []);
 
   const counts = todo.data?.counts ?? {};
   const waiting = todo.data?.total;
@@ -58,43 +75,42 @@ export default function Home() {
     summary.reload();
     todo.reload();
     incidents.reload();
+    appointments.reload();
   };
+  const { hour, day } = timeFormats(timeZone ?? "UTC");
+  const today = timeZone ? day(new Date().toISOString()) : "";
 
   return (
     <Screen>
       {incident && (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-4 rounded-xl bg-danger-soft px-5 py-4 text-danger-soft-foreground"
-        >
-          <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <strong className="text-sm font-semibold">{incident.title}</strong>
-            {incident.detail && <p className="text-sm">{incident.detail}</p>}
-          </div>
-          <Link
-            className="inline-flex h-9 items-center rounded-xl bg-danger px-4 text-sm font-medium text-danger-foreground outline-none hover:bg-danger-hover focus-visible:ring-2 focus-visible:ring-focus"
-            href={`/todo?id=${encodeURIComponent(incident.id)}`}
-          >
+        <Alert status="danger" role="alert" {...rise(0)}>
+          <Alert.Indicator />
+          <Alert.Content>
+            <Alert.Title>{incident.title}</Alert.Title>
+            {incident.detail && <Alert.Description>{incident.detail}</Alert.Description>}
+          </Alert.Content>
+          <LinkButton size="sm" variant="danger" href={`/todo?id=${encodeURIComponent(incident.id)}`}>
             Diagnostiquer
-          </Link>
-        </div>
+          </LinkButton>
+        </Alert>
       )}
 
       <PageHeader
+        {...rise(0)}
         eyebrow="Travail · Aujourd’hui"
         title={`Bonjour ${firstName}`}
         subtitle={
-          <>
-            {waiting === undefined
-              ? "…"
-              : waiting === 0
+          // Rien plutôt que « … » tant que la file n'est pas chargée (règle 15).
+          waiting !== undefined && (
+            <>
+              {waiting === 0
                 ? "Rien ne vous attend pour le moment"
                 : `${waiting} élément${waiting > 1 ? "s" : ""} ${waiting > 1 ? "vous attendent" : "vous attend"}`}
-            {s
-              ? ` · l’agent a préparé ${s.activity.drafts_generated} brouillon${s.activity.drafts_generated > 1 ? "s" : ""} en ${s.activity.hours} h`
-              : ""}
-          </>
+              {s
+                ? ` · l’agent a préparé ${s.activity.drafts_generated} brouillon${s.activity.drafts_generated > 1 ? "s" : ""} en ${s.activity.hours} h`
+                : ""}
+            </>
+          )
         }
       />
 
@@ -103,11 +119,11 @@ export default function Home() {
       {waiting !== undefined && (
         <section
           aria-label="Prochaine action"
-          className={`overflow-hidden rounded-2xl border bg-surface shadow-surface ${waiting > 0 ? "border-accent/25" : "border-success/20"}`}
+          {...rise(1, `overflow-hidden rounded-lg border bg-surface shadow-surface ${waiting > 0 ? "border-accent/25" : "border-success/20"}`)}
         >
           <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
             <span
-              className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl ${waiting > 0 ? "bg-accent-soft text-accent" : "bg-success-soft text-success-soft-foreground"}`}
+              className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg ${waiting > 0 ? "bg-accent-soft text-accent" : "bg-success-soft text-success-soft-foreground"}`}
               aria-hidden="true"
             >
               {waiting > 0 ? <Sparkles className="size-5" /> : <CircleCheck className="size-5" />}
@@ -138,19 +154,16 @@ export default function Home() {
               )}
             </div>
             {waiting > 0 && (
-              <Link
-                href={next ? `/todo?id=${encodeURIComponent(next.id)}` : "/todo"}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground outline-none hover:bg-accent-hover focus-visible:ring-2 focus-visible:ring-focus"
-              >
+              <LinkButton variant="primary" href={next ? `/todo?id=${encodeURIComponent(next.id)}` : "/todo"}>
                 Traiter maintenant
                 <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
+              </LinkButton>
             )}
           </div>
         </section>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div {...rise(2, "flex flex-col gap-3")}>
         <Eyebrow>Vue rapide de la file</Eyebrow>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {BUCKETS.map((b) => (
@@ -159,22 +172,77 @@ export default function Home() {
               href={`/todo?kind=${b.kind}`}
               label={b.title}
               dot={b.dot}
-              value={todo.error ? "—" : (counts[b.kind] ?? (todo.data ? 0 : "…"))}
+              value={todo.error ? "—" : (counts[b.kind] ?? 0)}
+              loading={!todo.data && !todo.error}
               hint={b.hint}
             />
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+      <div {...rise(3, "grid grid-cols-1 items-start gap-6 lg:grid-cols-2 2xl:grid-cols-3")}>
         <div className="flex flex-col gap-6">
+          <Panel
+            label="Prochains rendez-vous"
+            title="Prochains rendez-vous"
+            action={
+              <LinkButton size="sm" variant="secondary" href="/appointments">
+                Tous les rendez-vous
+              </LinkButton>
+            }
+            bodyClassName="gap-0 px-0 py-0"
+          >
+            <div className="px-5">
+              <Loading loading={appointments.loading || !timeZone} error={appointments.error} onRetry={appointments.reload} shape="rows" />
+            </div>
+            {timeZone && appointments.data?.items.length === 0 && (
+              <div className="px-5 py-3">
+                <EmptyText>Aucun rendez-vous à venir.</EmptyText>
+              </div>
+            )}
+            {timeZone &&
+              appointments.data?.items.map((a) => {
+                const name = fullName(a.prospect);
+                const date = day(a.start_at);
+                return (
+                  <div key={a.id} className="flex flex-wrap items-center gap-3 border-b border-separator px-5 py-3.5 last:border-b-0">
+                    <span className="flex w-28 shrink-0 flex-col text-[13px] tabular-nums">
+                      <time dateTime={a.start_at} className="font-medium text-foreground">
+                        {hour(a.start_at)} – {hour(a.end_at)}
+                      </time>
+                      <span className="text-xs text-muted first-letter:uppercase">
+                        {date === today ? "Aujourd’hui" : date.replace(/ \d{4}$/, "")}
+                      </span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                      <Link
+                        href={`/prospects/${a.prospect.id}`}
+                        className="truncate rounded text-sm font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                      >
+                        {name}
+                      </Link>
+                      <span>
+                        <AppointmentStatus status={a.status} />
+                      </span>
+                    </span>
+                    <MeetingLink appointment={a} name={name} />
+                  </div>
+                );
+              })}
+            {appointments.data && appointments.data.total > appointments.data.items.length && (
+              <p className="border-t border-separator px-5 py-3 text-[13px] text-muted">
+                + {appointments.data.total - appointments.data.items.length} autre(s) rendez-vous à venir.
+              </p>
+            )}
+          </Panel>
+
           <Panel
             label="Prospects à fort signal"
             title="Prospects à fort signal"
             action={
-              <Link className={linkButton} href="/prospects">
+              <LinkButton size="sm" variant="secondary" href="/prospects">
                 Tous les prospects
-              </Link>
+              </LinkButton>
             }
             bodyClassName="gap-1 px-2 py-2"
           >
@@ -187,7 +255,7 @@ export default function Home() {
               <Link
                 key={p.id}
                 href={`/prospects/${p.id}`}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
               >
                 <Avatar size="sm" variant="soft" color="accent">
                   <Avatar.Fallback>{initialsOf(p.name)}</Avatar.Fallback>

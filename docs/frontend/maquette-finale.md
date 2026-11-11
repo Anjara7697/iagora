@@ -109,11 +109,11 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 
 | Écran | Route | Fichier | État |
 |---|---|---|---|
-| Aujourd’hui | `/` | `app/page.tsx` | Fait : grille en 3 colonnes |
+| Aujourd’hui | `/` | `app/page.tsx` | Fait : grille en 3 colonnes, prochains rendez-vous, règles des parcours (règle 27 de `heroui.md`) |
 | À traiter | `/todo` | `app/todo/page.tsx` | Ajusté : contexte et brouillon accessibles plus tôt, actions de décision conservées, compteur dans la file ; couleurs partagées avec la console |
 | Conversations | `/conversations` | `app/conversations/page.tsx` | Fait : filtres compacts |
 | Prospects | `/prospects` | `app/prospects/page.tsx` | Fait : filtres repliés, pipeline par 100 avec repères de défilement |
-| Fiche prospect | `/prospects/[id]` | `app/prospects/[id]/page.tsx` | Fait : recommandation vide masquée, en-tête mobile |
+| Fiche prospect | `/prospects/[id]` | `app/prospects/[id]/page.tsx` | Fait : en-tête et actions, quatre onglets dans l’adresse, panneaux pour modifier (règles 23 à 25 de `heroui.md`) |
 | Import CSV | `/prospects/import` | `app/prospects/import/page.tsx` | Conforme |
 | Campagnes | `/campaigns` | `app/campaigns/page.tsx` | Conforme |
 | Fiche campagne | `/campaigns/[id]` | `app/campaigns/[id]/page.tsx` | Fait : chiffres d’abord, réglages en bas |
@@ -125,10 +125,12 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
 | Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
-| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1) |
-| Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
-| Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
+| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1), harmonisée : agenda par jour, filtres dans la barre (règle 26 de `heroui.md`) |
+| Tableau de bord | `/dashboard` | `app/dashboard/page.tsx` | Fait (section 5.2) : étapes atteintes, export CSV de la synthèse |
+| Analyses | `/analytics` | `app/analytics/page.tsx` | Fait (section 5.3) : délais, brouillons, motifs de refus, couverture, conversion |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |
+| Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
+| Agent | `/agent` | `app/agent/page.tsx` | Fait (section 5.4) : état et arrêt d’urgence, modes, activité sur 7 jours, intégrations (administrateur) |
 
 Pour chaque nouvel écran, ajouter aussi son titre et sous-titre dans
 `pageTitle` / `pageSubtitle` (`lib/labels.ts`), sinon l’en-tête affiche un titre générique.
@@ -167,7 +169,12 @@ faites directement dans l’agenda externe ne sont pas synchronisées dans cette
 Les liens visio sont limités aux adresses HTTP(S) ; aucun lien n’est inventé en cas
 d’absence. Les filtres restent utilisables si la liste des conseillers échoue.
 
-### 5.2 Dashboard (`/dashboard`, groupe Pilotage)
+### 5.2 Dashboard (`/dashboard`, groupe Pilotage) — livré
+
+Livré avec `GET /dashboard/overview?days=7|30|90`. Choix du responsable du projet : les étapes
+sont comptées **atteintes** (historique des étapes ; un prospect perdu après un rendez-vous reste
+compté dans « Rendez-vous planifiés »), et l’export CSV contient la **synthèse** (chiffres clés,
+entonnoir, répartitions), construite à partir des chiffres affichés.
 
 Contenu : période (7, 30, 90 jours), export CSV, 4 chiffres clés (leads reçus,
 qualifiés par l’agent, rendez-vous planifiés, inscrits), bandeau d’incident si
@@ -180,7 +187,13 @@ API à créer ou étendre : paramètre `days`, répartitions par programme
 (`target_code`) et par source (`source_id`), nombre d’inscrits (étape `converted`).
 Les totaux par programme et par source doivent être égaux au total de l’entonnoir.
 
-### 5.3 Analytics (`/analytics`, groupe Pilotage)
+### 5.3 Analytics (`/analytics`, groupe Pilotage) — livré
+
+Livré avec `GET /analytics?days=7|30|90`. Choix du responsable du projet : le délai de première
+réponse est mesuré jusqu’à la **réponse réellement envoyée** (validation comprise), avec en précision
+le temps de **rédaction de l’agent** ; la couverture compte les **questions lues par l’agent** traitées
+sans transfert « question hors base » ; les motifs de refus, saisis librement, sont **listés et
+regroupés quand ils sont identiques**. « Escalades utiles » reste « Pas encore mesuré ».
 
 Contenu : période ; 4 indicateurs (délai médian de première réponse, confiance
 moyenne des brouillons, couverture de la Knowledge Base, escalades utiles) ;
@@ -195,7 +208,12 @@ Si une donnée manque, afficher la carte en pointillé « Pas encore mesuré »
 (comme « Escalades utiles » dans la maquette) plutôt qu’un chiffre inventé.
 API à créer : `GET /analytics?days=`.
 
-### 5.4 Agent (`/agent`, groupe Intelligence)
+### 5.4 Agent (`/agent`, groupe Intelligence) — livré
+
+Choix du responsable du projet : l’écran propose seulement l’**arrêt d’urgence** et la **reprise en
+mode assisté** (mêmes confirmations que le menu du compte). Le mode Automatique est décrit en
+lecture (« réservé à l’administrateur, non activable depuis la console ») : la validation humaine
+reste la règle. L’activité sur 7 jours vient de `GET /dashboard/activity?days=7`.
 
 Contenu : état actuel et « Arrêt d’urgence » ; mode de fonctionnement (Assisté,
 Manuel, Automatique) ; ce que l’agent fait (lecture seule, avec lien vers

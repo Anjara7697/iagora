@@ -16,7 +16,8 @@ export default function MembershipActions({
   onDone,
 }: {
   membership: Membership;
-  onDone: () => void;
+  /** Appelé après une écriture réussie, avec le message à confirmer (Toast). */
+  onDone: (message: string) => void;
 }) {
   const user = useCurrentUser();
   const [offset, setOffset] = useState(0);
@@ -46,7 +47,7 @@ export default function MembershipActions({
       await api(`/campaign-prospects/${m.id}`, { method: "PATCH", body });
       setNotice(message);
       setReason("");
-      onDone();
+      onDone(message);
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Modification impossible",
@@ -70,7 +71,7 @@ export default function MembershipActions({
         },
       });
       setNotice("Inscription confirmée et historisée.");
-      onDone();
+      onDone("Inscription confirmée et historisée.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Confirmation impossible");
     } finally {
@@ -117,7 +118,7 @@ export default function MembershipActions({
             campagne, sur toutes ses sources.
           </p>
           <Field label="Conseiller responsable">
-            <SelectBox
+            <SelectBox variant="primary"
               value={advisor}
               disabled={busy || advisors.loading || !!advisors.error}
               onChange={(e) => setAdvisor(e.target.value)}
@@ -204,7 +205,7 @@ export default function MembershipActions({
           }}
         >
           <Field label="Nouvelle étape">
-            <SelectBox
+            <SelectBox variant="primary"
               value={stage}
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
@@ -219,7 +220,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Motif du changement">
-            <TextBox
+            <TextBox variant="primary"
               value={reason}
               disabled={busy}
               required
@@ -256,7 +257,7 @@ export default function MembershipActions({
             </p>
           </div>
           <Field label="Preuve vérifiée">
-            <SelectBox value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+            <SelectBox variant="primary" value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
               <option value="school_email">Email de confirmation de l’école</option>
               <option value="admissions_system">Système d’admission</option>
               <option value="signed_document">Document signé</option>
@@ -264,7 +265,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Référence de la preuve">
-            <TextInput
+            <TextInput variant="primary"
               value={evidenceReference}
               onChange={(e) => setEvidenceReference(e.target.value)}
               disabled={busy}
@@ -275,7 +276,7 @@ export default function MembershipActions({
             />
           </Field>
           <Field label="Note complémentaire (facultative)">
-            <TextBox
+            <TextBox variant="primary"
               value={evidenceNote}
               onChange={(e) => setEvidenceNote(e.target.value)}
               disabled={busy}

@@ -102,6 +102,28 @@ def main() -> None:
     )
     cal.add_argument("--advisor", help="Email du conseiller dont on teste l'agenda")
     sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
+    ev = sub.add_parser("eval-agent", help="(dev) Mesurer l'agent sur un jeu de cas annotés")
+    ev.add_argument("ids", nargs="*", help="Cas à jouer (tous par défaut)")
+    ev.add_argument(
+        "--live", action="store_true", help="Utiliser le vrai modèle (par défaut : faux modèle)"
+    )
+    ev.add_argument(
+        "--categorie", action="append", dest="categories", help="Limiter à une catégorie"
+    )
+    ev.add_argument(
+        "--ablation", choices=["sans-rag", "sans-garde-chiffres"], help="Variante dégradée"
+    )
+    ev.add_argument(
+        "--rag-reel", action="store_true", help="Vraie recherche sur la base de démonstration"
+    )
+    ev.add_argument("--pause", type=float, default=0.0, help="Secondes entre deux cas (quota)")
+    ev.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
+    ev.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    ev.add_argument(
+        "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
+    )
+    ev.add_argument("--prix-entree", type=float, help="Prix par million de jetons en entrée")
+    ev.add_argument("--prix-sortie", type=float, help="Prix par million de jetons en sortie")
     args = parser.parse_args()
 
     if args.command == "seed-demo":
@@ -146,6 +168,23 @@ def main() -> None:
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
         sys.exit(asyncio.run(commands.cmd_kb_eval()))
+    elif args.command == "eval-agent":
+        code = asyncio.run(
+            commands.cmd_eval_agent(
+                args.ids,
+                fake=not args.live,
+                categories=args.categories,
+                ablation=args.ablation,
+                real_rag=args.rag_reel,
+                pause=args.pause,
+                report=args.report,
+                json_path=args.json_path,
+                cleanup=args.cleanup,
+                price_in=args.prix_entree,
+                price_out=args.prix_sortie,
+            )
+        )
+        sys.exit(code)
     elif args.command == "create-admin":
         # Jamais en argument de ligne de commande (historique du shell) : variable ou saisie.
         password = os.environ.get("ADMIN_PASSWORD") or getpass.getpass("Mot de passe : ")

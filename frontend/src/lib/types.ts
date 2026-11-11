@@ -548,3 +548,33 @@ export type Appointment = {
   status: "proposed" | "scheduled" | "done" | "cancelled" | "no_show";
   meeting_url: string | null;
 };
+
+/** Tableau de bord (Pilotage) : `GET /dashboard/overview?days=7|30|90`. */
+export type DashboardOverview = {
+  days: number;
+  since: string;
+  leads: number;
+  funnel: { key: string; label: string; count: number }[];
+  by_target: { key: string | null; label: string; count: number }[];
+  by_source: { key: string | null; label: string; count: number }[];
+};
+
+/** Analyses (Pilotage) : `GET /analytics?days=7|30|90`. Une valeur null signifie « pas de donnée ». */
+export type Analytics = {
+  days: number;
+  since: string;
+  first_reply_sent: { median_seconds: number | null; count: number };
+  first_reply_drafted: { median_seconds: number | null; count: number };
+  average_confidence: number | null;
+  drafts: {
+    generated: number;
+    approved_unchanged: number;
+    approved_edited: number;
+    rejected: number;
+    superseded: number;
+    pending: number;
+  };
+  reject_reasons: { reason: string; count: number }[];
+  coverage: { questions: number; answered: number };
+  funnel: { key: string; label: string; count: number }[];
+};

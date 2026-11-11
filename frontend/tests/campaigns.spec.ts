@@ -627,13 +627,10 @@ test("menu en quatre groupes, écrans à venir regroupés et recherche globale",
     "aria-current",
     "page",
   );
-  // Écrans prévus : regroupés dans une ligne « À venir » repliée, sans lien.
-  const upcoming = nav.getByText("À venir");
-  await expect(upcoming).toBeVisible();
-  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeHidden();
-  await upcoming.click();
-  await expect(nav.getByText("Tableau de bord", { exact: true })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Tableau de bord" })).toHaveCount(0);
+  // Tous les écrans prévus sont livrés : plus de ligne « À venir ».
+  await expect(nav.getByText("À venir")).toHaveCount(0);
+  for (const [name, href] of [["Tableau de bord", "/dashboard"], ["Analyses", "/analytics"], ["Agent", "/agent"]])
+    await expect(nav.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
   // Recherche unique de la barre du haut : la palette, qui cherche aussi les prospects.
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("alice");

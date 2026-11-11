@@ -17,7 +17,7 @@ from app.agents.defaults import EmptyKnowledgeBase
 from app.config import get_settings
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
-from app.devtools import chat, runner, seed
+from app.devtools import chat, evaluation, runner, seed
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import SCENARIOS, get_scenarios
 from app.graph.ports import KnowledgeBase, LanguageModel, Passage
@@ -104,9 +104,76 @@ async def cmd_scenarios(names: list[str], *, fake: bool, report: str | None, cle
     return 0 if ok == len(ran) else 1
 
 
+async def cmd_eval_agent(
+    ids: list[str],
+    *,
+    fake: bool,
+    categories: list[str] | None,
+    ablation: str | None,
+    real_rag: bool,
+    pause: float,
+    report: str | None,
+    json_path: str | None,
+    cleanup: bool,
+    price_in: float | None,
+    price_out: float | None,
+) -> int:
+    """Mesure l'agent sur le jeu de cas annotés (voir `evaluation.py`)."""
+    rt = build_runtime(fake=fake)
+    try:
+        cases = evaluation.load_cases(ids or None, categories)
+    except KeyError as exc:
+        sys.exit(str(exc.args[0]))
+    if not cases:
+        sys.exit("Aucun cas ne correspond aux filtres.")
+    if real_rag:
+        kb: KnowledgeBase = chat_knowledge(rt, fake=False)
+        kb_label = "recherche réelle (documents de démonstration chargés par seed-demo)"
+    else:
+        kb = evaluation.LexicalKnowledge()
+        kb_label = "base FICTIVE de démonstration, recherche lexicale"
+    variant = ablation or "complète"
+    print(f"Évaluation de l'agent — mode {rt.mode} — variante {variant} — {len(cases)} cas\n")
+    results = await evaluation.run_eval(
+        rt.session_factory, rt.db, cases, llm=rt.llm, knowledge=kb, ablation=ablation,
+        pause=pause, on_done=lambda r: print(evaluation.format_console(r)),
+    )  # fmt: skip
+    summary = evaluation.summarize(results, price_in=price_in, price_out=price_out)
+    print(
+        f"\nConformes : {summary.conform} — intention {summary.intent} — décision "
+        f"{summary.decision} — transfert {summary.handoff} — sourcées {summary.grounded}"
+    )
+    print(
+        f"Chiffres non sourcés : bruts {summary.raw_hallucination}, envoyés "
+        f"{summary.sent_hallucination} — modèle indisponible : {summary.llm_unavailable}"
+    )
+    model = f"{rt.llm.provider}/{rt.llm.model}"
+    if report:
+        Path(report).write_text(
+            evaluation.format_markdown(
+                results, summary, mode=rt.mode, model=model, ablation=ablation, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Rapport écrit : {report}")
+    if json_path:
+        Path(json_path).write_text(
+            evaluation.to_json(
+                results, summary, mode=rt.mode, model=model, ablation=ablation, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Résultats JSON écrits : {json_path}")
+    if cleanup:
+        async with rt.session_factory() as session:
+            print(f"{await cleanup_recette(session, rt.db)} prospect(s) de recette supprimé(s).")
+    await _shutdown()
+    return 1 if summary.errors else 0
+
+
 async def cleanup_recette(session: AsyncSession, db: Any) -> int:
     """Supprime les prospects créés par les scénarios et le simulateur (pas le jeu de démo)."""
-    labels = [s.name for s in SCENARIOS] + ["chat"]
+    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL]
     ids = list(
         await session.scalars(
             select(Prospect.id).where(

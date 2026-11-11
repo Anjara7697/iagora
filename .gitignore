@@ -34,3 +34,5 @@ docker-compose.override.yml
 # Rapports de recette générés localement
 reports/
 rapport*.md
+# … mais les rapports d'audit sont versionnés (docs/audit/README.md)
+!docs/audit/reports/

@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste et fiche), Rendez-vous, Aujourd'hui, à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -122,6 +122,45 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
     l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
     le panneau d'« À traiter » (`components/todo/DraftPanel.tsx`), mêmes confirmations.
+
+**Fiche prospect** (`app/prospects/[id]`, `components/prospect/`)
+
+23. **En-tête et onglets** : l'en-tête (identité, consentement, étape, score) porte les actions, puis quatre onglets
+    dans l'adresse : Vue d'ensemble (recommandation, profil, identité), Conversation (fil en lecture, fiche de
+    transfert, historique des échanges), Parcours (un bloc par campagne et source), Décisions de l'agent. Les
+    paramètres de retour (`from`, `task`, `kind`) sont conservés quand on change d'onglet.
+24. **Actions** (comme la règle 22) : action principale selon l'état (« Voir dans la file » si un brouillon attend,
+    sinon « Lancer l'agent », après `ConfirmDialog`), « Ouvrir dans Conversations », puis « Autres actions » :
+    désinscription (`ConfirmDialog`), consentement (panneau avec la source), effacement RGPD (panneau,
+    administrateur). Un observateur ne voit ni le lancement ni ce menu ; un lancement impossible reste visible,
+    désactivé, avec sa raison en infobulle.
+25. **Panneaux** : modifier l'affectation ou l'étape d'un parcours et attribuer une campagne s'ouvrent dans un
+    panneau latéral ; la fiche reste affichée pendant le rechargement qui suit une écriture.
+**Rendez-vous et Aujourd'hui** (`app/appointments`, `app/page.tsx`, `components/appointments/`)
+
+26. **Agenda par jour** (écart à la règle 4, décidé pour Rendez-vous) : les rendez-vous restent une liste groupée
+    par jour, lue comme un agenda, plutôt qu'un tableau. Toute la ligne ouvre la fiche du prospect (clic ; au
+    clavier, le nom du prospect est le lien). Barre : période, conseiller, statut et prospects fictifs à gauche,
+    « Réinitialiser » quand un filtre est actif, compteur « N rendez-vous » (ou « N sur M ») à droite ;
+    pagination `TablePagination`.
+27. **Aujourd'hui** : « Prochains rendez-vous » (les siens pour un conseiller, tous sinon, cinq au plus) avec un
+    lien vers la liste complète. Statut et lien de visio partagés avec Rendez-vous
+    (`components/appointments/shared.tsx`). Pendant le chargement, rien ou un `Skeleton`, jamais « … ».
+
+**Tableau de bord** (`app/dashboard`)
+
+28. **Pilotage** : période (7, 30, 90 jours) dans l'adresse (`?days=`), chiffres clés en `KpiStrip`, puis
+    entonnoir (avec la part de l'étape précédente), répartition par programme et par source en `BarList`. Les
+    étapes sont comptées atteintes, ce que l'écran dit en clair. Incident de réception en `Alert` danger avec
+    « Diagnostiquer ». Aucun chiffre n'est estimé : ce que l'API ne mesure pas n'est pas affiché.
+
+29. **Analyses** (`app/analytics`) : même période que le tableau de bord ; quatre indicateurs en `KpiStrip`, dont
+    « Escalades utiles » en `pending` (« Pas encore mesuré ») ; devenir des brouillons et conversion en `BarList`,
+    motifs de refus en liste. Une mesure sans donnée affiche « — » et sa précision dit pourquoi.
+30. **Agent** (`app/agent`) : état et action d'arrêt ou de reprise (`ConfirmDialog`, mêmes textes que le menu
+    du compte), modes en lecture (Automatique sans bouton), règles de l'agent et réglages clés en lecture avec
+    un lien vers Paramètres, activité sur 7 jours ; état des intégrations pour l'administrateur seulement
+    (masqué, pas en erreur, pour les autres rôles).
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.

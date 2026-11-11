@@ -1,6 +1,9 @@
 import {
   BookOpen,
+  Bot,
   CalendarDays,
+  ChartColumnBig,
+  LayoutDashboard,
   ListChecks,
   Megaphone,
   MessageSquare,
@@ -43,14 +46,14 @@ export const NAV_GROUPS: NavGroup[] = [
     name: "Pilotage",
     items: [
       { href: "/campaigns", label: "Campagnes", icon: Megaphone },
-      { label: "Tableau de bord", soon: true },
-      { label: "Analyses", soon: true },
+      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/analytics", label: "Analyses", icon: ChartColumnBig },
     ],
   },
   {
     name: "Intelligence",
     items: [
-      { label: "Agent", soon: true },
+      { href: "/agent", label: "Agent", icon: Bot },
       { href: "/knowledge", label: "Base de connaissances", icon: BookOpen },
     ],
   },
