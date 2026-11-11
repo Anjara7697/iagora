@@ -113,6 +113,15 @@ peut être utilisé sans téléchargement :
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 ```
 
+Par défaut, les tests démarrent le serveur de développement (`npm run dev`). La CI les lance sur la
+version de production, servie comme dans l'image Docker : chaque page est compilée une seule fois, ce
+qui évite les dépassements de délai sous charge et divise la durée par deux et demi environ. Pour faire
+de même en local, après `npm run build` :
+
+```sh
+PLAYWRIGHT_PRODUCTION=1 npm run test:e2e
+```
+
 Pour un essai réel, démarrer les services et l'API selon le README, puis
 `npm run dev` dans `frontend/`. Utiliser un compte créé avec la CLI backend.
 `NEXT_PUBLIC_API_URL` doit désigner l'API accessible au navigateur ; en local
