@@ -9,7 +9,7 @@
     frontend, QA, DevOps) ;
   - `docs/limites-et-dette.md` ;
   - la PR de stabilisation des tests [Anjara7697/iagora#158](https://github.com/Anjara7697/iagora/pull/158),
-    en cours.
+    fusionnée.
 - Statut : **proposition à valider par le responsable**. Aucune issue, branche ni tâche n'est créée par ce
   document.
 
@@ -23,7 +23,7 @@ corrections.**
   - 18 P2 et 31 P3.
 - **Invariants tenus et testés** : consentement et STOP, contrôle humain en mode assisté, données fictives
   isolées, effacement sur les deux bases, idempotence des entrées.
-- **Socle** : architecture saine, 663 tests backend (couverture 90,6 %), CI stable une fois #158 fusionnée.
+- **Socle** : architecture saine, 663 tests backend (couverture 90,6 %), CI stabilisée par #158.
 - **Ce qui bloque un pilote réel** relève surtout de :
   - **décisions** (sous-traitance du modèle, conservation, base légale Meta, documents officiels) ;
   - **exploitation** (sauvegardes hors serveur, alertes) ;
@@ -131,9 +131,9 @@ fois ».
 Chaque lot est une PR vers `dev`, avec les vérifications d'`AGENTS.md` (ruff, format, mypy, pytest ; lint,
 typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
 
-**Lot 0 — Stabilité de la CI (en cours, #158).**
+**Lot 0 — Stabilité de la CI (fait, #158 fusionnée).**
 - Contenu : tests e2e intermittents ; délai des animations en mode « animations réduites ».
-- Acceptation : CI verte trois fois de suite sur `dev`.
+- Acceptation restante : CI verte trois fois de suite sur `dev`.
 
 **Lot 1 — Hygiène de l'exposition (S, P1 pilote).**
 - Objectif : console exposée sans vulnérabilité connue.
@@ -227,7 +227,7 @@ typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
   §10 : `architecture.md`, `passation.md`, `limites-et-dette.md`, Notion).
 
 **Ordre conseillé avant la soutenance du 8 décembre** :
-1. lots 0 et 1 ;
+1. lot 1 (le lot 0 est fait) ;
 2. lots 2, 4 et 3 ;
 3. lot 6 ;
 4. lot 7 dès les décisions DPO prises.
