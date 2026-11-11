@@ -109,7 +109,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 
 | Écran | Route | Fichier | État |
 |---|---|---|---|
-| Aujourd’hui | `/` | `app/page.tsx` | Fait : grille en 3 colonnes |
+| Aujourd’hui | `/` | `app/page.tsx` | Fait : grille en 3 colonnes, prochains rendez-vous, règles des parcours (règle 27 de `heroui.md`) |
 | À traiter | `/todo` | `app/todo/page.tsx` | Ajusté : contexte et brouillon accessibles plus tôt, actions de décision conservées, compteur dans la file ; couleurs partagées avec la console |
 | Conversations | `/conversations` | `app/conversations/page.tsx` | Fait : filtres compacts |
 | Prospects | `/prospects` | `app/prospects/page.tsx` | Fait : filtres repliés, pipeline par 100 avec repères de défilement |
@@ -125,7 +125,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Mon compte | `/account` | `app/account/page.tsx` | Conforme |
 | Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
-| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1) |
+| Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1), harmonisée : agenda par jour, filtres dans la barre (règle 26 de `heroui.md`) |
 | Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
 | Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |

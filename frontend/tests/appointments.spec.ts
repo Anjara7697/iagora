@@ -80,13 +80,19 @@ test("filtres combinés, pagination, actualisation et retour navigateur", async 
   await page.reload();
   await expect(page.getByRole("tab", { name: "Passés", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
-  for (const [key, value] of Object.entries({ when: "past", status: "scheduled", advisor_id: "7", offset: "25" })) expect(calls.queries.at(-1)?.get(key)).toBe(value);
+  // Dernière requête de la liste (une autre, `limit=1`, compte tous les rendez-vous de la période : « N sur M »).
+  const listQuery = () => calls.queries.filter((q) => q.get("limit") === "25").at(-1);
+  for (const [key, value] of Object.entries({ when: "past", status: "scheduled", advisor_id: "7", offset: "25" })) expect(listQuery()?.get(key)).toBe(value);
+  await expect(page.getByRole("status").filter({ hasText: "26 rendez-vous sur 26" })).toBeVisible();
   await expect(page.getByText("Planifié", { exact: true }).last()).toBeVisible();
   await page.getByLabel("Masquer les prospects fictifs").press("Space");
   await expect(page.getByRole("heading", { name: "Aucun rendez-vous pour cette sélection" })).toBeVisible();
-  expect(calls.queries.at(-1)?.get("offset")).toBe("0");
-  await page.goBack();
-  await expect(page.getByText("26-26 sur 26", { exact: true })).toBeVisible();
+  expect(listQuery()?.get("offset")).toBe("0");
+  // Filtres et page dans l'adresse, sans entrée d'historique : une actualisation les conserve.
+  await expect(page).toHaveURL(/demo=exclude/);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Aucun rendez-vous pour cette sélection" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /0 rendez-vous/ })).toBeVisible();
   expect(calls.writes).toEqual([]);
 });
 
@@ -124,4 +130,17 @@ test("erreur récupérable, page devenue vide et URL visio non navigable", async
   await page.getByRole("button", { name: "Revenir à la première page" }).click();
   await expect(page.getByText("Lien visio non disponible")).toBeVisible();
   await expect(page.getByRole("link", { name: /Ouvrir la visio/ })).toHaveCount(0);
+});
+
+test("toute la ligne ouvre la fiche ; « Réinitialiser » n'apparaît qu'avec un filtre actif", async ({ page }) => {
+  await mockApi(page, "ADMIN");
+  await open(page);
+  await expect(page.getByRole("button", { name: "Réinitialiser" })).toHaveCount(0);
+  await choose(page.getByLabel("Statut", { exact: true }), "scheduled");
+  await expect(page).toHaveURL(/status=scheduled/);
+  await page.getByRole("button", { name: "Réinitialiser" }).click();
+  await expect(page).toHaveURL(/\/appointments$/);
+  const list = page.getByRole("list", { name: "Rendez-vous enregistrés" });
+  await list.getByText("Conseiller : Nadia").click();
+  await expect(page).toHaveURL(/\/prospects\/11$/);
 });

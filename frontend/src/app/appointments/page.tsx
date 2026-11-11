@@ -1,51 +1,61 @@
 "use client";
 
-import { CalendarDays, Clock, RefreshCw, RotateCcw, Video, VideoOff } from "lucide-react";
+import { CalendarDays, Clock, RefreshCw, RotateCcw } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, Check, ErrorText, Field, LinkButton, SelectBox, Segmented, Tag, type Tone } from "@/components/ds/controls";
-import { EmptyPanel, PageHeader, Screen, initialsOf } from "@/components/ds/layout";
-import { DemoBadge, Loading, Pager, Skeleton } from "@/components/ui";
-import { qs } from "@/lib/api";
-import { APPOINTMENT_STATUS, fullName, label } from "@/lib/labels";
-import { useApi } from "@/lib/useApi";
-import type { Appointment, Page } from "@/lib/types";
+import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { Box } from "@/components/ds/card";
+import { Btn, Check, SelectBox, Segmented } from "@/components/ds/controls";
+import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { TablePagination } from "@/components/ds/table";
+import { DemoBadge, Loading, Skeleton } from "@/components/ui";
+import { qs } from "@/lib/api";
+import { APPOINTMENT_STATUS, fullName } from "@/lib/labels";
+import type { Appointment, Page } from "@/lib/types";
+import { replaceUrl } from "@/lib/url";
+import { useApi } from "@/lib/useApi";
 
-const TONES: Record<string, Tone> = {
-  proposed: "warning", scheduled: "accent", done: "success",
-  cancelled: "neutral", no_show: "danger",
-};
+const PAGE_SIZE = 25;
 
-function meetingLink(value: string | null) {
-  try {
-    const url = new URL(value ?? "");
-    return ["https:", "http:"].includes(url.protocol) ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Rendez-vous : lecture « agenda », regroupée par jour (écart à la règle 4 décidé pour cet écran). Période, filtres
+ * et page sont dans l'URL, mise à jour sans entrée d'historique ; toute la ligne ouvre la fiche du prospect.
+ */
 function Appointments() {
   const user = useCurrentUser();
+  const router = useRouter();
   const params = useSearchParams();
   const when = params.get("when") === "past" ? "past" : "upcoming";
   const requestedStatus = params.get("status") ?? "";
   const status = Object.hasOwn(APPOINTMENT_STATUS, requestedStatus) ? requestedStatus : "";
+  const defaultAdvisor = user?.role === "ADVISOR" ? "me" : "all";
   const requestedAdvisor = params.get("advisor");
-  const advisor = requestedAdvisor === "all" || requestedAdvisor === "me" || /^[1-9]\d*$/.test(requestedAdvisor ?? "")
-    ? requestedAdvisor! : user?.role === "ADVISOR" ? "me" : "all";
+  const advisor =
+    requestedAdvisor === "all" || requestedAdvisor === "me" || /^[1-9]\d*$/.test(requestedAdvisor ?? "")
+      ? requestedAdvisor!
+      : defaultAdvisor;
   const offsetValue = Number(params.get("offset"));
   const offset = Number.isSafeInteger(offsetValue) && offsetValue >= 0 ? offsetValue : 0;
   const hideDemo = params.get("demo") === "exclude";
+  const filtered = !!status || hideDemo || advisor !== defaultAdvisor;
   const [timeZone, setTimeZone] = useState<string | null>(null);
   useEffect(() => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone), []);
-  const list = useApi<Page<Appointment>>(`/appointments${qs({
-    when, status, advisor_id: advisor === "me" ? user?.id : advisor === "all" ? undefined : advisor,
-    demo: hideDemo ? "exclude" : "all", limit: 25, offset,
-  })}`);
+  const list = useApi<Page<Appointment>>(
+    `/appointments${qs({
+      when,
+      status,
+      advisor_id: advisor === "me" ? user?.id : advisor === "all" ? undefined : advisor,
+      demo: hideDemo ? "exclude" : "all",
+      limit: PAGE_SIZE,
+      offset,
+    })}`,
+    { keepPrevious: true },
+  );
+  // « N sur M » quand un filtre est actif : M = tous les rendez-vous de la période.
+  const allCount = useApi<Page<Appointment>>(filtered ? `/appointments${qs({ when, demo: "all", limit: 1 })}` : null);
   const advisors = useApi<Page<{ id: number; username: string }>>("/advisors?limit=200");
 
   function update(patch: Record<string, string>) {
@@ -56,30 +66,38 @@ function Appointments() {
       else next.delete(key);
     }
     const query = next.toString();
-    window.history.pushState(null, "", `/appointments${query ? `?${query}` : ""}`);
+    replaceUrl(`/appointments${query ? `?${query}` : ""}`);
   }
-  const tz = timeZone ?? "UTC";
-  const hour = (value: string) => new Intl.DateTimeFormat("fr-FR", {
-    hour: "2-digit", minute: "2-digit", timeZone: tz,
-  }).format(new Date(value));
-  const day = (value: string) => new Intl.DateTimeFormat("fr-FR", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz,
-  }).format(new Date(value));
+  const { hour, day } = timeFormats(timeZone ?? "UTC");
+  const data = list.data;
+  const total = data?.total ?? 0;
+  const count = data
+    ? `${total} rendez-vous${filtered && allCount.data ? ` sur ${allCount.data.total}` : ""}`
+    : "";
 
   return (
-    <Screen className="max-w-[1100px]">
-      <PageHeader
-        eyebrow="Travail · Suivi des rendez-vous"
-        title="Rendez-vous"
-        subtitle="Retrouvez les rendez-vous enregistrés et préparez vos échanges."
-        actions={
-          <Btn variant="outline" onClick={list.reload} disabled={list.loading}>
-            <RefreshCw className="size-4" aria-hidden="true" />
-            Actualiser
-          </Btn>
-        }
-      />
-      <div className="flex flex-wrap items-center gap-3">
+    <Screen scroll className="max-w-[1100px]">
+      <div {...reveal(0)}>
+        <PageHeader
+          eyebrow="Travail · Suivi des rendez-vous"
+          title="Rendez-vous"
+          subtitle="Retrouvez les rendez-vous enregistrés et préparez vos échanges."
+          actions={
+            <Btn variant="outline" onClick={list.reload} disabled={list.loading}>
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Actualiser
+            </Btn>
+          }
+        />
+      </div>
+
+      {/* Barre (règle 5) : période et filtres à gauche, compteur à droite. */}
+      <div
+        role="group"
+        aria-label="Filtres des rendez-vous"
+        className={cx("flex flex-wrap items-center gap-3", reveal(1).className)}
+        style={reveal(1).style}
+      >
         <Segmented
           label="Période des rendez-vous"
           value={when}
@@ -89,60 +107,53 @@ function Appointments() {
           ]}
           onChange={(value) => update({ when: value })}
         />
-        <span className="flex-1" />
-        <span className="text-[13px] text-muted tabular-nums" role="status">
-          {!list.loading && list.data ? `${list.data.total} rendez-vous` : ""}
-        </span>
-      </div>
-      <Box as="form"
-        className="flex-row flex-wrap items-end gap-4 px-5 py-4"
-        aria-label="Filtres des rendez-vous"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <Field label="Conseiller" className="w-full sm:w-56">
-          <SelectBox id="appointment-advisor" value={advisor} onChange={(event) => update({ advisor: event.target.value })}>
-            <option value="all">Tous les conseillers</option>
-            <option value="me">Mes rendez-vous</option>
-            {/^\d+$/.test(advisor) && !advisors.data?.items.some((a) => String(a.id) === advisor) && (
-              <option value={advisor}>Conseiller #{advisor}</option>
-            )}
-            {advisors.data?.items.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.username}
-              </option>
-            ))}
-          </SelectBox>
-        </Field>
-        <Field label="Statut" className="w-full sm:w-48">
-          <SelectBox id="appointment-status" value={status} onChange={(event) => update({ status: event.target.value })}>
-            <option value="">Tous les statuts</option>
-            {Object.entries(APPOINTMENT_STATUS).map(([value, text]) => (
-              <option key={value} value={value}>
-                {text}
-              </option>
-            ))}
-          </SelectBox>
-        </Field>
-        <Check
-          className="h-9 items-center"
-          checked={hideDemo}
-          onChange={(checked) => update({ demo: checked ? "exclude" : "" })}
+        <SelectBox
+          aria-label="Conseiller"
+          className="w-full sm:w-52"
+          value={advisor}
+          onChange={(event) => update({ advisor: event.target.value })}
         >
+          <option value="all">Tous les conseillers</option>
+          <option value="me">Mes rendez-vous</option>
+          {/^\d+$/.test(advisor) && !advisors.data?.items.some((a) => String(a.id) === advisor) && (
+            <option value={advisor}>Conseiller #{advisor}</option>
+          )}
+          {advisors.data?.items.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.username}
+            </option>
+          ))}
+        </SelectBox>
+        <SelectBox
+          aria-label="Statut"
+          className="w-full sm:w-44"
+          value={status}
+          onChange={(event) => update({ status: event.target.value })}
+        >
+          <option value="">Tous les statuts</option>
+          {Object.entries(APPOINTMENT_STATUS).map(([value, text]) => (
+            <option key={value} value={value}>
+              {text}
+            </option>
+          ))}
+        </SelectBox>
+        <Check checked={hideDemo} onChange={(checked) => update({ demo: checked ? "exclude" : "" })}>
           Masquer les prospects fictifs
         </Check>
-        <span className="flex-1" />
-        <Btn variant="ghost" onClick={() => update({ advisor: "all", status: "", demo: "" })}>
-          <RotateCcw className="size-4" aria-hidden="true" />
-          Réinitialiser les filtres
-        </Btn>
-      </Box>
-      {advisors.error && (
-        <div className="flex flex-wrap items-center gap-3">
-          <ErrorText>La liste des conseillers est indisponible.</ErrorText>
-          <Btn size="sm" onClick={advisors.reload}>
-            Réessayer les conseillers
+        {filtered && (
+          <Btn variant="ghost" size="sm" onClick={() => update({ advisor: "", status: "", demo: "" })}>
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Réinitialiser
           </Btn>
-        </div>
+        )}
+        <span className="flex-1" />
+        <span className="text-[13px] text-muted tabular-nums" role="status">
+          {count}
+        </span>
+      </div>
+
+      {advisors.error && (
+        <ErrorState message={`Liste des conseillers indisponible : ${advisors.error.message}`} onRetry={advisors.reload} />
       )}
       {advisors.data && advisors.data.total > advisors.data.items.length && (
         <p className="text-[13px] text-muted">
@@ -158,27 +169,37 @@ function Appointments() {
           {timeZone && <> Horaires : {timeZone}.</>}
         </span>
       </p>
-      <Loading loading={list.loading || !timeZone} error={list.error} onRetry={list.reload} shape="rows" />
-      {!list.loading && timeZone && list.data && (
+
+      <Loading loading={(list.loading && !data) || !timeZone} error={list.error} onRetry={list.reload} shape="rows" />
+      {!list.error && timeZone && data && (
         <>
-          {list.data.items.length ? (
-            <Box as="ul" className="gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés">
-              {list.data.items.map((appointment, index, items) => {
-                const url = meetingLink(appointment.meeting_url);
+          {data.items.length ? (
+            <Box as="ul" className="gap-0 overflow-hidden p-0" aria-label="Rendez-vous enregistrés" aria-busy={list.loading}>
+              {data.items.map((appointment, index, items) => {
                 const dayLabel = day(appointment.start_at);
                 const newDay = index === 0 || day(items[index - 1].start_at) !== dayLabel;
                 const name = fullName(appointment.prospect);
                 const dead = appointment.status === "cancelled" || appointment.status === "no_show";
+                const row = reveal(index + 2);
                 return (
                   <Fragment key={appointment.id}>
                     {newDay && (
-                      <li className="flex items-center gap-2 border-t border-separator bg-surface-secondary px-5 py-2 text-xs font-medium text-muted first-letter:uppercase first:border-t-0">
+                      <li className="flex items-center gap-2 border-t border-separator bg-surface-secondary px-5 py-2 text-xs font-medium text-muted first:border-t-0">
                         <CalendarDays className="size-3.5" aria-hidden="true" />
                         <span className="first-letter:uppercase">{dayLabel}</span>
                       </li>
                     )}
+                    {/* Toute la ligne ouvre la fiche (clic) ; au clavier, le nom du prospect est le lien (Entrée). */}
                     <li
-                      className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t border-separator px-5 py-4 md:grid-cols-[110px_minmax(0,1.4fr)_minmax(0,1fr)_120px_auto] ${dead ? "opacity-70" : ""}`}
+                      onClick={(event) => {
+                        if (!(event.target as HTMLElement).closest("a, button")) router.push(`/prospects/${appointment.prospect.id}`);
+                      }}
+                      style={row.style}
+                      className={cx(
+                        "grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-t border-separator px-5 py-4 transition-colors hover:bg-surface-secondary md:grid-cols-[110px_minmax(0,1.4fr)_minmax(0,1fr)_120px_auto]",
+                        dead && "opacity-70",
+                        row.className,
+                      )}
                     >
                       <span className="flex flex-col text-[13px] tabular-nums">
                         <time dateTime={appointment.start_at} className="text-base font-medium text-foreground">
@@ -212,29 +233,10 @@ function Appointments() {
                           (appointment.advisor_id ? `Conseiller #${appointment.advisor_id}` : "Non affecté")}
                       </span>
                       <span className="col-span-2 md:col-span-1">
-                        <Tag tone={TONES[appointment.status] ?? "neutral"}>
-                          {label(APPOINTMENT_STATUS, appointment.status)}
-                        </Tag>
+                        <AppointmentStatus status={appointment.status} />
                       </span>
                       <span className="col-span-2 md:col-span-1 md:justify-self-end">
-                        {url ? (
-                          <LinkButton
-                            href={url}
-                            variant="secondary"
-                            size="sm"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Ouvrir la visio de ${name} dans un nouvel onglet`}
-                          >
-                            <Video className="size-4" aria-hidden="true" />
-                            Ouvrir la visio
-                          </LinkButton>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
-                            <VideoOff className="size-4" aria-hidden="true" />
-                            Lien visio non disponible
-                          </span>
-                        )}
+                        <MeetingLink appointment={appointment} name={name} />
                       </span>
                     </li>
                   </Fragment>
@@ -245,30 +247,35 @@ function Appointments() {
             <Box as="section" className="p-0">
               <EmptyPanel
                 icon={CalendarDays}
-                title={list.data.total > 0 ? "Aucun rendez-vous sur cette page" : "Aucun rendez-vous pour cette sélection"}
+                title={total > 0 ? "Aucun rendez-vous sur cette page" : "Aucun rendez-vous pour cette sélection"}
                 description={
-                  list.data.total > 0
+                  total > 0
                     ? "La liste a pu évoluer. Revenez à la première page."
                     : "Essayez une autre période ou un autre filtre. Les créneaux proposés dans les conversations ne sont pas des réservations."
                 }
                 action={
-                  offset > 0 && (
+                  offset > 0 ? (
                     <Btn onClick={() => update({ offset: "" })}>Revenir à la première page</Btn>
+                  ) : (
+                    filtered && (
+                      <Btn onClick={() => update({ advisor: "", status: "", demo: "" })}>Afficher tout</Btn>
+                    )
                   )
                 }
               />
             </Box>
           )}
-          {list.data.items.length > 0 && (
-            <Pager
-              total={list.data.total}
-              limit={list.data.limit}
-              offset={list.data.offset}
-              onChange={(value) => update({ offset: String(value) })}
+          {data.items.length > 0 && total > PAGE_SIZE && (
+            <TablePagination
+              total={total}
+              pageSize={PAGE_SIZE}
+              page={Math.floor(data.offset / PAGE_SIZE) + 1}
+              onChange={(page) => update({ offset: page > 1 ? String((page - 1) * PAGE_SIZE) : "" })}
             />
           )}
           <p className="text-xs/[18px] text-muted">
-            Les statuts affichés sont ceux enregistrés dans IAGORA. Les modifications faites directement dans l’agenda externe ne sont pas synchronisées ici.
+            Les statuts affichés sont ceux enregistrés dans IAGORA. Les modifications faites directement dans l’agenda
+            externe ne sont pas synchronisées ici.
           </p>
         </>
       )}
@@ -277,5 +284,9 @@ function Appointments() {
 }
 
 export default function AppointmentsPage() {
-  return <Suspense fallback={<Skeleton shape="rows" />}><Appointments /></Suspense>;
+  return (
+    <Suspense fallback={<Skeleton shape="rows" />}>
+      <Appointments />
+    </Suspense>
+  );
 }
