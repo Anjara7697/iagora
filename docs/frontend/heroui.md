@@ -154,6 +154,10 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     étapes sont comptées atteintes, ce que l'écran dit en clair. Incident de réception en `Alert` danger avec
     « Diagnostiquer ». Aucun chiffre n'est estimé : ce que l'API ne mesure pas n'est pas affiché.
 
+29. **Analyses** (`app/analytics`) : même période que le tableau de bord ; quatre indicateurs en `KpiStrip`, dont
+    « Escalades utiles » en `pending` (« Pas encore mesuré ») ; devenir des brouillons et conversion en `BarList`,
+    motifs de refus en liste. Une mesure sans donnée affiche « — » et sa précision dit pourquoi.
+
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
 
