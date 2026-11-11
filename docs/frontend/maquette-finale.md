@@ -126,7 +126,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Simulateur | `/simulator` | `app/simulator/page.tsx` | Fait : accès via Paramètres → Tests et démonstration, indicateur persistant, contexte des réglages partagés explicite |
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
 | Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1), harmonisée : agenda par jour, filtres dans la barre (règle 26 de `heroui.md`) |
-| Dashboard | `/dashboard` | à créer | **À créer** (section 5.2) |
+| Tableau de bord | `/dashboard` | `app/dashboard/page.tsx` | Fait (section 5.2) : étapes atteintes, export CSV de la synthèse |
 | Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |
 
@@ -167,7 +167,12 @@ faites directement dans l’agenda externe ne sont pas synchronisées dans cette
 Les liens visio sont limités aux adresses HTTP(S) ; aucun lien n’est inventé en cas
 d’absence. Les filtres restent utilisables si la liste des conseillers échoue.
 
-### 5.2 Dashboard (`/dashboard`, groupe Pilotage)
+### 5.2 Dashboard (`/dashboard`, groupe Pilotage) — livré
+
+Livré avec `GET /dashboard/overview?days=7|30|90`. Choix du responsable du projet : les étapes
+sont comptées **atteintes** (historique des étapes ; un prospect perdu après un rendez-vous reste
+compté dans « Rendez-vous planifiés »), et l’export CSV contient la **synthèse** (chiffres clés,
+entonnoir, répartitions), construite à partir des chiffres affichés.
 
 Contenu : période (7, 30, 90 jours), export CSV, 4 chiffres clés (leads reçus,
 qualifiés par l’agent, rendez-vous planifiés, inscrits), bandeau d’incident si

@@ -7,11 +7,23 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Campaign, CampaignProspect, CampaignSource, FollowUp, Prospect
+from app.models import (
+    Campaign,
+    CampaignProspect,
+    CampaignSource,
+    FollowUp,
+    Prospect,
+    Source,
+    StageEvent,
+    Target,
+)
 from app.models.enums import ConsentStatus, ConversionStage, FollowUpStatus
 from app.schemas.dashboard import (
     AgentActivity,
+    Breakdown,
+    DashboardOverview,
     DashboardSummary,
+    FunnelStep,
     HotProspect,
     ScheduledFollowUp,
 )
@@ -169,4 +181,85 @@ async def summary(session: AsyncSession, db: Any) -> DashboardSummary:
         funnel_days=30,
         funnel=by_stage,
         leads=leads,
+    )
+
+
+# --- Tableau de bord (Pilotage) ---
+
+# Rang de progression : « à relancer » et « perdu » ne font pas avancer dans l'entonnoir.
+_RANK = {
+    ConversionStage.QUALIFIED: 1,
+    ConversionStage.MEETING_PROPOSED: 1,
+    ConversionStage.MEETING_SCHEDULED: 2,
+    ConversionStage.MEETING_DONE: 2,
+    ConversionStage.APPLIED: 3,
+    ConversionStage.CONVERTED: 4,
+}
+FUNNEL_STEPS = (
+    ("leads", "Leads reçus", 0),
+    ("qualified", "Qualifiés", 1),
+    ("meeting", "Rendez-vous planifiés", 2),
+    ("applied", "Candidatures", 3),
+    ("converted", "Inscrits", 4),
+)
+NOT_SET = "Non renseigné"
+
+
+async def overview(session: AsyncSession, days: int) -> DashboardOverview:
+    """Prospects arrivés dans la période (rattachement le plus récent de chacun), avec l'étape la
+    plus avancée qu'ils ont atteinte et leur répartition par programme et par source."""
+    since = datetime.now(UTC) - timedelta(days=days)
+    rows = (
+        await session.execute(
+            select(
+                CampaignProspect.id,
+                CampaignProspect.conversion_stage,
+                Target.code,
+                Target.name,
+                Source.id,
+                Source.name,
+            )
+            .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
+            .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+            .join(Source, Source.id == CampaignSource.source_id)
+            .outerjoin(Target, Target.id == Prospect.target_id)
+            .where(
+                CampaignProspect.first_seen_at >= since,
+                ~demo_filter(),
+                CampaignProspect.id.in_(commercial_context.latest_ids()),
+            )
+        )
+    ).all()
+    reached: dict[int, int] = {r[0]: _RANK.get(r[1], 0) for r in rows}
+    if reached:
+        history = await session.execute(
+            select(StageEvent.campaign_prospect_id, StageEvent.to_stage).where(
+                StageEvent.campaign_prospect_id.in_(list(reached))
+            )
+        )
+        for mid, stage in history:
+            reached[mid] = max(reached[mid], _RANK.get(stage, 0))
+
+    targets: dict[str | None, Breakdown] = {}
+    sources: dict[str | None, Breakdown] = {}
+    for _, _, t_code, t_name, s_id, s_name in rows:
+        t = targets.setdefault(t_code, Breakdown(key=t_code, label=t_name or NOT_SET, count=0))
+        t.count += 1
+        key = str(s_id) if s_id is not None else None
+        src = sources.setdefault(key, Breakdown(key=key, label=s_name or NOT_SET, count=0))
+        src.count += 1
+
+    def ordered(items: dict[str | None, Breakdown]) -> list[Breakdown]:
+        return sorted(items.values(), key=lambda b: (-b.count, b.label))
+
+    return DashboardOverview(
+        days=days,
+        since=since,
+        leads=len(rows),
+        funnel=[
+            FunnelStep(key=key, label=text, count=sum(1 for r in reached.values() if r >= rank))
+            for key, text, rank in FUNNEL_STEPS
+        ],
+        by_target=ordered(targets),
+        by_source=ordered(sources),
     )
