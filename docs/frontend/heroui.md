@@ -154,6 +154,9 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     étapes sont comptées atteintes, ce que l'écran dit en clair. Incident de réception en `Alert` danger avec
     « Diagnostiquer ». Aucun chiffre n'est estimé : ce que l'API ne mesure pas n'est pas affiché.
 
+29. **Analyses** (`app/analytics`) : même période que le tableau de bord ; quatre indicateurs en `KpiStrip`, dont
+    « Escalades utiles » en `pending` (« Pas encore mesuré ») ; devenir des brouillons et conversion en `BarList`,
+    motifs de refus en liste. Une mesure sans donnée affiche « — » et sa précision dit pourquoi.
 30. **Agent** (`app/agent`) : état et action d'arrêt ou de reprise (`ConfirmDialog`, mêmes textes que le menu
     du compte), modes en lecture (Automatique sans bouton), règles de l'agent et réglages clés en lecture avec
     un lien vers Paramètres, activité sur 7 jours ; état des intégrations pour l'administrateur seulement

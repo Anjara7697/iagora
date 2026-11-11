@@ -127,6 +127,8 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Connexion | `/login` | `app/login/page.tsx` | Conforme |
 | Rendez-vous | `/appointments` | `app/appointments/page.tsx` | Consultation livrée (section 5.1), harmonisée : agenda par jour, filtres dans la barre (règle 26 de `heroui.md`) |
 | Tableau de bord | `/dashboard` | `app/dashboard/page.tsx` | Fait (section 5.2) : étapes atteintes, export CSV de la synthèse |
+| Analyses | `/analytics` | `app/analytics/page.tsx` | Fait (section 5.3) : délais, brouillons, motifs de refus, couverture, conversion |
+| Agent | `/agent` | à créer | **À créer** (section 5.4) |
 | Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
 | Agent | `/agent` | `app/agent/page.tsx` | Fait (section 5.4) : état et arrêt d’urgence, modes, activité sur 7 jours, intégrations (administrateur) |
 
@@ -185,7 +187,13 @@ API à créer ou étendre : paramètre `days`, répartitions par programme
 (`target_code`) et par source (`source_id`), nombre d’inscrits (étape `converted`).
 Les totaux par programme et par source doivent être égaux au total de l’entonnoir.
 
-### 5.3 Analytics (`/analytics`, groupe Pilotage)
+### 5.3 Analytics (`/analytics`, groupe Pilotage) — livré
+
+Livré avec `GET /analytics?days=7|30|90`. Choix du responsable du projet : le délai de première
+réponse est mesuré jusqu’à la **réponse réellement envoyée** (validation comprise), avec en précision
+le temps de **rédaction de l’agent** ; la couverture compte les **questions lues par l’agent** traitées
+sans transfert « question hors base » ; les motifs de refus, saisis librement, sont **listés et
+regroupés quand ils sont identiques**. « Escalades utiles » reste « Pas encore mesuré ».
 
 Contenu : période ; 4 indicateurs (délai médian de première réponse, confiance
 moyenne des brouillons, couverture de la Knowledge Base, escalades utiles) ;

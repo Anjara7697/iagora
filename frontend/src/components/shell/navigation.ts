@@ -2,6 +2,7 @@ import {
   BookOpen,
   Bot,
   CalendarDays,
+  ChartColumnBig,
   LayoutDashboard,
   ListChecks,
   Megaphone,
@@ -46,7 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/campaigns", label: "Campagnes", icon: Megaphone },
       { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-      { label: "Analyses", soon: true },
+      { href: "/analytics", label: "Analyses", icon: ChartColumnBig },
     ],
   },
   {

@@ -142,5 +142,6 @@ test("toute la ligne ouvre la fiche ; « Réinitialiser » n'apparaît qu'avec u
   await expect(page).toHaveURL(/\/appointments$/);
   const list = page.getByRole("list", { name: "Rendez-vous enregistrés" });
   await list.getByText("Conseiller : Nadia").click();
-  await expect(page).toHaveURL(/\/prospects\/11$/);
+  // L'URL ne change qu'une fois la fiche chargée ; le serveur de dev la compile au premier accès (lent sous charge).
+  await expect(page).toHaveURL(/\/prospects\/11$/, { timeout: 30_000 });
 });
