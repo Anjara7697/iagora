@@ -45,7 +45,7 @@ onglets de `EmailConnector`, `input type="color"`, voile du menu mobile.
 
 ## Règles des parcours
 
-Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste), à appliquer à chaque écran refait. Un écart à une
+Établies sur les parcours Campagnes, Base de connaissances, barre et menu, À traiter, Conversations, Prospects (liste et fiche), à appliquer à chaque écran refait. Un écart à une
 règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Structure**
@@ -122,6 +122,20 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
     l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
     le panneau d'« À traiter » (`components/todo/DraftPanel.tsx`), mêmes confirmations.
+
+**Fiche prospect** (`app/prospects/[id]`, `components/prospect/`)
+
+23. **En-tête et onglets** : l'en-tête (identité, consentement, étape, score) porte les actions, puis quatre onglets
+    dans l'adresse : Vue d'ensemble (recommandation, profil, identité), Conversation (fil en lecture, fiche de
+    transfert, historique des échanges), Parcours (un bloc par campagne et source), Décisions de l'agent. Les
+    paramètres de retour (`from`, `task`, `kind`) sont conservés quand on change d'onglet.
+24. **Actions** (comme la règle 22) : action principale selon l'état (« Voir dans la file » si un brouillon attend,
+    sinon « Lancer l'agent », après `ConfirmDialog`), « Ouvrir dans Conversations », puis « Autres actions » :
+    désinscription (`ConfirmDialog`), consentement (panneau avec la source), effacement RGPD (panneau,
+    administrateur). Un observateur ne voit ni le lancement ni ce menu ; un lancement impossible reste visible,
+    désactivé, avec sa raison en infobulle.
+25. **Panneaux** : modifier l'affectation ou l'étape d'un parcours et attribuer une campagne s'ouvrent dans un
+    panneau latéral ; la fiche reste affichée pendant le rechargement qui suit une écriture.
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
