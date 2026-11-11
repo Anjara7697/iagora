@@ -61,6 +61,24 @@ async function mockApi(
         code = 500;
         body = { detail: "Erreur interne du serveur" };
       } else body = summary;
+    } else if (path === "/appointments") {
+      body = {
+        items: [
+          {
+            id: 9,
+            prospect: { id: 5, first_name: "Sophie", last_name: "Merlin", email: "sophie@example.com" },
+            advisor_id: 1,
+            advisor_name: "nadia.cisse",
+            start_at: "2030-11-20T13:00:00Z",
+            end_at: "2030-11-20T14:00:00Z",
+            status: "scheduled",
+            meeting_url: "https://zoom.example/9",
+          },
+        ],
+        total: 3,
+        limit: 5,
+        offset: 0,
+      };
     } else if (path === "/todo") {
       const kind = url.searchParams.get("kind");
       body =
@@ -235,4 +253,22 @@ test("accueil mobile : la priorité reste lisible sans débordement", async ({
     ),
   ).toBe(true);
   await auditA11y(page, "accueil mobile");
+});
+
+test("accueil : prochains rendez-vous, lien visio et accès à la liste complète", async ({ page }) => {
+  await mockApi(page, { role: "ADVISOR" });
+  const queries: URLSearchParams[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/v1/appointments")) queries.push(new URL(r.url()).searchParams);
+  });
+  await open(page);
+  const panel = page.getByRole("region", { name: "Prochains rendez-vous" });
+  await expect(panel.getByRole("link", { name: "Sophie Merlin", exact: true })).toHaveAttribute("href", "/prospects/5");
+  await expect(panel.getByRole("link", { name: /Ouvrir la visio/ })).toHaveAttribute("href", "https://zoom.example/9");
+  await expect(panel.getByText("Planifié", { exact: true })).toBeVisible();
+  await expect(panel.getByText("+ 2 autre(s) rendez-vous à venir.")).toBeVisible();
+  await expect(panel.getByRole("link", { name: "Tous les rendez-vous" })).toHaveAttribute("href", "/appointments");
+  expect(queries.at(-1)?.get("when")).toBe("upcoming");
+  expect(queries.at(-1)?.get("advisor_id")).toBe("1");
+  await auditA11y(page, "accueil, prochains rendez-vous");
 });
