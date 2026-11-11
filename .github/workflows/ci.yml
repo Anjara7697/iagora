@@ -78,9 +78,12 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - name: Tests navigateur (API simulée)
-        run: npm run test:e2e
+      # Build d'abord : les tests navigateur tournent sur la version de production (pages compilées une fois).
       - run: npm run build
+      - name: Tests navigateur (API simulée, version de production)
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_PRODUCTION: "1"
 
   docker:
     runs-on: ubuntu-latest
