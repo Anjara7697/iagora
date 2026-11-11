@@ -129,6 +129,8 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | Tableau de bord | `/dashboard` | `app/dashboard/page.tsx` | Fait (section 5.2) : étapes atteintes, export CSV de la synthèse |
 | Analyses | `/analytics` | `app/analytics/page.tsx` | Fait (section 5.3) : délais, brouillons, motifs de refus, couverture, conversion |
 | Agent | `/agent` | à créer | **À créer** (section 5.4) |
+| Analytics | `/analytics` | à créer | **À créer** (section 5.3) |
+| Agent | `/agent` | `app/agent/page.tsx` | Fait (section 5.4) : état et arrêt d’urgence, modes, activité sur 7 jours, intégrations (administrateur) |
 
 Pour chaque nouvel écran, ajouter aussi son titre et sous-titre dans
 `pageTitle` / `pageSubtitle` (`lib/labels.ts`), sinon l’en-tête affiche un titre générique.
@@ -206,7 +208,12 @@ Si une donnée manque, afficher la carte en pointillé « Pas encore mesuré »
 (comme « Escalades utiles » dans la maquette) plutôt qu’un chiffre inventé.
 API à créer : `GET /analytics?days=`.
 
-### 5.4 Agent (`/agent`, groupe Intelligence)
+### 5.4 Agent (`/agent`, groupe Intelligence) — livré
+
+Choix du responsable du projet : l’écran propose seulement l’**arrêt d’urgence** et la **reprise en
+mode assisté** (mêmes confirmations que le menu du compte). Le mode Automatique est décrit en
+lecture (« réservé à l’administrateur, non activable depuis la console ») : la validation humaine
+reste la règle. L’activité sur 7 jours vient de `GET /dashboard/activity?days=7`.
 
 Contenu : état actuel et « Arrêt d’urgence » ; mode de fonctionnement (Assisté,
 Manuel, Automatique) ; ce que l’agent fait (lecture seule, avec lien vers

@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Bot,
   CalendarDays,
   ChartColumnBig,
   LayoutDashboard,
@@ -52,7 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     name: "Intelligence",
     items: [
-      { label: "Agent", soon: true },
+      { href: "/agent", label: "Agent", icon: Bot },
       { href: "/knowledge", label: "Base de connaissances", icon: BookOpen },
     ],
   },

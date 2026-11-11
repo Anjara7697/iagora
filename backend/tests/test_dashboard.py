@@ -138,3 +138,13 @@ async def test_overview_period_is_limited_to_7_30_or_90_days(client):
 async def test_viewer_can_read_the_overview(make_client):
     viewer = await make_client(UserRole.VIEWER)
     assert (await viewer.get(f"{API}/dashboard/overview")).status_code == 200
+
+
+async def test_agent_activity_over_a_week(client, env):  # noqa: F811
+    pid, mid, cid = await lead(client, "Bonjour, je voudrais des informations.")
+    await run(client, cid)
+    r = await client.get(f"{API}/dashboard/activity")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["hours"] == 7 * 24 and body["prospects_analysed"] == 1
+    assert (await client.get(f"{API}/dashboard/activity", params={"days": 3})).status_code == 422
