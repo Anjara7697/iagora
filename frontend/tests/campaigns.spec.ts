@@ -285,6 +285,8 @@ async function login(page: Page, then = "/campaigns") {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto(then);
 }
 

@@ -111,6 +111,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/knowledge");
 }
 
@@ -214,6 +216,8 @@ test("modifier : champs pré-remplis dans le panneau et confirmation avant d'aba
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/knowledge?doc=ebihar");
   const panel = page.getByRole("dialog", { name: "Programme eBIHAR" });
   await panel.getByRole("button", { name: "Modifier" }).click();
@@ -246,6 +250,8 @@ test("adresse d'un document : identifiant invalide ignoré", async ({ page }) =>
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/knowledge?doc=..%2Fsecret");
   await expect(page.getByRole("row", { name: /Programme eBIHAR/ })).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);

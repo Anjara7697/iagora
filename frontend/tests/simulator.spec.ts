@@ -218,6 +218,8 @@ async function start(page: Page) {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/simulator");
   await page.getByRole("button", { name: "Créer un prospect fictif" }).click();
 }
@@ -295,6 +297,8 @@ test("arrêt d'urgence : avertissement", async ({ page }) => {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/simulator");
   await expect(page.getByText("Arrêt d'urgence actif")).toBeVisible();
 });
@@ -336,6 +340,8 @@ test("mode démo : bandeau permanent et purge des données fictives avec confirm
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/simulator");
   await expect(page.getByRole("note")).toContainText(
     "Environnement de test — données fictives",
