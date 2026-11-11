@@ -147,6 +147,13 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     lien vers la liste complète. Statut et lien de visio partagés avec Rendez-vous
     (`components/appointments/shared.tsx`). Pendant le chargement, rien ou un `Skeleton`, jamais « … ».
 
+**Tableau de bord** (`app/dashboard`)
+
+28. **Pilotage** : période (7, 30, 90 jours) dans l'adresse (`?days=`), chiffres clés en `KpiStrip`, puis
+    entonnoir (avec la part de l'étape précédente), répartition par programme et par source en `BarList`. Les
+    étapes sont comptées atteintes, ce que l'écran dit en clair. Incident de réception en `Alert` danger avec
+    « Diagnostiquer ». Aucun chiffre n'est estimé : ce que l'API ne mesure pas n'est pas affiché.
+
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
 

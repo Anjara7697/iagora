@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
+  LayoutDashboard,
   ListChecks,
   Megaphone,
   MessageSquare,
@@ -43,7 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     name: "Pilotage",
     items: [
       { href: "/campaigns", label: "Campagnes", icon: Megaphone },
-      { label: "Tableau de bord", soon: true },
+      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
       { label: "Analyses", soon: true },
     ],
   },

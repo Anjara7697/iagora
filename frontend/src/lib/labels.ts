@@ -210,6 +210,7 @@ export function formatPeriod(start: string | null | undefined, end: string | nul
 /** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
 const PAGE_TITLES: [string, string][] = [
   ["/appointments", "Rendez-vous"],
+  ["/dashboard", "Tableau de bord"],
   ["/campaigns/new", "Nouvelle campagne"],
   ["/campaigns/", "Campagne"],
   ["/campaigns", "Campagnes"],

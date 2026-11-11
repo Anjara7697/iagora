@@ -3,8 +3,8 @@
 from datetime import UTC, datetime, timedelta
 
 from app.models import FollowUp
-from app.models.enums import UserRole
-from app.services import agent_settings
+from app.models.enums import ConversionStage, UserRole
+from app.services import agent_settings, pipeline
 from app.services.agent_settings import AgentMode
 from sqlalchemy import select
 
@@ -80,3 +80,61 @@ async def test_viewer_can_read_the_summary(make_client):
     assert (await viewer.get(f"{API}/dashboard/summary")).status_code == 200
     anonymous = await make_client(None)
     assert (await anonymous.get(f"{API}/dashboard/summary")).status_code == 401
+
+
+# --- Tableau de bord (Pilotage) ---
+
+
+async def overview(client, days=30):
+    r = await client.get(f"{API}/dashboard/overview", params={"days": days})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+async def test_overview_counts_reached_stages_and_breakdowns(client, env, session_factory):  # noqa: F811
+    pid, mid, _ = await lead(client, "Bonjour")
+    membership = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]
+    second = await client.post(
+        f"{API}/prospects",
+        json={
+            "first_name": "Lina",
+            "email": "lina@example.com",
+            "channel": "email",
+            "campaign_id": membership["campaign_id"],
+            "source_id": membership["source_id"],
+        },
+    )
+    assert second.status_code in (200, 201), second.text
+    # Fictif (autre téléphone, sinon il serait rapproché de Jean) : exclu des chiffres.
+    await lead(client, "Bonjour", email="sim.zoe@demo.example.com", phone="0699999999")
+    async with session_factory() as s:
+        # Rendez-vous planifié puis perdu : compte quand même dans « Rendez-vous » (étape atteinte).
+        await pipeline.change_stage(s, mid, ConversionStage.QUALIFIED, "profil complet")
+        await pipeline.change_stage(s, mid, ConversionStage.MEETING_SCHEDULED, "créneau réservé")
+        await pipeline.change_stage(s, mid, ConversionStage.LOST, "a choisi une autre école")
+    body = await overview(client)
+    steps = {step["key"]: step["count"] for step in body["funnel"]}
+    assert body["leads"] == 2, body
+    assert steps == {
+        "leads": 2,
+        "qualified": 1,
+        "meeting": 1,
+        "applied": 0,
+        "converted": 0,
+    }
+    assert sum(b["count"] for b in body["by_target"]) == body["leads"]
+    assert sum(b["count"] for b in body["by_source"]) == body["leads"]
+    assert {b["label"] for b in body["by_target"]} == {"Étudiants eBIHAR", "Non renseigné"}
+    source = {"key": str(membership["source_id"]), "label": "LinkedIn", "count": 2}
+    assert body["by_source"] == [source]
+
+
+async def test_overview_period_is_limited_to_7_30_or_90_days(client):
+    assert (await overview(client, 7))["days"] == 7
+    assert (await overview(client, 90))["leads"] == 0
+    assert (await client.get(f"{API}/dashboard/overview", params={"days": 10})).status_code == 422
+
+
+async def test_viewer_can_read_the_overview(make_client):
+    viewer = await make_client(UserRole.VIEWER)
+    assert (await viewer.get(f"{API}/dashboard/overview")).status_code == 200
