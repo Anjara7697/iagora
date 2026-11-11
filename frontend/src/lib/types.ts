@@ -548,3 +548,13 @@ export type Appointment = {
   status: "proposed" | "scheduled" | "done" | "cancelled" | "no_show";
   meeting_url: string | null;
 };
+
+/** Tableau de bord (Pilotage) : `GET /dashboard/overview?days=7|30|90`. */
+export type DashboardOverview = {
+  days: number;
+  since: string;
+  leads: number;
+  funnel: { key: string; label: string; count: number }[];
+  by_target: { key: string | null; label: string; count: number }[];
+  by_source: { key: string | null; label: string; count: number }[];
+};
