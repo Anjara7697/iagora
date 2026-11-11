@@ -183,6 +183,8 @@
     *::after {
       scroll-behavior: auto !important;
       animation-duration: 0.01ms !important;
+      /* Sans cela, les apparitions décalées (`reveal`) gardent leur délai : bloc invisible et décalé de 8 px. */
+      animation-delay: 0s !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }

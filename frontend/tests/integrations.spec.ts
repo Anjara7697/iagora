@@ -213,6 +213,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/integrations");
 }
 
@@ -391,7 +393,8 @@ test("lien de campagne : destination validée préremplie et jeton correctement 
   await expect(drawer.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
   await drawer.getByLabel("Nom du jeton").fill("Formulaire campagne");
   await drawer.getByRole("button", { name: "Créer un jeton", exact: true }).click();
-  expect(saved[0]).toMatchObject({ token: { name: "Formulaire campagne", campaign_id: 4, source_id: 9 } });
+  // La requête part après le clic : on attend qu'elle soit reçue avant de la vérifier.
+  await expect.poll(() => saved[0]).toMatchObject({ token: { name: "Formulaire campagne", campaign_id: 4, source_id: 9 } });
 });
 
 test("plusieurs sources : aucun choix implicite et lien invalide ignoré", async ({ page }) => {

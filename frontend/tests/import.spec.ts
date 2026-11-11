@@ -50,6 +50,8 @@ test("import depuis une source : conserver la destination dans l’aperçu et l�
   await page.getByLabel("Email ou nom").fill("paul");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/prospects/import?campaign=4&source=9");
   await expect(page.getByLabel("Campagne", { exact: true })).toHaveAttribute("data-value", "4");
   await expect(page.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
@@ -72,6 +74,8 @@ test("import CSV : aperçu obligatoire puis import", async ({ page }) => {
   await page.getByLabel("Email ou nom").fill("paul");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/prospects/import");
   const importButton = page.getByRole("button", { name: "Importer" });
   await page
