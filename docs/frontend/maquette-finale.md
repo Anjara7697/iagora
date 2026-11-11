@@ -113,7 +113,7 @@ sur une seule ligne (menu ☰, titre, « à traiter », avatar).
 | À traiter | `/todo` | `app/todo/page.tsx` | Ajusté : contexte et brouillon accessibles plus tôt, actions de décision conservées, compteur dans la file ; couleurs partagées avec la console |
 | Conversations | `/conversations` | `app/conversations/page.tsx` | Fait : filtres compacts |
 | Prospects | `/prospects` | `app/prospects/page.tsx` | Fait : filtres repliés, pipeline par 100 avec repères de défilement |
-| Fiche prospect | `/prospects/[id]` | `app/prospects/[id]/page.tsx` | Fait : recommandation vide masquée, en-tête mobile |
+| Fiche prospect | `/prospects/[id]` | `app/prospects/[id]/page.tsx` | Fait : en-tête et actions, quatre onglets dans l’adresse, panneaux pour modifier (règles 23 à 25 de `heroui.md`) |
 | Import CSV | `/prospects/import` | `app/prospects/import/page.tsx` | Conforme |
 | Campagnes | `/campaigns` | `app/campaigns/page.tsx` | Conforme |
 | Fiche campagne | `/campaigns/[id]` | `app/campaigns/[id]/page.tsx` | Fait : chiffres d’abord, réglages en bas |
