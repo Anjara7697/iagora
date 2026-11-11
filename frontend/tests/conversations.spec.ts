@@ -137,6 +137,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("conseiller");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/conversations");
 }
 
@@ -732,7 +734,16 @@ test("bureau : seule la liste défile, recherche, filtres et pagination restent 
   const search = list.getByLabel("Rechercher une conversation");
   await expect(list.getByRole("button", { name: /Prospect 1\b/ })).toBeVisible();
   // La colonne est collante : une fois la page défilée (en-tête parti), elle tient dans la fenêtre.
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  // La hauteur peut encore changer au rendu : on défile jusqu'à être réellement en bas, sinon la molette
+  // ci-dessous ferait aussi défiler la page et décalerait la recherche.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        return Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight;
+      }),
+    )
+    .toBe(true);
   await expect(page.getByRole("button", { name: "Suivant" })).toBeInViewport();
   // En bas de page, la colonne reste sous la barre du haut (56 px) : son titre reste lisible.
   const title = await list.getByRole("heading", { name: "Boîte de réception" }).boundingBox();
