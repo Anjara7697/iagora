@@ -68,6 +68,12 @@ importé par le Caddyfile :
 ```caddyfile
 dev.iagora.neosolve.info {
 	encode gzip
+	# Requêtes de plus de 5 Mo refusées (l'API applique la même limite sur Content-Length).
+	request_body {
+		max_size 5MB
+	}
+	# HTTPS seulement : HSTS est posé ici. Les autres en-têtes de sécurité viennent de l'API et de la console.
+	header Strict-Transport-Security "max-age=31536000"
 	handle /api/* {
 		reverse_proxy 127.0.0.1:8120   # IAGORA_API_PORT
 	}
@@ -81,6 +87,9 @@ Caddy obtient le certificat HTTPS tout seul (le DNS doit déjà pointer vers le 
 `X-Forwarded-For`/`X-Forwarded-Proto`, que l'API lit pour la limitation des connexions. Valider puis
 recharger sans coupure : `caddy validate --config <Caddyfile>` puis `caddy reload --config <Caddyfile>`.
 **Vérifier que `/api/...` atteint bien FastAPI et non la page Next.js** (voir aussi `docs/n8n/README.md`).
+Contrôler ensuite les en-têtes : `curl -sI https://<domaine>/login` et `curl -sI https://<domaine>/api/v1/health`
+doivent montrer `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` et
+`Content-Security-Policy: frame-ancestors 'none'…`.
 
 ## 4 bis. Déploiement automatique (GitHub Actions)
 

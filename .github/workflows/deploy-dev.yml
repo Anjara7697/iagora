@@ -17,7 +17,11 @@ permissions:
 
 jobs:
   deploy:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Seulement après une CI verte déclenchée par un push sur dev (pas par une PR dont la branche s'appelle
+    # aussi dev, par exemple depuis un fork).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment: dev
     steps:
