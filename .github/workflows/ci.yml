@@ -56,6 +56,12 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    # Image officielle de Playwright (même version que @playwright/test dans package-lock.json) :
+    # navigateurs et dépendances système déjà installés, aucun téléchargement depuis les dépôts
+    # Ubuntu à chaque passage (une panne de ces dépôts bloquait la CI). À mettre à jour avec Playwright.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --user 1001
     defaults:
       run:
         working-directory: frontend
@@ -73,9 +79,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - name: Tests navigateur (API simulée)
-        run: |
-          npx playwright install --with-deps chromium
-          npm run test:e2e
+        run: npm run test:e2e
       - run: npm run build
 
   docker:
