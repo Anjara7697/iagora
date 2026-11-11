@@ -43,3 +43,30 @@ class DashboardSummary(BaseModel):
     funnel_days: int
     funnel: dict[str, int] = Field(description="Prospects arrivés dans la période, par étape")
     leads: int
+
+
+class FunnelStep(BaseModel):
+    key: str
+    label: str
+    count: int = Field(description="Prospects de la période ayant atteint au moins cette étape")
+
+
+class Breakdown(BaseModel):
+    key: str | None = Field(description="Code du programme ou id. de source ; None si absent")
+    label: str
+    count: int
+
+
+class DashboardOverview(BaseModel):
+    """Tableau de bord (Pilotage) : prospects arrivés dans la période, prospects fictifs exclus.
+
+    Les étapes sont comptées « atteintes » (historique des étapes) : un prospect passé par un
+    rendez-vous puis perdu compte dans « Rendez-vous ». Les répartitions totalisent `leads`.
+    """
+
+    days: int
+    since: datetime
+    leads: int
+    funnel: list[FunnelStep]
+    by_target: list[Breakdown]
+    by_source: list[Breakdown]
