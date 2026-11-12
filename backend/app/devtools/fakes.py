@@ -129,9 +129,13 @@ class FakeKnowledge:
     def __init__(self, passages: list[Passage] | None = None) -> None:
         self.passages = passages or []
         self.queries: list[str] = []
+        self.include_demo_calls: list[bool] = []
 
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
         self.queries.append(query)
+        self.include_demo_calls.append(include_demo)
         wanted = _tokens(query)
         return [p for p in self.passages if wanted & _tokens(p.text)][:limit]
 

@@ -68,6 +68,7 @@ async def reply_to_message(
             {
                 "$set": {
                     "completed": True,
+                    "completed_at": datetime.now(UTC),
                     "superseded": True,
                 }
             },
@@ -95,6 +96,7 @@ async def reply_to_message(
                     {
                         "$set": {
                             "completed": True,
+                            "completed_at": datetime.now(UTC),
                             "cancelled": True,
                         }
                     },
@@ -114,9 +116,10 @@ async def reply_to_message(
                 conversation_id=conversation_id,
                 event_id=event_id,
             )
+            now = datetime.now(UTC)
             await db["agent_events"].update_one(
                 {"_id": event_id},
-                {"$set": {"completed": True, "at": datetime.now(UTC)}},
+                {"$set": {"completed": True, "at": now, "completed_at": now}},
                 upsert=True,
             )
     except (ConflictError, NotFoundError) as exc:
@@ -480,7 +483,8 @@ async def run_pending_replies(
             )
         except NotFoundError:
             await db["agent_events"].update_one(
-                {"_id": event["_id"]}, {"$set": {"completed": True, "cancelled": True}}
+                {"_id": event["_id"]},
+                {"$set": {"completed": True, "completed_at": datetime.now(UTC), "cancelled": True}},
             )
         except Exception as exc:
             errors = int(event.get("errors", 0)) + 1
@@ -489,6 +493,7 @@ async def run_pending_replies(
                 # réponse de l'agent ; la file ne boucle plus dessus (AUDIT-BIZ-005).
                 update: dict[str, Any] = {
                     "completed": True,
+                    "completed_at": datetime.now(UTC),
                     "failed": True,
                     "errors": errors,
                     "last_error": type(exc).__name__,
