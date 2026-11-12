@@ -122,6 +122,16 @@ de même en local, après `npm run build` :
 PLAYWRIGHT_PRODUCTION=1 npm run test:e2e
 ```
 
+**Parcours contre le vrai backend** (`tests-api/`, configuration `playwright.api.config.ts`) : aucune API
+simulée. Connexion réelle, prospect créé par l'API puis lu dans sa fiche, et passage sur chaque écran sans
+erreur d'API. La CI le lance dans le job `e2e-api` (PostgreSQL et MongoDB réels). En local, avec l'API
+démarrée sur une base de test et un compte administrateur de test :
+
+```sh
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1 npm run build
+E2E_ADMIN_USER=… E2E_ADMIN_PASSWORD=… PLAYWRIGHT_PRODUCTION=1 npx playwright test -c playwright.api.config.ts
+```
+
 Pour un essai réel, démarrer les services et l'API selon le README, puis
 `npm run dev` dans `frontend/`. Utiliser un compte créé avec la CLI backend.
 `NEXT_PUBLIC_API_URL` doit désigner l'API accessible au navigateur ; en local

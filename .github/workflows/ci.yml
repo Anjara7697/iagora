@@ -93,6 +93,78 @@ jobs:
         env:
           PLAYWRIGHT_PRODUCTION: "1"
 
+  e2e-api:
+    # Parcours navigateur contre le VRAI backend (AUDIT-QA-001) : API réelle, PostgreSQL et MongoDB
+    # réels, console construite vers cette API. Aucune donnée réelle : base de test jetable.
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: iagora
+          POSTGRES_PASSWORD: iagora
+          POSTGRES_DB: iagora
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U iagora" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 1"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_DSN: postgresql+asyncpg://iagora:iagora@localhost:5432/iagora
+      MONGO_URI: mongodb://localhost:27017
+      ENVIRONMENT: development
+      REDIS_URL: ""
+      AGENT_AUTO_REPLY: "false"
+      FOLLOW_UP_WORKER_ENABLED: "false"
+      CORS_ORIGINS: '["http://localhost:3100","http://127.0.0.1:3100"]'
+      # Compte de test de cette base jetable, recréé à chaque passage : pas un secret.
+      E2E_ADMIN_USER: e2e-admin
+      E2E_ADMIN_PASSWORD: E2e-Compte-de-test-CI-1
+      E2E_API_URL: http://127.0.0.1:8000/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.lock.txt
+      - name: API réelle (migrations, compte de test, démarrage)
+        working-directory: backend
+        run: |
+          pip install -r requirements.lock.txt
+          alembic upgrade head
+          ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" python -m app.cli create-admin --username "$E2E_ADMIN_USER" --email e2e-admin@demo.example.com
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/v1/health/ready && exit 0; sleep 2; done
+          cat "$RUNNER_TEMP/api.log"; exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Console construite vers l'API réelle
+        working-directory: frontend
+        run: npm ci && npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+      - name: Parcours contre le vrai backend (Chrome du runner, aucun téléchargement)
+        working-directory: frontend
+        run: npx playwright test -c playwright.api.config.ts --trace off
+        env:
+          PLAYWRIGHT_PRODUCTION: "1"
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
+      - name: Journal de l'API en cas d'échec
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log"
+
   docker:
     runs-on: ubuntu-latest
     needs: backend
