@@ -957,3 +957,27 @@ for (const role of ["ADVISOR", "ADMIN"] as const) {
     await auditA11y(page, `à traiter, opposition à vérifier (${role})`);
   });
 }
+
+test("rétablir le consentement après une opposition ambiguë exige un motif (administrateur)", async ({ page }) => {
+  await mockApi(page, { role: "ADMIN" });
+  await page.route("**/api/v1/todo?**", (route) =>
+    route.fulfill({
+      json: { items: [optOutItem], total: 1, limit: 50, offset: 0, counts: { opt_out_check: 1 } },
+    }),
+  );
+  let decision: unknown = null;
+  await page.route("**/api/v1/conversations/c9/opt-out-review", async (route) => {
+    decision = route.request().postDataJSON();
+    await route.fulfill({ json: { status: "restored" } });
+  });
+  await open(page);
+  await page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("button", { name: /Noé Martin/ }).click();
+  await page.getByRole("button", { name: "Non, rétablir le consentement" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Rétablir le consentement ?" });
+  const confirm = dialog.getByRole("button", { name: "Rétablir le consentement" });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel("Motif").fill("Il voulait quitter son école actuelle, pas nous.");
+  await confirm.click();
+  await expect(page.getByText("Consentement rétabli", { exact: true })).toBeVisible();
+  expect(decision).toEqual({ decision: "restore", reason: "Il voulait quitter son école actuelle, pas nous." });
+});

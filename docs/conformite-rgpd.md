@@ -80,7 +80,7 @@ voulu. Les pièces jointes ne sont pas lues.
 
 | Sujet | État actuel | À décider |
 |---|---|---|
-| Premier contact avec un consentement « inconnu » | Autorisé | Base légale (intérêt légitime ? consentement ?) selon le canal |
+| Premier contact avec un consentement « inconnu » | Formulaire du site, email : autorisé. Leads Meta : consentement seulement si la case du formulaire est cochée ; sinon l'agent n'écrit pas et la conversation passe à un conseiller (D-26) | Validation par le DPO |
 | Durée de conservation | Proposée et appliquée (D-17 à D-19 : 3 ans, 12 mois, 30 jours) | Validation par le DPO |
 | Registre des traitements | — | Ajouter le traitement « prospection assistée par IA » |
 | Information des personnes | — | Mention d'information (politique de confidentialité, lien dans les emails) |

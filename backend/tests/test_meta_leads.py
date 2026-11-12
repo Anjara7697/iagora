@@ -391,3 +391,58 @@ async def test_replay_stops_after_the_attempt_limit(client, mongo_db):
 async def test_replay_is_admin_only(make_client):
     advisor = await make_client(UserRole.ADVISOR)
     assert (await advisor.post(f"{API}/integrations/meta/replay")).status_code == 403
+
+
+def test_meta_consent_comes_only_from_a_checked_box():
+    """Décision D-26 : consentement si la case du formulaire est cochée, sinon inconnu."""
+    mapping = {"form_id": "form-123", "campaign_id": 1, "source_id": 1}
+    assert meta_leads.to_ingest("l1", _lead(), mapping).consent_granted is None
+    checked = {**_lead(), "custom_disclaimer_responses": [{"checkbox_key": "c", "is_checked": "1"}]}
+    assert meta_leads.to_ingest("l2", checked, mapping).consent_granted is True
+    unchecked = {
+        **_lead(),
+        "custom_disclaimer_responses": [{"checkbox_key": "c", "is_checked": "0"}],
+    }
+    assert meta_leads.to_ingest("l3", unchecked, mapping).consent_granted is None
+    question = {
+        **_lead(),
+        "field_data": [*_lead()["field_data"], {"name": "consentement", "values": ["Oui"]}],
+    }
+    data = meta_leads.to_ingest("l4", question, mapping)
+    assert data.consent_granted is True and "consentement" not in data.profile["meta"]["answers"]
+
+
+async def test_an_unconfirmed_meta_lead_is_handed_to_an_advisor_without_any_message(
+    client, session_factory, mongo_db
+):
+    """Décision D-26 : sans case cochée, l'agent n'écrit pas ; un conseiller confirme d'abord."""
+    from app.agents import auto
+    from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
+    from app.services import conversations
+
+    await _configure(client)
+    payload = {"form_id": "form-123", "email": "sans-case@demo.example.com", "message": "Infos ?"}
+    pid = (
+        await client.post(f"{API}/integrations/meta/simulate", json={**payload, "consent": False})
+    ).json()["prospect_id"]
+    # Le prospect écrit ensuite (email) : c'est ce message qui déclencherait l'agent.
+    conv = (
+        await client.post(f"{API}/conversations", json={"prospect_id": pid, "channel": "email"})
+    ).json()["conversation"]
+    await mongo_db["conversations"].update_one(
+        {"prospect_id": pid},
+        {"$push": {"messages": {"id": "m1", "role": "prospect", "content": "Infos ?"}}},
+    )
+    llm = FakeLLM(reply="Bonjour")
+    await auto.reply_to_message(
+        conv["id"],
+        session_factory=session_factory,
+        db=mongo_db,
+        llm=llm,
+        calendar=FakeCalendar(),
+        knowledge=FakeKnowledge(),
+    )
+    doc = await conversations.get_doc(mongo_db, conv["id"])
+    assert doc["status"] == "handed_off"
+    assert doc["handoff"]["reason"] == "consentement_meta_a_confirmer"
+    assert [m["role"] for m in doc["messages"]] == ["prospect"]  # aucune réponse de l'agent
