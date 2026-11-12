@@ -7,7 +7,8 @@ import { formatDate } from "@/lib/labels";
 import type { Tone as StateTone } from "@/lib/types";
 import { Box } from "./card";
 import { Btn, ErrorText, Notice, SelectBox, Tag, type Tone } from "./controls";
-import { Eyebrow, cx } from "./layout";
+import { ErrorState, Eyebrow, cx } from "./layout";
+import { Skeleton } from "../ui";
 
 /**
  * Carte de réglages : sur-titre mono, titre, introduction, puis les lignes.
@@ -117,6 +118,15 @@ export function Feedback({ notice, error }: { notice?: string | null; error?: st
       {notice && <Notice>{notice}</Notice>}
       {error && <ErrorText>{error}</ErrorText>}
     </>
+  );
+}
+
+/** Réglages pas encore chargés : silhouette, ou erreur avec « Réessayer » (règles 12 et 15). */
+export function SettingsLoading({ label, error, onRetry }: { label: string; error: string | null; onRetry: () => void }) {
+  return (
+    <section className="flex flex-col gap-3" aria-label={label}>
+      {error ? <ErrorState message={error} onRetry={onRetry} /> : <Skeleton />}
+    </section>
   );
 }
 

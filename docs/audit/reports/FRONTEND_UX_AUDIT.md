@@ -47,7 +47,7 @@ tâche `frontend` réussie.
 | Agent | `/agent` | oui | admin pour modifier | oui | — |
 | Paramètres | `/settings` | oui (revu le 12/11/2026) | admin | oui (règle 31 : écarts 3 et 21 décidés) | — |
 | Équipe | `/team` | oui (revu le 12/11/2026) | admin | oui (règle 32) | — |
-| Intégrations | `/integrations` | états de test présents ; reste à vérifier | admin | **non revu** | FE-002 |
+| Intégrations | `/integrations` | oui (revu le 12/11/2026) | admin | oui (règle 33 : écarts 2 et 4 décidés) | — |
 | Simulateur | `/simulator` | à vérifier | admin et conseillers autorisés | **non revu** | FE-002 |
 | Compte, connexion | `/account`, `/login` | à vérifier | tous | à vérifier | couleurs en dur (FE-003) |
 

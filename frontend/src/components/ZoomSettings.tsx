@@ -1,11 +1,12 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api, failure } from "@/lib/api";
 import { zoomBadge } from "@/lib/connectors";
 import type { ZoomMode, ZoomSettings as Settings } from "@/lib/types";
-import { Btn, SelectBox, TextInput } from "./ds/controls";
-import { ActionsBar, CodeBlock, ConnectedAccounts, Feedback, InfoRow, SettingRow as Field, StatePill } from "./ds/settings";
+import { Btn, ErrorText, SelectBox, TextInput } from "./ds/controls";
+import { ActionsBar, CodeBlock, ConnectedAccounts, InfoRow, SettingRow as Field, SettingsLoading, StatePill } from "./ds/settings";
 import { Box } from "@/components/ds/card";
 
 const MODES: Record<ZoomMode, string> = {
@@ -16,44 +17,44 @@ const MODES: Record<ZoomMode, string> = {
 
 /** Visioconférence Zoom, réglée par l'administrateur : aucune variable `.env`.
  *  `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
-export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
+export function ZoomSettings({
+  embedded = false,
+  onDirtyChange,
+}: {
+  embedded?: boolean;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [cfg, setCfg] = useState<Settings | null>(null);
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Dernière version enregistrée : sert à savoir si la saisie a changé.
+  const [saved, setSaved] = useState("");
+  const dirty = cfg !== null && (JSON.stringify(cfg) !== saved || secret !== "");
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const load = () =>
-    api<Settings>("/integrations/zoom")
-      .then(setCfg)
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+  const load = () => {
+    setLoadError(null);
+    return api<Settings>("/integrations/zoom")
+      .then((c) => {
+        setCfg(c);
+        setSaved(JSON.stringify(c));
+      })
+      .catch((e) => setLoadError(failure("Chargement des réglages impossible", e)));
+  };
 
   useEffect(() => {
     load();
   }, []);
 
-  if (!cfg)
-    return (
-      <section className="flex flex-col gap-3" aria-label="Zoom">
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : (
-          <p className="text-sm text-muted" role="status">
-            Chargement…
-          </p>
-        )}
-      </section>
-    );
+  if (!cfg) return <SettingsLoading label="Zoom" error={loadError} onRetry={() => void load()} />;
 
   async function save() {
     if (!cfg) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await api("/integrations/zoom", {
         method: "PUT",
@@ -66,10 +67,10 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
         },
       });
       setSecret("");
-      setNotice("Zoom enregistré : pris en compte au prochain rendez-vous.");
+      toast.success("Zoom enregistré", { description: "Pris en compte au prochain rendez-vous." });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Enregistrement de Zoom impossible", e));
     } finally {
       setBusy(false);
     }
@@ -173,7 +174,7 @@ export function ZoomSettings({ embedded = false }: { embedded?: boolean }) {
           Enregistrer Zoom
         </Btn>
       </ActionsBar>
-      <Feedback notice={notice} error={error} />
+      {error && <ErrorText>{error}</ErrorText>}
     </Box>
   );
 }
