@@ -57,7 +57,7 @@ async def test_duplicate_enriches_empty_fields_only(client):
     p = r.json()["prospect"]
     assert p["first_name"] == "Jean"  # jamais écrasé
     assert p["last_name"] == "Dupont"
-    assert p["phone"] == "0611223344"
+    assert p["phone"] == "+33611223344"  # format international (AUDIT-DATA-001)
 
 
 async def test_same_prospect_in_two_campaigns(client, campaign):
