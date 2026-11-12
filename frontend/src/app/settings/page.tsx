@@ -9,6 +9,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, FilterChip, LinkButton, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
 import type { RuntimeSettings } from "@/lib/types";
@@ -56,6 +57,8 @@ function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Quitter Paramètres (menu, onglet) avec des réglages non enregistrés demande confirmation.
+  const { dialog: discardDialog } = useDiscardGuard(() => dirty);
   const [preview, setPreview] = useState<string | null>(null);
   const [test, setTest] = useState<{
     ok: boolean;
@@ -194,6 +197,7 @@ function Settings() {
 
   return (
     <Screen className="max-w-[1200px]">
+      {discardDialog}
       <PageHeader
         eyebrow="Administration · Paramètres"
         title="Paramètres"

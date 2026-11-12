@@ -271,6 +271,8 @@ export type TodoItem = {
 
 export type TodoPage = Page<TodoItem> & {
   counts: Partial<Record<TodoKind, number>>;
+  /** Vrai si seules les conversations les plus récentes ont été lues : la liste est incomplète. */
+  truncated?: boolean;
 };
 
 export type KnowledgeStatus = {
@@ -378,6 +380,7 @@ export type TreatedPage = {
   items: TreatedItem[];
   total: number;
   hours: number;
+  truncated?: boolean;
 };
 
 export type EmailConfig = {

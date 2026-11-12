@@ -268,7 +268,7 @@ type Calls = { posts: { path: string; method: string; body: unknown }[] };
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; mode?: string } = {},
+  opts: { role?: string; mode?: string; truncated?: boolean } = {},
 ) {
   const calls: Calls = { posts: [] };
   let items = [draftItem, gapItem];
@@ -293,9 +293,9 @@ async function mockApi(
       const rows = items.filter((i) => !kind || i.kind === kind);
       const counts: Record<string, number> = {};
       for (const i of items) counts[i.kind] = (counts[i.kind] ?? 0) + 1;
-      body = { items: rows, total: rows.length, limit: 100, offset: 0, counts };
+      body = { items: rows, total: rows.length, limit: 100, offset: 0, counts, truncated: !!opts.truncated };
     } else if (path === "/todo/treated")
-      body = { items: decisions, total: decisions.length, hours: 24 };
+      body = { items: decisions, total: decisions.length, hours: 24, truncated: !!opts.truncated };
     else if (path === "/agent/mode" && request.method() === "GET")
       body = { mode };
     else if (path === "/agent/mode") {
@@ -378,6 +378,7 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(list.getByText("Marie Dupont")).toBeVisible();
   await expect(list.getByText("Ahmed Belkacem")).toBeVisible();
   await expect(page.getByRole("button", { name: "Tout (2)" })).toBeVisible();
+  await expect(list.getByText(/Liste incomplète/)).toHaveCount(0);
   await expect(page.getByLabel("2 en attente")).toBeVisible();
 
   await page.getByRole("button", { name: "Réponses à compléter (1)" }).click();
@@ -407,6 +408,16 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(
     detail.getByText("Bonjour Marie, le financement est possible."),
   ).toBeVisible();
+});
+
+test("liste tronquée par l'API : le conseiller sait que des demandes manquent", async ({ page }) => {
+  await mockApi(page, { truncated: true });
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await expect(list.getByText("Marie Dupont")).toBeVisible();
+  await expect(list.getByText(/Liste incomplète : seules les conversations les plus récentes sont lues/)).toBeVisible();
+  await page.getByRole("tab", { name: /Traités 24 h/ }).click();
+  await expect(list.getByText(/Liste incomplète : seules les conversations les plus récentes sont affichées/)).toBeVisible();
 });
 
 test("mobile : risque élevé et absence de sources visibles sans déplier les détails", async ({ page }) => {

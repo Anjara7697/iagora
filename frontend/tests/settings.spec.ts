@@ -350,3 +350,24 @@ test("paramètres sur mobile : catégorie choisie dans une liste, sans défileme
     ),
   ).toBe(true);
 });
+
+test("quitter Paramètres par le menu avec une modification non enregistrée demande confirmation", async ({
+  page,
+}) => {
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings");
+  const ia = page.getByRole("region", { name: "Intelligence artificielle" });
+  await ia.getByLabel("Modèle de secours (si le principal est saturé)").fill("gemini-2.5-flash-lite");
+  const menu = page.getByRole("navigation", { name: "Navigation principale" });
+  // AUDIT-FE-001 : le menu latéral ne fait plus perdre la saisie sans prévenir.
+  await menu.getByRole("link", { name: "Rendez-vous", exact: true }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page).toHaveURL(/\/settings/);
+  await expect(ia.getByLabel("Modèle de secours (si le principal est saturé)")).toHaveValue("gemini-2.5-flash-lite");
+  await menu.getByRole("link", { name: "Rendez-vous", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "Abandonner les modifications ?" }).getByRole("button", { name: "Abandonner" }).click();
+  await expect(page).toHaveURL(/\/appointments/);
+});

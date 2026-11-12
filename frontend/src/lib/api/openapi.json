@@ -6423,6 +6423,12 @@
           "total": {
             "title": "Total",
             "type": "integer"
+          },
+          "truncated": {
+            "default": false,
+            "description": "Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+            "title": "Truncated",
+            "type": "boolean"
           }
         },
         "required": [
@@ -6661,6 +6667,12 @@
           "total": {
             "title": "Total",
             "type": "integer"
+          },
+          "truncated": {
+            "default": false,
+            "description": "Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+            "title": "Truncated",
+            "type": "boolean"
           }
         },
         "required": [

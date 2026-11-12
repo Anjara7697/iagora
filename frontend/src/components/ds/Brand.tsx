@@ -4,7 +4,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
     <span className="flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
       <span
         aria-hidden="true"
-        className="inline-flex size-6 items-center justify-center rounded-md bg-foreground text-[22px] leading-none text-[#a79bf0]"
+        className="inline-flex size-6 items-center justify-center rounded-md bg-foreground text-[22px] leading-none text-brand-mark"
       >
         ▪
       </span>
