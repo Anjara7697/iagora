@@ -2,13 +2,15 @@ import hashlib
 import hmac
 import json
 import logging
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import httpx
+from app.config import get_settings
 from app.core.logging import configure_logging
 from app.integrations.meta import MetaLeadError, fetch_lead
 from app.models.enums import UserRole
-from app.services import meta_leads
+from app.services import meta_config, meta_leads
 
 API = "/api/v1"
 APP_SECRET = "meta-app-secret-for-tests"
@@ -317,3 +319,75 @@ async def test_erasing_a_meta_prospect_unlinks_the_event_but_keeps_the_replay_ma
     replay = await anonymous.post(f"{API}/webhooks/meta", content=body, headers=headers)
     assert replay.json() == {"accepted": 0, "duplicates": 1, "ignored": 0}
     assert (await client.get(f"{API}/prospects")).json()["total"] == 0
+
+
+# --- Reprise après incident (AUDIT-API-001) ---
+
+
+async def test_a_lead_left_queued_by_a_restart_is_resumed_once(
+    client, monkeypatch, mongo_db, session_factory
+):
+    await _configure(client)
+    fetch = AsyncMock(return_value=_lead())
+    monkeypatch.setattr(meta_leads, "fetch_lead", fetch)
+    # Réservé avant un redémarrage, jamais traité : le traitement en arrière-plan a été perdu.
+    assert await meta_leads.enqueue(mongo_db, "lead-1", "form-123", "page-1")
+    now = datetime.now(UTC)
+    fresh = now - timedelta(minutes=1)
+    await mongo_db["meta_lead_events"].update_one(
+        {"_id": "lead-1"}, {"$set": {"received_at": now - timedelta(minutes=10)}}
+    )
+    assert await meta_leads.enqueue(mongo_db, "lead-2", "form-123", "page-1")
+    await mongo_db["meta_lead_events"].update_one(
+        {"_id": "lead-2"}, {"$set": {"received_at": fresh}}
+    )
+
+    resumed = await meta_leads.resume_stale(mongo_db, session_factory, get_settings(), now=now)
+    assert resumed == 1  # le lead récent peut encore être en cours de traitement
+    fetch.assert_awaited_once_with("lead-1", "v24.0", PAGE_TOKEN)
+    assert (await mongo_db["meta_lead_events"].find_one({"_id": "lead-1"}))["status"] == "processed"
+    assert (await mongo_db["meta_lead_events"].find_one({"_id": "lead-2"}))["status"] == "queued"
+    assert (await client.get(f"{API}/prospects")).json()["total"] == 1
+    # Deuxième passage : rien à reprendre, aucun doublon.
+    assert await meta_leads.resume_stale(mongo_db, session_factory, get_settings(), now=now) == 0
+    assert (await client.get(f"{API}/integrations/meta")).json()["queued"] == 1
+
+
+async def test_failed_leads_can_be_replayed_once_the_form_is_mapped(
+    client, make_client, monkeypatch, mongo_db
+):
+    await _configure(client)
+    monkeypatch.setattr(meta_leads, "fetch_lead", AsyncMock(return_value=_lead()))
+    anonymous = await make_client(None)
+    body, headers = _signed(_event(form_id="form-123"))
+    # Formulaire pas encore associé : le lead part en échec.
+    await mongo_db["meta_lead_events"].delete_many({})
+    original = await meta_config.load(mongo_db)
+    await mongo_db[meta_config.COLLECTION].update_one(
+        {"_id": original["_id"]}, {"$set": {"mappings": []}}
+    )
+    await anonymous.post(f"{API}/webhooks/meta", content=body, headers=headers)
+    status = (await client.get(f"{API}/integrations/meta")).json()
+    assert status["failed"] == 1 and status["replayable"] == 1
+
+    await mongo_db[meta_config.COLLECTION].update_one(
+        {"_id": original["_id"]}, {"$set": {"mappings": original["mappings"]}}
+    )
+    replay = await client.post(f"{API}/integrations/meta/replay")
+    assert replay.status_code == 200 and replay.json() == {"requeued": 1}
+    event = await mongo_db["meta_lead_events"].find_one({"_id": "lead-1"})
+    assert event["status"] == "processed"
+    assert (await client.post(f"{API}/integrations/meta/replay")).json() == {"requeued": 0}
+
+
+async def test_replay_stops_after_the_attempt_limit(client, mongo_db):
+    await mongo_db["meta_lead_events"].insert_one(
+        {"_id": "lead-9", "form_id": "form-123", "status": "failed", "attempts": 5}
+    )
+    assert (await client.post(f"{API}/integrations/meta/replay")).json() == {"requeued": 0}
+    assert (await client.get(f"{API}/integrations/meta")).json()["replayable"] == 0
+
+
+async def test_replay_is_admin_only(make_client):
+    advisor = await make_client(UserRole.ADVISOR)
+    assert (await advisor.post(f"{API}/integrations/meta/replay")).status_code == 403

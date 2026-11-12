@@ -1,7 +1,7 @@
 """Réception idempotente et transformation des événements Meta Lead Ads."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pymongo.errors import DuplicateKeyError
@@ -14,6 +14,11 @@ from app.services import meta_config, prospects
 
 logger = logging.getLogger(__name__)
 COLLECTION = "meta_lead_events"
+# Un lead resté « en attente » plus longtemps vient d'un arrêt pendant son traitement
+# (AUDIT-API-001).
+STALE_AFTER = timedelta(minutes=5)
+MAX_ATTEMPTS = 5  # essais au total, reprises manuelles comprises
+REPLAY_BATCH = 50
 
 
 def _now() -> datetime:
@@ -179,8 +184,61 @@ async def process(
         await mark_failed(db, leadgen_id, "Erreur interne pendant le traitement")
 
 
+async def claim_stale(db: Any, *, now: datetime | None = None, limit: int = 20) -> list[str]:
+    """Réserve les leads restés en attente : la date de réception est réécrite de façon atomique,
+    deux processus ne reprennent donc jamais le même lead."""
+    now = now or _now()
+    claimed: list[str] = []
+    cursor = (
+        db[COLLECTION]
+        .find({"status": "queued", "received_at": {"$lt": now - STALE_AFTER}})
+        .sort("received_at", 1)
+        .limit(limit)
+    )
+    async for doc in cursor:
+        result = await db[COLLECTION].update_one(
+            {"_id": doc["_id"], "status": "queued", "received_at": doc["received_at"]},
+            {"$set": {"received_at": now}},
+        )
+        if result.modified_count:
+            claimed.append(str(doc["_id"]))
+    return claimed
+
+
+async def resume_stale(
+    db: Any, session_factory: Any, settings: Settings, *, now: datetime | None = None
+) -> int:
+    """Traite les leads réservés avant un redémarrage et jamais terminés."""
+    claimed = await claim_stale(db, now=now)
+    for leadgen_id in claimed:
+        logger.warning("Lead Meta %s resté en attente : reprise", leadgen_id)
+        await process(db, session_factory, settings, leadgen_id)
+    return len(claimed)
+
+
+async def requeue_failed(db: Any, *, now: datetime | None = None) -> list[str]:
+    """Remet en attente les leads en échec qui n'ont pas épuisé leurs essais (reprise manuelle,
+    par exemple une fois le formulaire associé à une campagne)."""
+    now = now or _now()
+    requeued: list[str] = []
+    cursor = (
+        db[COLLECTION]
+        .find({"status": "failed", "attempts": {"$lt": MAX_ATTEMPTS}})
+        .sort("finished_at", 1)
+        .limit(REPLAY_BATCH)
+    )
+    async for doc in cursor:
+        result = await db[COLLECTION].update_one(
+            {"_id": doc["_id"], "status": "failed"},
+            {"$set": {"status": "queued", "last_error": None, "received_at": now}},
+        )
+        if result.modified_count:
+            requeued.append(str(doc["_id"]))
+    return requeued
+
+
 async def stats(db: Any) -> dict[str, Any]:
-    counts = {"received": 0, "processed": 0, "failed": 0}
+    counts = {"received": 0, "processed": 0, "failed": 0, "queued": 0}
     async for row in db[COLLECTION].aggregate(
         [{"$group": {"_id": "$status", "count": {"$sum": 1}}}]
     ):
@@ -190,8 +248,12 @@ async def stats(db: Any) -> dict[str, Any]:
     last = await db[COLLECTION].find_one({}, sort=[("received_at", -1)])
     success = await db[COLLECTION].find_one({"status": "processed"}, sort=[("finished_at", -1)])
     failed = await db[COLLECTION].find_one({"status": "failed"}, sort=[("finished_at", -1)])
+    replayable = await db[COLLECTION].count_documents(
+        {"status": "failed", "attempts": {"$lt": MAX_ATTEMPTS}}
+    )
     return {
         **counts,
+        "replayable": replayable,
         "last_event_at": last.get("received_at") if last else None,
         "last_success_at": success.get("finished_at") if success else None,
         "last_error": failed.get("last_error") if failed else None,

@@ -36,9 +36,11 @@ planificateur d'activation automatique.
 
 Si une source a été retirée après la création d'un jeton ou d'une correspondance Meta, sa destination
 devient invalide. Il faut corriger le branchement ; IAGORA ne choisit pas une autre source en silence.
-La reprise Meta existante reste limitée à trois essais sur renotification : une campagne désactivée
-longtemps nécessite une surveillance et éventuellement une reprise manuelle. Le rejeu automatique
-illimité n'est pas implémenté.
+Un lead resté « en attente » plus de 5 minutes (arrêt du serveur pendant son traitement) est repris
+automatiquement, une seule fois à la fois. Un lead en échec (formulaire non associé, campagne désactivée,
+erreur Meta) se rejoue depuis **Intégrations → Meta Lead Ads → Rejouer les leads en échec**, une fois le
+branchement corrigé : 50 leads au plus par clic, 5 essais au total par lead. Il n'y a pas de rejeu
+automatique illimité.
 
 ### Recette de bout en bout
 
@@ -122,7 +124,7 @@ lead qui n'est pas un simple identifiant (lettres, chiffres, tiret) est ignoré 
 une URL.
 
 Le `leadgen_id` réserve l'événement avant traitement : un rejeu ne crée pas de doublon et un échec peut
-être repris trois fois. Le formulaire fixe la campagne, la source et éventuellement le programme.
+être repris (renotification de Meta, bouton « Rejouer », reprise des leads en attente). Le formulaire fixe la campagne, la source et éventuellement le programme.
 L'identifiant Meta, le formulaire, la publicité, la campagne publicitaire et les réponses personnalisées
 restent dans le profil pour l'audit.
 
