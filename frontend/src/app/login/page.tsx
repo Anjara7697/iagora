@@ -36,19 +36,19 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-[#0f1220] p-12 text-white lg:flex">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-brand-panel p-12 text-white lg:flex">
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-40 -left-32 size-[520px] rounded-full bg-[radial-gradient(circle,rgba(122,61,240,0.45),transparent_65%)]"
+          className="pointer-events-none absolute -top-40 -left-32 size-[520px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand-violet)_45%,transparent),transparent_65%)]"
         />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -right-40 -bottom-48 size-[560px] rounded-full bg-[radial-gradient(circle,rgba(31,79,216,0.5),transparent_65%)]"
+          className="pointer-events-none absolute -right-40 -bottom-48 size-[560px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand-blue)_50%,transparent),transparent_65%)]"
         />
         <span className="relative flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]">
           <span
             aria-hidden="true"
-            className="inline-flex size-6 items-center justify-center rounded-md bg-white text-[22px] leading-none text-[#7a3df0]"
+            className="inline-flex size-6 items-center justify-center rounded-md bg-white text-[22px] leading-none text-brand-violet"
           >
             ▪
           </span>

@@ -78,6 +78,12 @@
   --agent-foreground: #ffffff;
   --agent-soft: #f3eefe;
   --agent-soft-foreground: #5b28c2;
+  /* Marque IAGORA : panneau de la page de connexion et tuile « ▪ ». Identiques dans les deux thèmes
+     (non redéfinis plus bas) : la marque ne change pas de teinte. */
+  --brand-panel: #0f1220;
+  --brand-violet: #7a3df0;
+  --brand-blue: #1f4fd8;
+  --brand-mark: #a79bf0;
   --level-cold: #94a3b8;
   --level-warm: #fdba74;
   --level-hot: #f97316;
@@ -149,6 +155,10 @@
 
 @theme inline {
   --color-agent: var(--agent);
+  --color-brand-panel: var(--brand-panel);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-mark: var(--brand-mark);
   --color-agent-foreground: var(--agent-foreground);
   --color-agent-soft: var(--agent-soft);
   --color-agent-soft-foreground: var(--agent-soft-foreground);
