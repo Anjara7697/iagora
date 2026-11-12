@@ -4,12 +4,18 @@ Les règles d'exactitude (NF-10), de ton (F-15) et de transparence sont dans le 
 vérifiées après coup par du code (policy.ungrounded_claims) : on ne se fie pas au prompt seul.
 """
 
+import hashlib
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from app.graph.policy import FIELD_LABELS
 from app.graph.ports import ChatMessage, HistoryMessage, Passage, ProspectContext, Slot
+
+# Version des consignes (empreinte de ce fichier), enregistrée dans chaque trace de l'agent pour
+# relier une réponse aux consignes qui l'ont produite (AUDIT-AI-004).
+PROMPT_VERSION = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
 
 PARIS = ZoneInfo("Europe/Paris")
 _DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]

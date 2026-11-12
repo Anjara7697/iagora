@@ -4,6 +4,7 @@ Gemini, OpenAI, Anthropic, Hugging Face... exposent tous la même interface Lang
 (`BaseChatModel`) : ajouter un fournisseur = une ligne dans factory.py.
 """
 
+import time
 from collections.abc import Sequence
 from typing import Any
 
@@ -11,6 +12,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
 from app.graph.ports import ChatMessage, LLMError, T
+from app.integrations.llm import usage
 
 
 def _to_langchain(system: str, messages: Sequence[ChatMessage]) -> list[BaseMessage]:
@@ -48,7 +50,26 @@ class LangChainLanguageModel:
         return self._model
 
     async def generate(self, system: str, messages: Sequence[ChatMessage]) -> str:
-        response = await self._chat.ainvoke(_to_langchain(system, messages))
+        started = time.monotonic()
+        try:
+            response = await self._chat.ainvoke(_to_langchain(system, messages))
+        except Exception:
+            usage.record(
+                provider=self._provider,
+                model=self._model,
+                kind="generate",
+                started=started,
+                ok=False,
+            )
+            raise
+        usage.record(
+            provider=self._provider,
+            model=self._model,
+            kind="generate",
+            started=started,
+            ok=True,
+            usage=getattr(response, "usage_metadata", None),
+        )
         text = _text(response).strip()
         if not text:
             raise LLMError(f"{self._provider} a renvoyé une réponse vide")
@@ -56,7 +77,22 @@ class LangChainLanguageModel:
 
     async def extract(self, system: str, messages: Sequence[ChatMessage], schema: type[T]) -> T:
         structured = self._chat.with_structured_output(schema)
-        result = await structured.ainvoke(_to_langchain(system, messages))
+        started = time.monotonic()
+        # Sortie structurée : jetons non exposés par LangChain ici, durée seulement.
+        try:
+            result = await structured.ainvoke(_to_langchain(system, messages))
+        except Exception:
+            usage.record(
+                provider=self._provider,
+                model=self._model,
+                kind="extract",
+                started=started,
+                ok=False,
+            )
+            raise
+        usage.record(
+            provider=self._provider, model=self._model, kind="extract", started=started, ok=True
+        )
         if isinstance(result, schema):
             return result
         if isinstance(result, dict):

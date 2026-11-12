@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import RecordingMessenger
 from app.agents.gateway import DbGateway
+from app.graph import prompts
 from app.graph.builder import build_workflow
 from app.graph.ports import Calendar, Deps, KnowledgeBase, LanguageModel
 from app.graph.state import SalesAgentState
+from app.integrations.llm import usage
 from app.models import Channel
 from app.models.enums import ConversationStatus, SenderType
 from app.schemas.agent import AgentRunResult, TraceRead
@@ -186,13 +188,19 @@ async def _run_agent(
         "trigger": trigger,
         "started_at": started_at,
         "llm": {"provider": llm.provider, "model": llm.model},
+        "prompt_version": prompts.PROMPT_VERSION,
     }
-    try:
-        state: SalesAgentState = await graph.ainvoke(initial)
-    except Exception as exc:
-        logger.exception("Exécution de l'agent en erreur (prospect %s)", pid)
-        await db[RUNS].insert_one({**run_doc, "status": "error", "error": type(exc).__name__})
-        raise
+    # Appels réels au modèle (dont le modèle de secours), durées et jetons (AUDIT-AI-004).
+    with usage.recording() as llm_calls:
+        try:
+            state: SalesAgentState = await graph.ainvoke(initial)
+        except Exception as exc:
+            logger.exception("Exécution de l'agent en erreur (prospect %s)", pid)
+            await db[RUNS].insert_one(
+                {**run_doc, "status": "error", "error": type(exc).__name__, "llm_calls": llm_calls}
+            )
+            raise
+    run_doc["llm_calls"] = llm_calls
 
     decision = state["decision"]
     trace = state.get("trace", [])

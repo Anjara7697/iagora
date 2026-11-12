@@ -252,3 +252,48 @@ def test_provider_name_is_case_insensitive():
 def test_structured_schema_is_a_plain_pydantic_model():
     assert issubclass(Qualification, BaseModel)
     assert Qualification.model_json_schema()["properties"]["intent"]["enum"]
+
+
+# --- Journal des appels (AUDIT-AI-004) ---
+
+
+class _Broken:
+    async def ainvoke(self, messages):
+        from app.graph.ports import LLMUnavailableError
+
+        raise LLMUnavailableError("503")
+
+    def with_structured_output(self, schema):
+        return self
+
+
+async def test_each_call_is_recorded_with_the_model_that_really_answered():
+    from app.integrations.llm import usage
+    from app.integrations.llm.fallback import FallbackLanguageModel
+
+    answer = AIMessage(
+        content="Bonjour",
+        usage_metadata={"input_tokens": 120, "output_tokens": 8, "total_tokens": 128},
+    )
+    primary = LangChainLanguageModel(_Broken(), provider="gemini", model="principal")
+    secondary = LangChainLanguageModel(_StubChat(answer), provider="gemini", model="secours")
+    llm = FallbackLanguageModel(primary, secondary)
+    with usage.recording() as calls:
+        assert await llm.generate("sys", [ChatMessage(role="user", content="x")]) == "Bonjour"
+    assert [(c["model"], c["kind"], c["ok"]) for c in calls] == [
+        ("principal", "generate", False),
+        ("secours", "generate", True),  # la trace nomme le modèle qui a vraiment répondu
+    ]
+    assert calls[1]["input_tokens"] == 120 and calls[1]["output_tokens"] == 8
+    assert all(isinstance(c["ms"], int) for c in calls)
+    assert "Bonjour" not in str(calls)  # aucun contenu enregistré
+
+
+async def test_calls_outside_an_agent_run_are_not_recorded():
+    from app.integrations.llm import usage
+
+    llm = LangChainLanguageModel(_StubChat(AIMessage(content="ok")), provider="x", model="m")
+    await llm.generate("sys", [])
+    with usage.recording() as calls:
+        pass
+    assert calls == []
