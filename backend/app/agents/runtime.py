@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import weakref
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import RecordingMessenger
 from app.agents.gateway import DbGateway
+from app.database.collections import AGENT_RUNS
 from app.graph import prompts
 from app.graph.builder import build_workflow
 from app.graph.ports import Calendar, Deps, KnowledgeBase, LanguageModel
@@ -34,7 +36,7 @@ from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
 logger = logging.getLogger(__name__)
-RUNS = "agent_runs"
+RUNS = AGENT_RUNS
 
 
 async def ensure_run_indexes(db: Any) -> None:
@@ -68,7 +70,17 @@ async def _resolve_conversation(
     return await conversations.get_doc(db, read.id)
 
 
-_locks: dict[str, asyncio.Lock] = {}
+# Verrou local par conversation, en plus du bail MongoDB. Dictionnaire faible : un verrou disparaît
+# dès qu'aucune exécution ne le tient ni ne l'attend (AUDIT-ARCH-002 : plus de croissance sans fin).
+_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+
+
+def _conversation_lock(conversation_id: str) -> asyncio.Lock:
+    lock = _locks.get(conversation_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _locks[conversation_id] = lock
+    return lock
 
 
 async def run_agent(
@@ -90,10 +102,8 @@ async def run_agent(
             kwargs.get("channel"),
         )
         conversation_id = str(doc["_id"])
-    async with (
-        _locks.setdefault(conversation_id, asyncio.Lock()),
-        lease.conversation_lock(db, conversation_id),
-    ):
+    lock = _conversation_lock(conversation_id)  # référence tenue jusqu'à la fin de l'exécution
+    async with lock, lease.conversation_lock(db, conversation_id):
         return await _run_agent(session, db, conversation_id=conversation_id, **kwargs)
 
 

@@ -23,6 +23,12 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | `score_events.new_value` et `actor_user_id`, `stage_events.actor_user_id` | OB-05, F-11 : valeur résultante (« passe de 52 à 82 ») et auteur de chaque décision (`NULL` = automatique) |
 | Énumérations en texte + contrainte CHECK | Valeurs de F-12, F-13, S-06 ; liste d'étapes modifiable par migration (F-13) |
 | `ON DELETE CASCADE` depuis `prospects` ; `SET NULL` pour les conseillers | S-02 (effacement) ; F-22 (réaffectation sans perte d'historique) |
+| Index des requêtes fréquentes : `follow_ups.prospect_id`, `interactions.conversation_ref`… (migration 0008) | Annulation des relances, entonnoir, journal d'une conversation |
+| `campaigns.responsible_advisor_id` (`SET NULL`) et `campaign_prospects.assignment_is_override` (migration 0009) | F-22 : un responsable par campagne ; une affectation manuelle d'un prospect reste une exception visible |
+| `users.must_change_password` et `password_changed_at` (migration 0010) | S-06 : mot de passe temporaire à changer à la première connexion ; sessions antérieures au changement refusées |
+| Table `erasure_records` : empreintes SHA-256 de l'email et du téléphone, motif, `keep_suppressed`, auteur (migration 0011) | S-02 : trace d'un effacement RGPD sans conserver la donnée ; liste d'opposition qui empêche une réimportation |
+| `follow_ups.attempts` (migration 0012) | AUDIT-BIZ-005 : une relance en erreur technique n'est plus retentée sans limite |
+| Téléphones normalisés en E.164 (migration 0013) | F-05 : `06 11 22 33 44` et `+33611223344` désignent le même prospect |
 
 ## Conversations dans MongoDB
 
@@ -45,9 +51,29 @@ Collection `conversations`, un document par conversation :
 - Limite : les messages sont embarqués dans le document (16 Mo maximum par document). Largement suffisant pour une
   conversation commerciale ; à revoir si des conversations de plusieurs milliers de messages apparaissaient.
 
-## Points restants
+## Autres collections MongoDB
 
-1. **Production** : activer l'authentification MongoDB avant déploiement (désactivée en développement local).
+| Collection | Contenu | Index |
+|---|---|---|
+| `agent_runs` | Une décision de l'agent par exécution (trace, scores, action) | `(prospect_id, started_at)`, `(conversation_id, started_at)`, `event_id` |
+| `agent_events` | File des réponses à préparer, reprise après redémarrage | `(completed, next_attempt_at)` |
+| `meta_lead_events` | Leads Meta reçus (idempotence sur `leadgen_id`), en attente ou en échec | — |
+| `service_tokens` | Jetons de service (formulaire, n8n) : seule l'empreinte SHA-256 est gardée | unique `hash` (AUDIT-DATA-009) |
+| `settings` | Réglages de la console (mode de l'agent, paramètres, connecteurs chiffrés) | — |
+| `leases` | Baux qui sérialisent les boucles de fond et la réservation d'un créneau | — |
+
+L'authentification MongoDB est active en production (`deploy/compose.prod.yml`) ; elle reste désactivée en
+développement local.
+
+## Redis
+
+Redis n'est utilisé que par le contrôle de santé (`/health/ready`), et seulement si `REDIS_URL` est renseigné :
+
+- en développement local, `docker-compose.yml` le démarre ;
+- en production, il n'est pas déployé (`REDIS_URL: ""` dans `deploy/compose.prod.yml`) : rien n'en dépend.
+
+Il est gardé pour un usage prévu : partager entre processus la limitation des tentatives de connexion
+(AUDIT-SEC-005, lot 10). D'ici là, aucune donnée n'y est écrite.
 
 ## Base de connaissances (RAG, migration 0006)
 

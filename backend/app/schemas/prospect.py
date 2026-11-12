@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, fie
 
 from app.config import get_settings
 from app.core import phones
+from app.core.demo import is_demo_email
 from app.models.enums import ConsentStatus, ConversionStage, InterestLevel
-from app.services.demo import is_demo_email
 
 
 def normalize_phone(value: str | None) -> str | None:

@@ -3,8 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.agent_mode import AgentMode
 from app.schemas.conversation import ConversationProspect
-from app.services.agent_settings import AgentMode
 
 TodoKind = Literal[
     "validation", "escalation", "kb_gap", "incident", "application", "enrollment", "opt_out_check"

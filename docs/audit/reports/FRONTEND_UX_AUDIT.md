@@ -99,8 +99,9 @@ Liés : jeton dans `localStorage` (SEC-004) ; Next.js 15.5.27 vulnérable (SEC-0
 
 ### AUDIT-FE-002 — Écrans d'administration non revus avec les règles des parcours
 - Statut : **traité le 12/11/2026** (lot 9) : Paramètres, Équipe, Intégrations et Simulateur revus, écarts décidés
-  inscrits dans `docs/frontend/heroui.md` (règles 31 à 34). Reste ouvert : découper `app/settings/page.tsx` et
-  `app/simulator/page.tsx` en composants de section (dette, sans effet visible).
+  inscrits dans `docs/frontend/heroui.md` (règles 31 à 34). Les deux plus gros écrans sont découpés (lot 11) :
+  sections de Paramètres dans `components/settings/SettingsSections.tsx`, colonne de décision, données fictives
+  et messages types du Simulateur dans `components/simulator/`.
 - Catégorie : cohérence
 - Criticité : P3
 - Confiance : Probable (non vérifié visuellement)

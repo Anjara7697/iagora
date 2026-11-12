@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.runtime import RUNS
+from app.database.collections import AGENT_RUNS as RUNS
 from app.schemas.conversation import ConversationProspect
 from app.schemas.todo import (
     Priority,

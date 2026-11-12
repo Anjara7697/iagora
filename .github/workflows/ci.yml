@@ -93,6 +93,29 @@ jobs:
         env:
           PLAYWRIGHT_PRODUCTION: "1"
 
+  audit:
+    # Failles connues des dépendances (AUDIT-OPS-004) : signalées en avertissement, sans bloquer la CI
+    # pour l'instant. Les versions analysées sont celles qui partent en production.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dépendances Python (pip-audit)
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.lock.txt --disable-pip --no-deps --progress-spinner off \
+            || echo "::warning title=pip-audit::Failles connues dans backend/requirements.lock.txt (voir le journal)"
+      - name: Dépendances npm de production (npm audit)
+        working-directory: frontend
+        run: |
+          npm audit --omit=dev --audit-level=high \
+            || echo "::warning title=npm audit::Failles connues dans les dépendances de production (voir le journal)"
+
   e2e-api:
     # Parcours navigateur contre le VRAI backend (AUDIT-QA-001) : API réelle, PostgreSQL et MongoDB
     # réels, console construite vers cette API. Aucune donnée réelle : base de test jetable.

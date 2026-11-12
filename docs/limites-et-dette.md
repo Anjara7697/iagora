@@ -9,7 +9,6 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 |---|---|---|
 | P1 | Base de connaissances fictive : les documents officiels de DATUM manquent | [rag.md](rag.md) |
 | P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
-| P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
 | P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
 | P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
@@ -17,7 +16,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P2 | Le RAG cherche avec le dernier message seul : une question courte (« et le prix ? ») manque de contexte | [rag.md](rag.md) |
 | P2 | Plusieurs emails rapprochés du même prospect reçoivent chacun une réponse | [email.md](email.md) |
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |
-| P3 | Dashboard et Analytics absents ; Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
+| P3 | Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [calendar.md](calendar.md) |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
 | P3 | Email : mise en page HTML simple, pas de pièces jointes ni d'images intégrées ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
 
@@ -28,12 +27,11 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P3 | Un message resté `sending` après un arrêt brutal n'est jamais renvoyé seul : il passe en échec « envoi interrompu » après 15 minutes, le conseiller vérifie puis relance | [email.md](email.md) |
 | P1 | Pas de transaction entre PostgreSQL, MongoDB, le LLM et SMTP : une panne en plein workflow peut demander de vérifier les traces avant reprise | [intake.md](intake.md) |
 | P1 | Seul l'environnement `dev` est déployé et vérifié ; production, restauration d'une sauvegarde et quotas Gemini en usage réel restent à vérifier | [deploiement.md](deploiement.md) §8 |
-| P2 | Tâches de fond dans le processus de l'API : garder `--workers 1` ; un worker dédié si la charge augmente | [decisions.md](decisions.md) D-08 |
-| P2 | Verrou par conversation local au processus (en plus du bail MongoDB) | [revue-qualite.md](revue-qualite.md) |
-| P2 | File « À traiter » : 500 conversations examinées au plus ; pagination côté base à faire | [advisor-workflow.md](advisor-workflow.md) |
+| P2 | Tâches de fond dans le processus de l'API : garder `--workers 1` (un second processus éventuel ne sert que le HTTP avec `BACKGROUND_WORKERS_ENABLED=false`) ; un worker dédié si la charge augmente | [architecture.md](architecture.md) |
+| P3 | File « À traiter » : 500 conversations examinées au plus ; au-delà, l'écran l'annonce (« Liste incomplète ») ; pagination côté base à faire si ce volume est atteint | [advisor-workflow.md](advisor-workflow.md) |
 | P2 | Limitation des connexions en mémoire, par processus | `core/ratelimit.py` |
 | P2 | Jeton de connexion dans `localStorage` au lieu d'un cookie `HttpOnly` | [architecture.md](architecture.md) |
-| P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production | [architecture.md](architecture.md) |
+| P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production, gardé pour le lot 10 | [database/README.md](database/README.md) |
 | P3 | Messages embarqués dans le document de conversation (16 Mo maximum) | [database/README.md](database/README.md) |
 | P3 | Identifiants sensibles à la casse | [revue-qualite.md](revue-qualite.md) |
 
@@ -44,7 +42,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Recette manuelle avec Gemini : STOP et « question inconnue » à confirmer | [recette-locale.md](recette-locale.md) |
 | P3 | Les tests navigateur détaillés utilisent une API simulée ; un parcours contre le vrai backend (job CI `e2e-api`) et le contrat de types (`src/lib/api/contract.ts`) couvrent l'intégration réelle | [frontend/integration-prototype.md](frontend/integration-prototype.md) |
 | P2 | Le workflow n8n est testé hors ligne seulement, jamais sur le moteur n8n du serveur | [n8n/README.md](n8n/README.md) |
-| P3 | Pas de mesure suivie de la qualité des réponses (jeu de questions de référence avec le vrai modèle) | [agent-testing.md](agent-testing.md) |
+| P2 | Qualité des réponses : l'outil `eval-agent` et son jeu de questions de référence existent ; la mesure avec le vrai modèle (`eval-agent --live`) reste à faire et à suivre | [agent-testing.md](agent-testing.md) |
 
 ## Documentation
 
