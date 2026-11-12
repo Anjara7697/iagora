@@ -4,13 +4,8 @@ Ce document permet à une autre personne de reprendre le projet sans l'auteur. I
 **vraiment**, ce qui est **simulé** et ce qui **reste à faire**. À mettre à jour à chaque étape importante
 et le dernier jour du stage.
 
-> État au 23 octobre 2026, branche `main` (PR #59). Rien de ce qui est marqué « non vérifié » ne doit
-> être présenté comme fonctionnel en production.
-
-Mise à jour console : la consultation des rendez-vous est disponible dans
-« Rendez-vous » (périodes, statut, conseiller, lien prospect/visio). Elle lit les
-réservations enregistrées ; elle ne valide pas à elle seule les connexions réelles
-Google Agenda/Zoom. Voir [le contrat de consultation](frontend/maquette-finale.md#51-rendez-vous-appointments-groupe-travail--consultation-livrée).
+> État au 12 novembre 2026, branche `dev` (jusqu'au lot 11 de la feuille de route d'audit). Rien de ce qui est
+> marqué « non vérifié » ne doit être présenté comme fonctionnel en production.
 
 ## 1. Ce que fait le projet
 
@@ -34,7 +29,9 @@ Vue technique : [architecture.md](architecture.md).
 | Relances : fenêtre, plafond, arrêt après conversion | Tests (`test_auto_agent.py`), [follow-ups.md](follow-ups.md) |
 | Campagnes, sources, responsable de campagne, affectation | Tests dont concurrence sur PostgreSQL réel en CI |
 | Comptes, rôles, limitation des connexions, garde-fous de production | Tests (`test_auth.py`, `test_hardening.py`) |
-| Console : Aujourd'hui, À traiter, Conversations, Prospects, Campagnes, Base de connaissances, Intégrations, Équipe, Mon compte, Paramètres, Import CSV, Simulateur | Tests Playwright (API simulée) |
+| Console : Aujourd'hui, À traiter, Conversations, Rendez-vous (consultation), Prospects, Campagnes, Tableau de bord, Analyses, Agent, Base de connaissances, Équipe, Intégrations, Paramètres, Mon compte, Import CSV, Simulateur ; règles de présentation communes ([frontend/heroui.md](frontend/heroui.md)) | Tests Playwright (API simulée, audit axe) et parcours contre le vrai backend en CI (`e2e-api`) |
+| Contrat frontend / API : types générés depuis OpenAPI, vérifiés en CI | `npm run api:check`, `scripts/export_openapi.py --check` |
+| Durcissement issu de l'audit (lots 0 à 9) : en-têtes de sécurité, taille maximale des requêtes, identifiant de requête dans les journaux, reprise des leads Meta, relances plafonnées, téléphones en E.164, saisies protégées | Tests backend et navigateur ; [audit/reports/MODERNIZATION_ROADMAP.md](audit/reports/MODERNIZATION_ROADMAP.md) |
 | Réglages sans `.env` : boîte email, agenda, Zoom, IA et relances, jetons de service ([parametres.md](parametres.md), [sources-leads.md](sources-leads.md)) | Tests API et navigateur |
 | Email de bout en bout sur une boîte de test : réception, brouillon, validation, envoi | Recette manuelle ([recette-locale.md](recette-locale.md)) |
 | Parcours complet avec Gemini jusqu'à un rendez-vous fictif | Recette locale déclarée par l'auteur ([n8n/README.md](n8n/README.md)) |
@@ -46,7 +43,8 @@ Vue technique : [architecture.md](architecture.md).
 |---|---|
 | Email IMAP/SMTP | Recette sur la boîte définitive de DATUM : [recette-locale.md](recette-locale.md) §4 |
 | Google Calendar + Zoom (réglés dans la console, OAuth par conseiller) | Applications OAuth Google et Zoom en HTTPS, comptes réels et recette : [calendar.md](calendar.md) |
-| Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement (29/10) ; reste la production, la copie des sauvegardes hors serveur et un test de restauration |
+| Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement après une CI verte ; reste la production, la copie des sauvegardes hors serveur (stockage à choisir, lot 6) et un test de restauration |
+| Qualité des réponses avec le vrai modèle | `eval-agent --live` à lancer et à suivre ([agent-testing.md](agent-testing.md)) |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
 | Meta Lead Ads | Application, permissions, page et formulaire réels à fournir puis tester avec l'outil Meta |
@@ -62,16 +60,26 @@ Vue technique : [architecture.md](architecture.md).
 | Sujet | Raison ou prochaine action |
 |---|---|
 | Connecteur LinkedIn | Accès API non obtenu ; le socle générique d'ingestion existe |
-| Écrans Dashboard, Analytics | Affichés « À venir » dans le menu |
 | Gestion des rendez-vous | Liste de consultation disponible ; modification, annulation et synchronisation externe restent à développer |
 | Rappel avant rendez-vous | Non développé |
 | Connexion Gmail / Microsoft 365 par OAuth | Mot de passe d'application en attendant |
 
 Liste complète des limites : [limites-et-dette.md](limites-et-dette.md).
 
+### Décisions encore attendues
+
+Elles bloquent la fin de la feuille de route d'audit ([MODERNIZATION_ROADMAP.md](audit/reports/MODERNIZATION_ROADMAP.md) §5) :
+
+- stockage externe des sauvegardes et outil d'alerte (lot 6) ;
+- durées de conservation avec le DPO et environnement pilote (lot 7) ;
+- justificatif exigé ou non pour rétablir le consentement d'un prospect opposé ;
+- validation par DATUM de la liste des termes qui engagent l'école (admission, financement : `_TERMS` dans
+  `graph/policy.py`) et du fuseau horaire des prospects (BIZ-003) ;
+- sessions et accès (cookie `HttpOnly`, révocation…) : lot 10, prévu après la soutenance.
+
 ## 3. Reprendre le projet en 15 minutes
 
-Prérequis : Docker, Node 20 et une clé Gemini.
+Prérequis : Docker, Node 22 et une clé Gemini.
 
 ```bash
 git clone https://github.com/Anjara7697/iagora.git && cd iagora
@@ -89,7 +97,7 @@ Ensuite : se connecter, laisser le mode **Assisté**, ouvrir **Simulateur** et s
 Vérifier que tout est vert avant de modifier quoi que ce soit :
 
 ```bash
-cd backend && ruff check . && mypy && pytest
+cd backend && ruff check . && ruff format --check . && mypy && pytest
 cd ../frontend && npm run lint && npm run typecheck && npm run build
 ```
 
