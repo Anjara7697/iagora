@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { Bot, CalendarClock, Mail, Sparkles, FlaskConical, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -7,10 +8,13 @@ import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { Btn, FilterChip, LinkButton, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
-import { PageHeader, Screen, cx } from "@/components/ds/layout";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { Btn, ColorChoice, ErrorText, FilterChip, LinkButton, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { ErrorState, PageHeader, Screen, cx } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { Skeleton } from "@/components/ui";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
-import { ActionsBar, Feedback, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
+import { ActionsBar, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import { api, ApiError } from "@/lib/api";
 import type { RuntimeSettings } from "@/lib/types";
 
@@ -55,7 +59,7 @@ function Settings() {
   const [openaiKey, setOpenaiKey] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   // Quitter Paramètres (menu, onglet) avec des réglages non enregistrés demande confirmation.
   const { dialog: discardDialog } = useDiscardGuard(() => dirty);
@@ -67,15 +71,17 @@ function Settings() {
   } | null>(null);
   const isAdmin = user?.role === "ADMIN";
 
-  const load = () =>
-    api<RuntimeSettings>("/settings")
+  const load = () => {
+    setLoadError(null);
+    return api<RuntimeSettings>("/settings")
       .then((s) => {
         setForm(s);
         setDirty(false);
       })
       .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
+        setLoadError(`Chargement des paramètres impossible${e instanceof ApiError ? ` : ${e.message}` : "."}`),
       );
+  };
 
   useEffect(() => {
     if (isAdmin) load();
@@ -93,9 +99,7 @@ function Settings() {
       </Screen>
     ) : (
       <Screen>
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
-          Cette page est réservée aux administrateurs.
-        </p>
+        <Notice tone="warning">Cette page est réservée aux administrateurs.</Notice>
       </Screen>
     );
   if (!form)
@@ -103,15 +107,7 @@ function Settings() {
       <Screen className="max-w-[1200px]">
         <PageHeader eyebrow="Administration · Paramètres" title="Paramètres" />
         <TestingAccess />
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : (
-          <p className="text-sm text-muted" role="status">
-            Chargement des réglages…
-          </p>
-        )}
+        {loadError ? <ErrorState message={loadError} onRetry={() => void load()} /> : <Skeleton />}
       </Screen>
     );
 
@@ -144,35 +140,36 @@ function Settings() {
     return body;
   }
 
-  async function act(name: string, fn: () => Promise<void>) {
+  /** `failure` dit ce qui a échoué, avant le détail du serveur (règle 12). */
+  async function act(name: string, failure: string, fn: () => Promise<void>) {
     setBusy(name);
     setError(null);
-    setNotice(null);
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(`${failure}${e instanceof ApiError ? ` : ${e.message}` : "."}`);
     } finally {
       setBusy(null);
     }
   }
 
   const save = () =>
-    act("save", async () => {
+    act("save", "Enregistrement impossible", async () => {
       await api("/settings", { method: "PUT", body: payload() });
       setGeminiKey("");
       setOpenaiKey("");
       await load();
-      setNotice("Paramètres enregistrés : appliqués immédiatement.");
+      toast.success("Paramètres enregistrés", { description: "Ils s’appliquent immédiatement, sans redémarrage." });
     });
   const runTest = () =>
-    act("test", async () => {
+    act("test", "Test du modèle impossible", async () => {
+      setTest(null);
       setTest(
         await api("/settings/llm/test", { method: "POST", body: payload() }),
       );
     });
   const showPreview = () =>
-    act("preview", async () => {
+    act("preview", "Aperçu impossible", async () => {
       const r = await api<{ html: string }>("/settings/email/preview", {
         method: "POST",
         body: payload(),
@@ -180,16 +177,12 @@ function Settings() {
       setPreview(r.html);
     });
   const reset = () =>
-    act("reset", async () => {
-      if (
-        !window.confirm(
-          "Revenir aux valeurs du fichier .env du serveur ? Les clés saisies ici seront oubliées.",
-        )
-      )
-        return;
+    act("reset", "Retour aux valeurs du serveur impossible", async () => {
       await api("/settings", { method: "DELETE" });
+      setGeminiKey("");
+      setOpenaiKey("");
       await load();
-      setNotice("Retour aux valeurs du serveur.");
+      toast.success("Valeurs du serveur rétablies", { description: "Les réglages enregistrés dans la console sont oubliés." });
     });
 
   const gemini = form.llm_provider === "gemini";
@@ -199,6 +192,7 @@ function Settings() {
     <Screen className="max-w-[1200px]">
       {discardDialog}
       <PageHeader
+        {...reveal(0)}
         eyebrow="Administration · Paramètres"
         title="Paramètres"
         subtitle={
@@ -211,12 +205,15 @@ function Settings() {
         }
       />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div
+        className={cx("grid grid-cols-1 items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]", reveal(1).className)}
+        style={reveal(1).style}
+      >
         <div className="flex flex-col gap-1.5 lg:hidden">
           <label id="settings-category-label" htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
             Catégorie
           </label>
-          <SelectBox
+          <SelectBox variant="secondary"
             id="settings-category"
             aria-labelledby="settings-category-label"
             value={active}
@@ -269,7 +266,7 @@ function Settings() {
             intro="Le modèle rédige les réponses et lit les messages. Si le modèle principal reste indisponible (surcharge, quota) après ses nouveaux essais, la même demande part sur le modèle de secours avant tout transfert au conseiller."
           >
             <Field label="Fournisseur">
-              <SelectBox
+              <SelectBox variant="secondary"
                 value={form.llm_provider}
                 onChange={(e) =>
                   set(
@@ -283,7 +280,7 @@ function Settings() {
               </SelectBox>
             </Field>
             <Field label="Modèle principal" note="Ex. gemini-2.5-flash.">
-              <TextInput
+              <TextInput variant="secondary"
                 value={form.llm_model}
                 onChange={(e) => set("llm_model", e.target.value)}
               />
@@ -292,7 +289,7 @@ function Settings() {
               label="Modèle de secours (si le principal est saturé)"
               note="Même fournisseur et même clé, ex. gemini-2.5-flash-lite. Vide : aucun secours."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 value={form.llm_fallback_model}
                 placeholder="gemini-2.5-flash-lite"
                 onChange={(e) => set("llm_fallback_model", e.target.value)}
@@ -302,7 +299,7 @@ function Settings() {
               label={`Clé d’API ${gemini ? "Gemini" : "OpenAI"}`}
               note="Chiffrée sur le serveur, jamais réaffichée. Laisser vide pour conserver la clé actuelle."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 type="password"
                 autoComplete="new-password"
                 placeholder={
@@ -319,7 +316,7 @@ function Settings() {
               label="Créativité (0 = factuel, 1 = libre)"
               note="0,2 à 0,4 recommandé : l’agent ne doit jamais inventer."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 step="0.1"
                 min={0}
@@ -339,17 +336,13 @@ function Settings() {
                 <Sparkles className="size-4" aria-hidden="true" />
                 {busy === "test" ? "Test en cours…" : "Tester le modèle"}
               </Btn>
-              {test && (
-                <span
-                  aria-label="Résultat du test du modèle"
-                  className={cx("font-mono text-[12.5px]", test.ok ? "text-success" : "text-danger")}
-                >
-                  {test.ok
-                    ? `✓ ${test.model} répond (« ${test.detail} »)`
-                    : `✗ ${test.detail}`}
-                </span>
-              )}
             </ActionsBar>
+            {test &&
+              (test.ok ? (
+                <Notice aria-label="Résultat du test du modèle">{`${test.model} répond (« ${test.detail} »)`}</Notice>
+              ) : (
+                <ErrorText aria-label="Résultat du test du modèle">{`Le modèle ne répond pas : ${test.detail}`}</ErrorText>
+              ))}
           </SettingsCard>
 
           <SettingsCard
@@ -386,7 +379,7 @@ function Settings() {
             />
             <InfoRow label="Fenêtre d’envoi des relances" note="Heure de début et de fin (heure locale).">
                 <div className="flex items-center gap-2">
-                  <TextInput
+                  <TextInput variant="secondary"
                     aria-label="Relances : à partir de (heure)"
                     type="number"
                     min={0}
@@ -396,7 +389,7 @@ function Settings() {
                     className="w-24"
                   />
                   <span className="text-sm text-muted">→</span>
-                  <TextInput
+                  <TextInput variant="secondary"
                     aria-label="jusqu’à (heure)"
                     type="number"
                     min={1}
@@ -408,7 +401,7 @@ function Settings() {
                 </div>
             </InfoRow>
             <Field label="Relances maximum sans réponse">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={1}
                 max={10}
@@ -428,7 +421,7 @@ function Settings() {
               label="Mention de bas de message (désinscription)"
               note="Ajoutée à chaque email envoyé : le prospect peut répondre STOP."
             >
-              <TextBox
+              <TextBox variant="secondary"
                 value={form.email_footer}
                 rows={2}
                 onChange={(e) => set("email_footer", e.target.value)}
@@ -438,7 +431,7 @@ function Settings() {
               label="Mention « message rédigé avec une IA »"
               note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
             >
-              <TextBox
+              <TextBox variant="secondary"
                 value={form.email_ai_notice}
                 rows={2}
                 minLength={10}
@@ -450,28 +443,24 @@ function Settings() {
               label="Nom affiché en tête d’email"
               note="Remplacé par le logo s’il est renseigné."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 value={form.email_brand_name}
                 maxLength={80}
                 onChange={(e) => set("email_brand_name", e.target.value)}
               />
             </Field>
-            <Field
-              label="Couleur principale des emails"
-              note="Liseré, nom, liens et pastille IA."
-            >
-              <input
-                className="h-9 w-16 cursor-pointer rounded-[var(--field-radius)] border border-field-border bg-field-background p-1"
-                type="color"
+            <InfoRow label="Couleur principale des emails" note="Liseré, nom, liens et pastille IA.">
+              <ColorChoice
+                label="Couleur principale des emails"
                 value={form.email_brand_color}
-                onChange={(e) => set("email_brand_color", e.target.value)}
+                onChange={(hex) => set("email_brand_color", hex)}
               />
-            </Field>
+            </InfoRow>
             <Field
               label="Logo (adresse https, facultatif)"
               note="Image publique hébergée par l’école, hauteur 36 px. Vide : le nom est affiché."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 type="url"
                 placeholder="https://…/logo.png"
                 value={form.email_logo_url}
@@ -499,7 +488,7 @@ function Settings() {
               label="Relève de la boîte toutes les (secondes)"
               note="60 secondes conviennent ; la boîte se règle dans Intégrations."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={10}
                 max={3600}
@@ -535,7 +524,7 @@ function Settings() {
               </div>
             </InfoRow>
             <Field label="Début de journée (heure)">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={0}
                 max={23}
@@ -544,7 +533,7 @@ function Settings() {
               />
             </Field>
             <Field label="Fin de journée (heure)">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={1}
                 max={24}
@@ -553,7 +542,7 @@ function Settings() {
               />
             </Field>
             <Field label="Durée d’un rendez-vous (minutes)">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={15}
                 max={240}
@@ -566,7 +555,7 @@ function Settings() {
               label="Délai minimum avant un rendez-vous (heures)"
               note="Évite de proposer un créneau dans l’heure qui vient."
             >
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={0}
                 max={240}
@@ -575,7 +564,7 @@ function Settings() {
               />
             </Field>
             <Field label="Créneaux proposés sur (jours)">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={1}
                 max={60}
@@ -584,7 +573,7 @@ function Settings() {
               />
             </Field>
             <Field label="Marge entre rendez-vous (minutes)">
-              <TextInput
+              <TextInput variant="secondary"
                 type="number"
                 min={0}
                 max={120}
@@ -593,7 +582,7 @@ function Settings() {
               />
             </Field>
             <Field label="Fuseau horaire" note="Ex. Europe/Paris.">
-              <TextInput
+              <TextInput variant="secondary"
                 value={form.calendar_timezone}
                 onChange={(e) => set("calendar_timezone", e.target.value)}
               />
@@ -606,9 +595,18 @@ function Settings() {
                 Enregistrer les paramètres
               </Btn>
               {form.source === "console" && (
-                <Btn variant="ghost" onClick={reset} disabled={busy !== null}>
-                  Revenir aux valeurs du serveur
-                </Btn>
+                <ConfirmDialog
+                  trigger={
+                    <Btn variant="ghost" disabled={busy !== null}>
+                      Revenir aux valeurs du serveur
+                    </Btn>
+                  }
+                  title="Revenir aux valeurs du serveur ?"
+                  description="Les réglages enregistrés dans la console sont oubliés, clés d’API comprises : l’agent reprend les valeurs du fichier de configuration du serveur."
+                  confirmLabel="Revenir aux valeurs du serveur"
+                  status="warning"
+                  onConfirm={() => void reset()}
+                />
               )}
               {dirty && (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning-soft-foreground">
@@ -617,7 +615,7 @@ function Settings() {
                 </span>
               )}
             </ActionsBar>
-            <Feedback notice={notice} error={error} />
+            {error && <ErrorText>{error}</ErrorText>}
           </div>
         </div>
       </div>

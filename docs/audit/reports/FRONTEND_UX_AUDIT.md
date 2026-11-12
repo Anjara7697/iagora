@@ -45,7 +45,7 @@ tâche `frontend` réussie.
 | Base de connaissances | `/knowledge` | oui | admin pour écrire | oui | sortie par le menu latéral (FE-001) |
 | Tableau de bord, Analyses | `/dashboard`, `/analytics` | oui | tous | oui | — |
 | Agent | `/agent` | oui | admin pour modifier | oui | — |
-| Paramètres | `/settings` | indicateur « non enregistré » ; reste à vérifier | admin | **non revu** | FE-002 |
+| Paramètres | `/settings` | oui (revu le 12/11/2026) | admin | oui (règle 31 : écarts 3 et 21 décidés) | — |
 | Équipe | `/team` | à vérifier | admin | **non revu** | FE-002 |
 | Intégrations | `/integrations` | états de test présents ; reste à vérifier | admin | **non revu** | FE-002 |
 | Simulateur | `/simulator` | à vérifier | admin et conseillers autorisés | **non revu** | FE-002 |
