@@ -13,6 +13,7 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.core import vault
+from app.graph.ports import PolicyTuning
 
 logger = logging.getLogger(__name__)
 COLLECTION = "settings"
@@ -28,6 +29,10 @@ FIELDS = (
     "follow_up_window_end_hour",
     "follow_up_weekdays_only",
     "follow_up_max_per_silence",
+    "agent_meeting_min_score",
+    "agent_nurture_max_score",
+    "agent_min_confidence",
+    "agent_extra_terms",
     "email_footer",
     "email_ai_notice",
     "email_brand_name",
@@ -96,3 +101,14 @@ async def save(db: Any, base: Settings, data: dict[str, Any], actor_id: int | No
 
 async def reset(db: Any) -> None:
     await db[COLLECTION].delete_one({"_id": KEY})
+
+
+def tuning(settings: Settings) -> PolicyTuning:
+    """Seuils de décision de l'agent tirés des réglages effectifs (décision D-27)."""
+    terms = tuple(t.strip() for t in settings.agent_extra_terms.split(",") if t.strip())
+    return PolicyTuning(
+        propose_meeting_min_score=settings.agent_meeting_min_score,
+        nurture_max_score=settings.agent_nurture_max_score,
+        min_confidence=settings.agent_min_confidence,
+        extra_terms=terms,
+    )

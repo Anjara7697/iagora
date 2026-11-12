@@ -482,6 +482,11 @@ export type RuntimeSettings = {
   follow_up_window_end_hour: number;
   follow_up_weekdays_only: boolean;
   follow_up_max_per_silence: number;
+  /** Seuils de décision de l'agent (décision D-27). */
+  agent_meeting_min_score: number;
+  agent_nurture_max_score: number;
+  agent_min_confidence: number;
+  agent_extra_terms: string;
   email_footer: string;
   email_ai_notice: string;
   email_brand_name: string;

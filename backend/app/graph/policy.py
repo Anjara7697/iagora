@@ -10,6 +10,7 @@ import unicodedata
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from app.graph.ports import PolicyTuning
 from app.graph.state import Action, Decision, Qualification, SalesAgentState
 from app.models.enums import ConversionStage, ScoringSignal
 
@@ -170,8 +171,17 @@ _ADVANCED_STAGES = {
 }
 
 
-def decide(state: SalesAgentState) -> Decision:
-    """Choisit la prochaine action. L'ordre des règles est l'ordre de priorité."""
+DEFAULT_TUNING = PolicyTuning(
+    propose_meeting_min_score=PROPOSE_MEETING_MIN_SCORE,
+    nurture_max_score=NURTURE_MAX_SCORE,
+    min_confidence=MIN_CONFIDENCE,
+)
+
+
+def decide(state: SalesAgentState, tuning: PolicyTuning = DEFAULT_TUNING) -> Decision:
+    """Choisit la prochaine action. L'ordre des règles est l'ordre de priorité ; les seuils viennent
+    des Paramètres (`tuning`, décision D-27)."""
+    min_confidence = tuning.min_confidence
     ctx = state["ctx"]
     q = state.get("qualification")
     total = state.get("total_score", ctx.total_score)
@@ -208,7 +218,7 @@ def decide(state: SalesAgentState) -> Decision:
     if (
         wants_meeting
         and q is not None
-        and q.confidence >= MIN_CONFIDENCE
+        and q.confidence >= min_confidence
         and stage not in _ADVANCED_STAGES
     ):
         return Decision(Action.PROPOSE_MEETING, "Le prospect demande un rendez-vous")
@@ -220,7 +230,7 @@ def decide(state: SalesAgentState) -> Decision:
             return Decision(
                 Action.HUMAN_HANDOFF, "Demande qui exige un conseiller (décision, cas particulier)"
             )
-        if q.confidence < MIN_CONFIDENCE:
+        if q.confidence < min_confidence:
             return Decision(Action.HUMAN_HANDOFF, "Incertitude élevée sur la demande du prospect")
 
     # 3. Fin de parcours sans relance.
@@ -241,16 +251,17 @@ def decide(state: SalesAgentState) -> Decision:
     if stage not in _ADVANCED_STAGES:
         if q is not None and q.intent == "meeting_declined":
             return Decision(Action.NURTURE, "Rendez-vous refusé : relance programmée")
-        if total >= PROPOSE_MEETING_MIN_SCORE and not missing and ctx.pending_slots == []:
+        threshold = tuning.propose_meeting_min_score
+        if total >= threshold and not missing and ctx.pending_slots == []:
             return Decision(
                 Action.PROPOSE_MEETING,
-                f"Score {total} >= {PROPOSE_MEETING_MIN_SCORE} et qualification complète",
+                f"Score {total} >= {threshold} et qualification complète",
             )
 
     # 5. Prospect froid et peu engagé (message neutre) : on entretient sans insister (nurturing).
     #    Un prospect qui exprime de l'intérêt ou pose une question n'est jamais mis en veille.
     if (
-        total <= NURTURE_MAX_SCORE
+        total <= tuning.nurture_max_score
         and state.get("trigger") == "inbound_message"
         and (q is None or q.intent == "other")
     ):
@@ -365,8 +376,18 @@ def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
 
+def _extra_terms(terms: tuple[str, ...]) -> re.Pattern[str] | None:
+    """Termes ajoutés par l'administrateur, comparés sans accents ni majuscules."""
+    words = [re.escape(normalize(t.strip())) for t in terms if t.strip()]
+    return re.compile(r"\b(?:" + "|".join(words) + r")\b") if words else None
+
+
 def ungrounded_claims(
-    reply: str, sources: list[str], *, conversation: list[str] | None = None
+    reply: str,
+    sources: list[str],
+    *,
+    conversation: list[str] | None = None,
+    extra_terms: tuple[str, ...] = (),
 ) -> list[str]:
     """Affirmations de la réponse absentes des sources (NF-10).
 
@@ -378,7 +399,10 @@ def ungrounded_claims(
     everything = validated + _compact(normalize(" ".join(conversation or [])))
     text = normalize(reply)
     bad = []
-    for pattern, haystack in ((_PRICE, validated), (_TERMS, validated), (_FACT, everything)):
+    checks = [(_PRICE, validated), (_TERMS, validated), (_FACT, everything)]
+    if (extra := _extra_terms(extra_terms)) is not None:
+        checks.append((extra, validated))
+    for pattern, haystack in checks:
         for match in pattern.finditer(text):
             if _compact(match.group(0)) not in haystack:
                 bad.append(match.group(0).strip())

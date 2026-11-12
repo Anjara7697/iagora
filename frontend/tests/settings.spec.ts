@@ -12,6 +12,10 @@ const current = {
   follow_up_window_end_hour: 19,
   follow_up_weekdays_only: true,
   follow_up_max_per_silence: 3,
+  agent_meeting_min_score: 50,
+  agent_nurture_max_score: 24,
+  agent_min_confidence: 0.5,
+  agent_extra_terms: "",
   email_footer: "Répondez STOP.",
   email_ai_notice:
     "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
@@ -425,4 +429,19 @@ test("chargement en échec : message clair et nouvel essai ; test du modèle ref
   const ia = page.getByRole("region", { name: "Intelligence artificielle" });
   await ia.getByRole("button", { name: "Tester le modèle" }).click();
   await expect(ia.getByLabel("Résultat du test du modèle")).toContainText("Le modèle ne répond pas : clé refusée");
+});
+
+test("les seuils de décision de l’agent se règlent dans Agent et relances", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=agent");
+  const agent = page.getByRole("region", { name: "Agent et relances" });
+  await agent.getByLabel("Score à partir duquel proposer un rendez-vous").fill("40");
+  await agent.getByLabel("Termes qui engagent l’école (en plus de la liste intégrée)").fill("Pass Transition");
+  await page.getByRole("button", { name: "Enregistrer les paramètres" }).click();
+  await expect(page.getByText("Paramètres enregistrés", { exact: true })).toBeVisible();
+  const put = calls.find((c) => (c as { put?: unknown }).put) as { put: Record<string, unknown> };
+  expect(put.put).toMatchObject({ agent_meeting_min_score: 40, agent_extra_terms: "Pass Transition" });
+  await auditA11y(page, "paramètres (seuils de l’agent)");
 });

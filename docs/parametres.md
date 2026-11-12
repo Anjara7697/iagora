@@ -8,7 +8,7 @@ valeur de départ ; « Revenir aux valeurs du serveur » efface les réglages de
 | Section | Réglages |
 |---|---|
 | Intelligence artificielle | fournisseur (Gemini, OpenAI), modèle principal, **modèle de secours**, clé d'API (chiffrée, jamais réaffichée), créativité ; bouton **Tester le modèle** (réglages saisis, non enregistrés) |
-| Agent et relances | réponse automatique à chaque nouveau message, fenêtre horaire des relances, semaine seulement, nombre maximum de relances sans réponse |
+| Agent et relances | réponse automatique à chaque nouveau message, fenêtre horaire des relances, semaine seulement, nombre maximum de relances sans réponse ; seuils de décision (score de rendez-vous, score d'un prospect froid, confiance minimale) et termes qui engagent l'école (décision D-27, valeurs à confirmer par DATUM) |
 | Emails | mention de désinscription, **mention IA** (toujours ajoutée), nom, couleur et logo de l'en-tête avec aperçu, fréquence de relève, création d'un prospect pour un expéditeur inconnu |
 | Disponibilités des rendez-vous | jours ouvrés, début/fin de journée, durée d'un rendez-vous, délai minimum, horizon, marge entre rendez-vous, fuseau horaire |
 

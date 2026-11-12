@@ -18,6 +18,13 @@ class RuntimeSettingsBase(BaseModel):
     follow_up_window_end_hour: int = Field(19, ge=1, le=24)
     follow_up_weekdays_only: bool = True
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
+    # Seuils de décision de l'agent (décision D-27)
+    agent_meeting_min_score: int = Field(50, ge=1, le=100)
+    agent_nurture_max_score: int = Field(24, ge=0, le=99)
+    agent_min_confidence: float = Field(0.5, ge=0.1, le=0.95)
+    agent_extra_terms: str = Field(
+        "", max_length=1000, description="Termes qui engagent l'école, séparés par des virgules"
+    )
     # Emails
     email_footer: str = Field("", max_length=1000)
     email_ai_notice: str = Field(DEFAULT_AI_NOTICE, min_length=10, max_length=500)
@@ -42,6 +49,10 @@ class RuntimeSettingsBase(BaseModel):
             raise ValueError("La fin de la fenêtre des relances doit suivre son début")
         if self.calendar_work_end_hour <= self.calendar_work_start_hour:
             raise ValueError("La fin de la journée de travail doit suivre son début")
+        if self.agent_nurture_max_score >= self.agent_meeting_min_score:
+            raise ValueError(
+                "Le score d'entretien d'un prospect froid doit rester sous le score de rendez-vous"
+            )
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
         try:
