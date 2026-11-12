@@ -2363,6 +2363,11 @@ export interface components {
         ConsentRequest: {
             /** Channel */
             channel?: string | null;
+            /**
+             * Reason
+             * @description Obligatoire pour lever une désinscription (D-20)
+             */
+            reason?: string | null;
             /** Source */
             source: string;
         };
@@ -3382,6 +3387,12 @@ export interface components {
         };
         /** MetaSimulation */
         MetaSimulation: {
+            /**
+             * Consent
+             * @description Case de consentement cochée dans le formulaire (D-26)
+             * @default true
+             */
+            consent: boolean;
             /** Email */
             email: string;
             /**
@@ -3459,6 +3470,11 @@ export interface components {
              * @enum {string}
              */
             decision: "confirm" | "restore";
+            /**
+             * Reason
+             * @description Obligatoire pour rétablir le consentement (D-20)
+             */
+            reason?: string | null;
         };
         /** Page[AdvisorRead] */
         Page_AdvisorRead_: {

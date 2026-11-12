@@ -153,6 +153,7 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
     assert proposal["action"] == "propose_meeting"
     for expected in ("lundi 1 mars à 14h00", "mardi 2 mars à 14h00", "mercredi 3 mars à 14h00"):
         assert expected in proposal["reply"]  # uniquement des créneaux réels de l'agenda
+    assert "(heure de Paris)" in proposal["reply"]  # le fuseau est annoncé (D-21)
     assert (await membership(client, mid))["conversion_stage"] == "meeting_proposed"
     stored = (await conversation(client, cid))["messages"][-1]
     assert [s["id"] for s in stored["metadata"]["proposed_slots"]] == ["slot-0", "slot-1", "slot-2"]
@@ -161,7 +162,7 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
     env.llm.qualification = Qualification(intent="slot_choice", chosen_slot=2)
     booked = (await run(client, cid)).json()
     assert booked["action"] == "book_meeting"
-    assert "mardi 2 mars à 14h00" in booked["reply"]
+    assert "mardi 2 mars à 14h00 (heure de Paris)" in booked["reply"]
     assert "https://zoom.example/slot-1" in booked["reply"]
     assert [s.id for s in env.calendar.booked] == ["slot-1"]
     assert (await membership(client, mid))["conversion_stage"] == "meeting_scheduled"
@@ -721,3 +722,17 @@ async def test_each_run_records_the_prompt_version_and_the_model_calls(client, e
     doc = await mongo_db["agent_runs"].find_one({"conversation_id": cid}, sort=[("started_at", -1)])
     assert doc["prompt_version"] == prompts.PROMPT_VERSION and len(prompts.PROMPT_VERSION) == 12
     assert isinstance(doc["llm_calls"], list)  # le faux modèle n'appelle aucun fournisseur
+
+
+@pytest.mark.parametrize(
+    ("email", "expected"),
+    [("jean.dupont@example.com", False), ("camille@demo.example.com", True)],
+)
+async def test_only_a_fictitious_prospect_may_use_fictitious_documents(
+    client, env, email, expected
+):
+    """AUDIT-AI-002 : un vrai prospect n'obtient jamais d'extrait fictif, même sur `dev`."""
+    env.llm.qualification = Qualification(intent="question")
+    pid, mid, cid = await lead(client, "Combien de temps dure le programme ?", email=email)
+    await run(client, cid)
+    assert env.kb.include_demo_calls and set(env.kb.include_demo_calls) == {expected}

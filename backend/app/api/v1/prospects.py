@@ -291,7 +291,14 @@ async def grant_consent(
             status.HTTP_403_FORBIDDEN,
             detail="Seul un administrateur peut lever une désinscription",
         )
-    prospect = await service.grant_consent(session, prospect_id, payload.source, payload.channel)
+    prospect = await service.grant_consent(
+        session,
+        prospect_id,
+        payload.source,
+        payload.channel,
+        reason=payload.reason,
+        actor_id=user.id,
+    )
     return await _detail(session, prospect)
 
 

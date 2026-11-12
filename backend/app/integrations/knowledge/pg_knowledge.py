@@ -43,11 +43,15 @@ class PgKnowledgeBase:
         self.min_score = min_score
         self._include_demo = include_demo
 
-    def _filters(self, target_code: str | None) -> list[ColumnElement[bool]]:
+    def _filters(
+        self, target_code: str | None, include_demo: bool = True
+    ) -> list[ColumnElement[bool]]:
         filters: list[ColumnElement[bool]] = [
             KnowledgeDocument.embedding_model == self._embeddings.model_id
         ]
-        if not self._include_demo:
+        # Documents fictifs : jamais en production (`self._include_demo`), et seulement si
+        # l'appelant les autorise (prospect fictif, outils d'administration).
+        if not (self._include_demo and include_demo):
             filters.append(KnowledgeDocument.is_demo.is_(False))
         if target_code:  # le programme du prospect + les informations générales
             filters.append(
@@ -58,12 +62,14 @@ class PgKnowledgeBase:
             )
         return filters
 
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
-        passages = await self.search_all(query, target_code, limit)
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
+        passages = await self.search_all(query, target_code, limit, include_demo=include_demo)
         return [p for p in passages if (p.score or 0.0) >= self.min_score]
 
     async def search_all(
-        self, query: str, target_code: str | None, limit: int = 4
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = True
     ) -> list[Passage]:
         """Les meilleurs extraits SANS appliquer le seuil (diagnostic : `kb-search`, `kb-eval`)."""
         if not query.strip():
@@ -74,22 +80,33 @@ class PgKnowledgeBase:
             logger.warning("Recherche impossible, embeddings indisponibles : %s", exc)
             return []
         async with self._session_factory() as session:
-            return await self._search_in(session, vector, target_code, limit)
+            return await self._search_in(session, vector, target_code, limit, include_demo)
 
     async def search_all_in(
-        self, session: AsyncSession, query: str, target_code: str | None, limit: int = 4
+        self,
+        session: AsyncSession,
+        query: str,
+        target_code: str | None,
+        limit: int = 4,
+        *,
+        include_demo: bool = True,
     ) -> list[Passage]:
         """Comme `search_all`, avec la session de l'appelant ; une panne des embeddings est
         remontée (`EmbeddingError`) au lieu d'être masquée : l'administrateur doit la voir."""
         if not query.strip():
             return []
         vector = await self._embeddings.embed_query(query)
-        return await self._search_in(session, vector, target_code, limit)
+        return await self._search_in(session, vector, target_code, limit, include_demo)
 
     async def _search_in(
-        self, session: AsyncSession, vector: list[float], target_code: str | None, limit: int
+        self,
+        session: AsyncSession,
+        vector: list[float],
+        target_code: str | None,
+        limit: int,
+        include_demo: bool,
     ) -> list[Passage]:
-        scored = await self._scored(session, vector, target_code, limit)
+        scored = await self._scored(session, vector, target_code, limit, include_demo)
         return [
             Passage(
                 source=f"{doc.title} / {chunk.heading or 'général'}", text=chunk.text, score=score
@@ -98,9 +115,14 @@ class PgKnowledgeBase:
         ]
 
     async def _scored(
-        self, session: AsyncSession, vector: list[float], target_code: str | None, limit: int
+        self,
+        session: AsyncSession,
+        vector: list[float],
+        target_code: str | None,
+        limit: int,
+        include_demo: bool = True,
     ) -> list[tuple[KnowledgeChunk, KnowledgeDocument, float]]:
-        filters = self._filters(target_code)
+        filters = self._filters(target_code, include_demo)
         if session.get_bind().dialect.name == "postgresql":
             distance = KnowledgeChunk.embedding.op("<=>", return_type=Float)(vector)
             rows = await session.execute(

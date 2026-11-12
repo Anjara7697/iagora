@@ -237,6 +237,11 @@ Les lots 5 et 8 à 11 peuvent suivre sans bloquer une démonstration en mode ass
 
 ## 5. Décisions humaines requises
 
+> **12 novembre 2026** : toutes ces décisions ont été prises par le responsable du projet, voir
+> [decisions.md](../../decisions.md) D-13 à D-28. Celles qui relèvent du DPO y sont marquées comme propositions à
+> faire valider avant un pilote réel. Restent hors décision : les documents officiels (fournis par DATUM) et la
+> double authentification (reportée).
+
 | Décision | Qui | Débloque |
 |---|---|---|
 | Accord de sous-traitance du modèle (Gemini payant, autre fournisseur) | DPO, responsable | SEC-001, AI-005 |

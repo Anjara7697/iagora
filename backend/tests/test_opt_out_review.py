@@ -72,8 +72,14 @@ async def test_an_advisor_confirms_but_only_an_admin_restores_consent(client, ma
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "restore"}
     )
     assert refused.status_code == 403
-    restored = await client.post(
+    # Décision D-20 : rétablir exige un motif écrit.
+    no_reason = await client.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "restore"}
+    )
+    assert no_reason.status_code == 422 and "Motif obligatoire" in no_reason.json()["detail"]
+    restored = await client.post(
+        f"{API}/conversations/{cid}/opt-out-review",
+        json={"decision": "restore", "reason": "Il demandait seulement à changer d'école cible."},
     )
     assert restored.json() == {"status": "restored"}
     assert (await client.get(f"{API}/prospects/{pid}")).json()["consent_status"] == "granted"

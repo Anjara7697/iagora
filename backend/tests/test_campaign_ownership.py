@@ -192,3 +192,37 @@ async def test_arrivals_during_campaign_transfer_keep_the_final_owner(client, ma
     listing = (await client.get(f"{API}/prospects?campaign_id={campaign['id']}")).json()
     assert listing["total"] == 3
     assert all(p["campaigns"][0]["assigned_advisor_id"] == aid for p in listing["items"])
+
+
+async def test_an_inactive_advisor_hands_meetings_to_the_campaign_owner(
+    client, make_client, session_factory, mongo_db
+):
+    """AUDIT-BIZ-002, décision D-22 : les rendez-vous d'un conseiller parti vont au responsable."""
+    from app.agents.gateway import DbGateway
+    from app.services import conversations
+
+    owner_id = await who(await make_client(UserRole.ADVISOR))
+    created = await client.post(
+        f"{API}/users", json={"username": "leaving", "email": "leaving@example.com"}
+    )
+    leaving_id = created.json()["id"]
+    campaign = (await _create(client)).json()
+    await owner(client, campaign, owner_id)
+    p = (await _ingest(client, campaign, 0, "parti@example.com")).json()["prospect"]
+    mid = p["campaigns"][0]["id"]
+    # Exception individuelle : le prospect suit un autre conseiller, qui quitte l'équipe.
+    await client.patch(f"{API}/campaign-prospects/{mid}", json={"assigned_advisor_id": leaving_id})
+    await client.patch(f"{API}/users/{leaving_id}", json={"is_active": False})
+    conv = await client.post(
+        f"{API}/conversations", json={"prospect_id": p["id"], "channel": "email"}
+    )
+    cid = conv.json()["conversation"]["id"]
+    async with session_factory() as s:
+        ctx = await DbGateway(s, mongo_db).load_context(p["id"], cid)
+    assert ctx.advisor_id == owner_id
+    # Sans responsable actif : ni l'un ni l'autre (agenda par défaut, sinon transfert).
+    await client.patch(f"{API}/users/{owner_id}", json={"is_active": False})
+    async with session_factory() as s:
+        ctx = await DbGateway(s, mongo_db).load_context(p["id"], cid)
+    assert ctx.advisor_id is None and ctx.advisor_email is None
+    assert await conversations.get_doc(mongo_db, cid)

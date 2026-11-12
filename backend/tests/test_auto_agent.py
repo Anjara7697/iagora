@@ -285,6 +285,13 @@ def test_send_window_is_weekdays_in_paris_time():
     assert not auto.in_send_window(datetime(2027, 3, 3, 18, 0, tzinfo=UTC), s)  # 19 h 00
 
 
+def test_send_window_follows_the_configured_timezone():
+    """Décision D-21 : la fenêtre des relances suit le fuseau des Paramètres."""
+    s = settings().model_copy(update={"calendar_timezone": "America/Martinique"})  # UTC-4
+    assert not auto.in_send_window(datetime(2027, 3, 3, 11, 59, tzinfo=UTC), s)  # 7 h 59
+    assert auto.in_send_window(datetime(2027, 3, 3, 12, 0, tzinfo=UTC), s)  # 8 h 00
+
+
 async def test_a_manual_run_after_the_automatic_reply_is_a_harmless_conflict(client, auto_reply):
     pid, mid, cid = await lead(client, text=None)
     await say(client, cid, "Bonjour")  # l'agent répond tout seul

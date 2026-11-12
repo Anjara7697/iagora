@@ -121,6 +121,14 @@ async def get_agent_mode(db: MongoDb) -> AgentModeRead:
 async def set_agent_mode(payload: AgentModeUpdate, db: MongoDb, user: CurrentUser) -> AgentModeRead:
     """Mode de l'agent. Tout conseiller peut passer en `manual` (arrêt d'urgence) ou en `assisted` ;
     seul un administrateur peut autoriser l'envoi sans validation (`auto`)."""
+    if payload.mode is AgentMode.AUTO and not agent_settings.auto_mode_allowed():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=(
+                "Mode automatique désactivé en production : "
+                "chaque réponse est validée par un conseiller"
+            ),
+        )
     if payload.mode is AgentMode.AUTO and user.role is not UserRole.ADMIN:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, detail="Seul un administrateur peut désactiver la validation"
@@ -232,9 +240,20 @@ async def decide_opt_out_review(
             detail="Seul un administrateur peut lever une désinscription",
         )
     status_ = "restored" if payload.decision == "restore" else "confirmed"
+    reason = (payload.reason or "").strip()
+    if status_ == "restored" and len(reason) < prospects.MIN_RESTORE_REASON:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Motif obligatoire pour rétablir le consentement : indiquez ce qui le justifie",
+        )
     doc = await conversation_service.resolve_opt_out_review(db, conversation_id, status_, user.id)
     if status_ == "restored":
         await prospects.grant_consent(
-            session, int(doc["prospect_id"]), "verification_opposition", doc.get("channel")
+            session,
+            int(doc["prospect_id"]),
+            "verification_opposition",
+            doc.get("channel"),
+            reason=reason,
+            actor_id=user.id,
         )
     return {"status": status_}

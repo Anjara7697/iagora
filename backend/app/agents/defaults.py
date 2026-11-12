@@ -51,7 +51,9 @@ class UnconfiguredCalendar:
 
 
 class EmptyKnowledgeBase:
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
         return []
 
 

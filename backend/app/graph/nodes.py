@@ -213,7 +213,10 @@ class WorkflowNodes:
         q = state.get("qualification")
 
         query = text if text.strip() else (ctx.campaign_name or "")
-        passages: list[Passage] = await self.deps.knowledge.search(query, state.get("target_code"))
+        # Les documents fictifs ne servent qu'aux prospects fictifs, quel que soit l'environnement.
+        passages: list[Passage] = await self.deps.knowledge.search(
+            query, state.get("target_code"), include_demo=ctx.is_demo
+        )
         asks_catalogue = q is not None and q.asks_catalogue
         if q is not None and q.intent == "question" and not passages and not asks_catalogue:
             # F-20 / NF-10 : question hors base de connaissances -> on ne devine pas.
@@ -355,15 +358,22 @@ class WorkflowNodes:
         ctx = state["ctx"]
         slots = state["slots"]
         lines = "\n".join(f"{i}. {prompts.format_slot(s)}" for i, s in enumerate(slots, start=1))
+        zone = prompts.zone_label(slots[0].timezone) if slots else ""
         text = (
-            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles pour échanger avec un "
-            f"conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui vous "
-            "convient."
+            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles ({zone}) pour échanger avec "
+            f"un conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui "
+            "vous convient."
         )
         metadata = {
             "mode": "meeting_proposal",
             "proposed_slots": [
-                {"id": s.id, "start": s.start.isoformat(), "end": s.end.isoformat()} for s in slots
+                {
+                    "id": s.id,
+                    "start": s.start.isoformat(),
+                    "end": s.end.isoformat(),
+                    "timezone": s.timezone,
+                }
+                for s in slots
             ],
         }
         return {
@@ -394,7 +404,10 @@ class WorkflowNodes:
         appointment_id = await self.deps.gateway.create_appointment(
             ctx.prospect_id, ctx.advisor_id, meeting
         )
-        text = f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)}."
+        text = (
+            f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)} "
+            f"({prompts.zone_label(slot.timezone)})."
+        )
         if meeting.meeting_url:
             text += f"\nLien de connexion : {meeting.meeting_url}"
         return {

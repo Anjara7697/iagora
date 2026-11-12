@@ -97,11 +97,34 @@ async def test_two_simultaneous_decisions_on_a_draft_give_one_winner(client, ass
     assert sorted([a.status_code, b.status_code]) == [200, 409]
 
 
-async def test_only_an_admin_can_lift_an_opt_out(client, make_client, env):  # noqa: F811
+async def test_only_an_admin_can_lift_an_opt_out(
+    client,
+    make_client,
+    env,
+    session_factory,  # noqa: F811
+):
     pid, mid, cid = await lead(client, text=None)
     await client.post(f"{API}/prospects/{pid}/opt-out", json={"source": "test"})
     advisor = await make_client(UserRole.ADVISOR)
     await entrust(client, advisor, pid)  # décision D-23
     body = {"source": "appel téléphonique"}
     assert (await advisor.post(f"{API}/prospects/{pid}/consent", json=body)).status_code == 403
-    assert (await client.post(f"{API}/prospects/{pid}/consent", json=body)).status_code == 200
+    # Décision D-20 : sans motif (ou trop court), la désinscription n'est pas levée.
+    for reason in (None, "ok"):
+        r = await client.post(f"{API}/prospects/{pid}/consent", json={**body, "reason": reason})
+        assert r.status_code == 422 and "Motif obligatoire" in r.json()["detail"]
+    reason = "Email du 12/11 : il redemande les dates de rentrée."
+    ok = await client.post(f"{API}/prospects/{pid}/consent", json={**body, "reason": reason})
+    assert ok.status_code == 200 and ok.json()["consent_status"] == "granted"
+    from app.models import ConsentEvent
+    from sqlalchemy import select
+
+    async with session_factory() as s:
+        event = (
+            await s.scalars(
+                select(ConsentEvent)
+                .where(ConsentEvent.prospect_id == pid)
+                .order_by(ConsentEvent.id.desc())
+            )
+        ).first()
+    assert event.reason == reason and event.actor_user_id is not None

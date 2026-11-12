@@ -2,8 +2,9 @@
 
 Sans `--apply`, elle ne fait que dénombrer (numéros de fiche et dernière activité, jamais de nom ni
 d'adresse). Avec `--apply`, chaque prospect inactif est effacé comme par l'action de la console.
-Exécutable en production : c'est un outil d'exploitation, pas de recette. La durée est une décision
-de DATUM (voir docs/conformite-rgpd.md) : aucune purge ne se lance automatiquement.
+Exécutable en production : c'est un outil d'exploitation, pas de recette. Durée retenue : 3 ans
+(décision D-17, à valider par le DPO), planifiée chaque semaine sur le serveur
+(docs/effacement-rgpd.md).
 """
 
 from sqlalchemy import select

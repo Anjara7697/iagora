@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from app.config import get_settings
 from app.core.agent_mode import DEFAULT_MODE, AgentMode
 
 COLLECTION = "settings"
@@ -35,7 +36,14 @@ async def get_setting(db: Any) -> AgentSetting:
         mode = AgentMode(doc["value"])
     except ValueError:  # valeur inconnue : on retombe sur le mode prudent
         mode = DEFAULT_MODE
+    if mode is AgentMode.AUTO and not auto_mode_allowed():
+        mode = AgentMode.ASSISTED  # réglage antérieur au passage en production : on reste prudent
     return AgentSetting(mode, doc.get("updated_by"), doc.get("updated_at"))
+
+
+def auto_mode_allowed() -> bool:
+    """Mode automatique refusé en production pendant le pilote (décision D-16)."""
+    return get_settings().environment != "production"
 
 
 async def get_mode(db: Any) -> AgentMode:
