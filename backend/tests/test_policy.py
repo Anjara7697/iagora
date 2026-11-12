@@ -293,6 +293,18 @@ def test_slot_formatting_uses_paris_time():
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"
 
 
+def test_slot_formatting_follows_the_configured_timezone():
+    """Décision D-21 : le fuseau des Paramètres s'applique et il est nommé au prospect."""
+    from dataclasses import replace
+
+    from app.graph.prompts import zone_label
+
+    slot = replace(make_slots(1)[0], timezone="America/Martinique")  # UTC-4
+    assert format_slot(slot) == "lundi 1 mars à 9h00"
+    assert zone_label("Europe/Paris") == "heure de Paris"
+    assert zone_label("America/Port_of_Spain") == "heure de Port of Spain"
+
+
 # --- Priorité de la demande de rendez-vous (écart relevé en recette avec le vrai modèle) ---
 
 

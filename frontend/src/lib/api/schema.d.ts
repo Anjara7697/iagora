@@ -116,8 +116,8 @@ export interface paths {
          * List Appointments
          * @description À venir inclut les rendez-vous en cours. Le statut enregistré reste inchangé.
          *
-         *     Tous les rôles authentifiés peuvent consulter, comme pour les prospects.
-         *     advisor_id est un filtre de consultation, pas une restriction d'accès.
+         *     Un conseiller ne voit que les rendez-vous des prospects de son périmètre (décision D-23) ;
+         *     advisor_id est un filtre de consultation.
          */
         get: operations["list_appointments_api_v1_appointments_get"];
         put?: never;
@@ -738,7 +738,7 @@ export interface paths {
         };
         /**
          * Dashboard Summary
-         * @description Synthèse de l'écran « Aujourd'hui » (prospects fictifs exclus).
+         * @description Synthèse de l'écran « Aujourd'hui » (prospects fictifs exclus ; périmètre du conseiller).
          */
         get: operations["dashboard_summary_api_v1_dashboard_summary_get"];
         put?: never;
@@ -2363,6 +2363,11 @@ export interface components {
         ConsentRequest: {
             /** Channel */
             channel?: string | null;
+            /**
+             * Reason
+             * @description Obligatoire pour lever une désinscription (D-20)
+             */
+            reason?: string | null;
             /** Source */
             source: string;
         };
@@ -3382,6 +3387,12 @@ export interface components {
         };
         /** MetaSimulation */
         MetaSimulation: {
+            /**
+             * Consent
+             * @description Case de consentement cochée dans le formulaire (D-26)
+             * @default true
+             */
+            consent: boolean;
             /** Email */
             email: string;
             /**
@@ -3459,6 +3470,11 @@ export interface components {
              * @enum {string}
              */
             decision: "confirm" | "restore";
+            /**
+             * Reason
+             * @description Obligatoire pour rétablir le consentement (D-20)
+             */
+            reason?: string | null;
         };
         /** Page[AdvisorRead] */
         Page_AdvisorRead_: {

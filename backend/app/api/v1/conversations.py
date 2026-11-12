@@ -6,7 +6,10 @@ from app.agents import auto
 from app.api.dependencies import (
     ANY_ROLE,
     CAN_WRITE,
+    VISIBLE_CONVERSATION,
+    VISIBLE_PROSPECT,
     CalendarDep,
+    CurrentScope,
     CurrentUser,
     DbSession,
     KnowledgeDep,
@@ -30,6 +33,7 @@ from app.schemas.conversation import (
 )
 from app.services import agent_events, application_review, drafts, follow_ups, inbox
 from app.services import conversations as service
+from app.services import scope as scope_service
 
 router = APIRouter(tags=["conversations"], dependencies=[ANY_ROLE])
 
@@ -76,9 +80,11 @@ async def create_conversation(
     calendar: CalendarDep,
     knowledge: KnowledgeDep,
     user: CurrentUser,
+    scope: CurrentScope,
 ) -> ConversationResult:
     """Ouvre une conversation (201), ou renvoie la conversation active existante (200).
     Si elle s'ouvre sur un message du prospect, l'agent prépare sa réponse."""
+    await scope_service.ensure_visible(session, scope, payload.prospect_id)
     if payload.message is not None:
         payload.message.metadata = {
             k: v for k, v in payload.message.metadata.items() if k not in service.RESERVED_METADATA
@@ -103,6 +109,7 @@ async def create_conversation(
 async def list_conversations(
     session: DbSession,
     db: MongoDb,
+    scope: CurrentScope,
     status_: Annotated[ConversationStatus | None, Query(alias="status")] = None,
     channel: str | None = None,
     q: Annotated[str | None, Query(description="Nom ou email du prospect")] = None,
@@ -115,17 +122,25 @@ async def list_conversations(
     `?status=handed_off` : file des transferts (F-20)."""
     items, total = await inbox.list_inbox(
         session, db, status=status_, channel=channel, q=q, advisor_id=advisor_id,
-        unassigned=unassigned, limit=limit, offset=offset,
+        unassigned=unassigned, limit=limit, offset=offset, scope=scope,
     )  # fmt: skip
     return Page[ConversationSummary](items=items, total=total, limit=limit, offset=offset)
 
 
-@router.get("/conversations/{conversation_id}", response_model=ConversationRead)
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationRead,
+    dependencies=[VISIBLE_CONVERSATION],
+)
 async def get_conversation(conversation_id: str, db: MongoDb) -> ConversationRead:
     return await service.get_conversation(db, conversation_id)
 
 
-@router.get("/conversations/{conversation_id}/summary", response_model=ConversationSummary)
+@router.get(
+    "/conversations/{conversation_id}/summary",
+    response_model=ConversationSummary,
+    dependencies=[VISIBLE_CONVERSATION],
+)
 async def get_conversation_summary(
     conversation_id: str, session: DbSession, db: MongoDb
 ) -> ConversationSummary:
@@ -139,7 +154,7 @@ async def get_conversation_summary(
 @router.patch(
     "/conversations/{conversation_id}",
     response_model=ConversationRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def update_conversation(
     conversation_id: str, payload: ConversationUpdate, session: DbSession, db: MongoDb
@@ -156,7 +171,7 @@ async def update_conversation(
 @router.post(
     "/conversations/{conversation_id}/resolve-application",
     response_model=ConversationRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def resolve_application(
     conversation_id: str,
@@ -174,7 +189,7 @@ async def resolve_application(
 @router.post(
     "/conversations/{conversation_id}/confirm-enrollment-email",
     response_model=ConversationRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def confirm_enrollment_email(
     conversation_id: str,
@@ -199,7 +214,7 @@ async def confirm_enrollment_email(
     "/conversations/{conversation_id}/messages",
     response_model=MessageResult,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def add_message(
     conversation_id: str,
@@ -235,7 +250,11 @@ async def add_message(
     return MessageResult(conversation_id=conversation_id, message=message, created=created)
 
 
-@router.get("/prospects/{prospect_id}/conversation", response_model=ConversationRead)
+@router.get(
+    "/prospects/{prospect_id}/conversation",
+    response_model=ConversationRead,
+    dependencies=[VISIBLE_PROSPECT],
+)
 async def get_prospect_conversation(
     prospect_id: int, session: DbSession, db: MongoDb, channel: str | None = None
 ) -> ConversationRead:

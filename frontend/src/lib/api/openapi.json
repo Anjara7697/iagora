@@ -1418,6 +1418,19 @@
             ],
             "title": "Channel"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatoire pour lever une désinscription (D-20)",
+            "title": "Reason"
+          },
           "source": {
             "maxLength": 100,
             "title": "Source",
@@ -4021,6 +4034,12 @@
       },
       "MetaSimulation": {
         "properties": {
+          "consent": {
+            "default": true,
+            "description": "Case de consentement cochée dans le formulaire (D-26)",
+            "title": "Consent",
+            "type": "boolean"
+          },
           "email": {
             "maxLength": 255,
             "pattern": "^[^@\\s]+@demo\\.example\\.com$",
@@ -4242,6 +4261,19 @@
             ],
             "title": "Decision",
             "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatoire pour rétablir le consentement (D-20)",
+            "title": "Reason"
           }
         },
         "required": [
@@ -7454,7 +7486,7 @@
     },
     "/api/v1/appointments": {
       "get": {
-        "description": "À venir inclut les rendez-vous en cours. Le statut enregistré reste inchangé.\n\nTous les rôles authentifiés peuvent consulter, comme pour les prospects.\nadvisor_id est un filtre de consultation, pas une restriction d'accès.",
+        "description": "À venir inclut les rendez-vous en cours. Le statut enregistré reste inchangé.\n\nUn conseiller ne voit que les rendez-vous des prospects de son périmètre (décision D-23) ;\nadvisor_id est un filtre de consultation.",
         "operationId": "list_appointments_api_v1_appointments_get",
         "parameters": [
           {
@@ -9537,7 +9569,7 @@
     },
     "/api/v1/dashboard/summary": {
       "get": {
-        "description": "Synthèse de l'écran « Aujourd'hui » (prospects fictifs exclus).",
+        "description": "Synthèse de l'écran « Aujourd'hui » (prospects fictifs exclus ; périmètre du conseiller).",
         "operationId": "dashboard_summary_api_v1_dashboard_summary_get",
         "responses": {
           "200": {

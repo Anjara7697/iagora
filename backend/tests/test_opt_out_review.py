@@ -4,6 +4,8 @@ import pytest
 from app.graph import policy
 from app.models.enums import UserRole
 
+from .scope_helpers import entrust
+
 API = "/api/v1"
 AMBIGUOUS = "Comment me désinscrire de mon école actuelle pour m'inscrire chez vous ?"
 
@@ -65,12 +67,19 @@ async def test_a_clear_stop_is_not_sent_for_review(client):
 async def test_an_advisor_confirms_but_only_an_admin_restores_consent(client, make_client):
     pid, cid = await _message(client, AMBIGUOUS, "doute-2")
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust(client, advisor, pid)  # décision D-23
     refused = await advisor.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "restore"}
     )
     assert refused.status_code == 403
-    restored = await client.post(
+    # Décision D-20 : rétablir exige un motif écrit.
+    no_reason = await client.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "restore"}
+    )
+    assert no_reason.status_code == 422 and "Motif obligatoire" in no_reason.json()["detail"]
+    restored = await client.post(
+        f"{API}/conversations/{cid}/opt-out-review",
+        json={"decision": "restore", "reason": "Il demandait seulement à changer d'école cible."},
     )
     assert restored.json() == {"status": "restored"}
     assert (await client.get(f"{API}/prospects/{pid}")).json()["consent_status"] == "granted"
@@ -84,6 +93,7 @@ async def test_an_advisor_confirms_but_only_an_admin_restores_consent(client, ma
 async def test_confirming_keeps_the_opt_out(client, make_client):
     pid, cid = await _message(client, AMBIGUOUS, "doute-3")
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust(client, advisor, pid)  # décision D-23
     r = await advisor.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "confirm"}
     )

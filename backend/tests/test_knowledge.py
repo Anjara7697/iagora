@@ -185,8 +185,12 @@ async def test_demo_documents_are_never_served_when_excluded(session_factory):
     async with session_factory() as s:
         await knowledge.ingest_document(s, emb, "demo", GENERAL, is_demo=True)
     query = "conseiller visioconférence candidats"
-    assert await make_kb(session_factory, include_demo=True).search(query, None)
-    assert await make_kb(session_factory, include_demo=False).search(query, None) == []
+    hors_production = make_kb(session_factory, include_demo=True)
+    # AUDIT-AI-002 : hors production, seuls les prospects fictifs reçoivent les documents fictifs.
+    assert await hors_production.search(query, None, include_demo=True)
+    assert await hors_production.search(query, None) == []  # vrai prospect, même sur dev
+    production = make_kb(session_factory, include_demo=False)
+    assert await production.search(query, None, include_demo=True) == []  # jamais en production
 
 
 async def test_vectors_of_another_embedding_model_are_ignored(loaded):

@@ -35,8 +35,11 @@ function Prospects() {
     q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
     levelFilter, channelFilter, consentFilter, mine, sourceFilter, view,
   } = state;
-  const pending = useApi<Page<Prospect>>("/prospects?pending_campaign=true&limit=1");
+  // File « À attribuer » : réservée à l'administrateur (et visible de l'observateur) ; un conseiller
+  // ne voit que les prospects de ses campagnes (décision D-23).
   const user = useCurrentUser();
+  const seesPending = !!user && user.role !== "ADVISOR";
+  const pending = useApi<Page<Prospect>>(seesPending ? "/prospects?pending_campaign=true&limit=1" : null);
   const canWrite = !!user && user.role !== "VIEWER";
   const [exportError, setExportError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -146,13 +149,15 @@ function Prospects() {
               Mes prospects
             </FilterChip>
           )}
-          <FilterChip
-            className="rounded-lg"
-            pressed={pendingCampaign}
-            onClick={() => update({ pendingCampaign: !pendingCampaign, campaign: "", sourceFilter: "", stage: "" })}
-          >
-            À attribuer{pending.data ? ` (${pending.data.total})` : ""}
-          </FilterChip>
+          {seesPending && (
+            <FilterChip
+              className="rounded-lg"
+              pressed={pendingCampaign}
+              onClick={() => update({ pendingCampaign: !pendingCampaign, campaign: "", sourceFilter: "", stage: "" })}
+            >
+              À attribuer{pending.data ? ` (${pending.data.total})` : ""}
+            </FilterChip>
+          )}
           <Btn variant="secondary" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
             <SlidersHorizontal className="size-4" aria-hidden="true" />
             Filtres

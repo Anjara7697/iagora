@@ -341,7 +341,7 @@ function MemberForm({
                     </Btn>
                   }
                   title={`Désactiver ${member.username} ?`}
-                  description="Il ne pourra plus se connecter ni utiliser la console. Son historique est conservé et vous pourrez le réactiver."
+                  description="Il ne pourra plus se connecter ni utiliser la console. Les rendez-vous de ses prospects iront au responsable de leur campagne (sinon à l’agenda par défaut, sinon un conseiller est prévenu). Son historique est conservé et vous pourrez le réactiver."
                   confirmLabel="Désactiver"
                   onConfirm={() => void setActive(false)}
                 />

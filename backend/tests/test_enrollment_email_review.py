@@ -4,6 +4,8 @@ from app.models import Campaign, CampaignProspect, CampaignSource, Source
 from app.models.enums import ConversionStage, UserRole
 from app.services import conversations, todo
 
+from .scope_helpers import entrust_membership
+
 API = "/api/v1"
 
 
@@ -57,6 +59,7 @@ async def test_advisor_confirms_detected_enrollment_and_clears_task(
     }
     assert (await viewer.post(endpoint, json=payload)).status_code == 403
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust_membership(client, advisor, membership_id)  # décision D-23
     response = await advisor.post(endpoint, json=payload)
     assert response.status_code == 200
     assert response.json()["status"] == "open"

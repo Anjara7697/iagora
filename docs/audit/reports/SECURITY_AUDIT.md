@@ -153,6 +153,7 @@ flowchart LR
 - Complexité : S
 
 ### AUDIT-SEC-006 — Pas de cloisonnement des données par campagne ou conseiller
+- Statut : **traité le 12/11/2026** (décision D-23) : cloisonnement par campagne appliqué côté serveur, voir `docs/campaign-ownership.md`.
 - Catégorie : risque, décision métier
 - Criticité : **P2**
 - Confiance : Confirmé

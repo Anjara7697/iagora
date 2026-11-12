@@ -72,6 +72,7 @@ class MetaSimulation(BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@demo\.example\.com$", max_length=255)
     phone: str | None = Field(None, max_length=50)
     message: str | None = Field(None, max_length=5000)
+    consent: bool = Field(True, description="Case de consentement cochée dans le formulaire (D-26)")
 
 
 class MetaSimulationResult(BaseModel):

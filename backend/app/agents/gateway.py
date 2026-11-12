@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import false, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.demo import is_demo_email
 from app.graph.ports import (
     BookedMeeting,
     HandoffSheet,
@@ -67,6 +68,7 @@ def _pending_slots(messages: Sequence[dict[str, Any]]) -> list[Slot]:
                     id=p["id"],
                     start=datetime.fromisoformat(p["start"]),
                     end=datetime.fromisoformat(p["end"]),
+                    timezone=p.get("timezone", "Europe/Paris"),
                 )
                 for p in proposed
             ]
@@ -93,7 +95,9 @@ class DbGateway:
         # Même sélection que la boîte de réception et la file À traiter.
         row = (
             await session.execute(
-                select(CampaignProspect, Campaign.name, Source.name)
+                select(
+                    CampaignProspect, Campaign.name, Source.name, Campaign.responsible_advisor_id
+                )
                 .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
                 .join(Campaign, Campaign.id == CampaignSource.campaign_id)
                 .join(Source, Source.id == CampaignSource.source_id)
@@ -110,10 +114,17 @@ class DbGateway:
         advisor_id = membership.assigned_advisor_id if membership else None
         advisor = await session.get(User, advisor_id) if advisor_id is not None else None
         if advisor is not None and not _can_hold_meetings(advisor):
-            # Compte désactivé ou plus conseiller : jamais de rendez-vous dans son agenda ; l'agenda
-            # par défaut prend le relais, sinon la demande est transférée (AUDIT-BIZ-002).
+            # Compte désactivé ou plus conseiller : jamais de rendez-vous dans son agenda. Le
+            # responsable de la campagne prend le relais, sinon l'agenda par défaut, sinon la
+            # demande est transférée (AUDIT-BIZ-002, décision D-22).
             logger.warning("Conseiller %s inactif : rendez-vous sans lui", advisor.id)
             advisor_id, advisor = None, None
+            responsible_id = row[3] if row else None
+            responsible = (
+                await session.get(User, responsible_id) if responsible_id is not None else None
+            )
+            if responsible is not None and _can_hold_meetings(responsible):
+                advisor_id, advisor = responsible.id, responsible
         messages = drafts.live_messages(doc.get("messages", []))
         return ProspectContext(
             prospect_id=prospect_id,
@@ -134,6 +145,7 @@ class DbGateway:
             interest_level=scoring.level_for(membership.total_score).value if membership else None,
             advisor_id=advisor_id,
             advisor_email=advisor.email if advisor else None,
+            is_demo=is_demo_email(prospect.email),
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),
             history=[

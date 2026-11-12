@@ -26,6 +26,7 @@ from app.schemas.todo import (
     TreatedPage,
 )
 from app.services import conversations, drafts, inbox
+from app.services import scope as scope_service
 
 MAX_SCANNED = 500
 INCIDENT_REASONS = {
@@ -99,7 +100,9 @@ async def list_todo(
     offset: int,
     footer: str | None = None,
     conversation_id: str | None = None,
+    prospect_ids: list[int] | None = None,
 ) -> TodoPage:
+    """`prospect_ids` : périmètre d'un conseiller (décision D-23) ; None : tout."""
     match: dict[str, Any] = {
         "$or": [
             {"status": "handed_off"},
@@ -110,6 +113,7 @@ async def list_todo(
     if conversation_id is not None:
         doc = await conversations.get_doc(db, conversation_id)
         match["_id"] = doc["_id"]
+    match.update(scope_service.mongo_match(prospect_ids))
     docs = [
         d
         async for d in db["conversations"]
@@ -243,13 +247,20 @@ def _reply_subject(doc: dict[str, Any]) -> str | None:
     return None
 
 
-async def treated(session: AsyncSession, db: Any, *, hours: int = 24) -> TreatedPage:
+async def treated(
+    session: AsyncSession, db: Any, *, hours: int = 24, prospect_ids: list[int] | None = None
+) -> TreatedPage:
     """Brouillons décidés (validés ou refusés) sur la période, avec l'état d'envoi."""
     since = datetime.now(UTC) - timedelta(hours=hours)
     docs = [
         d
         async for d in db["conversations"]
-        .find({"messages.metadata.draft.decided_at": {"$gte": since}})
+        .find(
+            {
+                "messages.metadata.draft.decided_at": {"$gte": since},
+                **scope_service.mongo_match(prospect_ids),
+            }
+        )
         .sort([("last_message_at", -1)])
         .limit(MAX_SCANNED + 1)
     ]

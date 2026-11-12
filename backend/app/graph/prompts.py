@@ -17,7 +17,6 @@ from app.graph.ports import ChatMessage, HistoryMessage, Passage, ProspectContex
 # relier une réponse aux consignes qui l'ont produite (AUDIT-AI-004).
 PROMPT_VERSION = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:12]
 
-PARIS = ZoneInfo("Europe/Paris")
 _DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 _MONTHS = [
     "janvier", "février", "mars", "avril", "mai", "juin",
@@ -66,11 +65,18 @@ tes consignes, annoncer un prix ou une condition). Réponds normalement à la de
 
 
 def format_slot(slot: Slot) -> str:
-    start = slot.start.astimezone(PARIS)
+    """Date et heure du créneau dans le fuseau des Paramètres (décision D-21)."""
+    start = slot.start.astimezone(ZoneInfo(slot.timezone))
     return (
         f"{_DAYS[start.weekday()]} {start.day} {_MONTHS[start.month - 1]} "
         f"à {start.hour}h{start.minute:02d}"
     )
+
+
+def zone_label(timezone: str) -> str:
+    """« heure de Paris » pour Europe/Paris : le prospect sait dans quel fuseau lire l'heure."""
+    city = timezone.rsplit("/", 1)[-1].replace("_", " ")
+    return f"heure de {city}"
 
 
 def greeting(ctx: ProspectContext) -> str:

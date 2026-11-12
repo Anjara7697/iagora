@@ -125,6 +125,9 @@ class ProspectIngestResult(BaseModel):
 class ConsentRequest(BaseModel):
     source: str = Field(max_length=100)
     channel: str | None = None
+    reason: str | None = Field(
+        None, max_length=500, description="Obligatoire pour lever une désinscription (D-20)"
+    )
 
 
 class OptOutRequest(BaseModel):

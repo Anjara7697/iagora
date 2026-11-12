@@ -390,7 +390,9 @@ async def test_replaying_a_processed_stop_does_not_revoke_a_later_explicit_conse
         assert p.consent_status is ConsentStatus.OPTED_OUT
         from app.services.prospects import grant_consent
 
-        await grant_consent(s, p.id, "nouveau consentement explicite", "email")
+        await grant_consent(
+            s, p.id, "nouveau consentement explicite", "email", reason="Email du prospect du 12/11."
+        )
     async with mailbox.factory() as s:
         _, created = await conversations.add_message(s, mailbox.db, str(doc["_id"]), data)
         p = await s.get(Prospect, doc["prospect_id"])

@@ -2,6 +2,8 @@
 
 from app.models.enums import UserRole
 
+from .scope_helpers import entrust_membership
+
 API = "/api/v1"
 
 
@@ -51,6 +53,7 @@ async def test_confirmation_requires_application_and_records_evidence(client, ma
     viewer = await make_client(UserRole.VIEWER)
     assert (await viewer.post(f"{endpoint}/confirm-enrollment", json=proof)).status_code == 403
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust_membership(client, advisor, membership)  # décision D-23
     confirmed = await advisor.post(f"{endpoint}/confirm-enrollment", json=proof)
     assert confirmed.status_code == 200
     assert confirmed.json()["conversion_stage"] == "converted"
