@@ -57,6 +57,12 @@ class MetaConfigRead(BaseModel):
     received: int = 0
     processed: int = 0
     failed: int = 0
+    queued: int = 0  # en attente de traitement (repris automatiquement après 5 minutes)
+    replayable: int = 0  # en échec, encore rejouables
+
+
+class MetaReplayResult(BaseModel):
+    requeued: int
 
 
 class MetaSimulation(BaseModel):

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agents.auto import email_loop, follow_up_loop, reply_queue_loop
+from app.agents.auto import email_loop, follow_up_loop, meta_resume_loop, reply_queue_loop
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
@@ -38,6 +38,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # (console Intégrations ou `.env`), et prend les changements en compte sans redémarrage.
     if settings.environment != "test":
         workers.append(asyncio.create_task(email_loop(settings), name="email-worker"))
+        workers.append(asyncio.create_task(meta_resume_loop(settings), name="meta-resume"))
     yield
     for worker in workers:
         worker.cancel()

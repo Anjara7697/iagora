@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FlaskConical, Plus } from "lucide-react";
+import { FlaskConical, Plus, RotateCcw } from "lucide-react";
 import { API_URL, api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MetaFormMapping, MetaSettings } from "@/lib/types";
@@ -139,6 +139,25 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
       });
       setSimulatedId(result.prospect_id);
       setNotice("Lead fictif reçu et rattaché à la campagne.");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Échec");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function replay() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api<{ requeued: number }>("/integrations/meta/replay", { method: "POST" });
+      setNotice(
+        result.requeued
+          ? `${result.requeued} lead(s) en échec remis en traitement.`
+          : "Aucun lead en échec à rejouer.",
+      );
+      await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Échec");
     } finally {
@@ -300,6 +319,7 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
           { value: cfg.received, caption: "reçus" },
           { value: cfg.processed, caption: "traités" },
           { value: cfg.failed, caption: "en erreur" },
+          { value: cfg.queued ?? 0, caption: "en attente" },
         ]}
       />
       <p className="text-xs/[18px] text-muted">
@@ -311,6 +331,12 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
         <Btn variant="primary" onClick={save} disabled={busy}>
           Enregistrer Meta
         </Btn>
+        {(cfg.replayable ?? 0) > 0 && (
+          <Btn onClick={replay} disabled={busy}>
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Rejouer les leads en échec ({cfg.replayable})
+          </Btn>
+        )}
         <Btn onClick={simulate} disabled={busy || !cfg.mappings.some((m) => m.enabled)}>
           <FlaskConical className="size-4" aria-hidden="true" />
           Créer un lead fictif
