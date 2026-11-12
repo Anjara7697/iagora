@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.runtime import RUNS
+from app.database.collections import AGENT_RUNS as RUNS
 from app.models import Prospect
 from app.models.enums import SenderType
 from app.schemas.analytics import Analytics, Coverage, Delay, DraftOutcomes, RejectReason

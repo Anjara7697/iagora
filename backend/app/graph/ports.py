@@ -41,6 +41,9 @@ class CalendarError(Exception):
     """Agenda indisponible ou réservation impossible."""
 
 
+CALENDAR_NOT_CONFIGURED = "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+
+
 class CalendarNotConfiguredError(CalendarError):
     """Aucun agenda branché : ce n'est pas une panne, la demande de rendez-vous est transférée."""
 

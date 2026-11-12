@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     # (brouillon en mode assisté). `follow_up_*` : exécuteur des relances programmées.
     agent_auto_reply: bool = True
     follow_up_worker_enabled: bool = True
+    # Boucles de fond (réponses, relances, relève email, reprise Meta) dans ce processus.
+    # L'application tourne en un seul processus (--workers 1) ; un éventuel second processus
+    # ne servant que le HTTP doit avoir `false` (AUDIT-ARCH-002).
+    background_workers_enabled: bool = True
     follow_up_interval_seconds: int = Field(300, ge=5)
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
     # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).

@@ -9,20 +9,15 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import Any
+
+from app.core.agent_mode import DEFAULT_MODE, AgentMode
 
 COLLECTION = "settings"
 _KEY = "agent_mode"
 
 
-class AgentMode(StrEnum):
-    ASSISTED = "assisted"
-    AUTO = "auto"
-    MANUAL = "manual"
-
-
-DEFAULT_MODE = AgentMode.ASSISTED
+__all__ = ["DEFAULT_MODE", "AgentMode", "AgentSetting"]
 
 
 @dataclass(frozen=True)
