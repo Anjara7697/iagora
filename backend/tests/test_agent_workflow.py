@@ -25,6 +25,7 @@ from app.services.agent_settings import AgentMode
 from sqlalchemy import select
 
 from .fakes import FakeCalendar, FakeKnowledge, FakeLLM
+from .scope_helpers import entrust
 
 API = "/api/v1"
 INTRO = "Bonjour Jean, merci pour votre message."
@@ -553,6 +554,9 @@ async def test_roles(client, env, make_client):
     assert (await run(viewer, cid)).status_code == 403
     assert (await run(anon, cid)).status_code == 401
     advisor = await make_client(UserRole.ADVISOR)
+    # Décision D-23 : hors de son périmètre, le prospect est « introuvable » pour le conseiller.
+    assert (await run(advisor, cid)).status_code == 404
+    await entrust(client, advisor, pid)
     out = await run(advisor, cid)
     assert out.status_code == 201
     assert (await viewer.get(f"{API}/agent/runs/{out.json()['run_id']}")).status_code == 200

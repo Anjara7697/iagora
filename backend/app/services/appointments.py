@@ -10,6 +10,7 @@ from app.models import Appointment, Prospect, User
 from app.models.enums import AppointmentStatus
 from app.schemas.appointment import AppointmentData, AppointmentProspect, AppointmentRead
 from app.schemas.common import Page
+from app.services import scope as scope_service
 from app.services.demo import demo_filter
 
 
@@ -40,10 +41,14 @@ async def list_appointments(
     demo: Literal["all", "exclude"],
     limit: int,
     offset: int,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> Page[AppointmentRead]:
     """Période fondée sur la fin du rendez-vous, sans déduire son statut de sa date."""
     now = datetime.now(UTC)
-    filters = [Appointment.end_at >= now if when == "upcoming" else Appointment.end_at < now]
+    filters = [
+        Appointment.end_at >= now if when == "upcoming" else Appointment.end_at < now,
+        scope_service.condition(scope, Appointment.prospect_id),
+    ]
     if status is not None:
         filters.append(Appointment.status == status)
     if advisor_id is not None:

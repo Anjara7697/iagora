@@ -194,8 +194,12 @@ async def test_roles_on_conversations(make_client):
     viewer = await make_client(UserRole.VIEWER)
     advisor = await make_client(UserRole.ADVISOR)
     anon = await make_client(None)
-    pid = await _prospect(admin)
-    cid = (await _open(advisor, pid)).json()["conversation"]["id"]
+    pid = await _prospect(admin)  # sans campagne : file « À attribuer »
+    # Décision D-23 : hors de son périmètre, le conseiller ne voit ni n'ouvre la conversation.
+    assert (await _open(advisor, pid)).status_code == 404
+    cid = (await _open(admin, pid)).json()["conversation"]["id"]
+    assert (await advisor.get(f"{API}/conversations/{cid}")).status_code == 404
+    assert (await advisor.get(f"{API}/conversations")).json()["total"] == 0
     assert (await viewer.get(f"{API}/conversations/{cid}")).status_code == 200
     assert (await viewer.get(f"{API}/prospects/{pid}/conversation")).status_code == 200
     assert (

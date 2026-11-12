@@ -30,6 +30,7 @@ from app.models.enums import (
 )
 from app.schemas.prospect import ProspectIngest, ProspectUpdate
 from app.services import campaign_ownership, commercial_context, erasure, references
+from app.services import scope as scope_service
 from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
@@ -374,8 +375,9 @@ def _filtered(
     source_id: int | None = None,
     channel: str | None = None,
     pending_campaign: bool = False,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> Any:
-    stmt = select(Prospect)
+    stmt = select(Prospect).where(scope_service.condition(scope))
     if pending_campaign:
         stmt = stmt.where(~Prospect.id.in_(select(CampaignProspect.prospect_id)))
     if demo == "exclude":
@@ -441,6 +443,7 @@ async def list_prospects(
     source_id: int | None = None,
     channel: str | None = None,
     pending_campaign: bool = False,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> tuple[list[Prospect], int]:
     stmt = _filtered(
         q=q,
@@ -454,6 +457,7 @@ async def list_prospects(
         source_id=source_id,
         channel=channel,
         pending_campaign=pending_campaign,
+        scope=scope,
     )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))

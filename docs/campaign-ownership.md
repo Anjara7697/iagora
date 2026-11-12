@@ -38,6 +38,19 @@ la fiche campagne le signale. Les nouveaux prospects sans exception restent non
 affectés jusqu'à la correction ; les affectations existantes restent visibles et
 ne sont pas déplacées silencieusement.
 
+## Qui voit quoi (cloisonnement, décision D-23)
+
+| Rôle | Prospects visibles |
+|---|---|
+| Administrateur | Tous, dont la file « À attribuer » (prospects sans campagne) |
+| Observateur | Tous, en lecture seule |
+| Conseiller | Ceux des campagnes dont il est responsable, plus ceux qui lui sont affectés individuellement dans une autre campagne |
+
+Le filtre est appliqué par l'API (`app/services/scope.py`), jamais seulement par la console : listes et export des
+prospects, conversations, « À traiter » et décisions traitées, rendez-vous, Aujourd'hui, Tableau de bord, Analyses,
+activité de l'agent. Une fiche, une conversation ou un rattachement hors périmètre répond « introuvable » (404), sans
+révéler son existence. Les campagnes elles-mêmes (nom, sources, chiffres agrégés) restent visibles de tous.
+
 ## Visibilité et cohérence
 
 « Mes campagnes » filtre le responsable de campagne. « Mes prospects » et « Moi »

@@ -1,6 +1,8 @@
 import pytest
 from app.models.enums import UserRole
 
+from .scope_helpers import entrust_membership
+
 API = "/api/v1"
 
 
@@ -149,6 +151,7 @@ async def test_assignment_is_admin_only_and_keeps_history(client, make_client, m
     viewer = await make_client(UserRole.VIEWER)
     advisor_id = (await advisor.get(f"{API}/auth/me")).json()["id"]
     viewer_id = (await viewer.get(f"{API}/auth/me")).json()["id"]
+    await entrust_membership(client, advisor, membership)  # décision D-23
     await _score(client, membership, signal="message_received")
     await client.patch(_url(membership), json={"conversion_stage": "contacted", "reason": "ok"})
 
@@ -193,6 +196,8 @@ async def test_roles_on_pipeline_routes(client, make_client, membership):
     viewer = await make_client(UserRole.VIEWER)
     advisor = await make_client(UserRole.ADVISOR)
     anon = await make_client(None)
+    assert (await advisor.get(_url(membership))).status_code == 404  # hors périmètre (D-23)
+    await entrust_membership(client, advisor, membership)
     assert (await viewer.get(_url(membership))).status_code == 200
     assert (await viewer.get(_url(membership, "/history"))).status_code == 200
     stage = {"conversion_stage": "contacted", "reason": "x"}
