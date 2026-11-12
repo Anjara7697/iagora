@@ -48,3 +48,29 @@ async def test_request_under_the_limit_reaches_the_route(client):
     )
     assert r.status_code == 405  # la route existe en GET : la requête a bien été transmise
     _assert_security_headers(r)
+
+
+async def test_each_response_carries_a_request_id_reused_from_a_safe_header(client):
+    """AUDIT-API-002 : identifiant de requête dans la réponse (et dans les journaux)."""
+    generated = await client.get("/api/v1/health")
+    assert len(generated.headers["x-request-id"]) == 16
+    reused = await client.get("/api/v1/health", headers={"X-Request-ID": "proxy-abc.123"})
+    assert reused.headers["x-request-id"] == "proxy-abc.123"
+    unsafe = await client.get("/api/v1/health", headers={"X-Request-ID": "a b\nc"})
+    assert unsafe.headers["x-request-id"] != "a b\nc"
+
+
+def test_log_lines_carry_the_current_request_id():
+    import logging
+
+    from app.core.http_guard import REQUEST_ID
+    from app.core.logging import RequestIdFilter
+
+    record = logging.LogRecord("t", logging.INFO, __file__, 1, "message", None, None)
+    token = REQUEST_ID.set("req-1")
+    try:
+        assert RequestIdFilter().filter(record) and record.request_id == "req-1"
+    finally:
+        REQUEST_ID.reset(token)
+    RequestIdFilter().filter(record)
+    assert record.request_id == "-"  # hors requête : tâches de fond

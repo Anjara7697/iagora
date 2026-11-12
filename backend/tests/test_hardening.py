@@ -64,7 +64,8 @@ async def test_unexpected_errors_never_leak_details(client, monkeypatch):
         transport=transport, base_url="http://test", headers=client.headers
     ) as c:
         r = await c.get(f"{API}/demo")
-    assert r.status_code == 500 and r.json() == {"detail": "Erreur interne du serveur"}
+    assert r.status_code == 500 and r.json()["detail"] == "Erreur interne du serveur"
+    assert set(r.json()) == {"detail", "request_id"} and r.json()["request_id"]  # AUDIT-API-002
     assert "secret" not in r.text
 
 

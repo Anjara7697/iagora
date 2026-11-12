@@ -82,8 +82,16 @@ export function humanError(status: number, payload: unknown): string {
       .replace(UUID, "")
       .replace(/\s{2,}/g, " ")
       .trim();
-  if (status >= 500)
-    return "Le serveur a rencontré une erreur. Réessayez dans un instant ; si cela continue, prévenez l’administrateur.";
+  if (status >= 500) {
+    // Référence de la requête (journaux du serveur), à transmettre à l'administrateur.
+    const ref =
+      payload && typeof payload === "object" && "request_id" in payload
+        ? String((payload as { request_id: unknown }).request_id ?? "")
+        : "";
+    return `Le serveur a rencontré une erreur. Réessayez dans un instant ; si cela continue, prévenez l’administrateur${
+      /^[A-Za-z0-9._-]{1,64}$/.test(ref) ? ` (référence ${ref})` : ""
+    }.`;
+  }
   return GENERIC[status] ?? `Erreur ${status} : réessayez dans un instant.`;
 }
 
