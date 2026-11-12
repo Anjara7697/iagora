@@ -67,7 +67,7 @@ au §2). Complexité S / M / L / XL. Le risque de régression (Rég.) est estim�
 | OPS-003 | DevOps | P3 | DEVOPS §5 | — | 1 | S | nulle | condition `event == 'push'` |
 | DATA-001 | Données / RGPD | P2 → P1 | DATABASE §5 | décision « pays par défaut » | 2 | M | **moyen** (migration de données) | tests de normalisation et d'opposition ; rapport de collisions |
 | BIZ-004 | Métier | P3 | BUSINESS §5 | — | 2 | S | faible | test : signalement « À faire » |
-| API-004 | Backend | P3 | BACKEND §5 | décision « réactivation » | 2 | S | faible | test de rôle |
+| API-004 | Backend | ~~P3~~ retiré | BACKEND §5 | — | — | — | — | constat erroné : levée déjà réservée à l'administrateur |
 | BIZ-001 | Métier | P2 → P1* | BUSINESS §5 | — | 3 | S | faible | test : créneau passé → nouvelle proposition |
 | BIZ-002 | Métier | P2 → P1* | BUSINESS §5 | décision « conseiller qui part » | 3 | S | faible | test : conseiller inactif |
 | AI-006 | Intégrations | P3 | AI §5 | — | 3 | S | faible | tests avec agenda simulé |
@@ -150,7 +150,7 @@ typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
   - migration de données avec rapport de collisions, sans fusion automatique ;
   - vérification d'opposition sur l'ancien et le nouveau format ;
   - signalement des oppositions par mot-clé ambiguës (BIZ-004) ;
-  - réactivation du consentement selon la décision (API-004).
+  - réactivation du consentement : déjà réservée aux administrateurs (API-004 retiré, constat erroné).
 - Exclusions : fusion des fiches en double.
 - Acceptation : `06…`, `+336…` et `0033 6…` donnent la même fiche ; une personne opposée revenue sous un autre
   format reste opposée ; la migration se rejoue sans effet.
@@ -243,7 +243,7 @@ Les lots 5 et 8 à 11 peuvent suivre sans bloquer une démonstration en mode ass
 | Base légale des leads Meta | DPO, DATUM | Meta dans le pilote |
 | Recontact d'une personne effacée qui réécrit (fiche recréée en opposition) | DPO | confirmation de l'existant |
 | Visibilité des prospects entre conseillers | DATUM, responsable | SEC-006 |
-| Qui peut rétablir un consentement, avec quel justificatif | DPO, DATUM | API-004 |
+| Justificatif exigé pour rétablir un consentement (déjà réservé à l'administrateur) | DPO, DATUM | traçabilité |
 | Pays par défaut des numéros | DATUM | DATA-001 |
 | Fuseau horaire des prospects | DATUM | BIZ-003 |
 | Conseiller qui quitte l'équipe : réaffectation | DATUM | BIZ-002 |
