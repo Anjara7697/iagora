@@ -148,19 +148,56 @@ curl -s -o /dev/null -w "%{http_code}\n" https://iagora.neosolve.info/docs      
 
 Puis se connecter à la console, créer une campagne, vérifier **le mode assisté** (réglage par défaut).
 
-## 6. Sauvegardes
+## 6. Sauvegardes et alertes
 
-`deploy/backup.sh` sauvegarde PostgreSQL (`pg_dump`) et MongoDB (`mongodump`) dans `/var/backups/iagora`
-(14 jours, et au plus `BACKUP_KEEP_MAX` = 30 de chaque sorte, sauvegardes d'avant déploiement
-comprises). À planifier :
+### Sauvegarde quotidienne
+
+`deploy/backup.sh` sauvegarde PostgreSQL (`pg_dump`) et MongoDB (`mongodump`) dans `BACKUP_DIR`
+(`/var/backups/iagora` par défaut), puis en envoie une **copie chiffrée hors serveur** si `BACKUP_REMOTE` est
+renseigné. Conservation (décision D-19) : 7 jours sur le serveur (au plus `BACKUP_KEEP_MAX` = 30 de chaque
+sorte, sauvegardes d'avant déploiement comprises), 30 jours hors serveur. Le script est aussi lancé avant
+chaque mise à jour. À planifier :
 
 ```cron
 15 3 * * * /srv/iagora-prod/deploy/backup.sh >> /var/log/iagora-backup.log 2>&1
 ```
 
-Le script est aussi lancé avant chaque mise à jour. **Copier régulièrement les sauvegardes hors du
-serveur** (une sauvegarde sur la même machine ne protège pas d'une perte du disque).
-Test de restauration à faire **avant** d'avoir des données réelles :
+### Copie chiffrée vers un stockage S3 (D-13)
+
+À faire une fois sur le serveur, par le responsable (les clés ne passent jamais par Git ni par la console) :
+
+1. Créer un bucket S3 privé (Scaleway, OVH, Backblaze B2…) et une clé d'accès limitée à ce bucket.
+2. Installer `rclone` (`sudo apt install rclone`), puis `rclone config` :
+   - un remote `iagora-s3` de type `s3` (fournisseur, clé, région, bucket) ;
+   - un remote `iagora-crypt` de type `crypt` qui pointe vers `iagora-s3:<bucket>/iagora`, avec un mot de
+     passe et un sel générés (`openssl rand -hex 32`). **Les conserver dans le coffre de mots de passe de
+     DATUM** : sans eux, les copies sont illisibles.
+3. Dans `deploy/.env` : `BACKUP_REMOTE=iagora-crypt:prod` (et `iagora-crypt:dev` sur `dev`).
+
+Le script refuse d'envoyer vers un remote qui n'est pas de type `crypt` : aucune sauvegarde ne part en clair.
+
+### Alertes (D-14)
+
+- **Sauvegarde** : créer un contrôle sur [Healthchecks.io](https://healthchecks.io) (période 1 jour, grâce
+  2 heures, alerte par email au responsable), puis `HEALTHCHECK_URL=https://hc-ping.com/<uuid>` dans
+  `deploy/.env`. Le script signale le début, la réussite ou l'échec ; une sauvegarde absente déclenche aussi
+  l'alerte.
+- **API** : créer une sonde HTTP sur [UptimeRobot](https://uptimerobot.com) vers
+  `https://iagora.neosolve.info/api/v1/health/ready` (toutes les 5 minutes, alerte par email). Faire de même
+  pour `dev` si utile.
+
+### Test de restauration
+
+À faire **avant** d'avoir des données réelles, puis après chaque changement de la procédure. Il restaure dans
+des conteneurs jetables et ne touche pas aux bases en service :
+
+```bash
+deploy/restore-test.sh             # dernière sauvegarde locale
+deploy/restore-test.sh --remote    # dernière copie hors serveur (téléchargée et déchiffrée)
+```
+
+Il affiche le nombre de prospects, campagnes, comptes, conversations et décisions restaurés. Restauration
+réelle (DESTRUCTIF, après confirmation) :
 
 ```bash
 deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups/iagora/mongo-AAAAMMJJ-HHMMSS.archive.gz
@@ -183,6 +220,21 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 - La CI valide la construction des deux images et la syntaxe du compose ; elle ne déploie rien.
 - Vérifié sur `dev` : construction des images, migrations, démarrage, HTTPS derrière Caddy, déploiement
   automatique par GitHub Actions. Non vérifié : quotas Gemini en usage réel, restauration d'une sauvegarde
-  (à tester avant des données réelles), environnement de production.
+  (`deploy/restore-test.sh`, à lancer avant des données réelles), environnement de production.
+- Mode automatique : refusé par l'API en production (décision D-16) ; chaque réponse y est validée.
+
+## 9. Check-list avant le pilote en production (D-15)
+
+Le pilote avec de vrais prospects se fait sur une instance `prod` séparée de `dev`. Avant le premier prospect :
+
+- [ ] `ENVIRONMENT=production` dans `deploy/.env` (simulateur coupé, documents fictifs exclus, mode
+      automatique refusé) ;
+- [ ] clé Gemini **payante** et accord de sous-traitance inscrit au registre (D-25, à valider par le DPO) ;
+- [ ] durées de conservation validées par le DPO (D-17 à D-19) et purge planifiée ([effacement-rgpd.md](effacement-rgpd.md)) ;
+- [ ] copie chiffrée hors serveur configurée et `deploy/restore-test.sh --remote` réussi ;
+- [ ] alertes Healthchecks.io et UptimeRobot reçues lors d'un essai (couper un instant l'API, sauter une sauvegarde) ;
+- [ ] documents officiels importés dans la base de connaissances et `kb-eval` relancé ([rag.md](rag.md)) ;
+- [ ] `eval-agent --live` passé avec le vrai modèle ([agent-testing.md](agent-testing.md)) ;
+- [ ] boîte email définitive recettée ([recette-locale.md](recette-locale.md)).
 - Un déploiement reconstruit les images puis redémarre l'API pendant environ une minute (relève mail et
   relances reprennent ensuite sans perte) : éviter de fusionner pendant une démonstration.

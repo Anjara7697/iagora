@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     # L'application tourne en un seul processus (--workers 1) ; un éventuel second processus
     # ne servant que le HTTP doit avoir `false` (AUDIT-ARCH-002).
     background_workers_enabled: bool = True
+
+    # Conservation (décision D-18, à valider par le DPO) : traces de décision de l'agent et
+    # entrées terminées de la file de l'agent, supprimées par des index TTL MongoDB.
+    agent_runs_retention_days: int = Field(365, ge=30, le=3650)
+    agent_events_retention_days: int = Field(30, ge=1, le=365)
     follow_up_interval_seconds: int = Field(300, ge=5)
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
     # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).

@@ -139,6 +139,9 @@ class ProspectContext:
     email: str | None = None
     phone: str | None = None
     advisor_email: str | None = None  # agenda du conseiller attribué (rendez-vous)
+    # Prospect fictif (@demo.example.com) : seul à pouvoir recevoir des extraits des documents
+    # fictifs de démonstration (AUDIT-AI-002).
+    is_demo: bool = False
 
 
 @dataclass(frozen=True)
@@ -241,8 +244,10 @@ class KnowledgeBase(Protocol):
     """Base de connaissances validée, par programme (RAG, §9.4)."""
 
     async def search(
-        self, query: str, target_code: str | None, limit: int = 4
-    ) -> list[Passage]: ...
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
+        """`include_demo` : autoriser les documents fictifs (prospect fictif seulement)."""
+        ...
 
 
 @dataclass

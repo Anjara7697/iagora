@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import false, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.demo import is_demo_email
 from app.graph.ports import (
     BookedMeeting,
     HandoffSheet,
@@ -144,6 +145,7 @@ class DbGateway:
             interest_level=scoring.level_for(membership.total_score).value if membership else None,
             advisor_id=advisor_id,
             advisor_email=advisor.email if advisor else None,
+            is_demo=is_demo_email(prospect.email),
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),
             history=[
