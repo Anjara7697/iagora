@@ -324,3 +324,30 @@ def test_handoff_reasons_say_which_signal_triggered_them():
 )
 def test_mentions_meeting(text, expected):
     assert policy.mentions_meeting(text) is expected
+
+
+@pytest.mark.parametrize(
+    ("reply", "flagged"),
+    [
+        ("La formation dure deux ans.", ["deux ans"]),
+        ("Rendez-vous jeudi à 14h30.", ["14h30"]),
+        ("Formation éligible au CPF, accessible sans le bac.", ["eligible", "cpf", "sans le bac"]),
+        ("Admission bac+3 requise.", ["bac+3"]),
+        ("Le tarif est de 6 500 €.", ["6 500 €"]),
+    ],
+)
+def test_conditions_spelled_durations_and_hours_must_be_sourced(reply, flagged):
+    """AUDIT-AI-001 : le contrôle ne voyait que les chiffres."""
+    assert policy.ungrounded_claims(reply, []) == flagged
+
+
+def test_the_conversation_justifies_facts_never_prices_or_conditions():
+    said = ["J'ai un bac+3, c'est éligible au CPF ? Un ami m'a dit 2000 euros."]
+    assert (
+        policy.ungrounded_claims("Avec votre bac+3, c'est possible.", [], conversation=said) == []
+    )
+    assert policy.ungrounded_claims(
+        "Oui, c'est éligible au CPF pour 2000 euros.", [], conversation=said
+    ) == ["2000 euros", "eligible", "cpf"]
+    kb = ["Le Master eBIHAR est éligible au CPF."]
+    assert policy.ungrounded_claims("Le Master est éligible au CPF.", kb) == []

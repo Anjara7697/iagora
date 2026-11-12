@@ -95,7 +95,7 @@ Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `
 
 | Risque | Parade | Exigence |
 |---|---|---|
-| Le modèle invente un prix, une durée, une date | Réponse **vérifiée par le code** : tout chiffre doit figurer dans les extraits ou la conversation ; un seul nouvel essai plus strict, sinon transfert | NF-10 |
+| Le modèle invente un prix, une condition (CPF, admission), une durée, une date | Réponse **vérifiée par le code** : prix et conditions doivent figurer dans les extraits ou le catalogue, durées et dates dans les extraits ou la conversation ; un seul nouvel essai plus strict, sinon transfert | NF-10 |
 | Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée | F-20, NF-10 |
 | Disponibilité inventée | Aucun créneau cité s'il ne vient pas de l'agenda ; agenda absent → transfert | NF-10, F-18 |
 | Prospect désinscrit | Détection sans modèle ; envoi sortant refusé par le service même si le workflow se trompait | S-03 |
@@ -138,6 +138,10 @@ POST /api/v1/agent/runs   {"conversation_id": "<id>"}      # ou {"prospect_id": 
 GET  /api/v1/agent/runs/{run_id}
 GET  /api/v1/prospects/{id}/agent-runs
 ```
+
+Chaque trace (`agent_runs`) garde aussi `prompt_version` (empreinte des consignes) et `llm_calls` : pour
+chaque appel au modèle, le modèle qui a vraiment répondu (le modèle de secours y figure sous son nom), le
+type d'appel, la durée, la réussite et, pour les rédactions, les jetons. Aucun contenu n'y est copié.
 
 Le message rédigé est **enregistré dans la conversation** (`delivery: not_sent`) mais pas encore expédié sur le canal :
 la livraison (email IONOS, Meta, LinkedIn) viendra avec les connecteurs.

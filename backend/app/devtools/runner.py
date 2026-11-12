@@ -334,8 +334,12 @@ async def run_scenario(
                     tr.checks.append(_check("modèle de langage joignable", False, cause))
                 # NF-10 : aucun chiffre non sourcé dans ce que le modèle a rédigé.
                 sources = [p.text for p in kb.passages] if isinstance(kb, FakeKnowledge) else []
-                sources += [turn.says or ""]
-                claims = [c for t in llm_written for c in policy.ungrounded_claims(t, sources)]
+                said = [turn.says or ""]
+                claims = [
+                    c
+                    for t in llm_written
+                    for c in policy.ungrounded_claims(t, sources, conversation=said)
+                ]
                 tr.checks.append(
                     _check("aucun chiffre inventé (NF-10)", not claims, f"non sourcés : {claims}")
                 )

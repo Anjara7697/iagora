@@ -311,7 +311,7 @@ class CaseResult:
 @contextmanager
 def _ablation(name: str | None) -> Iterator[None]:
     if name == "sans-garde-chiffres":
-        with mock.patch.object(policy, "ungrounded_claims", lambda reply, sources: []):
+        with mock.patch.object(policy, "ungrounded_claims", lambda reply, sources, **_: []):
             yield
     else:
         yield
@@ -385,11 +385,14 @@ async def run_case(
     result.llm_unavailable = run.handoff_reason == "llm_indisponible" or any(
         not c.ok for c in llm.calls
     )
-    # NF-10 : sources = extraits renvoyés, message du prospect, catalogue validé, campagne.
-    sources = [p.text for p in kb.returned] + [case.message or "", prompts.CATALOGUE]
-    sources.append(runner.SCENARIO_CAMPAIGN)
-    result.raw_claims = [_ungrounded_claims(r, sources) for r in llm.raw_replies]
-    result.sent_claims_by_message = [_ungrounded_claims(t, sources) for t in result.llm_written]
+    # NF-10 : sources validées = extraits renvoyés, catalogue, campagne ; le message du prospect ne
+    # justifie que les durées, dates et niveaux, jamais un prix ni une condition (AUDIT-AI-001).
+    sources = [p.text for p in kb.returned] + [prompts.CATALOGUE, runner.SCENARIO_CAMPAIGN]
+    said = [case.message or ""]
+    result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
+    result.sent_claims_by_message = [
+        _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
+    ]
     return result
 
 

@@ -316,25 +316,53 @@ def follow_up_delay(level: str | None, *, declined: bool = False) -> timedelta:
 
 # --- Exactitude (NF-10) : aucune information chiffrée non sourcée ---
 
-_CLAIM = re.compile(
-    r"\d[\d  .,]*\s?(?:€|euros?|eur\b|%|pour ?cent|mois|ans?\b|semaines?|jours?|heures?|h\b)"
+# Trois familles d'affirmations (AUDIT-AI-001). Les prix et les conditions d'admission ou de
+# financement ne peuvent venir que des sources validées (base de connaissances, catalogue) : un
+# prospect qui écrit « c'est éligible au CPF ? » ne rend pas l'affirmation vraie. Les durées, dates,
+# heures et niveaux d'études peuvent aussi venir de la conversation (le prospect parle de lui, ou un
+# créneau déjà proposé).
+_PRICE = re.compile(r"\d[\d  .,]*\s?(?:€|euros?|eur\b|%|pour ?cent)")
+_SPELLED = (
+    r"(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|quinze|seize|dix-huit|vingt"
+    r"|vingt-quatre|trente|quarante-huit)"
+)
+_FACT = re.compile(
+    r"\b\d{1,2}\s?[h:]\s?\d{2}\b"  # heure : 14h30, 14 h 30, 14:30
+    r"|\d[\d  .,]*\s?(?:mois|ans?\b|annees?\b|semaines?|jours?|heures?|h\b)"
+    r"|\b" + _SPELLED + r"\s(?:ans?|annees?|mois|semaines?|jours?|heures?)\b"
     r"|\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b"
     r"|\b\d{1,2}\s(?:janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre"
     r"|decembre)\b"
     r"|\b20\d{2}\b"
+    r"|\bbac\s?\+\s?\d\b"
+)
+# Liste à valider avec DATUM : termes qui engagent l'école sur l'admission ou le financement.
+_TERMS = re.compile(
+    r"\b(?:cpf|rncp|opco|france travail|pole emploi|gratuit(?:e|s|es)?|eligibles?|eligibilite"
+    r"|bourses?|diplome d'etat|reconnue? par l'etat|certifiante?s?|accredite(?:e|s|es)?"
+    r"|sans (?:le )?bac|frais d'inscription|frais de scolarite)\b"
 )
 
 
-def ungrounded_claims(reply: str, sources: list[str]) -> list[str]:
-    """Prix, durées, pourcentages ou dates de la réponse absents des sources fournies.
+def _compact(text: str) -> str:
+    return re.sub(r"\s+", "", text)
 
-    Les sources sont la base de connaissances, les messages déjà échangés et les créneaux
-    réels de l'agenda : tout chiffre avancé doit y figurer (NF-10).
+
+def ungrounded_claims(
+    reply: str, sources: list[str], *, conversation: list[str] | None = None
+) -> list[str]:
+    """Affirmations de la réponse absentes des sources (NF-10).
+
+    `sources` : base de connaissances, catalogue validé, créneaux réels, campagne. `conversation` :
+    messages déjà échangés, qui ne justifient que les durées, dates, heures et niveaux d'études,
+    jamais un prix ni une condition d'admission ou de financement.
     """
-    haystack = re.sub(r"\s+", "", normalize(" ".join(sources)))
+    validated = _compact(normalize(" ".join(sources)))
+    everything = validated + _compact(normalize(" ".join(conversation or [])))
+    text = normalize(reply)
     bad = []
-    for match in _CLAIM.finditer(normalize(reply)):
-        token = re.sub(r"\s+", "", match.group(0))
-        if token not in haystack:
-            bad.append(match.group(0).strip())
-    return bad
+    for pattern, haystack in ((_PRICE, validated), (_TERMS, validated), (_FACT, everything)):
+        for match in pattern.finditer(text):
+            if _compact(match.group(0)) not in haystack:
+                bad.append(match.group(0).strip())
+    return list(dict.fromkeys(bad))

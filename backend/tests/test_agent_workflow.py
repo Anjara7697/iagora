@@ -706,3 +706,14 @@ async def test_a_catalogue_question_is_answered_while_a_specific_question_is_not
     env.llm.qualification = Qualification(intent="question")  # précis : pas du catalogue
     out = (await run(client, cid)).json()
     assert out["handoff_reason"] == "question_hors_base"
+
+
+async def test_each_run_records_the_prompt_version_and_the_model_calls(client, env, mongo_db):
+    """AUDIT-AI-004 : relier une réponse aux consignes et aux appels qui l'ont produite."""
+    from app.graph import prompts
+
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    doc = await mongo_db["agent_runs"].find_one({"conversation_id": cid}, sort=[("started_at", -1)])
+    assert doc["prompt_version"] == prompts.PROMPT_VERSION and len(prompts.PROMPT_VERSION) == 12
+    assert isinstance(doc["llm_calls"], list)  # le faux modèle n'appelle aucun fournisseur
