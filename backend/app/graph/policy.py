@@ -7,7 +7,7 @@ seuils sont des valeurs de conception ajustables après validation métier.
 
 import re
 import unicodedata
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.graph.state import Action, Decision, Qualification, SalesAgentState
@@ -18,6 +18,9 @@ from app.models.enums import ConversionStage, ScoringSignal
 PROPOSE_MEETING_MIN_SCORE = 50  # score total à partir duquel on propose un rendez-vous (F-18)
 NURTURE_MAX_SCORE = 24  # en dessous : prospect froid, on entretient sans insister
 MIN_CONFIDENCE = 0.5  # en dessous : lecture du modèle trop incertaine, on transfère (F-20)
+# Délai minimal avant un créneau pour le réserver : un créneau passé, ou trop proche, est reproposé
+# (AUDIT-BIZ-001).
+SLOT_MIN_NOTICE = timedelta(minutes=15)
 
 # Informations de qualification attendues par cible (F-09) : peu de questions, jamais répétées.
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
@@ -36,6 +39,11 @@ FIELD_LABELS = {
     "availability": "ses disponibilités ou l'échéance visée",
     "company_need": "les profils ou compétences recherchés par l'entreprise",
 }
+
+
+def now() -> datetime:
+    """Heure courante (remplaçable dans les tests)."""
+    return datetime.now(UTC)
 
 
 def normalize(text: str) -> str:
@@ -206,6 +214,11 @@ def decide(state: SalesAgentState) -> Decision:
     if q is not None and q.intent == "slot_choice":
         slots = ctx.pending_slots
         if q.chosen_slot is not None and 1 <= q.chosen_slot <= len(slots):
+            start = slots[q.chosen_slot - 1].start
+            if (start if start.tzinfo else start.replace(tzinfo=UTC)) <= now() + SLOT_MIN_NOTICE:
+                return Decision(
+                    Action.PROPOSE_MEETING, "Créneau choisi déjà passé : nouvelle proposition"
+                )
             return Decision(Action.BOOK_MEETING, f"Le prospect a choisi le créneau {q.chosen_slot}")
         return Decision(Action.PROPOSE_MEETING, "Créneau choisi non reconnu : nouvelle proposition")
     if stage not in _ADVANCED_STAGES:
