@@ -42,6 +42,9 @@ from app.services.prospects import get_prospect
 
 logger = logging.getLogger(__name__)
 PARIS = ZoneInfo("Europe/Paris")
+MAX_FOLLOW_UP_ERRORS = 3  # erreurs techniques successives avant abandon d'une relance
+FOLLOW_UP_RETRY_DELAY = timedelta(minutes=10)  # multiplié par le nombre d'erreurs
+MAX_EVENT_ERRORS = 5  # erreurs successives avant abandon d'une entrée de la file de l'agent
 BATCH = 50
 
 SessionFactory = Callable[[], AsyncSession]
@@ -159,13 +162,35 @@ async def _cancel(session: AsyncSession, follow_up_id: int, note: str) -> None:
 
 
 async def _release(session: AsyncSession, follow_up_id: int) -> None:
-    """Panne technique : la relance n'a pas été envoyée, elle repasse à « programmée »."""
+    """La relance n'a pas été envoyée (parcours guidé) : elle repasse à « programmée »."""
     await session.execute(
         update(FollowUp)
         .where(FollowUp.id == follow_up_id, FollowUp.status == FollowUpStatus.EXECUTED)
         .values(status=FollowUpStatus.SCHEDULED, executed_at=None)
     )
     await session.commit()
+
+
+async def _retry_later(session: AsyncSession, follow_up_id: int, now: datetime) -> bool:
+    """Erreur technique : nouvel essai plus tard, au plus `MAX_FOLLOW_UP_ERRORS` fois.
+
+    Renvoie False quand le plafond est atteint : la relance est alors annulée, avec le motif,
+    au lieu d'être retentée à chaque passage (AUDIT-BIZ-005)."""
+    follow_up = await session.get(FollowUp, follow_up_id)
+    if follow_up is None or follow_up.status is not FollowUpStatus.EXECUTED:
+        return True
+    follow_up.attempts = (follow_up.attempts or 0) + 1
+    if follow_up.attempts >= MAX_FOLLOW_UP_ERRORS:
+        follow_up.status = FollowUpStatus.CANCELLED
+        note = f"{follow_up.attempts} erreurs techniques : relance abandonnée"
+        follow_up.reason = f"{follow_up.reason or 'Relance'} — annulée : {note}"[:1000]
+        await session.commit()
+        return False
+    follow_up.status = FollowUpStatus.SCHEDULED
+    follow_up.executed_at = None
+    follow_up.scheduled_at = now + FOLLOW_UP_RETRY_DELAY * follow_up.attempts
+    await session.commit()
+    return True
 
 
 async def _relances_since_last_reply(
@@ -275,8 +300,13 @@ async def run_due_follow_ups(
             except Exception:
                 logger.exception("Relance %s en erreur", follow_up_id)
                 await session.rollback()
-                await _release(session, follow_up_id)
-                summary.notes.append(f"relance {follow_up_id} : erreur technique (sera retentée)")
+                if await _retry_later(session, follow_up_id, now):
+                    summary.notes.append(
+                        f"relance {follow_up_id} : erreur technique (sera retentée)"
+                    )
+                else:
+                    summary.cancelled += 1
+                    summary.notes.append(f"relance {follow_up_id} : abandonnée après erreurs")
                 continue
             summary.executed += 1
     if summary.executed or summary.cancelled:
@@ -375,6 +405,24 @@ __all__ = [
 ]
 
 
+async def meta_resume_loop(settings: Settings) -> None:
+    """Reprend les leads Meta restés en attente après un arrêt pendant leur traitement."""
+    from app.database.clients import get_mongo_db
+    from app.database.session import get_sessionmaker
+    from app.services import meta_leads
+
+    while True:
+        try:
+            db = get_mongo_db()
+            if await lease.acquire(db, "meta-resume", 180):
+                await meta_leads.resume_stale(db, get_sessionmaker(), settings)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Reprise des leads Meta en erreur")
+        await asyncio.sleep(60)
+
+
 async def reply_queue_loop(settings: Settings) -> None:
     """Reprend les entrées enregistrées avant un redémarrage ou une panne temporaire."""
     from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
@@ -434,9 +482,23 @@ async def run_pending_replies(
             await db["agent_events"].update_one(
                 {"_id": event["_id"]}, {"$set": {"completed": True, "cancelled": True}}
             )
-        except Exception:
-            await db["agent_events"].update_one(
-                {"_id": event["_id"]},
-                {"$set": {"next_attempt_at": datetime.now(UTC) + timedelta(seconds=60)}},
-            )
-            logger.exception("Traitement d'une entrée en erreur")
+        except Exception as exc:
+            errors = int(event.get("errors", 0)) + 1
+            if errors >= MAX_EVENT_ERRORS:
+                # Abandon tracé : le message du prospect reste visible dans sa conversation, sans
+                # réponse de l'agent ; la file ne boucle plus dessus (AUDIT-BIZ-005).
+                update: dict[str, Any] = {
+                    "completed": True,
+                    "failed": True,
+                    "errors": errors,
+                    "last_error": type(exc).__name__,
+                }
+                logger.exception("Entrée %s abandonnée après %d erreurs", event["_id"], errors)
+            else:
+                update = {
+                    "errors": errors,
+                    "last_error": type(exc).__name__,
+                    "next_attempt_at": datetime.now(UTC) + timedelta(seconds=60 * errors),
+                }
+                logger.exception("Traitement d'une entrée en erreur")
+            await db["agent_events"].update_one({"_id": event["_id"]}, {"$set": update})

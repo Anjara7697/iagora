@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -30,3 +30,6 @@ class FollowUp(CreatedAtMixin, Base):
         server_default=FollowUpStatus.SCHEDULED.value,
     )
     reason: Mapped[str | None] = mapped_column(Text)
+    # Erreurs techniques successives (pas les annulations métier) : au-delà du plafond, la relance
+    # est annulée au lieu d'être retentée sans fin (AUDIT-BIZ-005).
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

@@ -447,3 +447,73 @@ async def test_prepared_reminder_is_blocked_before_smtp_after_conversion(
     )
     assert report.blocked == 1 and report.sent == 0
     assert transport.sent == []
+
+
+# --- Erreurs techniques répétées (AUDIT-BIZ-005) ---
+
+
+async def test_a_follow_up_failing_repeatedly_is_abandoned_not_retried_forever(
+    client,
+    env,
+    session_factory,
+    mongo_db,  # noqa: F811
+    monkeypatch,
+):
+    pid, _, _ = await silent_prospect(client, session_factory)
+
+    async def broken(*args, **kwargs):
+        raise RuntimeError("panne")
+
+    monkeypatch.setattr(auto, "run_agent", broken)
+    now = WEDNESDAY
+    for attempt in range(1, auto.MAX_FOLLOW_UP_ERRORS + 1):
+        summary = await execute(session_factory, mongo_db, env, now=now)
+        async with session_factory() as s:
+            follow_up = await s.scalar(select(FollowUp).where(FollowUp.prospect_id == pid))
+        assert follow_up.attempts == attempt
+        if attempt < auto.MAX_FOLLOW_UP_ERRORS:
+            assert follow_up.status is FollowUpStatus.SCHEDULED
+            # Nouvel essai reporté, de plus en plus tard : pas de boucle à chaque passage.
+            assert (
+                follow_up.scheduled_at.replace(tzinfo=UTC)
+                == now + auto.FOLLOW_UP_RETRY_DELAY * attempt
+            )
+            assert (await execute(session_factory, mongo_db, env, now=now)).executed == 0
+            now = follow_up.scheduled_at.replace(tzinfo=UTC)
+        else:
+            assert follow_up.status is FollowUpStatus.CANCELLED
+            assert "erreurs techniques" in follow_up.reason
+            assert summary.cancelled == 1
+
+
+async def test_a_queued_agent_event_failing_repeatedly_is_abandoned(mongo_db, monkeypatch):
+    calls = []
+
+    async def broken(conversation_id, **kwargs):
+        calls.append(conversation_id)
+        raise RuntimeError("panne")
+
+    monkeypatch.setattr(auto, "reply_to_message", broken)
+    await mongo_db["agent_events"].insert_one(
+        {
+            "_id": "evt-1",
+            "conversation_id": "c1",
+            "completed": False,
+            "next_attempt_at": datetime.now(UTC) - timedelta(seconds=1),
+        }
+    )
+    for _ in range(auto.MAX_EVENT_ERRORS):
+        await auto.run_pending_replies(
+            db=mongo_db, session_factory=None, llm=None, calendar=None, knowledge=None
+        )
+        await mongo_db["agent_events"].update_one(
+            {"_id": "evt-1", "completed": False},
+            {"$set": {"next_attempt_at": datetime.now(UTC) - timedelta(seconds=1)}},
+        )
+    event = await mongo_db["agent_events"].find_one({"_id": "evt-1"})
+    assert event["completed"] is True and event["failed"] is True
+    assert event["errors"] == auto.MAX_EVENT_ERRORS and event["last_error"] == "RuntimeError"
+    await auto.run_pending_replies(
+        db=mongo_db, session_factory=None, llm=None, calendar=None, knowledge=None
+    )
+    assert len(calls) == auto.MAX_EVENT_ERRORS
