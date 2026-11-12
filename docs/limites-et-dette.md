@@ -42,7 +42,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | Prio | Limite | Détail |
 |---|---|---|
 | P1 | Recette manuelle avec Gemini : STOP et « question inconnue » à confirmer | [recette-locale.md](recette-locale.md) |
-| P2 | Les tests navigateur utilisent une API simulée : ils ne prouvent pas l'intégration réelle | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) |
+| P3 | Les tests navigateur détaillés utilisent une API simulée ; un parcours contre le vrai backend (job CI `e2e-api`) et le contrat de types (`src/lib/api/contract.ts`) couvrent l'intégration réelle | [frontend/integration-prototype.md](frontend/integration-prototype.md) |
 | P2 | Le workflow n8n est testé hors ligne seulement, jamais sur le moteur n8n du serveur | [n8n/README.md](n8n/README.md) |
 | P3 | Pas de mesure suivie de la qualité des réponses (jeu de questions de référence avec le vrai modèle) | [agent-testing.md](agent-testing.md) |
 
