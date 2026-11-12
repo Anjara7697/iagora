@@ -60,7 +60,7 @@ docker compose up --build
 docker compose up -d postgres mongo redis      # bases uniquement
 cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.lock.txt   # versions figées, celles de la CI et de l'image
 uvicorn app.main:app --reload
 ```
 

@@ -47,7 +47,8 @@ chmod 600 deploy/.env
 Renseigner `deploy/.env` (chaque secret : `openssl rand -hex 32`) :
 `IAGORA_PROJECT`, `ENVIRONMENT`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `NEXT_PUBLIC_API_URL`,
 `NEXT_PUBLIC_ENABLE_SIMULATOR`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `GEMINI_API_KEY`,
-`IAGORA_API_PORT`, `IAGORA_WEB_PORT`. **Ce fichier ne va jamais dans Git.**
+`IAGORA_API_PORT`, `IAGORA_WEB_PORT`. **Ce fichier ne va jamais dans Git.** Sans `ENVIRONMENT`, l'API
+refuse de démarrer : indiquer `production`, ou `development` pour une instance d'essai.
 
 Premier démarrage :
 
@@ -57,7 +58,9 @@ deploy/deploy.sh dev          # branche à déployer (dev pour l'environnement d
 
 Le script : récupère le code (fast-forward uniquement), sauvegarde (sauf à la première installation,
 quand les bases n'existent pas encore), construit les images, applique les migrations (service
-`migrate`), démarre, puis attend `/api/v1/health/ready`. Sans droits sur `/var/backups`, renseigner
+`migrate`), démarre, puis attend `/api/v1/health/ready` et la page de connexion de la console. L'image
+installe les versions figées de `backend/requirements.lock.txt`, celles testées par la CI. Sans droits sur
+`/var/backups`, renseigner
 `BACKUP_DIR` dans `deploy/.env` (dossier de l'utilisateur de déploiement).
 
 ## 4. Reverse proxy (Caddy)
@@ -148,7 +151,8 @@ Puis se connecter à la console, créer une campagne, vérifier **le mode assist
 ## 6. Sauvegardes
 
 `deploy/backup.sh` sauvegarde PostgreSQL (`pg_dump`) et MongoDB (`mongodump`) dans `/var/backups/iagora`
-(14 jours). À planifier :
+(14 jours, et au plus `BACKUP_KEEP_MAX` = 30 de chaque sorte, sauvegardes d'avant déploiement
+comprises). À planifier :
 
 ```cron
 15 3 * * * /srv/iagora-prod/deploy/backup.sh >> /var/log/iagora-backup.log 2>&1
