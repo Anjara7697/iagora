@@ -96,6 +96,23 @@ def is_opt_out(text: str) -> bool:
     return any(re.search(p, t) for p in _OPT_OUT)
 
 
+# Formules qui ne visent que les messages de l'école : jamais ambiguës. Les autres (« stop »,
+# « désinscrire », « unsubscribe ») peuvent parler d'autre chose dans un long message ou une
+# question : « Comment me désinscrire de mon école actuelle ? » (AUDIT-BIZ-004).
+_OPT_OUT_WEAK = (r"\bstop\b", r"\bunsubscribe\b", r"desinscri")
+_OPT_OUT_EXPLICIT = [p for p in _OPT_OUT if p not in _OPT_OUT_WEAK]
+AMBIGUOUS_MIN_WORDS = 12
+
+
+def opt_out_is_ambiguous(text: str) -> bool:
+    """Demande d'arrêt à faire vérifier par un conseiller. Elle reste enregistrée tout de suite :
+    la vérification ne sert qu'à rétablir un consentement retiré à tort."""
+    t = normalize(text)
+    if not is_opt_out(text) or any(re.search(p, t) for p in _OPT_OUT_EXPLICIT):
+        return False
+    return "?" in t or len(t.split()) >= AMBIGUOUS_MIN_WORDS
+
+
 def sensitive_alerts(text: str) -> list[str]:
     t = normalize(text)
     return [p for p in _SENSITIVE if re.search(p, t)]

@@ -236,7 +236,8 @@ export type TodoKind =
   | "kb_gap"
   | "incident"
   | "application"
-  | "enrollment";
+  | "enrollment"
+  | "opt_out_check";
 export type Priority = "critical" | "high" | "medium" | "low";
 
 export type TodoItem = {

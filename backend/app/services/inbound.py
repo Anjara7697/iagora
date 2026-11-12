@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph import policy
-from app.services import drafts
+from app.services import conversations, drafts
 from app.services import prospects as prospect_service
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,9 @@ async def on_prospect_message(
         await drafts.cancel_pending_for_prospect(db, prospect_id)
         await drafts.block_queued_for_prospect(db, prospect_id)
         logger.info("Désinscription enregistrée (prospect %s, canal %s)", prospect_id, channel)
+        if conversation_id is not None and policy.opt_out_is_ambiguous(text):
+            # Enregistrée par prudence, à confirmer par un conseiller (AUDIT-BIZ-004).
+            await conversations.request_opt_out_review(db, conversation_id, text)
         return True
     if is_new and conversation_id is not None:
         await drafts.supersede_pending(db, conversation_id, "Le prospect a écrit à nouveau")
