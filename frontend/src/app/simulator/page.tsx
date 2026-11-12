@@ -1,17 +1,23 @@
 "use client";
 
-import { Check, Database, MessagesSquare, Route, Send, Sparkles, Trash2, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { toast } from "@heroui/react";
+import { Check, Database, Megaphone, MessagesSquare, Route, Send, Sparkles, Trash2, UserPlus, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import SimulationNotice from "@/components/SimulationNotice";
 import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, FilterChip, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
-import { PageHeader, Screen, initialsOf } from "@/components/ds/layout";
-import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
-import { api, ApiError, SIMULATOR_ENABLED } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { Btn, ErrorText, Field, FilterChip, LinkButton, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
+import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
+import { ScoreBadge, Skeleton, StageBadge } from "@/components/ui";
+import { api, ApiError, SIMULATOR_ENABLED, failure } from "@/lib/api";
+import { replaceUrl } from "@/lib/url";
 import { ACTIONS, CONSENT, STAGES, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type {
@@ -71,6 +77,14 @@ function pendingDraft(messages: Message[]): Message | undefined {
 }
 
 export default function SimulatorPage() {
+  return (
+    <Suspense>
+      <Simulator />
+    </Suspense>
+  );
+}
+
+function Simulator() {
   const user = useCurrentUser();
   const allowed = canUseSimulator(user?.role);
   const campaigns = useApi<Page<Campaign>>(
@@ -81,8 +95,9 @@ export default function SimulatorPage() {
   const demoData = useApi<{ prospects: number; conversations: number }>(
     isAdmin && allowed ? "/demo" : null,
   );
-  const [purgeNotice, setPurgeNotice] = useState<string | null>(null);
-  const [guided, setGuided] = useState(false);
+  // Parcours guidé ouvert dans l'adresse (`?mode=guide`, règle 6).
+  const guided = useSearchParams().get("mode") === "guide";
+  const setGuided = (on: boolean) => replaceUrl(on ? "/simulator?mode=guide" : "/simulator");
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [targetCode, setTargetCode] = useState("");
   const [name, setName] = useState("Camille");
@@ -94,18 +109,18 @@ export default function SimulatorPage() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Un message préparé et non envoyé n'est pas perdu en quittant l'écran (règle 14).
+  const { dialog: discardDialog } = useDiscardGuard(() => !guided && text.trim() !== "");
 
   if (!allowed) {
     return (
       <Screen>
-        <PageHeader
-          title="Simulateur"
-          subtitle={
-            SIMULATOR_ENABLED
-              ? "Le simulateur est réservé aux conseillers et aux administrateurs."
-              : "Le simulateur est désactivé sur cet environnement."
-          }
-        />
+        <PageHeader title="Simulateur" />
+        <Notice tone="warning">
+          {SIMULATOR_ENABLED
+            ? "Le simulateur est réservé aux conseillers et aux administrateurs."
+            : "Le simulateur est désactivé sur cet environnement."}
+        </Notice>
       </Screen>
     );
   }
@@ -116,13 +131,14 @@ export default function SimulatorPage() {
     campaigns.data?.items.find((c) => c.id === campaignId) ??
     campaigns.data?.items[0];
 
-  async function guard(action: () => Promise<void>) {
+  /** `what` dit ce qui a échoué, avant le détail du serveur (règle 12). */
+  async function guard(what: string, action: () => Promise<void>) {
     setBusy(true);
     setError(null);
     try {
       await action();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Échec");
+      setError(failure(what, err));
     } finally {
       setBusy(false);
     }
@@ -138,7 +154,7 @@ export default function SimulatorPage() {
   }
 
   const start = () =>
-    guard(async () => {
+    guard("Création du prospect fictif impossible", async () => {
       if (!campaign) throw new ApiError(0, "Créez d'abord une campagne.");
       const email = `sim.${Math.random().toString(36).slice(2, 10)}@demo.example.com`;
       const created = await api<{ prospect: Prospect }>("/prospects", {
@@ -165,6 +181,7 @@ export default function SimulatorPage() {
       setRuns([]);
       setShown(null);
       await refresh(next);
+      toast.success("Prospect fictif créé", { description: `${next.name} (@demo.example.com) attend votre premier message.` });
     });
 
   async function runAgent(s: Session) {
@@ -194,7 +211,7 @@ export default function SimulatorPage() {
   }
 
   const send = () =>
-    guard(async () => {
+    guard("Envoi du message impossible", async () => {
       if (!session || !text.trim()) return;
       const content = text.trim();
       setText("");
@@ -207,12 +224,12 @@ export default function SimulatorPage() {
     });
 
   const firstContact = () =>
-    guard(async () => {
+    guard("Premier contact impossible", async () => {
       if (session) await runAgent(session);
     });
 
   const decide = (draft: Message, action: "approve" | "reject") =>
-    guard(async () => {
+    guard(action === "approve" ? "Validation du brouillon impossible" : "Refus du brouillon impossible", async () => {
       if (!session) return;
       await api(
         `/conversations/${session.conversationId}/drafts/${draft.id}/${action}`,
@@ -225,6 +242,22 @@ export default function SimulatorPage() {
         },
       );
       await refresh(session);
+      toast.success(action === "approve" ? "Brouillon approuvé" : "Brouillon refusé", {
+        description: action === "approve" ? "La réponse apparaît dans la conversation simulée." : "Le prospect simulé ne le recevra pas.",
+      });
+    });
+
+  const purge = () =>
+    guard("Suppression des données fictives impossible", async () => {
+      const r = await api<{ prospects: number; conversations: number }>("/demo/data", { method: "DELETE" });
+      setSession(null);
+      setMessages([]);
+      setRuns([]);
+      setProspect(null);
+      toast.success("Données fictives supprimées", {
+        description: `${r.prospects} prospect(s) fictif(s) et ${r.conversations} conversation(s) supprimés.`,
+      });
+      demoData.reload();
     });
 
   const lastRun = runs[runs.length - 1];
@@ -243,12 +276,14 @@ export default function SimulatorPage() {
 
   return (
     <Screen wide className="max-w-[1600px]">
+      {discardDialog}
       <SimulationNotice>
         Prospects fictifs en @demo.example.com : aucun message n’est envoyé à
         l’extérieur. Les données de démonstration peuvent être supprimées
         séparément des vraies données.
       </SimulationNotice>
       <PageHeader
+        {...reveal(0)}
         eyebrow="Tests · Simulateur libre"
         title="Simulateur de prospect"
         subtitle={
@@ -260,7 +295,7 @@ export default function SimulatorPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className={cx("grid grid-cols-1 gap-4 lg:grid-cols-2", reveal(1).className)} style={reveal(1).style}>
         <Box as="section" className="flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
             <Route className="size-4" />
@@ -282,87 +317,87 @@ export default function SimulatorPage() {
               <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
                 <Database className="size-4" />
               </span>
-              <span className="min-w-[180px] flex-1 text-[13px]/[20px] text-muted">
-                Données fictives en base :{" "}
-                <b className="font-semibold text-foreground">
-                  {demoData.data
-                    ? `${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`
-                    : demoData.error
-                      ? "indisponible"
-                      : "…"}
-                </b>
+              <span className="min-w-[180px] flex-1 text-[13px]/[20px] text-muted" role="status">
+                Données fictives en base
+                {demoData.data && (
+                  <>
+                    {" : "}
+                    <b className="font-semibold text-foreground">
+                      {`${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`}
+                    </b>
+                  </>
+                )}
+                {demoData.error && " : nombre indisponible"}
               </span>
-              <Btn
-                variant="danger-soft"
-                size="sm"
-                disabled={busy || !demoData.data || demoData.data.prospects === 0}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      "Supprimer tous les prospects fictifs (@demo.example.com) et leurs conversations ? Les vraies données ne sont pas touchées.",
-                    )
-                  )
-                    return;
-                  void guard(async () => {
-                    const r = await api<{
-                      prospects: number;
-                      conversations: number;
-                    }>("/demo/data", { method: "DELETE" });
-                    setSession(null);
-                    setMessages([]);
-                    setRuns([]);
-                    setPurgeNotice(
-                      `${r.prospects} prospect(s) fictif(s) et ${r.conversations} conversation(s) supprimés.`,
-                    );
-                    demoData.reload();
-                  });
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden="true" />
-                Supprimer les données fictives
-              </Btn>
+              <ConfirmDialog
+                trigger={
+                  <Btn variant="danger-soft" size="sm" disabled={busy || !demoData.data || demoData.data.prospects === 0}>
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Supprimer les données fictives
+                  </Btn>
+                }
+                title="Supprimer les données fictives ?"
+                description="Tous les prospects fictifs (@demo.example.com) et leurs conversations sont supprimés. Les vraies données ne sont pas touchées."
+                confirmLabel="Supprimer les données fictives"
+                onConfirm={() => void purge()}
+              />
             </div>
-            {purgeNotice && <Notice>{purgeNotice}</Notice>}
           </Box>
         )}
       </div>
 
       {mode.data?.mode === "assisted" && (
-        <p className="flex items-center gap-2 text-[13px] text-muted">
-          <Sparkles className="size-4 text-agent" aria-hidden="true" />
+        <Notice tone="info">
           <span>
-            Mode assisté : la réponse de l&apos;agent est un <b className="font-semibold text-foreground">brouillon</b> à
-            valider (ici ou dans <TextLink href="/todo" className="text-[13px]">À traiter</TextLink>).
+            Mode assisté : la réponse de l&apos;agent est un <b className="font-semibold">brouillon</b> à valider (ici ou
+            dans <TextLink href="/todo" className="text-[13px]">À traiter</TextLink>).
           </span>
-        </p>
+        </Notice>
       )}
+      {/* État durable, avec l'action qui le résout (règle 13). */}
       {mode.data?.mode === "manual" && (
-        <ErrorText>
-          Arrêt d&apos;urgence actif : l&apos;agent ne répondra pas. Reprenez le
-          mode assisté dans le menu.
-        </ErrorText>
+        <Notice tone="warning">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="min-w-[200px] flex-1">
+              Arrêt d&apos;urgence actif : l&apos;agent ne répondra pas tant que le mode assisté n&apos;est pas repris.
+            </span>
+            <LinkButton size="sm" variant="outline" href="/agent">
+              Ouvrir la page Agent
+            </LinkButton>
+          </div>
+        </Notice>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
+      <div
+        className={cx("grid grid-cols-1 items-start gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]", reveal(2).className)}
+        style={reveal(2).style}
+      >
         <aside className="flex flex-col gap-4" aria-label="Prospect simulé">
           {!session ? (
             <Box as="section" className="gap-4 p-5">
               <h2 className="text-base font-semibold text-foreground">Nouveau prospect fictif</h2>
-              <Loading
-                loading={campaigns.loading}
-                error={campaigns.error}
-                onRetry={campaigns.reload}
-              />
+              {campaigns.loading && !campaigns.data && <Skeleton />}
+              {campaigns.error && (
+                <ErrorState message={`Chargement des campagnes impossible : ${campaigns.error.message}`} onRetry={campaigns.reload} />
+              )}
               {campaigns.data && campaigns.data.items.length === 0 && (
-                <p className="text-[13px]/[20px] text-muted">
-                  Aucune campagne. Lancez{" "}
-                  <code className="rounded bg-surface-secondary px-1 font-mono text-xs">python -m app.cli seed-demo</code> ou créez-en une.
-                </p>
+                <EmptyPanel
+                  icon={Megaphone}
+                  title="Aucune campagne"
+                  description="Le prospect fictif est rattaché à une campagne : créez-en une d’abord."
+                  action={
+                    isAdmin ? (
+                      <LinkButton size="sm" variant="primary" href="/campaigns/new">
+                        Créer une campagne
+                      </LinkButton>
+                    ) : undefined
+                  }
+                />
               )}
               {campaign && (
                 <div className="flex flex-col gap-4">
                   <Field label="Campagne">
-                    <SelectBox
+                    <SelectBox variant="secondary"
                       value={campaign.id}
                       onChange={(e) => {
                         setCampaignId(Number(e.target.value));
@@ -377,7 +412,7 @@ export default function SimulatorPage() {
                     </SelectBox>
                   </Field>
                   <Field label="Programme visé">
-                    <SelectBox
+                    <SelectBox variant="secondary"
                       value={targetCode || campaign.targets[0]?.code}
                       onChange={(e) => setTargetCode(e.target.value)}
                     >
@@ -389,7 +424,7 @@ export default function SimulatorPage() {
                     </SelectBox>
                   </Field>
                   <Field label="Prénom du prospect">
-                    <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+                    <TextInput variant="secondary" value={name} onChange={(e) => setName(e.target.value)} />
                   </Field>
                   <Btn variant="primary" fullWidth disabled={busy} onClick={start}>
                     <UserPlus className="size-4" aria-hidden="true" />
@@ -529,7 +564,7 @@ export default function SimulatorPage() {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-separator px-5 py-4">
-                <TextInput
+                <TextInput variant="secondary"
                   aria-label="Message du prospect"
                   placeholder="Écrivez comme le prospect…"
                   className="min-w-[200px] flex-1"
@@ -544,7 +579,7 @@ export default function SimulatorPage() {
                   onClick={send}
                 >
                   <Send className="size-4" aria-hidden="true" />
-                  {busy ? "…" : "Envoyer"}
+                  {busy ? "Envoi en cours" : "Envoyer"}
                 </Btn>
                 {messages.length === 0 && (
                   <Btn disabled={busy} onClick={firstContact}>
