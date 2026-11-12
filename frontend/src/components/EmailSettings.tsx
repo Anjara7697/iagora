@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { Btn, SelectBox, TextInput } from "./ds/controls";
 import { cx } from "./ds/layout";
+import { useDiscardGuard } from "./ds/useDiscardGuard";
 import { ActionsBar, Feedback, InfoRow, SettingRow as Field, Toggle } from "./ds/settings";
 import { Field as Stacked } from "./ds/controls";
 import { Collapse } from "@/components/ds/collapse";
@@ -40,6 +41,7 @@ export function EmailSettings({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const { dialog: discardDialog } = useDiscardGuard(() => dirty);
 
   const load = useCallback(() => {
     setError(null);
@@ -192,6 +194,7 @@ export function EmailSettings({
 
   return (
     <section className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
+      {discardDialog}
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={busy !== null || disabled}>
         <legend className="sr-only">Configuration de la boîte email</legend>
         <div className="flex flex-col gap-1">
