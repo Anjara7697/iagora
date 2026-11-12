@@ -35,4 +35,10 @@ for f in "$DIR/postgres-$STAMP.dump" "$DIR/mongo-$STAMP.archive.gz"; do
 done
 
 find "$DIR" -type f \( -name 'postgres-*.dump' -o -name 'mongo-*.archive.gz' \) -mtime +"$KEEP_DAYS" -delete
+# Une sauvegarde est aussi prise avant chaque déploiement : au plus N de chaque sorte (AUDIT-OPS-005).
+KEEP_MAX="${BACKUP_KEEP_MAX:-$(env_get BACKUP_KEEP_MAX 30)}"
+for pattern in 'postgres-*.dump' 'mongo-*.archive.gz'; do
+  find "$DIR" -maxdepth 1 -type f -name "$pattern" -printf '%T@ %p\n' | sort -rn \
+    | tail -n +"$((KEEP_MAX + 1))" | cut -d' ' -f2- | xargs -r rm -f --
+done
 echo "[$STAMP] OK → $DIR"
