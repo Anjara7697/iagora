@@ -148,7 +148,9 @@ async def test_direct_links_ignore_list_filters_and_todo_scan_window(client, mon
     await mongo_db["conversations"].update_one(
         {"_id": ObjectId(newer["id"])}, {"$set": {"last_message_at": datetime.now(UTC)}}
     )
-    assert (await client.get(f"{API}/todo")).json()["items"][0]["conversation_id"] == newer["id"]
+    page = (await client.get(f"{API}/todo")).json()
+    assert page["items"][0]["conversation_id"] == newer["id"]
+    assert page["truncated"] is True  # AUDIT-DATA-005 : la liste incomplète est signalée
     item = await client.get(f"{API}/todo/item", params={"id": f"handoff:{cid}"})
     assert item.status_code == 200 and item.json()["conversation_id"] == cid
     await client.patch(f"{API}/conversations/{cid}", json={"status": "closed"})

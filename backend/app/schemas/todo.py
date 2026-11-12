@@ -66,6 +66,10 @@ class TreatedPage(BaseModel):
     items: list[TreatedItem]
     total: int
     hours: int
+    truncated: bool = Field(
+        False,
+        description="Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+    )
 
 
 class TodoPage(BaseModel):
@@ -74,6 +78,10 @@ class TodoPage(BaseModel):
     limit: int
     offset: int
     counts: dict[str, int] = Field(description="Nombre d'éléments par type (avant filtre)")
+    truncated: bool = Field(
+        False,
+        description="Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+    )
 
 
 class DraftApprove(BaseModel):

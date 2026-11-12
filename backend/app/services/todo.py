@@ -115,8 +115,12 @@ async def list_todo(
         async for d in db["conversations"]
         .find(match)
         .sort([("last_message_at", -1)])
-        .limit(MAX_SCANNED)
+        .limit(MAX_SCANNED + 1)
     ]
+    # Au-delà de MAX_SCANNED conversations, les plus anciennes ne sont pas lues : on le signale
+    # au lieu de les taire (AUDIT-DATA-005).
+    truncated = len(docs) > MAX_SCANNED
+    docs = docs[:MAX_SCANNED]
     cards = await inbox.prospect_cards(session, [int(d["prospect_id"]) for d in docs])
     items: list[TodoItem] = []
     for doc in docs:
@@ -224,6 +228,7 @@ async def list_todo(
         limit=limit,
         offset=offset,
         counts=counts,
+        truncated=truncated,
     )
 
 
@@ -246,8 +251,10 @@ async def treated(session: AsyncSession, db: Any, *, hours: int = 24) -> Treated
         async for d in db["conversations"]
         .find({"messages.metadata.draft.decided_at": {"$gte": since}})
         .sort([("last_message_at", -1)])
-        .limit(MAX_SCANNED)
+        .limit(MAX_SCANNED + 1)
     ]
+    truncated = len(docs) > MAX_SCANNED
+    docs = docs[:MAX_SCANNED]
     cards = await inbox.prospect_cards(session, [int(d["prospect_id"]) for d in docs])
     items: list[TreatedItem] = []
     for doc in docs:
@@ -281,7 +288,7 @@ async def treated(session: AsyncSession, db: Any, *, hours: int = 24) -> Treated
                 )
             )
     items.sort(key=lambda i: i.decided_at or datetime.min.replace(tzinfo=UTC), reverse=True)
-    return TreatedPage(items=items, total=len(items), hours=hours)
+    return TreatedPage(items=items, total=len(items), hours=hours, truncated=truncated)
 
 
 def _last_prospect_text(doc: dict[str, Any]) -> str | None:

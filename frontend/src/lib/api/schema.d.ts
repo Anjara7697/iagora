@@ -4306,6 +4306,12 @@ export interface components {
             offset: number;
             /** Total */
             total: number;
+            /**
+             * Truncated
+             * @description Vrai si la liste est incomplète (seules les conversations récentes sont lues)
+             * @default false
+             */
+            truncated: boolean;
         };
         /** TodoRecommendation */
         TodoRecommendation: {
@@ -4401,6 +4407,12 @@ export interface components {
             items: components["schemas"]["TreatedItem"][];
             /** Total */
             total: number;
+            /**
+             * Truncated
+             * @description Vrai si la liste est incomplète (seules les conversations récentes sont lues)
+             * @default false
+             */
+            truncated: boolean;
         };
         /** UserCreate */
         UserCreate: {

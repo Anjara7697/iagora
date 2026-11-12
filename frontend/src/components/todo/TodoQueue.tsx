@@ -3,7 +3,7 @@
 /** File de travail d'« À traiter » : onglets, filtres, liste des éléments et pagination. */
 
 import { useState } from "react";
-import { FilterChip, FilterChipGroup, Segmented, Tag, RowButton } from "@/components/ds/controls";
+import { FilterChip, FilterChipGroup, Notice, Segmented, Tag, RowButton } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { CHANNELS, PRIORITIES, formatDate, fullName, label, relativeTime, EXECUTION } from "@/lib/labels";
@@ -123,6 +123,9 @@ export function TodoQueue({
       {tab === "treated" ? (
         <>
           <Loading loading={treated.loading && !treated.data} error={treated.error} onRetry={treated.reload} />
+          {treated.data?.truncated && (
+            <Notice tone="warning">Liste incomplète : seules les conversations les plus récentes sont affichées.</Notice>
+          )}
           {treated.data && treatedItems.length === 0 && (
             <p className="px-2 py-3 text-[13px] text-muted">
               Rien de traité pour l’instant. Chaque élément traité vient ici avec sa trace : qui a agi, quand, et ce
@@ -189,6 +192,13 @@ export function TodoQueue({
             }
           />
           <Loading loading={list.loading} error={list.error} onRetry={list.reload} shape="rows" />
+          {list.data?.truncated && (
+            // AUDIT-DATA-005 : au-delà du volume lu par l'API, les demandes les plus anciennes manquent.
+            <Notice tone="warning">
+              Liste incomplète : seules les conversations les plus récentes sont lues. Traitez les demandes affichées
+              pour voir les suivantes.
+            </Notice>
+          )}
           {list.data && items.length === 0 && (
             <p className="px-2 py-3 text-[13px] text-muted">Rien à traiter pour le moment.</p>
           )}
