@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
@@ -207,6 +207,46 @@ export function Field({
 /** Champ texte HeroUI : toutes les propriétés de `Input` (variant, fullWidth…), pleine largeur par défaut. */
 export function TextInput({ fullWidth = true, ...props }: ComponentProps<typeof Input>) {
   return <Input fullWidth={fullWidth} {...props} />;
+}
+
+/**
+ * Choix d'une couleur : `ColorPicker` HeroUI (zone saturation / luminosité, teinte, code hexadécimal).
+ * `label` nomme le bouton qui ouvre le sélecteur ; `onChange` reçoit le code « #rrggbb ».
+ */
+export function ColorChoice({
+  label,
+  value,
+  onChange,
+  describedBy,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+  describedBy?: string;
+}) {
+  return (
+    <ColorPicker value={value} onChange={(color) => onChange(color.toString("hex").toLowerCase())}>
+      <ColorPicker.Trigger aria-label={`${label} : ${value}`} aria-describedby={describedBy}>
+        <ColorSwatch size="md" />
+        <span className="font-mono text-[13px] text-foreground">{value}</span>
+      </ColorPicker.Trigger>
+      <ColorPicker.Popover className="flex w-60 flex-col gap-3 p-3">
+        <ColorArea aria-label={`${label} : saturation et luminosité`} colorSpace="hsb" xChannel="saturation" yChannel="brightness">
+          <ColorArea.Thumb />
+        </ColorArea>
+        <ColorSlider aria-label={`${label} : teinte`} channel="hue" colorSpace="hsb">
+          <ColorSlider.Track>
+            <ColorSlider.Thumb />
+          </ColorSlider.Track>
+        </ColorSlider>
+        <ColorField aria-label={`${label} : code hexadécimal`}>
+          <ColorField.Group>
+            <ColorField.Input />
+          </ColorField.Group>
+        </ColorField>
+      </ColorPicker.Popover>
+    </ColorPicker>
+  );
 }
 
 /** Zone de texte HeroUI : toutes les propriétés de `TextArea`, pleine largeur par défaut. */

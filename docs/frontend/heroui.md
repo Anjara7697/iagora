@@ -162,6 +162,14 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     un lien vers Paramètres, activité sur 7 jours ; état des intégrations pour l'administrateur seulement
     (masqué, pas en erreur, pour les autres rôles).
 
+**Administration** (`app/settings`)
+
+31. **Paramètres** (écarts aux règles 3 et 21, décidés pour cet écran) : les catégories sont un menu vertical avec
+    une aide sous chaque intitulé (une liste sur mobile), la catégorie ouverte dans l'adresse (`?section=`) ; une
+    seule barre « Enregistrer les paramètres », commune aux catégories, reste collée en bas de l'écran et reprend sa
+    place après le dernier champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
+    « Revenir aux valeurs du serveur » passe par `ConfirmDialog` ; succès en Toast, échec en `ErrorText`.
+
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
 
