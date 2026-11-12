@@ -23,6 +23,12 @@ Le transport email recontrôle ce contexte avant SMTP et bloque un message deven
 inapproprié, même si son brouillon a été approuvé. Les réponses normales et les
 messages des conseillers ne sont pas bloqués par cette règle.
 
+Une erreur technique pendant une relance (exception, pas un transfert au conseiller) la reprogramme
+10 minutes plus tard, puis 20 minutes, et l’annule au troisième échec avec le motif « erreurs
+techniques : relance abandonnée » (colonne `follow_ups.attempts`, migration 0012). De même, une entrée
+de la file de l’agent (`agent_events`) en erreur est reprise avec un délai croissant, puis abandonnée
+au cinquième échec (`failed: true`) : le message du prospect reste visible dans sa conversation.
+
 ## Limites et recette
 
 - Le contrôle SMTP concerne les nouveaux messages portant cette métadonnée. Avant

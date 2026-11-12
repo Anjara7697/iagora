@@ -31,16 +31,18 @@ echo "→ Construction des images"
 echo "→ Migrations puis démarrage"
 "${COMPOSE[@]}" up -d --remove-orphans
 
-echo "→ Vérification (jusqu'à 90 s)"
+echo "→ Vérification de l'API et de la console (jusqu'à 90 s)"
 for _ in $(seq 1 30); do
   if "${COMPOSE[@]}" exec -T iagora-api python -c \
     "import urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=4); sys.exit(0 if r.status==200 else 1)" \
+    >/dev/null 2>&1 \
+    && "${COMPOSE[@]}" exec -T iagora-web wget -q --spider http://127.0.0.1:3000/login \
     >/dev/null 2>&1; then
-    echo "OK : API prête ($(git rev-parse --short HEAD))."
+    echo "OK : API et console prêtes ($(git rev-parse --short HEAD))."
     exit 0
   fi
   sleep 3
 done
-echo "ÉCHEC : l'API n'est pas prête. Journaux :  ${COMPOSE[*]} logs --tail=80 iagora-api migrate"
+echo "ÉCHEC : l'API ou la console n'est pas prête. Journaux :  ${COMPOSE[*]} logs --tail=80 iagora-api iagora-web migrate"
 echo "Retour arrière : git checkout $PREVIOUS && deploy/deploy.sh (voir docs/deploiement.md)."
 exit 1

@@ -22,7 +22,9 @@ Une ligne `erasure_records` : numéro de l'ancienne fiche, motif, auteur, date. 
 téléphone en clair.** Quand la personne était désinscrite (STOP) ou a demandé l'effacement, la ligne garde
 aussi l'**empreinte SHA-256 salée** de son email et de son téléphone : un import, un formulaire ou un
 nouveau message avec cette adresse crée alors un prospect **déjà désinscrit** au lieu de la recontacter
-(`services/erasure.py`). Pour un autre motif et une personne jamais désinscrite, aucune empreinte n'est
+(`services/erasure.py`). Le numéro est comparé sous toutes ses formes (`+33 6…`, `06…`, `336…`) : une
+personne opposée qui revient avec une autre écriture de son numéro reste opposée. Pour un autre motif et
+une personne jamais désinscrite, aucune empreinte n'est
 gardée. Une empreinte est une pseudonymisation, pas une anonymisation : c'est le minimum nécessaire pour
 respecter l'opposition.
 

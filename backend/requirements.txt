@@ -1,4 +1,5 @@
-# Dépendances d'exécution (versions compatibles, à figer via pip-compile avant la mise en production)
+# Dépendances d'exécution : bornes compatibles. Les versions installées (image, CI) sont figées dans
+# requirements.lock.txt : après toute modification ici, lancer scripts/lock-deps.sh (AUDIT-OPS-001).
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.30,<1.0
 pydantic[email]>=2.8,<3.0
@@ -18,3 +19,4 @@ argon2-cffi>=23.1,<26.0
 python-multipart>=0.0.9,<1.0
 pgvector>=0.3,<1.0
 pypdf>=5.0,<7.0
+phonenumbers>=9.0,<10.0

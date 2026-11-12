@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_v1_prefix: str = "/api/v1"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # Taille maximale d'une requête annoncée par Content-Length (413 au-delà). Le proxy borne aussi.
+    max_request_bytes: int = Field(5_000_000, ge=100_000)
+    # Pays des numéros saisis sans indicatif (`06…`) : ISO 3166-1, décision DATUM (AUDIT-DATA-001).
+    phone_default_region: str = Field("FR", min_length=2, max_length=2)
 
     postgres_dsn: str = "postgresql+asyncpg://iagora:iagora@localhost:5432/iagora"
     mongo_uri: str = "mongodb://localhost:27017"

@@ -301,3 +301,68 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
     </ReviewCard>
   );
 }
+
+
+/** Opposition détectée sur une formule ambiguë (« stop » ou « désinscrire » dans une question ou un long
+ *  message) : déjà enregistrée par prudence. Le conseiller confirme ; seul un administrateur peut
+ *  rétablir le consentement, comme pour toute levée de désinscription. */
+export function OptOutReview({ item, onDone }: PanelProps) {
+  const user = useCurrentUser();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function decide(decision: "confirm" | "restore") {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/conversations/${item.conversation_id}/opt-out-review`, {
+        method: "POST",
+        body: { decision },
+      });
+      notifyWorkQueueChanged();
+      onDone(
+        decision === "confirm"
+          ? {
+              title: "Opposition confirmée",
+              description: `${itemName(item)} ne sera plus contacté.`,
+            }
+          : {
+              title: "Consentement rétabli",
+              description: `${itemName(item)} peut de nouveau être contacté ; répondez-lui depuis la conversation.`,
+            },
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Décision impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ReviewCard
+      label="Vérifier l'opposition"
+      title="Était-ce une demande d’arrêt ?"
+      intro="La désinscription a été enregistrée par prudence : aucun message ne part tant qu’elle n’est pas levée."
+    >
+      {user?.role === "VIEWER" ? (
+        <Notice tone="info">Un conseiller ou administrateur peut traiter cette vérification.</Notice>
+      ) : (
+        <>
+          {error && <ErrorText>{error}</ErrorText>}
+          <div className="flex flex-wrap items-center gap-2">
+            <Btn variant="primary" disabled={busy} onClick={() => void decide("confirm")}>
+              Oui, confirmer l’opposition
+            </Btn>
+            {user?.role === "ADMIN" ? (
+              <Btn variant="outline" disabled={busy} onClick={() => void decide("restore")}>
+                Non, rétablir le consentement
+              </Btn>
+            ) : (
+              <span className="text-xs text-muted">Seul un administrateur peut rétablir le consentement.</span>
+            )}
+          </div>
+        </>
+      )}
+    </ReviewCard>
+  );
+}

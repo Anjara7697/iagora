@@ -59,7 +59,7 @@ async function mockApi(
     else if (path === "/dashboard/summary") {
       if (opts.fail) {
         code = 500;
-        body = { detail: "Erreur interne du serveur" };
+        body = { detail: "Erreur interne du serveur", request_id: "a1b2c3d4e5f60718" };
       } else body = summary;
     } else if (path === "/appointments") {
       body = {
@@ -137,6 +137,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("nadia");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/");
 }
 
@@ -233,6 +235,8 @@ test("accueil : panne de l'API, message clair et nouvelle tentative", async ({
       hasText: "Le serveur a rencontré une erreur",
     }),
   ).toBeVisible();
+  // Référence à transmettre à l'administrateur (AUDIT-API-002).
+  await expect(page.getByRole("alert").filter({ hasText: "référence a1b2c3d4e5f60718" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
 });
 

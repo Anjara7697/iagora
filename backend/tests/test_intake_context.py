@@ -10,7 +10,7 @@ from app.agents.gateway import DbGateway
 from app.api.dependencies import get_settings
 from app.config import Settings
 from app.main import app
-from app.models import CampaignProspect, Interaction
+from app.models import CampaignProspect, Interaction, User
 from app.models.enums import UserRole
 from app.services import agent_settings, conversations, drafts, intake, lease
 from app.services.agent_settings import AgentMode
@@ -330,3 +330,32 @@ async def test_message_replay_repairs_a_failed_enqueue(client, env, monkeypatch)
     assert retry.status_code == 200 and len(await replies(client, pid)) == 1
     await client.post(f"{API}/conversations/{cid}/messages", json=payload)
     assert len(await replies(client, pid)) == 1
+
+
+async def test_a_deactivated_advisor_never_receives_meetings(
+    client, env, session_factory, mongo_db
+):  # noqa: F811
+    """AUDIT-BIZ-002 : l'agenda d'un conseiller désactivé n'est plus utilisé pour ses prospects."""
+    one = await campaign(client, "Rentrée")
+    pid = (await receive(client, **one)).json()["prospect"]["id"]
+    detail = (await client.get(f"{API}/prospects/{pid}")).json()
+    advisor = User(
+        username="parti", email="parti@datum.test", role=UserRole.ADVISOR, hashed_password="x"
+    )
+    async with session_factory() as s:
+        s.add(advisor)
+        await s.flush()
+        m = await s.get(CampaignProspect, detail["campaigns"][0]["id"])
+        m.assigned_advisor_id = advisor.id
+        await s.commit()
+    row = (await client.get(f"{API}/conversations")).json()["items"][0]
+    async with session_factory() as s:
+        ctx = await DbGateway(s, mongo_db).load_context(pid, row["id"])
+    assert ctx.advisor_id == advisor.id and ctx.advisor_email == "parti@datum.test"
+
+    async with session_factory() as s:
+        (await s.get(User, advisor.id)).is_active = False
+        await s.commit()
+    async with session_factory() as s:
+        ctx = await DbGateway(s, mongo_db).load_context(pid, row["id"])
+    assert ctx.advisor_id is None and ctx.advisor_email is None

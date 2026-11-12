@@ -6,12 +6,14 @@ on teste le *comportement du workflow* (décisions, garde-fous, traçabilité), 
 
 import ast
 import pathlib
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 from app.agents.defaults import RecordingMessenger, UnconfiguredCalendar
 from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
 from app.config import get_settings
+from app.graph import policy
 from app.graph.builder import build_workflow
 from app.graph.ports import CalendarError, Deps, LLMConfigError, LLMUnavailableError, Passage
 from app.graph.state import Qualification
@@ -166,6 +168,18 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
         appointment = (await s.scalars(select(Appointment))).one()
     assert appointment.prospect_id == pid and appointment.calendar_event_id.endswith("-slot-1")
     assert appointment.meeting_url == "https://zoom.example/slot-1"  # F-19
+
+
+async def test_a_slot_chosen_after_it_passed_gets_a_new_proposal(client, env, monkeypatch):
+    pid, mid, cid = await lead(client, "Rendez-vous svp")
+    env.llm.qualification = Qualification(intent="meeting_request")
+    await run(client, cid)
+    await say(client, cid, "Le premier")
+    env.llm.qualification = Qualification(intent="slot_choice", chosen_slot=1)
+    monkeypatch.setattr(policy, "now", lambda: datetime(2027, 3, 10, tzinfo=UTC))
+    out = (await run(client, cid)).json()
+    assert out["action"] == "propose_meeting" and env.calendar.booked == []
+    assert "C'est noté" not in (out["reply"] or "")
 
 
 async def test_booking_failure_hands_off_instead_of_confirming(client, env):
@@ -692,3 +706,14 @@ async def test_a_catalogue_question_is_answered_while_a_specific_question_is_not
     env.llm.qualification = Qualification(intent="question")  # précis : pas du catalogue
     out = (await run(client, cid)).json()
     assert out["handoff_reason"] == "question_hors_base"
+
+
+async def test_each_run_records_the_prompt_version_and_the_model_calls(client, env, mongo_db):
+    """AUDIT-AI-004 : relier une réponse aux consignes et aux appels qui l'ont produite."""
+    from app.graph import prompts
+
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    doc = await mongo_db["agent_runs"].find_one({"conversation_id": cid}, sort=[("started_at", -1)])
+    assert doc["prompt_version"] == prompts.PROMPT_VERSION and len(prompts.PROMPT_VERSION) == 12
+    assert isinstance(doc["llm_calls"], list)  # le faux modèle n'appelle aucun fournisseur

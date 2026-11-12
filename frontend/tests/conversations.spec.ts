@@ -137,6 +137,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("conseiller");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/conversations");
 }
 
@@ -737,11 +739,30 @@ test("bureau : seule la liste défile, recherche, filtres et pagination restent 
   // En bas de page, la colonne reste sous la barre du haut (56 px) : son titre reste lisible.
   const title = await list.getByRole("heading", { name: "Boîte de réception" }).boundingBox();
   expect(title!.y).toBeGreaterThanOrEqual(56);
-  const before = await search.boundingBox();
   await list.getByRole("button", { name: /Prospect 3\b/ }).hover();
+  // Mesure de référence une fois les apparitions terminées (sinon décalage de 8 px pendant l'animation).
+  // (animations temporelles et finies seulement : chargements en boucle et ombres liées au défilement exclus)
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter(
+              (a) =>
+                a.timeline === document.timeline &&
+                a.playState === "running" &&
+                a.effect?.getTiming().iterations !== Infinity,
+            ).length,
+      ),
+    )
+    .toBe(0);
+  const before = await search.boundingBox();
+  const pageScroll = await page.evaluate(() => window.scrollY);
   for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 800);
   await expect(list.getByRole("button", { name: /Prospect 30\b/ })).toBeInViewport();
-  // La liste a défilé dans son ScrollShadow ; la recherche n'a pas bougé et la pagination reste visible.
+  // La liste a défilé dans son ScrollShadow ; la page et la recherche n'ont pas bougé, la pagination reste visible.
+  expect(await page.evaluate(() => window.scrollY), "la page ne doit pas défiler").toBe(pageScroll);
   expect(await search.boundingBox()).toEqual(before);
   await expect(page.getByRole("button", { name: "Suivant" })).toBeInViewport();
   await expect(list.getByRole("button", { name: /Prospect 1\b/ })).not.toBeInViewport();

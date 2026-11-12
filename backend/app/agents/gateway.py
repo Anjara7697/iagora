@@ -1,6 +1,7 @@
 """Passerelle entre le workflow et les données métier (PostgreSQL + MongoDB)."""
 
 import dataclasses
+import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Any
@@ -32,6 +33,7 @@ from app.models.enums import (
     ConversionStage,
     Direction,
     ScoringSignal,
+    UserRole,
 )
 from app.schemas.appointment import AppointmentData
 from app.schemas.conversation import ConversationUpdate
@@ -46,6 +48,8 @@ from app.services import (
     scoring,
 )
 from app.services.errors import NotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 def _pending_slots(messages: Sequence[dict[str, Any]]) -> list[Slot]:
@@ -67,6 +71,10 @@ def _pending_slots(messages: Sequence[dict[str, Any]]) -> list[Slot]:
                 for p in proposed
             ]
     return []
+
+
+def _can_hold_meetings(user: User) -> bool:
+    return bool(user.is_active) and user.role in (UserRole.ADMIN, UserRole.ADVISOR)
 
 
 class DbGateway:
@@ -101,6 +109,11 @@ class DbGateway:
         membership = row[0] if row else None
         advisor_id = membership.assigned_advisor_id if membership else None
         advisor = await session.get(User, advisor_id) if advisor_id is not None else None
+        if advisor is not None and not _can_hold_meetings(advisor):
+            # Compte désactivé ou plus conseiller : jamais de rendez-vous dans son agenda ; l'agenda
+            # par défaut prend le relais, sinon la demande est transférée (AUDIT-BIZ-002).
+            logger.warning("Conseiller %s inactif : rendez-vous sans lui", advisor.id)
+            advisor_id, advisor = None, None
         messages = drafts.live_messages(doc.get("messages", []))
         return ProspectContext(
             prospect_id=prospect_id,

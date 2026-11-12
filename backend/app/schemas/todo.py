@@ -6,7 +6,9 @@ from pydantic import BaseModel, Field
 from app.schemas.conversation import ConversationProspect
 from app.services.agent_settings import AgentMode
 
-TodoKind = Literal["validation", "escalation", "kb_gap", "incident", "application", "enrollment"]
+TodoKind = Literal[
+    "validation", "escalation", "kb_gap", "incident", "application", "enrollment", "opt_out_check"
+]
 Priority = Literal["critical", "high", "medium", "low"]
 
 
@@ -92,3 +94,7 @@ class AgentModeRead(BaseModel):
 
 class AgentModeUpdate(BaseModel):
     mode: AgentMode
+
+
+class OptOutReviewDecision(BaseModel):
+    decision: Literal["confirm", "restore"]

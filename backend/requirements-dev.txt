@@ -1,3 +1,4 @@
+# Outils de développement. Versions figées : requirements-dev.lock.txt (scripts/lock-deps.sh).
 -r requirements.txt
 pytest>=8.3,<9.0
 pytest-asyncio>=0.24,<2.0

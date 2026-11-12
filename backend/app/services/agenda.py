@@ -10,6 +10,7 @@
 import asyncio
 import hashlib
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -17,12 +18,18 @@ import httpx
 
 from app.agents.defaults import NOT_CONFIGURED
 from app.config import Settings
-from app.graph.ports import BookedMeeting, Calendar, CalendarNotConfiguredError, Slot
+from app.graph.ports import (
+    BookedMeeting,
+    Calendar,
+    CalendarError,
+    CalendarNotConfiguredError,
+    Slot,
+)
 from app.integrations.calendar import google_oauth, zoom_oauth
 from app.integrations.calendar.agenda import DemoCalendar, GoogleZoomCalendar
 from app.integrations.calendar.google_calendar import GoogleCalendarClient
 from app.integrations.calendar.zoom import ZoomClient
-from app.services import calendar_config, runtime_settings, zoom_config
+from app.services import calendar_config, lease, runtime_settings, zoom_config
 
 TIMEOUT = 15.0
 
@@ -186,10 +193,20 @@ class ConsoleCalendar:
         prospect_email: str | None = None,
     ) -> BookedMeeting:
         calendar = await self._resolve(advisor_id)
-        return await calendar.book(
-            slot,
-            prospect_name,
-            advisor_email=advisor_email,
-            advisor_id=advisor_id,
-            prospect_email=prospect_email,
-        )
+        # Deux prospects qui choisissent le même créneau en même temps : la revérification de
+        # l'agenda se fait l'un après l'autre, le second voit le créneau pris (AUDIT-AI-006).
+        db = self._db()
+        name = f"booking:{advisor_id or 'default'}:{slot.start.isoformat()}"
+        holder = uuid.uuid4().hex
+        if not await lease.acquire(db, name, 120, holder):
+            raise CalendarError("Ce créneau est en cours de réservation pour un autre prospect")
+        try:
+            return await calendar.book(
+                slot,
+                prospect_name,
+                advisor_email=advisor_email,
+                advisor_id=advisor_id,
+                prospect_email=prospect_email,
+            )
+        finally:
+            await db[lease.COLLECTION].delete_one({"_id": name, "holder": holder})

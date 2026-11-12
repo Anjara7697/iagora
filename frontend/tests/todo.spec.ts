@@ -335,6 +335,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("conseiller");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/todo");
 }
 
@@ -892,3 +894,55 @@ test("nouvelle tentative en échec : aucune réussite annoncée et observateur s
   await expect(delivery.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
   expect(retries).toBe(1);
 });
+
+const optOutItem = {
+  ...gapItem,
+  id: "optout:c9",
+  kind: "opt_out_check",
+  priority: "high",
+  conversation_id: "c9",
+  prospect: { ...prospect, id: 9, first_name: "Noé", last_name: "Martin" },
+  title: "Opposition à vérifier",
+  detail: "Comment me désinscrire de mon école actuelle pour m'inscrire chez vous ?",
+  handoff: null,
+  recommendation: {
+    action: "Relire le message : confirmer l'opposition, ou rétablir le consentement si ce n'était pas une demande d'arrêt",
+    reason: "Désinscription enregistrée par prudence sur une formule ambiguë.",
+    risk: "medium",
+    confidence: null,
+    sources: [],
+  },
+};
+
+for (const role of ["ADVISOR", "ADMIN"] as const) {
+  test(`opposition ambiguë (${role}) : confirmer, et rétablir réservé à l'administrateur`, async ({ page }) => {
+    await mockApi(page, { role });
+    await page.route("**/api/v1/todo?**", (route) =>
+      route.fulfill({
+        json: { items: [optOutItem], total: 1, limit: 50, offset: 0, counts: { opt_out_check: 1 } },
+      }),
+    );
+    let decision: unknown = null;
+    await page.route("**/api/v1/conversations/c9/opt-out-review", async (route) => {
+      decision = route.request().postDataJSON();
+      await route.fulfill({ json: { status: "confirmed" } });
+    });
+    await open(page);
+    await expect(page.getByRole("button", { name: "Oppositions à vérifier (1)" })).toBeVisible();
+    await page
+      .getByRole("complementary", { name: "Éléments à traiter" })
+      .getByRole("button", { name: /Noé Martin/ })
+      .click();
+    await expect(page.getByText("désinscrire de mon école actuelle")).toBeVisible();
+    const restore = page.getByRole("button", { name: "Non, rétablir le consentement" });
+    if (role === "ADMIN") await expect(restore).toBeVisible();
+    else {
+      await expect(restore).toHaveCount(0);
+      await expect(page.getByText("Seul un administrateur peut rétablir le consentement.")).toBeVisible();
+    }
+    await page.getByRole("button", { name: "Oui, confirmer l’opposition" }).click();
+    await expect(page.getByText("Opposition confirmée", { exact: true })).toBeVisible();
+    expect(decision).toEqual({ decision: "confirm" });
+    await auditA11y(page, `à traiter, opposition à vérifier (${role})`);
+  });
+}

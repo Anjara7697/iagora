@@ -22,6 +22,7 @@ from app.schemas.todo import (
     AgentModeUpdate,
     DraftApprove,
     DraftReject,
+    OptOutReviewDecision,
     TodoItem,
     TodoPage,
     TreatedPage,
@@ -40,7 +41,12 @@ async def list_todo(
     session: DbSession,
     db: MongoDb,
     settings: SettingsDep,
-    kind: Annotated[str | None, Query(pattern="^(validation|escalation|kb_gap|incident)$")] = None,
+    kind: Annotated[
+        str | None,
+        Query(
+            pattern="^(validation|escalation|kb_gap|incident|application|enrollment|opt_out_check)$"
+        ),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> TodoPage:
@@ -74,7 +80,8 @@ async def get_todo_item(
 ) -> TodoItem:
     parts = id.split(":")
     if not (
-        (len(parts) == 3 and parts[0] == "draft") or (len(parts) == 2 and parts[0] == "handoff")
+        (len(parts) == 3 and parts[0] == "draft")
+        or (len(parts) == 2 and parts[0] in ("handoff", "optout"))
     ):
         raise NotFoundError("Élément à traiter introuvable")
     result = await todo_service.list_todo(
@@ -193,3 +200,28 @@ async def regenerate_draft(
         knowledge=knowledge,
         conversation_id=conversation_id,
     )
+
+
+@router.post("/conversations/{conversation_id}/opt-out-review", dependencies=[CAN_WRITE])
+async def decide_opt_out_review(
+    conversation_id: str,
+    payload: OptOutReviewDecision,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> dict[str, str]:
+    """Opposition détectée sur une formule ambiguë (AUDIT-BIZ-004) : la confirmer, ou rétablir le
+    consentement si ce n'était pas une demande d'arrêt (administrateur seulement, comme pour
+    toute levée de désinscription)."""
+    if payload.decision == "restore" and user.role is not UserRole.ADMIN:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail="Seul un administrateur peut lever une désinscription",
+        )
+    status_ = "restored" if payload.decision == "restore" else "confirmed"
+    doc = await conversation_service.resolve_opt_out_review(db, conversation_id, status_, user.id)
+    if status_ == "restored":
+        await prospects.grant_consent(
+            session, int(doc["prospect_id"]), "verification_opposition", doc.get("channel")
+        )
+    return {"status": status_}

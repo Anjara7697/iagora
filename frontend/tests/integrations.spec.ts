@@ -46,7 +46,7 @@ const meta = {
   webhook_path: "/api/v1/webhooks/meta",
   last_event_at: null,
   last_success_at: null,
-  last_error: null,
+  last_error: null as string | null,
   received: 0,
   processed: 0,
   failed: 0,
@@ -59,10 +59,11 @@ async function mockApi(
     status?: unknown;
     check?: unknown;
     saved?: unknown[];
+    meta?: Partial<typeof meta> & { queued?: number; replayable?: number };
   } = {},
 ) {
   const calls: string[] = [];
-  let metaState = { ...meta };
+  let metaState: typeof meta & { queued?: number; replayable?: number } = { ...meta, ...opts.meta };
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -139,6 +140,10 @@ async function mockApi(
         };
         body = metaState;
       } else body = metaState;
+    } else if (path === "/integrations/meta/replay") {
+      opts.saved?.push({ metaReplay: true });
+      body = { requeued: metaState.replayable ?? 0 };
+      metaState = { ...metaState, failed: 0, replayable: 0, processed: metaState.processed + (metaState.replayable ?? 0) };
     } else if (path === "/integrations/meta/simulate") {
       opts.saved?.push({ metaSimulation: request.postDataJSON() });
       body = { prospect_id: 42, created: true, duplicate: false };
@@ -213,6 +218,8 @@ async function open(page: Page) {
   await page.getByLabel("Email ou nom").fill("admin");
   await page.getByLabel("Mot de passe").fill("x");
   await page.getByRole("button", { name: "Se connecter" }).click();
+  // Attendre la fin de la connexion (jeton enregistré, redirection) avant de naviguer.
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/integrations");
 }
 
@@ -391,7 +398,8 @@ test("lien de campagne : destination validée préremplie et jeton correctement 
   await expect(drawer.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
   await drawer.getByLabel("Nom du jeton").fill("Formulaire campagne");
   await drawer.getByRole("button", { name: "Créer un jeton", exact: true }).click();
-  expect(saved[0]).toMatchObject({ token: { name: "Formulaire campagne", campaign_id: 4, source_id: 9 } });
+  // La requête part après le clic : on attend qu'elle soit reçue avant de la vérifier.
+  await expect.poll(() => saved[0]).toMatchObject({ token: { name: "Formulaire campagne", campaign_id: 4, source_id: 9 } });
 });
 
 test("plusieurs sources : aucun choix implicite et lien invalide ignoré", async ({ page }) => {
@@ -753,4 +761,21 @@ test("les paramètres de messagerie peuvent être rechargés après une erreur",
   await expect(form.getByLabel("Mot de passe", { exact: true })).toHaveValue(
     "",
   );
+});
+
+test("Meta : les leads en attente sont affichés et les échecs se rejouent", async ({ page }) => {
+  const saved: unknown[] = [];
+  await mockApi(page, {
+    saved,
+    meta: { configured: true, received: 5, processed: 2, failed: 2, queued: 1, replayable: 2, last_error: "Formulaire Meta non associé à une campagne" },
+  });
+  await open(page);
+  const drawer = await openConnector(page, "Meta Lead Ads");
+  const card = drawer.getByRole("region", { name: "Meta Lead Ads" });
+  await expect(card.getByText("en attente")).toBeVisible();
+  await card.getByRole("button", { name: "Rejouer les leads en échec (2)" }).click();
+  await expect(card.getByText("2 lead(s) en échec remis en traitement.")).toBeVisible();
+  await expect.poll(() => saved).toContainEqual({ metaReplay: true });
+  // Plus rien à rejouer : le bouton disparaît.
+  await expect(card.getByRole("button", { name: /Rejouer les leads en échec/ })).toHaveCount(0);
 });

@@ -86,6 +86,10 @@ export type MetaSettings = {
   received: number;
   processed: number;
   failed: number;
+  /** En attente de traitement ; repris automatiquement après 5 minutes. */
+  queued?: number;
+  /** En échec et encore rejouables. */
+  replayable?: number;
 };
 export type Campaign = {
   id: number;
@@ -232,7 +236,8 @@ export type TodoKind =
   | "kb_gap"
   | "incident"
   | "application"
-  | "enrollment";
+  | "enrollment"
+  | "opt_out_check";
 export type Priority = "critical" | "high" | "medium" | "low";
 
 export type TodoItem = {

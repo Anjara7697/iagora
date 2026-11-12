@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import logging
 from typing import Annotated, Any
 
 from fastapi import (
@@ -26,11 +27,14 @@ from app.integrations.meta.client import SAFE_ID
 from app.schemas.meta import (
     MetaConfigRead,
     MetaConfigWrite,
+    MetaReplayResult,
     MetaSimulation,
     MetaSimulationResult,
 )
 from app.services import meta_config, meta_leads
 from app.services import prospects as prospects_service
+
+logger = logging.getLogger(__name__)
 
 admin_router = APIRouter(prefix="/integrations/meta", tags=["meta"], dependencies=[ADMIN_ONLY])
 webhook_router = APIRouter(prefix="/webhooks/meta", tags=["meta"])
@@ -92,6 +96,23 @@ async def put_meta_config(
 async def delete_meta_config(db: MongoDb) -> Response:
     await meta_config.delete(db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@admin_router.post("/replay", response_model=MetaReplayResult)
+async def replay_failed_leads(
+    background: BackgroundTasks,
+    db: MongoDb,
+    session_factory: SessionFactoryDep,
+    settings: SettingsDep,
+    user: CurrentUser,
+) -> MetaReplayResult:
+    """Rejoue les leads en échec (au plus 50 par appel, 5 essais par lead) : par exemple après
+    avoir associé leur formulaire à une campagne (AUDIT-API-001)."""
+    requeued = await meta_leads.requeue_failed(db)
+    for leadgen_id in requeued:
+        background.add_task(meta_leads.process, db, session_factory, settings, leadgen_id)
+    logger.info("Leads Meta rejoués par %s : %d", user.id, len(requeued))
+    return MetaReplayResult(requeued=len(requeued))
 
 
 @admin_router.post("/simulate", response_model=MetaSimulationResult)

@@ -97,6 +97,10 @@ def main() -> None:
     purge.add_argument(
         "--apply", action="store_true", help="Effacer réellement (sinon : simple aperçu)"
     )
+    sub.add_parser(
+        "phone-report",
+        help="Aperçu de la mise au format international des téléphones (collisions à examiner)",
+    )
     cal = sub.add_parser(
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
@@ -164,6 +168,8 @@ def main() -> None:
                 )
             )
         )
+    elif args.command == "phone-report":
+        sys.exit(asyncio.run(privacy_commands.cmd_phone_report()))
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":

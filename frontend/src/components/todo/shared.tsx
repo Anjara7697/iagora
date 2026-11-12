@@ -48,6 +48,7 @@ export const TASK_LABELS: Record<TodoKind, string> = {
   escalation: "Demandes de conseiller",
   kb_gap: "Réponses à compléter",
   incident: "Incidents",
+  opt_out_check: "Oppositions à vérifier",
 };
 export const KIND_ORDER: TodoKind[] = [
   "enrollment",
@@ -56,6 +57,7 @@ export const KIND_ORDER: TodoKind[] = [
   "escalation",
   "kb_gap",
   "incident",
+  "opt_out_check",
 ];
 
 export function itemName(item: TodoItem): string {
@@ -74,6 +76,7 @@ export const KIND_TONE: Record<TodoKind, Tone> = {
   escalation: "accent",
   kb_gap: "agent",
   incident: "danger",
+  opt_out_check: "warning",
 };
 export const PRIORITY_TONE: Record<string, Tone> = {
   critical: "danger",

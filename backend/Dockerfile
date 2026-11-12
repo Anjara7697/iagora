@@ -7,15 +7,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Versions figées (AUDIT-OPS-001) : l'image installe exactement ce que la CI a testé.
+COPY requirements.lock.txt .
 RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then \
-      PIP_CERT=/run/secrets/proxy_ca pip install -r requirements.txt; \
+      PIP_CERT=/run/secrets/proxy_ca pip install -r requirements.lock.txt; \
     else \
-      pip install -r requirements.txt; \
+      pip install -r requirements.lock.txt; \
     fi
 
 COPY alembic.ini ./

@@ -7,7 +7,7 @@ seuils sont des valeurs de conception ajustables après validation métier.
 
 import re
 import unicodedata
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.graph.state import Action, Decision, Qualification, SalesAgentState
@@ -18,6 +18,9 @@ from app.models.enums import ConversionStage, ScoringSignal
 PROPOSE_MEETING_MIN_SCORE = 50  # score total à partir duquel on propose un rendez-vous (F-18)
 NURTURE_MAX_SCORE = 24  # en dessous : prospect froid, on entretient sans insister
 MIN_CONFIDENCE = 0.5  # en dessous : lecture du modèle trop incertaine, on transfère (F-20)
+# Délai minimal avant un créneau pour le réserver : un créneau passé, ou trop proche, est reproposé
+# (AUDIT-BIZ-001).
+SLOT_MIN_NOTICE = timedelta(minutes=15)
 
 # Informations de qualification attendues par cible (F-09) : peu de questions, jamais répétées.
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
@@ -36,6 +39,11 @@ FIELD_LABELS = {
     "availability": "ses disponibilités ou l'échéance visée",
     "company_need": "les profils ou compétences recherchés par l'entreprise",
 }
+
+
+def now() -> datetime:
+    """Heure courante (remplaçable dans les tests)."""
+    return datetime.now(UTC)
 
 
 def normalize(text: str) -> str:
@@ -86,6 +94,23 @@ def mentions_meeting(text: str) -> bool:
 def is_opt_out(text: str) -> bool:
     t = normalize(text)
     return any(re.search(p, t) for p in _OPT_OUT)
+
+
+# Formules qui ne visent que les messages de l'école : jamais ambiguës. Les autres (« stop »,
+# « désinscrire », « unsubscribe ») peuvent parler d'autre chose dans un long message ou une
+# question : « Comment me désinscrire de mon école actuelle ? » (AUDIT-BIZ-004).
+_OPT_OUT_WEAK = (r"\bstop\b", r"\bunsubscribe\b", r"desinscri")
+_OPT_OUT_EXPLICIT = [p for p in _OPT_OUT if p not in _OPT_OUT_WEAK]
+AMBIGUOUS_MIN_WORDS = 12
+
+
+def opt_out_is_ambiguous(text: str) -> bool:
+    """Demande d'arrêt à faire vérifier par un conseiller. Elle reste enregistrée tout de suite :
+    la vérification ne sert qu'à rétablir un consentement retiré à tort."""
+    t = normalize(text)
+    if not is_opt_out(text) or any(re.search(p, t) for p in _OPT_OUT_EXPLICIT):
+        return False
+    return "?" in t or len(t.split()) >= AMBIGUOUS_MIN_WORDS
 
 
 def sensitive_alerts(text: str) -> list[str]:
@@ -206,6 +231,11 @@ def decide(state: SalesAgentState) -> Decision:
     if q is not None and q.intent == "slot_choice":
         slots = ctx.pending_slots
         if q.chosen_slot is not None and 1 <= q.chosen_slot <= len(slots):
+            start = slots[q.chosen_slot - 1].start
+            if (start if start.tzinfo else start.replace(tzinfo=UTC)) <= now() + SLOT_MIN_NOTICE:
+                return Decision(
+                    Action.PROPOSE_MEETING, "Créneau choisi déjà passé : nouvelle proposition"
+                )
             return Decision(Action.BOOK_MEETING, f"Le prospect a choisi le créneau {q.chosen_slot}")
         return Decision(Action.PROPOSE_MEETING, "Créneau choisi non reconnu : nouvelle proposition")
     if stage not in _ADVANCED_STAGES:
@@ -303,25 +333,53 @@ def follow_up_delay(level: str | None, *, declined: bool = False) -> timedelta:
 
 # --- Exactitude (NF-10) : aucune information chiffrée non sourcée ---
 
-_CLAIM = re.compile(
-    r"\d[\d  .,]*\s?(?:€|euros?|eur\b|%|pour ?cent|mois|ans?\b|semaines?|jours?|heures?|h\b)"
+# Trois familles d'affirmations (AUDIT-AI-001). Les prix et les conditions d'admission ou de
+# financement ne peuvent venir que des sources validées (base de connaissances, catalogue) : un
+# prospect qui écrit « c'est éligible au CPF ? » ne rend pas l'affirmation vraie. Les durées, dates,
+# heures et niveaux d'études peuvent aussi venir de la conversation (le prospect parle de lui, ou un
+# créneau déjà proposé).
+_PRICE = re.compile(r"\d[\d  .,]*\s?(?:€|euros?|eur\b|%|pour ?cent)")
+_SPELLED = (
+    r"(?:deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|quinze|seize|dix-huit|vingt"
+    r"|vingt-quatre|trente|quarante-huit)"
+)
+_FACT = re.compile(
+    r"\b\d{1,2}\s?[h:]\s?\d{2}\b"  # heure : 14h30, 14 h 30, 14:30
+    r"|\d[\d  .,]*\s?(?:mois|ans?\b|annees?\b|semaines?|jours?|heures?|h\b)"
+    r"|\b" + _SPELLED + r"\s(?:ans?|annees?|mois|semaines?|jours?|heures?)\b"
     r"|\b\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?\b"
     r"|\b\d{1,2}\s(?:janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre"
     r"|decembre)\b"
     r"|\b20\d{2}\b"
+    r"|\bbac\s?\+\s?\d\b"
+)
+# Liste à valider avec DATUM : termes qui engagent l'école sur l'admission ou le financement.
+_TERMS = re.compile(
+    r"\b(?:cpf|rncp|opco|france travail|pole emploi|gratuit(?:e|s|es)?|eligibles?|eligibilite"
+    r"|bourses?|diplome d'etat|reconnue? par l'etat|certifiante?s?|accredite(?:e|s|es)?"
+    r"|sans (?:le )?bac|frais d'inscription|frais de scolarite)\b"
 )
 
 
-def ungrounded_claims(reply: str, sources: list[str]) -> list[str]:
-    """Prix, durées, pourcentages ou dates de la réponse absents des sources fournies.
+def _compact(text: str) -> str:
+    return re.sub(r"\s+", "", text)
 
-    Les sources sont la base de connaissances, les messages déjà échangés et les créneaux
-    réels de l'agenda : tout chiffre avancé doit y figurer (NF-10).
+
+def ungrounded_claims(
+    reply: str, sources: list[str], *, conversation: list[str] | None = None
+) -> list[str]:
+    """Affirmations de la réponse absentes des sources (NF-10).
+
+    `sources` : base de connaissances, catalogue validé, créneaux réels, campagne. `conversation` :
+    messages déjà échangés, qui ne justifient que les durées, dates, heures et niveaux d'études,
+    jamais un prix ni une condition d'admission ou de financement.
     """
-    haystack = re.sub(r"\s+", "", normalize(" ".join(sources)))
+    validated = _compact(normalize(" ".join(sources)))
+    everything = validated + _compact(normalize(" ".join(conversation or [])))
+    text = normalize(reply)
     bad = []
-    for match in _CLAIM.finditer(normalize(reply)):
-        token = re.sub(r"\s+", "", match.group(0))
-        if token not in haystack:
-            bad.append(match.group(0).strip())
-    return bad
+    for pattern, haystack in ((_PRICE, validated), (_TERMS, validated), (_FACT, everything)):
+        for match in pattern.finditer(text):
+            if _compact(match.group(0)) not in haystack:
+                bad.append(match.group(0).strip())
+    return list(dict.fromkeys(bad))

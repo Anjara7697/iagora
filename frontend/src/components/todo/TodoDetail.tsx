@@ -14,7 +14,7 @@ import { CHANNELS, HANDOFF_REASONS, PRIORITIES, RISKS, formatDate, label, EXECUT
 import { Box } from "@/components/ds/card";
 import { KindFilter, revealed, PanelProps, TASK_LABELS, itemName, KIND_TONE, PRIORITY_TONE, RISK_TONE, Confidence, DetailHead } from "@/components/todo/shared";
 import { DraftPanel } from "@/components/todo/DraftPanel";
-import { ApplicationReview, EnrollmentReview } from "@/components/todo/ReviewPanels";
+import { ApplicationReview, EnrollmentReview, OptOutReview } from "@/components/todo/ReviewPanels";
 
 export function TodoDetail({
   kind,
@@ -183,6 +183,12 @@ export function TodoDetail({
       {item.kind === "application" && (
         <div {...reveal(3)}>
           <ApplicationReview {...panel} />
+        </div>
+      )}
+
+      {item.kind === "opt_out_check" && (
+        <div {...reveal(3)}>
+          <OptOutReview {...panel} />
         </div>
       )}
 

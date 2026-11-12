@@ -7,11 +7,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.agents.auto import email_loop, follow_up_loop, reply_queue_loop
+from app.agents.auto import email_loop, follow_up_loop, meta_resume_loop, reply_queue_loop
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
-from app.config import get_settings
+from app.config import Settings, get_settings
+from app.core.http_guard import HttpGuard
 from app.core.logging import configure_logging
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine
@@ -20,8 +21,21 @@ from app.services.conversations import ensure_indexes
 logger = logging.getLogger(__name__)
 
 
+def require_explicit_environment(settings: Settings) -> None:
+    """Refuse de démarrer le serveur sans ENVIRONMENT explicite (AUDIT-ARCH-004).
+
+    Sans lui, l'API se croirait en « development » : documentation publique, documents fictifs dans
+    le RAG, simulateur autorisé. Les outils en ligne de commande et les tests n'en dépendent pas."""
+    if "environment" not in settings.model_fields_set:
+        raise RuntimeError(
+            "ENVIRONMENT absent : indiquez ENVIRONMENT=production (ou development pour une "
+            "instance d'essai) dans le fichier .env avant de démarrer l'API."
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    require_explicit_environment(get_settings())
     try:
         await ensure_indexes(get_mongo_db())
         await ensure_run_indexes(get_mongo_db())
@@ -37,6 +51,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # (console Intégrations ou `.env`), et prend les changements en compte sans redémarrage.
     if settings.environment != "test":
         workers.append(asyncio.create_task(email_loop(settings), name="email-worker"))
+        workers.append(asyncio.create_task(meta_resume_loop(settings), name="meta-resume"))
     yield
     for worker in workers:
         worker.cancel()
@@ -66,6 +81,9 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
+    # Ajouté en dernier, donc le plus à l'extérieur : en-têtes aussi sur les réponses CORS et
+    # les erreurs.
+    app.add_middleware(HttpGuard, max_body_bytes=settings.max_request_bytes)
     register_error_handlers(app)
     app.include_router(api_router, prefix=settings.api_v1_prefix)
     return app

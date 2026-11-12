@@ -10,7 +10,7 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | `prospects` : `consent_status`, `consent_source`, `consent_given_at`, `opted_out_at` + table `consent_events` | S-03 : statut, source, date du consentement, opt-out et sa date ; historique tracé (S-02, S-07) |
 | `prospects` : `origin_channel_id`, `current_channel_id`, `target_id` | F-07 : canal d'origine et canal courant stockés séparément ; cible du prospect (§9.5) |
 | `prospects.profile` (JSONB) | F-09 : conserver les réponses de qualification pour ne jamais les redemander |
-| Unicité : `lower(email)`, `phone`, `linkedin_id`, `facebook_id`, `instagram_id`, `(channel_id, channel_identifier)` | F-05 : aucun doublon sur les identifiants disponibles |
+| Unicité : `lower(email)`, `phone` (format international E.164, pays par défaut `PHONE_DEFAULT_REGION`, migration 0013), `linkedin_id`, `facebook_id`, `instagram_id`, `(channel_id, channel_identifier)` | F-05 : aucun doublon sur les identifiants disponibles |
 | `campaign_prospects` : `first_seen_at`, `last_seen_at`, unicité `(campaign_source_id, prospect_id)` | F-03 : dates de première / dernière apparition |
 | Table `stage_events` | F-13 : chaque changement d'étape est horodaté |
 | `campaigns.start_date` / `end_date` | §9.5 : dates de début et de fin de campagne |

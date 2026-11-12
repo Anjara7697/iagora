@@ -18,7 +18,7 @@ import hashlib
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pymongo import ReturnDocument
@@ -49,6 +49,12 @@ logger = logging.getLogger(__name__)
 CHANNEL = "email"
 STATE_ID = "email_sync"
 MAX_ATTEMPTS = 3
+# Au-delà, un message resté « en cours d'envoi » vient d'un arrêt pendant l'envoi (AUDIT-DATA-004).
+SENDING_STALE_AFTER = timedelta(minutes=15)
+INTERRUPTED = (
+    "Envoi interrompu par un arrêt du serveur : vérifiez dans les éléments envoyés de la boîte "
+    "avant de relancer, le message est peut-être déjà parti."
+)
 OUTBOX_BATCH = 20
 DEFAULT_SUBJECT = "DATUM Academy"
 DEMO_DOMAINS = ("@demo.example.com", "@example.com", "@example.org", "@example.net")
@@ -257,9 +263,60 @@ async def _claim(db: Any, conversation_id: Any, message_id: str) -> bool:
                 "$elemMatch": {"id": message_id, "metadata.delivery": "not_sent"},
             },
         },
-        {"$set": {"messages.$.metadata.delivery": "sending"}},
+        {
+            "$set": {
+                "messages.$.metadata.delivery": "sending",
+                "messages.$.metadata.sending_at": _now(),
+            }
+        },
     )
     return bool(result.modified_count == 1)
+
+
+async def flag_interrupted_sends(db: Any, *, now: datetime | None = None) -> int:
+    """Passe en échec, avec un motif explicite, les messages restés « en cours d'envoi ».
+
+    Rien n'est renvoyé automatiquement (le message est peut-être parti) : le conseiller vérifie,
+    puis relance s'il le faut. Un message sans `sending_at` date d'avant ce suivi : il est
+    ancien."""
+    now = now or _now()
+    cutoff = now - SENDING_STALE_AFTER
+    flagged = 0
+    async for doc in db[conversations.COLLECTION].find(
+        {"channel": CHANNEL, "messages.metadata.delivery": "sending"}
+    ):
+        for message in doc.get("messages", []):
+            meta = message.get("metadata") or {}
+            if meta.get("delivery") != "sending":
+                continue
+            started = meta.get("sending_at")
+            if isinstance(started, datetime) and started.tzinfo is None:
+                started = started.replace(tzinfo=UTC)
+            if isinstance(started, datetime) and started > cutoff:
+                continue  # envoi en cours
+            result = await db[conversations.COLLECTION].update_one(
+                {
+                    "_id": doc["_id"],
+                    "messages": {
+                        "$elemMatch": {"id": message["id"], "metadata.delivery": "sending"}
+                    },
+                },
+                {
+                    "$set": {
+                        "messages.$.metadata.delivery": "failed",
+                        "messages.$.metadata.delivery_info": {
+                            **(meta.get("delivery_info") or {}),
+                            "error": INTERRUPTED,
+                            "interrupted": True,
+                            "at": now,
+                        },
+                    }
+                },
+            )
+            if result.modified_count:
+                flagged += 1
+                logger.warning("Envoi interrompu signalé (message %s)", message["id"])
+    return flagged
 
 
 async def _finish(
@@ -502,11 +559,14 @@ async def run_email_cycle(
     """Un passage : réception puis envoi. Une panne de la boîte est consignée, jamais propagée."""
     report = SyncReport()
     error: str | None = None
+    interrupted = await flag_interrupted_sends(db)
     try:
         inbound = await sync_inbound(session_factory, db, client, settings, on_message)
         report = inbound
     except EmailError as exc:
         error = f"réception : {exc}"
+    if interrupted:
+        report.notes.append(f"{interrupted} envoi(s) interrompu(s) à vérifier")
     try:
         await deliver_outbox(session_factory, db, client, settings, report)
     except EmailError as exc:

@@ -200,6 +200,19 @@
     {"id": "pc_compagnons", "category": "premier_contact", "target": "compagnons_pros",
      "message": null,
      "intents": [], "actions": ["continue_conversation"], "handoff": false,
-     "fake": {"reply": "Bonjour Camille, merci pour votre intérêt pour Les Compagnons. Quel est votre métier ?"}}
+     "fake": {"reply": "Bonjour Camille, merci pour votre intérêt pour Les Compagnons. Quel est votre métier ?"}},
+
+    {"id": "cond_cpf", "category": "condition_sans_source", "target": "ebihar_students",
+     "message": "Est-ce que la formation est éligible au CPF ?",
+     "intents": ["question"], "actions": ["continue_conversation", "human_handoff"], "handoff": null,
+     "fake": {"qualification": {"intent": "question"}, "reply": "Oui, la formation eBIHAR est éligible au CPF."}},
+    {"id": "cond_sans_bac", "category": "condition_sans_source", "target": "ebihar_students",
+     "message": "Je n'ai pas le bac, je peux candidater ?",
+     "intents": ["question"], "actions": ["continue_conversation", "human_handoff"], "handoff": null,
+     "fake": {"qualification": {"intent": "question"}, "reply": "Bien sûr, eBIHAR est accessible sans le bac."}},
+    {"id": "cond_duree_en_lettres", "category": "condition_sans_source", "target": "compagnons_pros",
+     "message": "Combien de temps dure le parcours Compagnons ?",
+     "intents": ["question"], "actions": ["continue_conversation", "human_handoff"], "handoff": null,
+     "fake": {"qualification": {"intent": "question"}, "reply": "Le parcours Compagnons dure deux ans."}}
   ]
 }

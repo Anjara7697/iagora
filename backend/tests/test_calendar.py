@@ -10,6 +10,7 @@ import pytest
 from app.agents.defaults import UnconfiguredCalendar
 from app.config import Settings
 from app.graph.ports import CalendarError, Slot
+from app.integrations.calendar import retry
 from app.integrations.calendar.agenda import DemoCalendar, GoogleZoomCalendar
 from app.integrations.calendar.availability import compute_slots
 from app.integrations.calendar.factory import create_calendar
@@ -91,12 +92,26 @@ def test_weekend_and_full_days_give_no_slot():
 
 
 class Server:
-    def __init__(self, *, busy=None, calendar_error=False, zoom_status=201, zoom_404_host=None):
+    def __init__(
+        self,
+        *,
+        busy=None,
+        calendar_error=False,
+        zoom_status=201,
+        zoom_404_host=None,
+        event_statuses=(),
+        freebusy_statuses=(),
+        zoom_statuses=(),
+    ):
         self.calls: list[tuple[str, str, dict]] = []
         self.busy = busy or []
         self.calendar_error = calendar_error
         self.zoom_status = zoom_status
         self.zoom_404_host = zoom_404_host
+        # Réponses successives imposées (puis comportement normal) : limites de débit, pannes.
+        self.event_statuses = list(event_statuses)
+        self.freebusy_statuses = list(freebusy_statuses)
+        self.zoom_statuses = list(zoom_statuses)
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         url = str(request.url)
@@ -105,14 +120,22 @@ class Server:
         if "oauth2.googleapis.com" in url or "zoom.us/oauth" in url:
             return httpx.Response(200, json={"access_token": "tok", "expires_in": 3600})
         if url.endswith("/freeBusy"):
+            if self.freebusy_statuses:
+                return httpx.Response(self.freebusy_statuses.pop(0), json={})
             cal = body["items"][0]["id"]
             entry = (
                 {"errors": [{"reason": "notFound"}]} if self.calendar_error else {"busy": self.busy}
             )
             return httpx.Response(200, json={"calendars": {cal: entry}})
         if "/calendars/" in url and url.split("?")[0].endswith("/events"):
+            if self.event_statuses:
+                return httpx.Response(self.event_statuses.pop(0), json={})
             return httpx.Response(200, json={"id": "evt-123"})
+        if "api.zoom.us" in url and request.method == "DELETE":
+            return httpx.Response(204)
         if "api.zoom.us" in url:
+            if self.zoom_statuses:
+                return httpx.Response(self.zoom_statuses.pop(0), json={})
             host = url.split("/users/")[1].split("/")[0]
             if self.zoom_404_host and host == self.zoom_404_host:
                 return httpx.Response(404, json={})
@@ -122,6 +145,14 @@ class Server:
                 201, json={"id": 987, "join_url": f"https://zoom.us/j/987?h={host}"}
             )
         return httpx.Response(500)
+
+
+@pytest.fixture(autouse=True)
+def _no_retry_wait(monkeypatch):
+    async def instant(_delay):
+        return None
+
+    monkeypatch.setattr(retry, "sleep", instant)
 
 
 def agenda(server: Server, **over) -> GoogleZoomCalendar:
@@ -252,3 +283,40 @@ def test_empty_inline_key_falls_back_to_the_file_setting_error():
     )
     with pytest.raises(CalendarError, match="non configuré"):
         asyncio.run(client.busy("c@d.e", NOW, NOW + timedelta(days=1), "Europe/Paris"))
+
+
+# --- Réservation robuste (AUDIT-AI-006, AUDIT-BIZ-001) ---
+
+
+def test_rate_limited_calls_are_retried_including_a_creation():
+    server = Server(freebusy_statuses=[429], event_statuses=[429], zoom_statuses=[429])
+    meeting = asyncio.run(agenda(server).book(SLOT, "Jean", advisor_email="conseil@datum.test"))
+    assert meeting.calendar_event_id == "evt-123" and meeting.zoom_meeting_id == "987"
+    assert sum(1 for c in server.calls if c[1].endswith("/events")) == 2
+
+
+def test_a_server_error_is_retried_for_availability_but_never_for_a_creation():
+    server = Server(freebusy_statuses=[503, 502])
+    slots = asyncio.run(agenda(server).get_available_slots(1, advisor_email="a@b.c"))
+    assert len(slots) == 1  # deux pannes passagères absorbées
+    created = Server(event_statuses=[503])
+    with pytest.raises(CalendarError, match="503"):
+        asyncio.run(agenda(created).book(SLOT, "Jean", advisor_email="a@b.c"))
+    # Un seul essai de création : l'événement a peut-être été créé malgré l'erreur.
+    assert sum(1 for c in created.calls if c[1].endswith("/events")) == 1
+
+
+def test_a_failed_calendar_event_deletes_the_zoom_meeting_already_created():
+    server = Server(event_statuses=[500])
+    with pytest.raises(CalendarError):
+        asyncio.run(agenda(server).book(SLOT, "Jean", advisor_email="conseil@datum.test"))
+    deletes = [c for c in server.calls if c[0] == "DELETE"]
+    assert len(deletes) == 1 and deletes[0][1].endswith("/meetings/987")
+
+
+def test_a_past_slot_is_never_booked():
+    past = Slot("old", NOW - timedelta(days=1), NOW - timedelta(days=1) + timedelta(minutes=30))
+    server = Server()
+    with pytest.raises(CalendarError, match="passé"):
+        asyncio.run(agenda(server).book(past, "Jean", advisor_email="a@b.c"))
+    assert server.calls == []  # ni lecture d'agenda, ni réunion Zoom
