@@ -6,8 +6,13 @@ Exécutable en production : c'est un outil d'exploitation, pas de recette. La du
 de DATUM (voir docs/conformite-rgpd.md) : aucune purge ne se lance automatiquement.
 """
 
+from sqlalchemy import select
+
+from app.config import get_settings
+from app.core import phones
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
+from app.models import Prospect
 from app.services import erasure
 
 
@@ -41,6 +46,25 @@ async def cmd_purge_inactive(days: int, *, include_converted: bool, apply: bool)
                     f"{external} rendez-vous existent encore dans Google Agenda / Zoom : "
                     "à supprimer à la main."
                 )
+    finally:
+        await dispose_engine()
+        await close_clients()
+    return 0
+
+
+async def cmd_phone_report() -> int:
+    """Aperçu, sans rien modifier : combien de numéros passeraient au format E.164, et quelles
+    fiches partagent un même numéro une fois normalisé (numéros de fiche, jamais le numéro)."""
+    try:
+        async with get_sessionmaker()() as session:
+            rows = (await session.execute(select(Prospect.id, Prospect.phone))).tuples().all()
+        changes, collisions = phones.plan(rows, get_settings().phone_default_region)
+        print(f"{len(changes)} numéro(s) à mettre au format international.")
+        print(f"{len(collisions)} groupe(s) de fiches avec le même numéro (non modifiées) :")
+        for group in collisions:
+            print("  - fiches " + ", ".join(str(pid) for pid in group))
+        if collisions:
+            print("À examiner à la main : même personne en double, ou numéro partagé.")
     finally:
         await dispose_engine()
         await close_clients()

@@ -1,23 +1,18 @@
-import re
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
 
+from app.config import get_settings
+from app.core import phones
 from app.models.enums import ConsentStatus, ConversionStage, InterestLevel
 from app.services.demo import is_demo_email
 
-_PHONE_SEPARATORS = re.compile(r"[\s.\-()]")
-
 
 def normalize_phone(value: str | None) -> str | None:
-    """Normalisation minimale pour la déduplication (F-05) : sans séparateurs, '00' -> '+'."""
-    if value is None:
-        return None
-    phone = _PHONE_SEPARATORS.sub("", value)
-    if phone.startswith("00"):
-        phone = "+" + phone[2:]
-    return phone or None
+    """Format international E.164 pour la déduplication (F-05) et l'opposition (S-03) ; pays par
+    défaut `PHONE_DEFAULT_REGION` pour les numéros nationaux (`06…` → `+336…`)."""
+    return phones.normalize(value, get_settings().phone_default_region)
 
 
 class _Identity(BaseModel):

@@ -18,6 +18,8 @@ from typing import Any
 from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
+from app.core import phones
 from app.models import (
     Appointment,
     CampaignProspect,
@@ -59,8 +61,14 @@ async def is_suppressed(session: AsyncSession, *, email: str | None, phone: str 
     conditions = []
     if (email_hash := fingerprint(email)) is not None:
         conditions.append(ErasureRecord.email_hash == email_hash)
-    if (phone_hash := fingerprint(phone, phone=True)) is not None:
-        conditions.append(ErasureRecord.phone_hash == phone_hash)
+    # Les empreintes anciennes ont pu être calculées sur `06…` ou `336…` : on cherche toutes les
+    # formes d'un même numéro (AUDIT-DATA-001).
+    region = get_settings().phone_default_region
+    hashes = [
+        h for form in phones.legacy_forms(phone, region) if (h := fingerprint(form, phone=True))
+    ]
+    if hashes:
+        conditions.append(ErasureRecord.phone_hash.in_(hashes))
     if not conditions:
         return False
     found = await session.scalar(
