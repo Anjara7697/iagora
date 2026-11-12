@@ -2,7 +2,7 @@
 
 import asyncio
 import io
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from unittest.mock import patch
@@ -495,6 +495,60 @@ async def test_two_concurrent_runs_send_a_message_only_once(env):
     client = FakeEmailClient()
     await asyncio.gather(env.deliver(client), env.deliver(client))
     assert len(client.sent) == 1
+
+
+async def _set_sending(env, *, started_at):
+    doc = await env.conversation()
+    meta = {"metadata.delivery": "sending"}
+    if started_at is not None:
+        meta["metadata.sending_at"] = started_at
+    await env.db[conversations.COLLECTION].update_one(
+        {"_id": doc["_id"], "messages.id": "draft-1"},
+        {"$set": {f"messages.$.{k}": v for k, v in meta.items()}},
+    )
+
+
+async def test_a_send_interrupted_by_a_crash_is_flagged_never_resent(client, env):
+    """AUDIT-DATA-004 : un message resté « en cours d'envoi » passe en échec avec un motif clair ;
+    rien n'est renvoyé tant qu'un conseiller ne relance pas lui-même."""
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    await _set_sending(env, started_at=datetime.now(UTC) - timedelta(minutes=20))
+    out = FakeEmailClient()
+    report = await email_sync.run_email_cycle(env.factory, env.db, out, settings())
+    message = (await env.messages("agent"))[0]["metadata"]
+    assert message["delivery"] == "failed" and message["delivery_info"]["interrupted"] is True
+    assert "éléments envoyés" in message["delivery_info"]["error"]
+    assert out.sent == [] and "1 envoi(s) interrompu(s) à vérifier" in report.notes
+    doc = await env.conversation()
+    retried = await client.post(f"{API}/conversations/{doc['_id']}/messages/draft-1/retry-delivery")
+    assert retried.status_code == 200
+    await env.deliver(out)
+    assert len(out.sent) == 1
+
+
+async def test_a_send_in_progress_is_left_alone(env):
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    await _set_sending(env, started_at=datetime.now(UTC) - timedelta(minutes=2))
+    assert await email_sync.flag_interrupted_sends(env.db) == 0
+    assert (await env.messages("agent"))[0]["metadata"]["delivery"] == "sending"
+
+
+async def test_a_legacy_sending_message_without_timestamp_is_flagged(env):
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    await _set_sending(env, started_at=None)
+    assert await email_sync.flag_interrupted_sends(env.db) == 1
+
+
+async def test_a_claimed_message_records_when_sending_started(env):
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    doc = await env.conversation()
+    assert await email_sync._claim(env.db, doc["_id"], "draft-1")
+    meta = (await env.messages("agent"))[0]["metadata"]
+    assert meta["delivery"] == "sending" and isinstance(meta["sending_at"], datetime)
 
 
 async def test_an_advisor_message_is_ready_to_send(client, env):

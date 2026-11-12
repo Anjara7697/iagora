@@ -118,7 +118,8 @@ docker compose exec backend python -m app.cli email-sync
 
 ## Limites connues
 
-- Un message resté `sending` après un arrêt brutal du serveur n'est pas repris automatiquement
-  (on préfère ne rien renvoyer que d'envoyer deux fois) : à vérifier à la main.
+- Un message resté `sending` plus de 15 minutes (arrêt brutal pendant l'envoi) n'est jamais renvoyé
+  automatiquement : le cycle suivant le passe en `failed` avec le motif « Envoi interrompu… vérifiez dans
+  les éléments envoyés ». Le conseiller vérifie la boîte, puis relance s'il le faut (« Nouvelle tentative »).
 - Plusieurs emails rapprochés du même prospect reçoivent une réponse chacun.
 - Pas de pièces jointes en sortie ; l'HTML est une mise en page simple (voir ci-dessus), sans images intégrées.
