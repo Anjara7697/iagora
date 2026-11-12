@@ -34,7 +34,6 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production, gardé pour le lot 10 | [database/README.md](database/README.md) |
 | P3 | Messages embarqués dans le document de conversation (16 Mo maximum) | [database/README.md](database/README.md) |
 | P3 | Identifiants sensibles à la casse | [revue-qualite.md](revue-qualite.md) |
-| P3 | Deux écrans très longs (`app/settings/page.tsx`, `app/simulator/page.tsx`, plus de 600 lignes) à découper en composants de section | [audit/reports/FRONTEND_UX_AUDIT.md](audit/reports/FRONTEND_UX_AUDIT.md) FE-002 |
 
 ## Tests et recette
 

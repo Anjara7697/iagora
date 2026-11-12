@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@heroui/react";
-import { Check, Database, Megaphone, MessagesSquare, Route, Send, Sparkles, Trash2, UserPlus, X } from "lucide-react";
+import { Check, Megaphone, MessagesSquare, Route, Send, UserPlus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
@@ -9,16 +9,17 @@ import SimulationNotice from "@/components/SimulationNotice";
 import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";
 import ConversationView from "@/components/ConversationView";
-import RunView from "@/components/TraceView";
-import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { Btn, ErrorText, Field, FilterChip, LinkButton, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, LinkButton, SelectBox, Notice, Tag, TextInput, TextLink } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
+import { AgentDecision } from "@/components/simulator/AgentDecision";
+import { DemoDataCard } from "@/components/simulator/DemoDataCard";
+import { END_ACTIONS, SCENARIOS, pendingDraft } from "@/components/simulator/shared";
 import { ScoreBadge, Skeleton, StageBadge } from "@/components/ui";
 import { api, ApiError, SIMULATOR_ENABLED, failure } from "@/lib/api";
 import { replaceUrl } from "@/lib/url";
-import { ACTIONS, CONSENT, STAGES, label } from "@/lib/labels";
+import { ACTIONS, CONSENT, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type {
   AgentRun,
@@ -31,50 +32,6 @@ import type {
 import { Box } from "@/components/ds/card";
 
 type Session = { prospectId: number; conversationId: string; name: string };
-
-/** Messages types pour tester rapidement les cas importants du cahier des charges. */
-const SCENARIOS: { title: string; message: string }[] = [
-  { title: "Durée", message: "Combien de temps dure le programme ?" },
-  { title: "Admission", message: "Quelles sont les conditions d'admission ?" },
-  { title: "Prix", message: "Combien coûte la formation ?" },
-  {
-    title: "Financement (hors base)",
-    message: "Puis-je financer la formation avec mon CPF ?",
-  },
-  { title: "Programmes", message: "Quelles formations proposez-vous ?" },
-  {
-    title: "Rendez-vous",
-    message: "Je voudrais prendre rendez-vous avec un conseiller.",
-  },
-  {
-    title: "Veut un conseiller",
-    message: "Je préfère parler directement à un conseiller.",
-  },
-  {
-    title: "Situation sensible",
-    message: "Je vais porter plainte contre votre école.",
-  },
-  { title: "Pas intéressé", message: "Non merci, ça ne m'intéresse pas." },
-  { title: "Désinscription", message: "STOP, ne m'écrivez plus." },
-];
-
-const END_ACTIONS = ["human_handoff", "close", "opt_out"];
-
-function pendingDraft(messages: Message[]): Message | undefined {
-  const last = [...messages].reverse().find((m) => {
-    const status = (m.metadata.draft as { status?: string } | undefined)
-      ?.status;
-    return (
-      m.role === "agent" &&
-      status !== "rejected" &&
-      status !== "superseded" &&
-      status !== "cancelled"
-    );
-  });
-  const status = (last?.metadata.draft as { status?: string } | undefined)
-    ?.status;
-  return status === "pending" ? last : undefined;
-}
 
 export default function SimulatorPage() {
   return (
@@ -266,13 +223,6 @@ function Simulator() {
   const draft = pendingDraft(messages);
   const membership = prospect?.campaigns[0];
   const lastAgent = [...messages].reverse().find((m) => m.role === "agent");
-  const sources = Array.isArray(lastAgent?.metadata.sources)
-    ? (lastAgent?.metadata.sources as string[])
-    : [];
-  const confidence =
-    typeof lastAgent?.metadata.confidence === "number"
-      ? (lastAgent.metadata.confidence as number)
-      : null;
 
   return (
     <Screen wide className="max-w-[1600px]">
@@ -312,37 +262,12 @@ function Simulator() {
           </Btn>
         </Box>
         {isAdmin && (
-          <Box as="section" className="gap-3 p-5" aria-label="Données fictives">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
-                <Database className="size-4" />
-              </span>
-              <span className="min-w-[180px] flex-1 text-[13px]/[20px] text-muted" role="status">
-                Données fictives en base
-                {demoData.data && (
-                  <>
-                    {" : "}
-                    <b className="font-semibold text-foreground">
-                      {`${demoData.data.prospects} prospect(s), ${demoData.data.conversations} conversation(s)`}
-                    </b>
-                  </>
-                )}
-                {demoData.error && " : nombre indisponible"}
-              </span>
-              <ConfirmDialog
-                trigger={
-                  <Btn variant="danger-soft" size="sm" disabled={busy || !demoData.data || demoData.data.prospects === 0}>
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Supprimer les données fictives
-                  </Btn>
-                }
-                title="Supprimer les données fictives ?"
-                description="Tous les prospects fictifs (@demo.example.com) et leurs conversations sont supprimés. Les vraies données ne sont pas touchées."
-                confirmLabel="Supprimer les données fictives"
-                onConfirm={() => void purge()}
-              />
-            </div>
-          </Box>
+          <DemoDataCard
+            counts={demoData.data}
+            unavailable={!!demoData.error}
+            disabled={busy || !demoData.data || demoData.data.prospects === 0}
+            onPurge={() => void purge()}
+          />
         )}
       </div>
 
@@ -591,61 +516,7 @@ function Simulator() {
           )}
         </Box>
 
-        <Box as="aside" className="gap-4 p-5" aria-label="Décision de l'agent">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-agent" aria-hidden="true" />
-            <h3 className="text-base font-semibold text-foreground">Décision de l&apos;agent</h3>
-          </div>
-          {!current && (
-            <p className="text-[13px] text-muted">
-              La décision apparaîtra après le premier message.
-            </p>
-          )}
-          {current && (
-            <>
-              {runs.length > 1 && (
-                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tours">
-                  {runs.map((_, i) => (
-                    <FilterChip
-                      key={i}
-                      pressed={current === runs[i]}
-                      onClick={() => setShown(i)}
-                    >
-                      Tour {i + 1}
-                    </FilterChip>
-                  ))}
-                </div>
-              )}
-              <RunView run={current} />
-              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 text-[13px]">
-                <dt className="text-muted">Intérêt / adéquation</dt>
-                <dd className="text-foreground tabular-nums">
-                  {current.scores.interest ?? "-"} /{" "}
-                  {current.scores.fit ?? "-"}
-                </dd>
-                <dt className="text-muted">Étape</dt>
-                <dd className="text-foreground">
-                  {label(STAGES, current.stage_before)} →{" "}
-                  {label(STAGES, current.stage_after)}
-                </dd>
-                {current === lastRun && (
-                  <>
-                    <dt className="text-muted">Sources</dt>
-                    <dd className="text-foreground">
-                      {sources.length > 0 ? sources.join(" ; ") : "aucune"}
-                    </dd>
-                    <dt className="text-muted">Confiance</dt>
-                    <dd className="text-foreground tabular-nums">
-                      {confidence !== null
-                        ? `${Math.round(confidence * 100)} %`
-                        : "-"}
-                    </dd>
-                  </>
-                )}
-              </dl>
-            </>
-          )}
-        </Box>
+        <AgentDecision runs={runs} current={current} onShow={setShown} lastAgent={lastAgent} />
       </div>
     </Screen>
   );
