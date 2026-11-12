@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "api:types": "openapi-typescript src/lib/api/openapi.json -o src/lib/api/schema.d.ts",
+    "api:check": "npm run api:types && git diff --exit-code -- src/lib/api/schema.d.ts"
   },
   "dependencies": {
     "@heroui/react": "3.2.6",
@@ -29,6 +31,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
+    "openapi-typescript": "7.13.0",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   },

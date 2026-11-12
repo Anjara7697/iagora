@@ -227,6 +227,11 @@ cd ../frontend
 npm run lint && npm run typecheck && npm run build
 ```
 
+**Contrat frontend / API.** Après une modification d'un schéma de réponse de l'API :
+`cd backend && python scripts/export_openapi.py`, puis `cd frontend && npm run api:types`, et versionner
+`frontend/src/lib/api/openapi.json` et `schema.d.ts`. `src/lib/api/contract.ts` vérifie au typecheck que
+chaque champ lu par la console existe dans l'API ; la CI refuse un contrat ou des types non à jour.
+
 Hooks Git optionnels : `pip install pre-commit && pre-commit install`.
 La CI (`.github/workflows/ci.yml`) exécute ces contrôles à chaque push et pull request.
 

@@ -47,6 +47,8 @@ jobs:
       - run: mypy
       - name: Migrations (upgrade, puis vérification qu'aucun modèle n'est hors migration)
         run: alembic upgrade head && alembic check
+      - name: Contrat OpenAPI à jour (scripts/export_openapi.py)
+        run: python scripts/export_openapi.py --check
       - name: Tests (PostgreSQL dédiée, distincte de la base migrée, et MongoDB réel)
         env:
           PGPASSWORD: iagora
@@ -79,6 +81,8 @@ jobs:
         run: node tools/n8n/build.mjs --check && node --test tools/n8n/prospect.test.mjs
       - run: npm ci
       - run: npm run lint
+      - name: Types de l'API à jour (src/lib/api/schema.d.ts)
+        run: npm run api:check
       - run: npm run typecheck
       # Build d'abord : les tests navigateur tournent sur la version de production (pages compilées une fois).
       - run: npm run build
