@@ -16,7 +16,9 @@ from app.models import Prospect
 from app.models.enums import SenderType
 from app.schemas.analytics import Analytics, Coverage, Delay, DraftOutcomes, RejectReason
 from app.services import conversations, dashboard
+from app.services import scope as scope_service
 from app.services.demo import demo_filter
+from app.services.scope import EVERYTHING, Scope
 
 MAX_REASONS = 10
 
@@ -35,12 +37,13 @@ async def _demo_ids(session: AsyncSession) -> list[int]:
     return list(await session.scalars(select(Prospect.id).where(demo_filter())))
 
 
-async def analytics(session: AsyncSession, db: Any, days: int) -> Analytics:
+async def analytics(
+    session: AsyncSession, db: Any, days: int, scope: Scope = EVERYTHING
+) -> Analytics:
     since = datetime.now(UTC) - timedelta(days=days)
     demo_ids = await _demo_ids(session)
-    query: dict[str, Any] = {"messages.created_at": {"$gte": since}}
-    if demo_ids:
-        query["prospect_id"] = {"$nin": demo_ids}
+    who = scope_service.mongo_match(await scope_service.prospect_ids(session, scope), demo_ids)
+    query: dict[str, Any] = {"messages.created_at": {"$gte": since}, **who}
 
     sent_delays: list[float] = []
     drafted_delays: list[float] = []
@@ -94,9 +97,7 @@ async def analytics(session: AsyncSession, db: Any, days: int) -> Analytics:
                 item.count += 1
 
     # Couverture : questions lues par l'agent et réponses bloquées faute d'extrait validé.
-    run_query: dict[str, Any] = {"started_at": {"$gte": since}, "status": "completed"}
-    if demo_ids:
-        run_query["prospect_id"] = {"$nin": demo_ids}
+    run_query: dict[str, Any] = {"started_at": {"$gte": since}, "status": "completed", **who}
     questions = unanswered = 0
     async for run in db[RUNS].find(run_query):
         trace = run.get("trace", [])
@@ -105,7 +106,7 @@ async def analytics(session: AsyncSession, db: Any, days: int) -> Analytics:
             questions += 1
             unanswered += run.get("handoff_reason") == "question_hors_base"
 
-    overview = await dashboard.overview(session, days)
+    overview = await dashboard.overview(session, days, scope)
     return Analytics(
         days=days,
         since=since,

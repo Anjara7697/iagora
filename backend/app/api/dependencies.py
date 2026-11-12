@@ -21,6 +21,7 @@ from app.integrations.knowledge.factory import create_knowledge_base
 from app.integrations.llm.factory import create_language_model
 from app.models import User
 from app.models.enums import UserRole
+from app.services import scope as scope_service
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 MongoDb = Annotated[Any, Depends(get_mongo_db)]  # AsyncIOMotorDatabase
@@ -64,6 +65,49 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_scope(user: CurrentUser) -> "scope_service.Scope":
+    """Périmètre de visibilité des prospects de l'utilisateur (décision D-23)."""
+    return scope_service.for_user(user)
+
+
+CurrentScope = Annotated["scope_service.Scope", Depends(get_scope)]
+
+
+async def check_prospect_visible(prospect_id: int, session: DbSession, scope: CurrentScope) -> None:
+    """À placer sur toute route `/{prospect_id}` : 404 hors du périmètre du conseiller."""
+    await scope_service.ensure_visible(session, scope, prospect_id)
+
+
+async def check_conversation_visible(
+    conversation_id: str, session: DbSession, db: MongoDb, scope: CurrentScope
+) -> None:
+    """À placer sur toute route `/conversations/{conversation_id}` (même règle)."""
+    if not scope.restricted:
+        return
+    from app.services import conversations
+
+    doc = await conversations.get_doc(db, conversation_id)
+    await scope_service.ensure_visible(session, scope, int(doc["prospect_id"]))
+
+
+async def check_membership_visible(
+    membership_id: int, session: DbSession, scope: CurrentScope
+) -> None:
+    """À placer sur toute route `/campaign-prospects/{membership_id}` (même règle)."""
+    if not scope.restricted:
+        return
+    from app.models import CampaignProspect
+
+    membership = await session.get(CampaignProspect, membership_id)
+    if membership is not None:  # inexistant : la route répond elle-même 404
+        await scope_service.ensure_visible(session, scope, membership.prospect_id)
+
+
+VISIBLE_PROSPECT = Depends(check_prospect_visible)
+VISIBLE_MEMBERSHIP = Depends(check_membership_visible)
+VISIBLE_CONVERSATION = Depends(check_conversation_visible)
 
 
 def require_roles(*roles: UserRole) -> params.Depends:

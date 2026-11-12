@@ -68,15 +68,11 @@ async def test_receive_assign_treat_and_change_stage_with_consistent_cards(clien
         )
     ).json()["prospect"]
     pid = p["id"]
-    p = (
-        await advisor.post(
-            f"{API}/prospects/{pid}/campaigns",
-            json={
-                "campaign_id": campaign["id"],
-                "source_id": campaign["sources"][0]["id"],
-            },
-        )
-    ).json()
+    attribution = {"campaign_id": campaign["id"], "source_id": campaign["sources"][0]["id"]}
+    # Décision D-23 : la file « À attribuer » est celle de l'administrateur.
+    refused = await advisor.post(f"{API}/prospects/{pid}/campaigns", json=attribution)
+    assert refused.status_code == 404
+    p = (await client.post(f"{API}/prospects/{pid}/campaigns", json=attribution)).json()
     mid = p["current_membership_id"]
     assigned = await client.patch(
         f"{API}/campaign-prospects/{mid}", json={"assigned_advisor_id": aid}

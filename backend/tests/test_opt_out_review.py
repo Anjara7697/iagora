@@ -4,6 +4,8 @@ import pytest
 from app.graph import policy
 from app.models.enums import UserRole
 
+from .scope_helpers import entrust
+
 API = "/api/v1"
 AMBIGUOUS = "Comment me désinscrire de mon école actuelle pour m'inscrire chez vous ?"
 
@@ -65,6 +67,7 @@ async def test_a_clear_stop_is_not_sent_for_review(client):
 async def test_an_advisor_confirms_but_only_an_admin_restores_consent(client, make_client):
     pid, cid = await _message(client, AMBIGUOUS, "doute-2")
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust(client, advisor, pid)  # décision D-23
     refused = await advisor.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "restore"}
     )
@@ -84,6 +87,7 @@ async def test_an_advisor_confirms_but_only_an_admin_restores_consent(client, ma
 async def test_confirming_keeps_the_opt_out(client, make_client):
     pid, cid = await _message(client, AMBIGUOUS, "doute-3")
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust(client, advisor, pid)  # décision D-23
     r = await advisor.post(
         f"{API}/conversations/{cid}/opt-out-review", json={"decision": "confirm"}
     )

@@ -9,16 +9,22 @@ from app.models import CampaignProspect, Prospect, User
 from app.models.enums import ConversationStatus
 from app.schemas.conversation import ConversationProspect, ConversationSummary
 from app.services import commercial_context, conversations, scoring
+from app.services import scope as scope_service
 from app.services.prospects import campaign_labels
 
 
 async def _matching_prospect_ids(
-    session: AsyncSession, q: str | None, advisor_id: int | None, unassigned: bool
+    session: AsyncSession,
+    q: str | None,
+    advisor_id: int | None,
+    unassigned: bool,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> list[int] | None:
-    """Prospects correspondant à la recherche et à l'affectation ; None si aucun filtre."""
-    if not q and advisor_id is None and not unassigned:
+    """Prospects correspondant à la recherche, à l'affectation et au périmètre de l'utilisateur
+    (décision D-23) ; None si aucun filtre."""
+    if not q and advisor_id is None and not unassigned and not scope.restricted:
         return None
-    stmt = select(Prospect.id)
+    stmt = select(Prospect.id).where(scope_service.condition(scope))
     if q:
         like = f"%{q.strip().lower()}%"
         stmt = stmt.where(
@@ -124,8 +130,9 @@ async def list_inbox(
     unassigned: bool,
     limit: int,
     offset: int,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> tuple[list[ConversationSummary], int]:
-    ids = await _matching_prospect_ids(session, q, advisor_id, unassigned)
+    ids = await _matching_prospect_ids(session, q, advisor_id, unassigned, scope)
     items, total = await conversations.list_conversations(
         db, status, limit, offset, channel=channel, prospect_ids=ids
     )

@@ -123,8 +123,9 @@ async def test_manual_attribution_inherits_and_other_campaign_stays_independent(
     p = (await client.post(f"{API}/prospects", json={"email": "unassigned@example.com"})).json()[
         "prospect"
     ]
+    # Décision D-23 : l'administrateur attribue (file « À attribuer ») ; le conseiller hérite.
     p = (
-        await advisor.post(
+        await client.post(
             f"{API}/prospects/{p['id']}/campaigns",
             json={"campaign_id": first["id"], "source_id": first["sources"][0]["id"]},
         )

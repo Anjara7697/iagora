@@ -895,6 +895,18 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   ).toBeVisible();
 });
 
+test("conseiller : pas de file À attribuer (réservée à l'administrateur)", async ({ page }) => {
+  await mockApi(page, "ADVISOR");
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await login(page);
+  await page.goto("/prospects");
+  await expect(page.getByRole("button", { name: "Mes prospects" })).toBeVisible();
+  // Décision D-23 : un conseiller ne voit que les prospects de ses campagnes.
+  await expect(page.getByRole("button", { name: /^À attribuer/ })).toHaveCount(0);
+  expect(requests.some((u) => u.includes("pending_campaign=true"))).toBe(false);
+});
+
 test("observateur : file À attribuer accessible, attribution interdite", async ({
   page,
 }) => {

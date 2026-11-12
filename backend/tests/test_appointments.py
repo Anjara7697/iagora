@@ -118,7 +118,9 @@ async def test_combined_filters_and_empty_page(client, session_factory):
 async def test_all_roles_can_consult_without_write_endpoint(make_client, session_factory, role):
     client = await make_client(role)
     await seed(session_factory)
-    assert (await client.get(API)).json()["total"] == 4
+    # Décision D-23 : un conseiller ne voit que les rendez-vous de son périmètre (ici, aucun).
+    expected = 0 if role is UserRole.ADVISOR else 4
+    assert (await client.get(API)).json()["total"] == expected
     assert (await client.post(API, json={})).status_code == 405
 
 

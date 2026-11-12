@@ -7,6 +7,7 @@ from app.models.enums import UserRole
 from app.services import agent_settings
 from app.services.agent_settings import AgentMode
 
+from .scope_helpers import entrust
 from .test_agent_workflow import conversation, lead, run, say
 from .test_agent_workflow import env as env  # noqa: F401  (fixture)
 
@@ -100,6 +101,7 @@ async def test_only_an_admin_can_lift_an_opt_out(client, make_client, env):  # n
     pid, mid, cid = await lead(client, text=None)
     await client.post(f"{API}/prospects/{pid}/opt-out", json={"source": "test"})
     advisor = await make_client(UserRole.ADVISOR)
+    await entrust(client, advisor, pid)  # décision D-23
     body = {"source": "appel téléphonique"}
     assert (await advisor.post(f"{API}/prospects/{pid}/consent", json=body)).status_code == 403
     assert (await client.post(f"{API}/prospects/{pid}/consent", json=body)).status_code == 200

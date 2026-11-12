@@ -6,7 +6,9 @@ from app.agents import runtime
 from app.api.dependencies import (
     ANY_ROLE,
     CAN_WRITE,
+    VISIBLE_CONVERSATION,
     CalendarDep,
+    CurrentScope,
     CurrentUser,
     DbSession,
     KnowledgeDep,
@@ -29,6 +31,7 @@ from app.schemas.todo import (
 )
 from app.services import agent_settings, drafts, email_format, prospects
 from app.services import conversations as conversation_service
+from app.services import scope as scope_service
 from app.services import todo as todo_service
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
@@ -41,6 +44,7 @@ async def list_todo(
     session: DbSession,
     db: MongoDb,
     settings: SettingsDep,
+    scope: CurrentScope,
     kind: Annotated[
         str | None,
         Query(
@@ -58,6 +62,7 @@ async def list_todo(
         limit=limit,
         offset=offset,
         footer=email_format.footer_text(settings),
+        prospect_ids=await scope_service.prospect_ids(session, scope),
     )
 
 
@@ -65,10 +70,13 @@ async def list_todo(
 async def list_treated(
     session: DbSession,
     db: MongoDb,
+    scope: CurrentScope,
     hours: Annotated[int, Query(ge=1, le=168)] = 24,
 ) -> TreatedPage:
     """Brouillons déjà validés ou refusés, avec l'état d'envoi (la trace reste lisible)."""
-    return await todo_service.treated(session, db, hours=hours)
+    return await todo_service.treated(
+        session, db, hours=hours, prospect_ids=await scope_service.prospect_ids(session, scope)
+    )
 
 
 @router.get("/todo/item", response_model=TodoItem)
@@ -76,6 +84,7 @@ async def get_todo_item(
     session: DbSession,
     db: MongoDb,
     settings: SettingsDep,
+    scope: CurrentScope,
     id: Annotated[str, Query(min_length=1, max_length=200)],
 ) -> TodoItem:
     parts = id.split(":")
@@ -92,6 +101,7 @@ async def get_todo_item(
         offset=0,
         footer=email_format.footer_text(settings),
         conversation_id=parts[1],
+        prospect_ids=await scope_service.prospect_ids(session, scope),
     )
     for item in result.items:
         if item.id == id:
@@ -131,7 +141,7 @@ async def _guard_consent(session: DbSession, db: MongoDb, conversation_id: str) 
 @router.post(
     "/conversations/{conversation_id}/drafts/{message_id}/approve",
     response_model=MessageRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def approve_draft(
     conversation_id: str,
@@ -149,7 +159,7 @@ async def approve_draft(
 @router.post(
     "/conversations/{conversation_id}/drafts/{message_id}/reject",
     response_model=MessageRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def reject_draft(
     conversation_id: str,
@@ -165,7 +175,7 @@ async def reject_draft(
 @router.post(
     "/conversations/{conversation_id}/messages/{message_id}/retry-delivery",
     response_model=MessageRead,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def retry_delivery(conversation_id: str, message_id: str, db: MongoDb) -> MessageRead:
     """Relance l'envoi d'un message validé dont l'envoi a échoué ou été bloqué."""
@@ -176,7 +186,7 @@ async def retry_delivery(conversation_id: str, message_id: str, db: MongoDb) -> 
     "/conversations/{conversation_id}/drafts/{message_id}/regenerate",
     response_model=AgentRunResult,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
 )
 async def regenerate_draft(
     conversation_id: str,
@@ -202,7 +212,10 @@ async def regenerate_draft(
     )
 
 
-@router.post("/conversations/{conversation_id}/opt-out-review", dependencies=[CAN_WRITE])
+@router.post(
+    "/conversations/{conversation_id}/opt-out-review",
+    dependencies=[CAN_WRITE, VISIBLE_CONVERSATION],
+)
 async def decide_opt_out_review(
     conversation_id: str,
     payload: OptOutReviewDecision,
