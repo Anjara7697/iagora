@@ -12,6 +12,7 @@ from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
 from app.config import get_settings
+from app.core.http_guard import HttpGuard
 from app.core.logging import configure_logging
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine
@@ -66,6 +67,9 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
+    # Ajouté en dernier, donc le plus à l'extérieur : en-têtes aussi sur les réponses CORS et
+    # les erreurs.
+    app.add_middleware(HttpGuard, max_body_bytes=settings.max_request_bytes)
     register_error_handlers(app)
     app.include_router(api_router, prefix=settings.api_v1_prefix)
     return app
