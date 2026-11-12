@@ -92,6 +92,8 @@ class Slot:
     id: str
     start: datetime
     end: datetime
+    # Fuseau des Paramètres (rendez-vous) dans lequel le créneau est annoncé (décision D-21).
+    timezone: str = "Europe/Paris"
 
 
 @dataclass(frozen=True)

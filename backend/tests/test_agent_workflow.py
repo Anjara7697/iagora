@@ -152,6 +152,7 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
     assert proposal["action"] == "propose_meeting"
     for expected in ("lundi 1 mars à 14h00", "mardi 2 mars à 14h00", "mercredi 3 mars à 14h00"):
         assert expected in proposal["reply"]  # uniquement des créneaux réels de l'agenda
+    assert "(heure de Paris)" in proposal["reply"]  # le fuseau est annoncé (D-21)
     assert (await membership(client, mid))["conversion_stage"] == "meeting_proposed"
     stored = (await conversation(client, cid))["messages"][-1]
     assert [s["id"] for s in stored["metadata"]["proposed_slots"]] == ["slot-0", "slot-1", "slot-2"]
@@ -160,7 +161,7 @@ async def test_meeting_request_proposes_real_slots_then_books_the_chosen_one(
     env.llm.qualification = Qualification(intent="slot_choice", chosen_slot=2)
     booked = (await run(client, cid)).json()
     assert booked["action"] == "book_meeting"
-    assert "mardi 2 mars à 14h00" in booked["reply"]
+    assert "mardi 2 mars à 14h00 (heure de Paris)" in booked["reply"]
     assert "https://zoom.example/slot-1" in booked["reply"]
     assert [s.id for s in env.calendar.booked] == ["slot-1"]
     assert (await membership(client, mid))["conversion_stage"] == "meeting_scheduled"

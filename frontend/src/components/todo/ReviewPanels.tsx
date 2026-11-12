@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { Btn, Check as CheckBox, ErrorText, Field, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { formatDate, label, STAGES } from "@/lib/labels";
@@ -310,6 +311,8 @@ export function OptOutReview({ item, onDone }: PanelProps) {
   const user = useCurrentUser();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Rétablir exige un motif écrit (décision D-20).
+  const [reason, setReason] = useState("");
 
   async function decide(decision: "confirm" | "restore") {
     setBusy(true);
@@ -317,7 +320,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
     try {
       await api(`/conversations/${item.conversation_id}/opt-out-review`, {
         method: "POST",
-        body: { decision },
+        body: decision === "restore" ? { decision, reason: reason.trim() } : { decision },
       });
       notifyWorkQueueChanged();
       onDone(
@@ -332,7 +335,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
             },
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Décision impossible");
+      setError(`Décision impossible${err instanceof ApiError ? ` : ${err.message}` : "."}`);
     } finally {
       setBusy(false);
     }
@@ -354,9 +357,23 @@ export function OptOutReview({ item, onDone }: PanelProps) {
               Oui, confirmer l’opposition
             </Btn>
             {user?.role === "ADMIN" ? (
-              <Btn variant="outline" disabled={busy} onClick={() => void decide("restore")}>
-                Non, rétablir le consentement
-              </Btn>
+              <ConfirmDialog
+                trigger={
+                  <Btn variant="outline" disabled={busy}>
+                    Non, rétablir le consentement
+                  </Btn>
+                }
+                title="Rétablir le consentement ?"
+                description="Le prospect pourra de nouveau être contacté. Indiquez ce qui le justifie : le motif est conservé avec votre nom."
+                confirmLabel="Rétablir le consentement"
+                status="warning"
+                confirmDisabled={reason.trim().length < 10}
+                onConfirm={() => void decide("restore")}
+              >
+                <Field label="Motif" hint="10 caractères au moins.">
+                  <TextBox variant="primary" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+                </Field>
+              </ConfirmDialog>
             ) : (
               <span className="text-xs text-muted">Seul un administrateur peut rétablir le consentement.</span>
             )}

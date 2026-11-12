@@ -1110,3 +1110,34 @@ test("fiche : consentement saisi dans un panneau, saisie protégée", async ({ p
   await expect(panel).toHaveCount(0);
   expect(posts).toEqual([{ source: "accord donné par téléphone le 12/10", channel: "email" }]);
 });
+
+test("lever une désinscription exige un motif écrit (administrateur)", async ({ page }) => {
+  await mockApi(page, "ADMIN", { ...prospect, consent_status: "opted_out" });
+  const posts: unknown[] = [];
+  await page.route("**/api/v1/prospects/1/consent", async (route) => {
+    posts.push(route.request().postDataJSON());
+    await route.fulfill({ json: { ...prospect } });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Lever la désinscription (administrateur)" }).click();
+  const panel = page.getByRole("dialog", { name: "Lever la désinscription" });
+  const save = panel.getByRole("button", { name: "Enregistrer le consentement" });
+  await panel.getByLabel("Source du consentement").fill("appel téléphonique");
+  // Décision D-20 : sans motif (10 caractères au moins), la levée est impossible.
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Motif et preuve").fill("court");
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Motif et preuve").fill("Email du 12/11 où il redemande les dates de rentrée.");
+  await auditA11y(page, "fiche prospect, levée de désinscription");
+  await save.click();
+  await expect(page.getByText("Consentement enregistré.")).toBeVisible();
+  expect(posts).toEqual([
+    {
+      source: "appel téléphonique",
+      channel: "email",
+      reason: "Email du 12/11 où il redemande les dates de rentrée.",
+    },
+  ]);
+});

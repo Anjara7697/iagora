@@ -34,7 +34,8 @@ async def fetch_lead(
             f"{GRAPH}/{api_version}/{leadgen_id}",
             params={
                 "fields": (
-                    "id,created_time,form_id,ad_id,ad_name,campaign_id,campaign_name,field_data"
+                    "id,created_time,form_id,ad_id,ad_name,campaign_id,campaign_name,field_data,"
+                    "custom_disclaimer_responses"
                 ),
             },
             headers={"Authorization": f"Bearer {page_access_token}"},

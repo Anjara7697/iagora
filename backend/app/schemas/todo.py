@@ -106,3 +106,6 @@ class AgentModeUpdate(BaseModel):
 
 class OptOutReviewDecision(BaseModel):
     decision: Literal["confirm", "restore"]
+    reason: str | None = Field(
+        None, max_length=500, description="Obligatoire pour rétablir le consentement (D-20)"
+    )

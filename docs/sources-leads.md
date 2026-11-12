@@ -139,3 +139,13 @@ permissions, le jeton de page et la livraison réelle du webhook.
 
 Reste à brancher : il exige une application LinkedIn approuvée. En attendant, les leads peuvent passer
 par l'API générique avec un jeton de service ou par un export CSV.
+
+## Consentement des leads Meta (décision D-26)
+
+- Le formulaire Meta doit contenir une **case de consentement** (mention personnalisée) : cochée, le prospect est
+  enregistré avec son consentement (`custom_disclaimer_responses`, ou une question nommée `consentement`).
+- Sans case cochée, le consentement reste « inconnu » : si le prospect écrit, **l'agent ne lui répond pas** ; la
+  conversation passe à un conseiller (« consentement à confirmer ») qui vérifie, enregistre le consentement sur la
+  fiche, puis répond ou rend la main à l'agent.
+- Le simulateur de lead Meta coche la case par défaut (`consent: false` pour essayer l'autre cas).
+

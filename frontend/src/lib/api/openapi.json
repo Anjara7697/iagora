@@ -1418,6 +1418,19 @@
             ],
             "title": "Channel"
           },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatoire pour lever une désinscription (D-20)",
+            "title": "Reason"
+          },
           "source": {
             "maxLength": 100,
             "title": "Source",
@@ -4021,6 +4034,12 @@
       },
       "MetaSimulation": {
         "properties": {
+          "consent": {
+            "default": true,
+            "description": "Case de consentement cochée dans le formulaire (D-26)",
+            "title": "Consent",
+            "type": "boolean"
+          },
           "email": {
             "maxLength": 255,
             "pattern": "^[^@\\s]+@demo\\.example\\.com$",
@@ -4242,6 +4261,19 @@
             ],
             "title": "Decision",
             "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Obligatoire pour rétablir le consentement (D-20)",
+            "title": "Reason"
           }
         },
         "required": [

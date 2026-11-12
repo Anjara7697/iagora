@@ -52,7 +52,7 @@ def compute_slots(
         while cursor + length <= limit:
             start, end = cursor.astimezone(UTC), (cursor + length).astimezone(UTC)
             if start >= earliest and not _overlaps(start, end, padded):
-                candidates.append(Slot(id=slot_id(start), start=start, end=end))
+                candidates.append(Slot(id=slot_id(start), start=start, end=end, timezone=tz))
             cursor += length
         if candidates:
             per_day.append(candidates)

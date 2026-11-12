@@ -78,7 +78,7 @@ voulu. Les pièces jointes ne sont pas lues.
 
 | Sujet | État actuel | À décider |
 |---|---|---|
-| Premier contact avec un consentement « inconnu » | Autorisé | Base légale (intérêt légitime ? consentement ?) selon le canal |
+| Premier contact avec un consentement « inconnu » | Formulaire du site, email : autorisé. Leads Meta : consentement seulement si la case du formulaire est cochée ; sinon l'agent n'écrit pas et la conversation passe à un conseiller (D-26) | Validation par le DPO |
 | Durée de conservation | Illimitée (la commande `purge-inactive` est prête, non planifiée) | Durée pour un prospect inactif, pour les conversations, pour les traces ; puis planification |
 | Registre des traitements | — | Ajouter le traitement « prospection assistée par IA » |
 | Information des personnes | — | Mention d'information (politique de confidentialité, lien dans les emails) |

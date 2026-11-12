@@ -355,15 +355,22 @@ class WorkflowNodes:
         ctx = state["ctx"]
         slots = state["slots"]
         lines = "\n".join(f"{i}. {prompts.format_slot(s)}" for i, s in enumerate(slots, start=1))
+        zone = prompts.zone_label(slots[0].timezone) if slots else ""
         text = (
-            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles pour échanger avec un "
-            f"conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui vous "
-            "convient."
+            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles ({zone}) pour échanger avec "
+            f"un conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui "
+            "vous convient."
         )
         metadata = {
             "mode": "meeting_proposal",
             "proposed_slots": [
-                {"id": s.id, "start": s.start.isoformat(), "end": s.end.isoformat()} for s in slots
+                {
+                    "id": s.id,
+                    "start": s.start.isoformat(),
+                    "end": s.end.isoformat(),
+                    "timezone": s.timezone,
+                }
+                for s in slots
             ],
         }
         return {
@@ -394,7 +401,10 @@ class WorkflowNodes:
         appointment_id = await self.deps.gateway.create_appointment(
             ctx.prospect_id, ctx.advisor_id, meeting
         )
-        text = f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)}."
+        text = (
+            f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)} "
+            f"({prompts.zone_label(slot.timezone)})."
+        )
         if meeting.meeting_url:
             text += f"\nLien de connexion : {meeting.meeting_url}"
         return {
