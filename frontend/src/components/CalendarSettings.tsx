@@ -1,11 +1,12 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { api, failure } from "@/lib/api";
 import { calendarBadge } from "@/lib/connectors";
 import type { CalendarSettings as Settings, Page } from "@/lib/types";
-import { Btn, SelectBox, TextInput } from "./ds/controls";
-import { ActionsBar, CodeBlock, ConnectedAccounts, Feedback, InfoRow, SettingRow as Field, StatePill } from "./ds/settings";
+import { Btn, ErrorText, SelectBox, TextInput } from "./ds/controls";
+import { ActionsBar, CodeBlock, ConnectedAccounts, InfoRow, SettingRow as Field, SettingsLoading, StatePill } from "./ds/settings";
 import { Box } from "@/components/ds/card";
 
 const MODES: Record<Settings["provider"], string> = {
@@ -16,7 +17,14 @@ const MODES: Record<Settings["provider"], string> = {
 
 /** Agenda des conseillers, réglé par l'administrateur : aucune variable `.env`.
  *  `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
-export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
+export function CalendarSettings({
+  embedded = false,
+  onDirtyChange,
+}: {
+  embedded?: boolean;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [cfg, setCfg] = useState<Settings | null>(null);
   const [secret, setSecret] = useState("");
   const [advisors, setAdvisors] = useState<{ id: number; username: string }[]>(
@@ -24,14 +32,21 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Dernière version enregistrée : sert à savoir si la saisie a changé.
+  const [saved, setSaved] = useState("");
+  const dirty = cfg !== null && (JSON.stringify(cfg) !== saved || secret !== "");
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const load = () =>
-    api<Settings>("/integrations/calendar")
-      .then(setCfg)
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+  const load = () => {
+    setLoadError(null);
+    return api<Settings>("/integrations/calendar")
+      .then((c) => {
+        setCfg(c);
+        setSaved(JSON.stringify(c));
+      })
+      .catch((e) => setLoadError(failure("Chargement des réglages impossible", e)));
+  };
 
   useEffect(() => {
     load();
@@ -40,26 +55,12 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
       .catch(() => setAdvisors([]));
   }, []);
 
-  if (!cfg)
-    return (
-      <section className="flex flex-col gap-3" aria-label="Agenda">
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : (
-          <p className="text-sm text-muted" role="status">
-            Chargement…
-          </p>
-        )}
-      </section>
-    );
+  if (!cfg) return <SettingsLoading label="Agenda" error={loadError} onRetry={() => void load()} />;
 
   async function save() {
     if (!cfg) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await api("/integrations/calendar", {
         method: "PUT",
@@ -71,10 +72,10 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
         },
       });
       setSecret("");
-      setNotice("Agenda enregistré : pris en compte immédiatement.");
+      toast.success("Agenda enregistré", { description: "Pris en compte immédiatement." });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Enregistrement de l’agenda impossible", e));
     } finally {
       setBusy(false);
     }
@@ -182,7 +183,7 @@ export function CalendarSettings({ embedded = false }: { embedded?: boolean }) {
           Enregistrer l’agenda
         </Btn>
       </ActionsBar>
-      <Feedback notice={notice} error={error} />
+      {error && <ErrorText>{error}</ErrorText>}
     </Box>
   );
 }

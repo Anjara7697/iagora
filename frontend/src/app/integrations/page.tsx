@@ -2,8 +2,8 @@
 
 import { SearchField } from "@heroui/react";
 import { ArrowRight, Plug } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useRef } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import { CalendarSettings } from "@/components/CalendarSettings";
 import { ConnectorIcon } from "@/components/ConnectorIcons";
@@ -12,10 +12,12 @@ import { EmailConnector } from "@/components/EmailConnector";
 import { LeadSources } from "@/components/LeadSources";
 import { MetaLeadSettings } from "@/components/MetaLeadSettings";
 import { ZoomSettings } from "@/components/ZoomSettings";
-import { Btn, LinkButton, Segmented } from "@/components/ds/controls";
-import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
+import { Btn, LinkButton, Notice, Segmented } from "@/components/ds/controls";
+import { EmptyPanel, ErrorState, Eyebrow, PageHeader, Screen, cx } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { StatePill } from "@/components/ds/settings";
-import { Loading } from "@/components/ui";
+import { Loading, Skeleton } from "@/components/ui";
 import {
   CATEGORIES,
   CONNECTORS,
@@ -28,6 +30,7 @@ import {
   type ConnectorId,
   type ConnectorView,
 } from "@/lib/connectors";
+import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
 import type {
   CalendarSettings as CalendarConfig,
@@ -57,10 +60,21 @@ const SOON_TEXT: Partial<Record<ConnectorId, string[]>> = {
   ],
 };
 
+const isFilter = (value: string | null): value is Filter => FILTERS.some(([id]) => id === value);
+
+/** Recherche, filtre, connecteur ouvert (et onglet de la messagerie) dans l'adresse, sans entrée d'historique (règle 6). */
+function updateUrl(patch: Record<string, string | null>) {
+  const params = new URLSearchParams(window.location.search);
+  for (const [key, value] of Object.entries(patch)) {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
+  const query = params.toString();
+  replaceUrl(`/integrations${query ? `?${query}` : ""}`);
+}
+
 function Catalog() {
   const user = useCurrentUser();
-  const router = useRouter();
-  const pathname = usePathname();
   const params = useSearchParams();
   const isAdmin = user?.role === "ADMIN";
   // keepPrevious : recharger l'état après un enregistrement ne démonte pas le formulaire.
@@ -81,15 +95,22 @@ function Catalog() {
   const meta = useApi<MetaSettings>(isAdmin ? "/integrations/meta" : null, {
     keepPrevious: true,
   });
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const query = params.get("q") ?? "";
+  const requestedFilter = params.get("f");
+  const filter: Filter = isFilter(requestedFilter) ? requestedFilter : "all";
+  const openId = params.get("c") as ConnectorId | null;
+  const open = CONNECTORS.find((c) => c.id === openId && !c.href) ?? null;
+  // Saisie non enregistrée dans le panneau ouvert : fermer demande confirmation (règle 14).
+  const dirty = useRef(false);
+  const reportDirty = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
+  const { guard, dialog: discardDialog } = useDiscardGuard(() => open !== null && dirty.current);
 
   if (user && !isAdmin)
     return (
       <Screen>
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
-          Cette page est réservée aux administrateurs.
-        </p>
+        <Notice tone="warning">Cette page est réservée aux administrateurs.</Notice>
       </Screen>
     );
 
@@ -103,14 +124,12 @@ function Catalog() {
     linkedin: { tone: "off", label: "Bientôt", configured: false },
   };
 
-  const openId = params.get("c") as ConnectorId | null;
-  const open = CONNECTORS.find((c) => c.id === openId && !c.href) ?? null;
-
   function openConnector(id: ConnectorId) {
-    router.replace(`${pathname}?c=${id}`, { scroll: false });
+    updateUrl({ c: id, tab: null });
   }
   function closeConnector() {
-    router.replace(pathname, { scroll: false });
+    dirty.current = false;
+    updateUrl({ c: null, tab: null });
     // L'état des cartes peut avoir changé pendant la configuration.
     email.reload();
     calendar.reload();
@@ -128,23 +147,27 @@ function Catalog() {
     return !text || `${c.name} ${c.description}`.toLowerCase().includes(text);
   };
   const shown = CONNECTORS.filter(visible);
+  const filtered = text !== "" || filter !== "all";
   const loading = isAdmin && (email.loading || calendar.loading) && !email.data;
   const failed =
     email.error || calendar.error || zoom.error || tokens.error || meta.error;
 
   return (
     <Screen>
+      {discardDialog}
       <PageHeader
+        {...reveal(0)}
         eyebrow="Administration · Intégrations"
         title="Intégrations"
         subtitle="Reliez votre messagerie, les agendas et les sources de prospects. Les identifiants sont chiffrés sur le serveur et ne sont jamais réaffichés."
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Règle 5 : recherche et filtre à gauche, compteur à droite. */}
+      <div className={cx("flex flex-wrap items-center gap-3", reveal(1).className)} style={reveal(1).style}>
         <SearchField
           aria-label="Rechercher un connecteur"
           value={query}
-          onChange={setQuery}
+          onChange={(value) => updateUrl({ q: value || null })}
           className="w-full sm:w-80"
         >
           <SearchField.Group>
@@ -153,43 +176,62 @@ function Catalog() {
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
-        <span className="flex-1" />
         <Segmented
+          className="max-w-full sm:[&_[role=tab]]:whitespace-nowrap"
           label="Filtrer les connecteurs"
           value={filter}
           options={FILTERS.map(([id, text]) => ({ value: id, text }))}
-          onChange={setFilter}
+          onChange={(value) => updateUrl({ f: value === "all" ? null : value })}
         />
+        <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+          {`${shown.length} connecteur${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${CONNECTORS.length}` : ""}`}
+        </span>
       </div>
 
-      <Loading
-        loading={loading}
-        shape="cards"
-        error={failed}
-        onRetry={() => {
-          email.reload();
-          calendar.reload();
-          zoom.reload();
-          tokens.reload();
-          meta.reload();
-        }}
-      />
+      {loading ? (
+        <Skeleton shape="cards" />
+      ) : (
+        failed && (
+          <ErrorState
+            message={`État des intégrations indisponible : ${failed.message}`}
+            onRetry={() => {
+              email.reload();
+              calendar.reload();
+              zoom.reload();
+              tokens.reload();
+              meta.reload();
+            }}
+          />
+        )
+      )}
 
       {shown.length === 0 && !loading && (
         <Box as="section" className="p-0" role="status">
           <EmptyPanel
             icon={Plug}
-            title="Aucun connecteur ne correspond à cette recherche."
-            description="Essayez un autre mot ou un autre filtre."
+            title="Aucun connecteur ne correspond"
+            description={[text && `Recherche « ${query.trim()} »`, filter !== "all" && FILTERS.find(([id]) => id === filter)?.[1]]
+              .filter(Boolean)
+              .join(" · ")}
+            action={
+              <Btn variant="secondary" onClick={() => updateUrl({ q: null, f: null })}>
+                Afficher tous les connecteurs
+              </Btn>
+            }
           />
         </Box>
       )}
 
-      {CATEGORIES.map((category) => {
+      {CATEGORIES.map((category, index) => {
         const items = shown.filter((c) => c.category === category.id);
         if (items.length === 0) return null;
         return (
-          <section key={category.id} className="flex flex-col gap-3" aria-label={category.label}>
+          <section
+            key={category.id}
+            className={cx("flex flex-col gap-3", reveal(2 + index).className)}
+            style={reveal(2 + index).style}
+            aria-label={category.label}
+          >
             <Eyebrow>{category.label}</Eyebrow>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {items.map((c) => {
@@ -247,7 +289,7 @@ function Catalog() {
 
       <Drawer
         open={open !== null}
-        onClose={closeConnector}
+        onClose={() => guard(closeConnector)}
         title={open?.name ?? ""}
         eyebrow={
           open
@@ -258,7 +300,7 @@ function Catalog() {
         aside={open ? <Pill view={views[open.id]} /> : undefined}
       >
         {open?.id === "email" && email.data && (
-          <EmailConnector status={email.data} onReload={email.reload} />
+          <EmailConnector status={email.data} onReload={email.reload} onDirtyChange={reportDirty} />
         )}
         {open?.id === "email" && !email.data && (
           <Loading
@@ -267,10 +309,10 @@ function Catalog() {
             onRetry={email.reload}
           />
         )}
-        {open?.id === "calendar" && <CalendarSettings embedded />}
-        {open?.id === "zoom" && <ZoomSettings embedded />}
-        {open?.id === "leads" && <LeadSources embedded />}
-        {open?.id === "meta" && <MetaLeadSettings embedded />}
+        {open?.id === "calendar" && <CalendarSettings embedded onDirtyChange={reportDirty} />}
+        {open?.id === "zoom" && <ZoomSettings embedded onDirtyChange={reportDirty} />}
+        {open?.id === "leads" && <LeadSources embedded onDirtyChange={reportDirty} />}
+        {open?.id === "meta" && <MetaLeadSettings embedded onDirtyChange={reportDirty} />}
         {open?.soon && (
           <div className="flex flex-col gap-3">
             {SOON_TEXT[open.id]?.map((line) => (

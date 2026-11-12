@@ -1,14 +1,15 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { FlaskConical, Plus, RotateCcw } from "lucide-react";
-import { API_URL, api, ApiError } from "@/lib/api";
+import { API_URL, api, failure } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MetaFormMapping, MetaSettings } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
 import { Btn, Check, ErrorText, TextInput, TextLink } from "./ds/controls";
 import { Eyebrow } from "./ds/layout";
-import { ActionsBar, CodeBlock, Feedback, InfoRow, SettingRow as Field, StatePill, Stats } from "./ds/settings";
+import { ActionsBar, CodeBlock, InfoRow, SettingRow as Field, SettingsLoading, StatePill, Stats } from "./ds/settings";
 import { Box } from "@/components/ds/card";
 
 type Secrets = {
@@ -23,8 +24,18 @@ const EMPTY_SECRETS: Secrets = {
   verify_token: "",
 };
 
+/** Réglages modifiables (hors chiffres de traitement, qui changent seuls) : sert à savoir si la saisie a changé. */
+const editable = (c: MetaSettings) => JSON.stringify([c.app_id, c.api_version, c.enabled, c.mappings]);
+
 /** `embedded` : affiché dans un panneau qui porte déjà le titre et l'état. */
-export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
+export function MetaLeadSettings({
+  embedded = false,
+  onDirtyChange,
+}: {
+  embedded?: boolean;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [cfg, setCfg] = useState<MetaSettings | null>(null);
   const [secrets, setSecrets] = useState<Secrets>(EMPTY_SECRETS);
   const [formId, setFormId] = useState("");
@@ -35,34 +46,29 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [simulatedId, setSimulatedId] = useState<number | null>(null);
+  const [saved, setSaved] = useState("");
+  const dirty =
+    cfg !== null &&
+    (editable(cfg) !== saved || Object.values(secrets).some(Boolean) || formId.trim() !== "" || formName.trim() !== "");
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const load = () =>
-    api<MetaSettings>("/integrations/meta")
-      .then(setCfg)
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+  const load = () => {
+    setLoadError(null);
+    return api<MetaSettings>("/integrations/meta")
+      .then((c) => {
+        setCfg(c);
+        setSaved(editable(c));
+      })
+      .catch((e) => setLoadError(failure("Chargement de la configuration Meta impossible", e)));
+  };
 
   useEffect(() => {
     load();
   }, []);
 
-  if (!cfg)
-    return (
-      <section className="flex flex-col gap-3" aria-label="Meta Lead Ads">
-        {error ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : (
-          <p className="text-sm text-muted" role="status">
-            Chargement…
-          </p>
-        )}
-      </section>
-    );
+  if (!cfg) return <SettingsLoading label="Meta Lead Ads" error={loadError} onRetry={() => void load()} />;
 
   function addMapping() {
     const current = cfg;
@@ -91,7 +97,6 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
     if (!current) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       await api("/integrations/meta", {
         method: "PUT",
@@ -106,10 +111,10 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
         },
       });
       setSecrets(EMPTY_SECRETS);
-      setNotice("Configuration Meta enregistrée.");
+      toast.success("Configuration Meta enregistrée", { description: "La réception des leads suit ces réglages." });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Enregistrement de la configuration Meta impossible", e));
     } finally {
       setBusy(false);
     }
@@ -120,7 +125,6 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
     if (!mapping) return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     setSimulatedId(null);
     try {
       const result = await api<{
@@ -138,9 +142,9 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
         },
       });
       setSimulatedId(result.prospect_id);
-      setNotice("Lead fictif reçu et rattaché à la campagne.");
+      toast.success("Lead fictif reçu", { description: "Il est rattaché à la campagne du formulaire." });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Création du lead fictif impossible", e));
     } finally {
       setBusy(false);
     }
@@ -149,17 +153,16 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
   async function replay() {
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
       const result = await api<{ requeued: number }>("/integrations/meta/replay", { method: "POST" });
-      setNotice(
-        result.requeued
-          ? `${result.requeued} lead(s) en échec remis en traitement.`
-          : "Aucun lead en échec à rejouer.",
-      );
+      toast.success(result.requeued ? "Leads remis en traitement" : "Aucun lead à rejouer", {
+        description: result.requeued
+          ? `${result.requeued} lead${result.requeued > 1 ? "s" : ""} en échec remis en traitement.`
+          : "Aucun lead en échec n’attendait.",
+      });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Nouveau traitement des leads impossible", e));
     } finally {
       setBusy(false);
     }
@@ -345,7 +348,7 @@ export function MetaLeadSettings({ embedded = false }: { embedded?: boolean }) {
           <TextLink href={`/prospects/${simulatedId}`}>Ouvrir le prospect test</TextLink>
         )}
       </ActionsBar>
-      <Feedback notice={notice} error={error} />
+      {error && <ErrorText>{error}</ErrorText>}
     </Box>
   );
 }

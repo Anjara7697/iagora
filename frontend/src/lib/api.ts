@@ -62,6 +62,11 @@ const RAW = new Set([
 ]);
 
 /** Message d'erreur lisible par un conseiller, sans identifiant technique. */
+/** Message d'échec d'une action : ce qui a échoué d'abord, puis le détail du serveur (règle 12 des parcours). */
+export function failure(what: string, error: unknown): string {
+  return `${what}${error instanceof ApiError ? ` : ${error.message}` : "."}`;
+}
+
 export function humanError(status: number, payload: unknown): string {
   let detail: string | null = null;
   if (payload && typeof payload === "object" && "detail" in payload) {

@@ -174,6 +174,13 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     (`?member=`). Réinitialiser le mot de passe, désactiver et réactiver passent par `ConfirmDialog` ; sur son propre
     compte, ces actions et le rôle restent visibles, désactivés avec leur raison. Le mot de passe temporaire
     s'affiche une seule fois, dans le panneau ouvert, puis sur la page jusqu'à « J'ai transmis le mot de passe ».
+33. **Intégrations** (`app/integrations`, écarts aux règles 2 et 4 décidés pour cet écran) : les connecteurs restent
+    un catalogue de cartes regroupées par catégorie (pas un tableau), et leur panneau porte l'icône du connecteur,
+    pas celle du module. Recherche (`?q=`), filtre (`?f=`), connecteur ouvert (`?c=`) et onglet de la messagerie
+    (`?tab=`) sont dans l'adresse ; compteur « N connecteurs » à droite. Une saisie non enregistrée dans un
+    panneau est protégée à sa fermeture ; passage d'envoi réel, oubli de la boîte et révocation d'un jeton passent
+    par `ConfirmDialog`. Chaque panneau : `SettingsLoading` au chargement, succès en Toast, échec en `ErrorText`
+    (message construit avec `failure()` de `lib/api`).
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.

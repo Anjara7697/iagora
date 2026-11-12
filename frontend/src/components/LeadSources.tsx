@@ -1,17 +1,27 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
-import { API_URL, api, ApiError } from "@/lib/api";
+import { API_URL, api, failure } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ServiceToken } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
-import { Btn, TextInput, TextLink } from "./ds/controls";
-import { ActionsBar, Feedback, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
+import { ConfirmDialog } from "./ds/ConfirmDialog";
+import { Btn, ErrorText, TextInput, TextLink } from "./ds/controls";
+import { ErrorState } from "./ds/layout";
+import { ActionsBar, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
 import { Box } from "@/components/ds/card";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */
-export function LeadSources({ embedded = false }: { embedded?: boolean }) {
+export function LeadSources({
+  embedded = false,
+  onDirtyChange,
+}: {
+  embedded?: boolean;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [tokens, setTokens] = useState<ServiceToken[]>([]);
   const [name, setName] = useState("");
   const [dest, setDest] = useState<{
@@ -21,13 +31,16 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
   const [created, setCreated] = useState<ServiceToken | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const dirty = name.trim() !== "" || dest.campaign_id !== null;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const load = () =>
-    api<ServiceToken[]>("/integrations/tokens")
+  const load = () => {
+    setLoadError(null);
+    return api<ServiceToken[]>("/integrations/tokens")
       .then(setTokens)
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+      .catch((e) => setLoadError(failure("Chargement des jetons impossible", e)));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -42,26 +55,24 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
       });
       setCreated(t);
       setName("");
+      setDest({ campaign_id: null, source_id: null });
+      toast.success("Jeton créé", { description: "Copiez-le maintenant : il ne sera plus réaffiché." });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Création du jeton impossible", e));
     } finally {
       setBusy(false);
     }
   }
 
   async function revoke(t: ServiceToken) {
-    if (
-      !window.confirm(
-        `Révoquer « ${t.name} » ? Les envois avec ce jeton seront refusés immédiatement.`,
-      )
-    )
-      return;
+    setError(null);
     try {
       await api(`/integrations/tokens/${t.id}`, { method: "DELETE" });
+      toast.success("Jeton révoqué", { description: `Les envois avec « ${t.name} » sont désormais refusés.` });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Révocation du jeton impossible", e));
     }
   }
 
@@ -121,7 +132,8 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
           Créer un jeton
         </Btn>
       </ActionsBar>
-      <Feedback error={error} />
+      {error && <ErrorText>{error}</ErrorText>}
+      {loadError && <ErrorState message={loadError} onRetry={() => void load()} />}
       {tokens.length > 0 && (
         <div aria-label="Jetons de service" role="list" className="flex flex-col gap-2">
           {tokens.map((t) => (
@@ -140,9 +152,17 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
               {t.revoked_at ? (
                 <StatePill tone="warn">Révoqué</StatePill>
               ) : (
-                <Btn size="sm" variant="danger-soft" onClick={() => revoke(t)}>
-                  Révoquer
-                </Btn>
+                <ConfirmDialog
+                  trigger={
+                    <Btn size="sm" variant="danger-soft">
+                      Révoquer
+                    </Btn>
+                  }
+                  title={`Révoquer « ${t.name} » ?`}
+                  description="Les envois avec ce jeton seront refusés immédiatement. Le formulaire ou l’outil qui l’utilise devra recevoir un nouveau jeton."
+                  confirmLabel="Révoquer"
+                  onConfirm={() => void revoke(t)}
+                />
               )}
             </div>
           ))}
