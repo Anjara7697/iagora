@@ -1,14 +1,17 @@
 "use client";
 
 import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
+import { toast } from "@heroui/react";
 import { useState } from "react";
 import SimulationNotice from "./SimulationNotice";
 import ConversationView from "@/components/ConversationView";
 import RunView from "@/components/TraceView";
-import { Btn, ErrorText, Field, Tag, TextBox, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, Notice, Tag, TextBox, TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Collapse } from "@/components/ds/collapse";
-import { api, ApiError } from "@/lib/api";
+import { api, failure } from "@/lib/api";
 import { ACTIONS, PROFILE_FIELDS, formatDate, label } from "@/lib/labels";
 import type { AgentRun, Conversation, Prospect } from "@/lib/types";
 import { Box } from "@/components/ds/card";
@@ -40,15 +43,17 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function guard(action: () => Promise<void>) {
+  // Un message préparé et non envoyé n'est pas perdu en quittant le parcours (règle 14).
+  const { guard: guardDiscard, dialog: discardDialog } = useDiscardGuard(() => text.trim() !== "");
+
+  /** `what` dit ce qui a échoué, avant le détail du serveur (règle 12). */
+  async function guard(what: string, action: () => Promise<void>) {
     setBusy(true);
     setError(null);
     try {
       await action();
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Échec de la simulation",
-      );
+      setError(failure(what, err));
     } finally {
       setBusy(false);
     }
@@ -85,7 +90,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
         ? outbound
         : { content, id: crypto.randomUUID() };
     setOutbound(message);
-    await guard(async () => {
+    await guard("Envoi du message impossible", async () => {
       try {
         await api(`/simulation/${session.conversation_id}/messages`, {
           method: "POST",
@@ -103,17 +108,19 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
 
   return (
     <Screen wide className="max-w-[1600px]">
+      {discardDialog}
       <SimulationNotice>
         Agent et modèle configurés réels ; campagne, documents, boîte email et
         calendrier fictifs. Aucun email externe. Le rendez-vous réservé reste
         fictif et ne vaut pas conversion.
       </SimulationNotice>
       <PageHeader
+        {...reveal(0)}
         eyebrow="Banc d’essai · parcours guidé"
         title="De la qualification au rendez-vous"
         subtitle="Vous jouez Camille, titulaire d’un Bac+3 en informatique, qui souhaite devenir data analyst en alternance."
         actions={
-          <Btn variant="outline" disabled={busy} onClick={onBack}>
+          <Btn variant="outline" disabled={busy} onClick={() => guardDiscard(onBack)}>
             <ArrowLeft className="size-4" aria-hidden="true" />
             Retour au simulateur libre
           </Btn>
@@ -141,13 +148,14 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             className="w-fit"
             disabled={busy}
             onClick={() =>
-              void guard(async () => {
+              void guard("Démarrage du parcours impossible", async () => {
                 const s = await api<Session>("/simulation/sessions", {
                   method: "POST",
                   body: { first_name: "Camille" },
                 });
                 setSession(s);
                 await refresh(s);
+                toast.success("Parcours guidé démarré", { description: "Camille, prospect fictif, attend votre premier message." });
               })
             }
           >
@@ -213,12 +221,13 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                       size="sm"
                       disabled={busy}
                       onClick={() =>
-                        void guard(async () => {
+                        void guard("Validation du brouillon impossible", async () => {
                           await api(
                             `/simulation/${session.conversation_id}/drafts/${pending.id}/approve`,
                             { method: "POST" },
                           );
                           await refresh(session);
+                          toast.success("Brouillon validé", { description: "Il est livré dans la boîte fictive du prospect." });
                         })
                       }
                     >
@@ -230,7 +239,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                       size="sm"
                       disabled={busy}
                       onClick={() =>
-                        void guard(async () => {
+                        void guard("Refus du brouillon impossible", async () => {
                           await api(
                             `/conversations/${session.conversation_id}/drafts/${pending.id}/reject`,
                             {
@@ -241,6 +250,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                             },
                           );
                           await refresh(session);
+                          toast.success("Brouillon refusé", { description: "Le prospect simulé ne le recevra pas." });
                         })
                       }
                     >
@@ -251,20 +261,20 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                 </div>
               )}
               {stopped && (
-                <p role="status" className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground">
-                  Parcours arrêté :{" "}
-                  {prospect?.consent_status === "opted_out"
-                    ? "prospect désinscrit"
-                    : conversation?.status === "handed_off"
-                      ? "conversation transférée au conseiller"
-                      : "conversation clôturée"}
-                  .
-                </p>
+                <Notice tone="warning">
+                  {`Parcours arrêté : ${
+                    prospect?.consent_status === "opted_out"
+                      ? "prospect désinscrit"
+                      : conversation?.status === "handed_off"
+                        ? "conversation transférée au conseiller"
+                        : "conversation clôturée"
+                  }.`}
+                </Notice>
               )}
             </div>
             <div className="flex flex-col gap-3 border-t border-separator px-5 py-4">
               <Field label="Message du prospect">
-                <TextBox
+                <TextBox variant="secondary"
                   value={text}
                   disabled={busy || stopped}
                   onChange={(e) => setText(e.target.value)}
@@ -283,7 +293,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                 <Btn
                   disabled={busy || stopped || !!pending}
                   onClick={() =>
-                    void guard(async () => {
+                    void guard("Reprise du traitement impossible", async () => {
                       try {
                         await api(`/simulation/${session.conversation_id}/run`, {
                           method: "POST",
@@ -299,7 +309,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                 <Btn
                   variant="ghost"
                   disabled={busy}
-                  onClick={() => void guard(() => refresh(session))}
+                  onClick={() => void guard("Actualisation du bilan impossible", () => refresh(session))}
                 >
                   <RefreshCw className="size-4" aria-hidden="true" />
                   Actualiser le bilan

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { auditA11y } from "./a11y";
 
 type Msg = {
   id: string;
@@ -301,6 +302,8 @@ test("arrêt d'urgence : avertissement", async ({ page }) => {
   await page.waitForURL((url) => !url.pathname.startsWith("/login"));
   await page.goto("/simulator");
   await expect(page.getByText("Arrêt d'urgence actif")).toBeVisible();
+  // Règle 13 : l'état durable propose l'action qui le résout.
+  await expect(page.getByRole("link", { name: "Ouvrir la page Agent" })).toHaveAttribute("href", "/agent");
 });
 
 test("déclenchement automatique : la décision de l'agent est reprise sans erreur", async ({
@@ -355,18 +358,22 @@ test("mode démo : bandeau permanent et purge des données fictives avec confirm
   await expect(
     page.getByText("3 prospect(s), 2 conversation(s)"),
   ).toBeVisible();
-  page.once("dialog", (dialog) => void dialog.dismiss());
-  await page
-    .getByRole("button", { name: "Supprimer les données fictives" })
-    .click();
+  // Règle 19 : ConfirmDialog, plus de confirmation native du navigateur.
+  const demo = page.getByRole("region", { name: "Données fictives" });
+  await demo.getByRole("button", { name: "Supprimer les données fictives" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Supprimer les données fictives ?" });
+  await expect(confirm).toContainText("Les vraies données ne sont pas touchées");
+  await confirm.getByRole("button", { name: "Annuler" }).click();
   expect(purged).toBe(false);
-  page.once("dialog", (dialog) => void dialog.accept());
+  await demo.getByRole("button", { name: "Supprimer les données fictives" }).click();
   await page
+    .getByRole("alertdialog", { name: "Supprimer les données fictives ?" })
     .getByRole("button", { name: "Supprimer les données fictives" })
     .click();
   await expect(
     page.getByText("3 prospect(s) fictif(s) et 2 conversation(s) supprimés."),
   ).toBeVisible();
+  await expect(demo.getByRole("button", { name: "Supprimer les données fictives" })).toBeDisabled();
 });
 
 test("parcours guidé : le prospect ne voit la réponse qu’après validation", async ({
@@ -454,4 +461,29 @@ test("parcours guidé : STOP arrête la saisie même si la conversation reste ou
       .getByRole("region", { name: "Boîte du prospect" })
       .getByText(/Le programme dure 18 mois/),
   ).toHaveCount(0);
+});
+
+test("prospect fictif créé : confirmation, et message préparé protégé avant de quitter", async ({ page }) => {
+  await mockApi(page);
+  await start(page);
+  await expect(page.getByText("Prospect fictif créé")).toBeVisible();
+  await page.getByLabel("Message du prospect").fill("Bonjour, je me renseigne.");
+  const menu = page.getByRole("navigation", { name: "Navigation principale" });
+  await menu.getByRole("link", { name: "Rendez-vous", exact: true }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page).toHaveURL(/\/simulator/);
+  await expect(page.getByLabel("Message du prospect")).toHaveValue("Bonjour, je me renseigne.");
+});
+
+test("le parcours guidé est dans l'adresse", async ({ page }) => {
+  await mockApi(page);
+  await start(page);
+  await page.getByRole("button", { name: "Ouvrir le parcours guidé" }).click();
+  await expect(page).toHaveURL(/mode=guide/);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Démarrer le parcours guidé" })).toBeVisible();
+  await page.getByRole("button", { name: "Retour au simulateur libre" }).click();
+  await expect(page).not.toHaveURL(/mode=guide/);
+  await auditA11y(page, "simulateur");
 });

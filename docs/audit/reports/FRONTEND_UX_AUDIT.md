@@ -48,7 +48,7 @@ tâche `frontend` réussie.
 | Paramètres | `/settings` | oui (revu le 12/11/2026) | admin | oui (règle 31 : écarts 3 et 21 décidés) | — |
 | Équipe | `/team` | oui (revu le 12/11/2026) | admin | oui (règle 32) | — |
 | Intégrations | `/integrations` | oui (revu le 12/11/2026) | admin | oui (règle 33 : écarts 2 et 4 décidés) | — |
-| Simulateur | `/simulator` | à vérifier | admin et conseillers autorisés | **non revu** | FE-002 |
+| Simulateur | `/simulator` | oui (revu le 12/11/2026) | admin et conseillers autorisés | oui (règle 34) | — |
 | Compte, connexion | `/account`, `/login` | à vérifier | tous | à vérifier | couleurs en dur (FE-003) |
 
 ## 4. Points positifs à préserver
@@ -98,6 +98,9 @@ Liés : jeton dans `localStorage` (SEC-004) ; Next.js 15.5.27 vulnérable (SEC-0
 ## 6. Constats UX
 
 ### AUDIT-FE-002 — Écrans d'administration non revus avec les règles des parcours
+- Statut : **traité le 12/11/2026** (lot 9) : Paramètres, Équipe, Intégrations et Simulateur revus, écarts décidés
+  inscrits dans `docs/frontend/heroui.md` (règles 31 à 34). Reste ouvert : découper `app/settings/page.tsx` et
+  `app/simulator/page.tsx` en composants de section (dette, sans effet visible).
 - Catégorie : cohérence
 - Criticité : P3
 - Confiance : Probable (non vérifié visuellement)

@@ -181,6 +181,11 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     panneau est protégée à sa fermeture ; passage d'envoi réel, oubli de la boîte et révocation d'un jeton passent
     par `ConfirmDialog`. Chaque panneau : `SettingsLoading` au chargement, succès en Toast, échec en `ErrorText`
     (message construit avec `failure()` de `lib/api`).
+34. **Simulateur** (`app/simulator`, `components/GuidedSimulation.tsx`) : trois colonnes (prospect fictif, conversation,
+    décision de l'agent), propres à cet outil de test ; parcours guidé dans l'adresse (`?mode=guide`). Mode assisté
+    et arrêt d'urgence en `Alert` (l'arrêt avec « Ouvrir la page Agent ») ; suppression des données fictives par
+    `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est
+    protégé (`useDiscardGuard`).
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
