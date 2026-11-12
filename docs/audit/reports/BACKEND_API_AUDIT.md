@@ -106,15 +106,12 @@ Aucun test exécuté ni service démarré.
 - Recommandation : `request_body { max_size 3MB }` dans le bloc Caddy documenté, puis sur le serveur.
 - Complexité : S
 
-### AUDIT-API-004 — Rétablissement du consentement ouvert à tout rôle d'écriture
-- Catégorie : autorisation métier
-- Criticité : P3
-- Confiance : Confirmé
-- Preuve : `backend/app/api/v1/prospects.py:269-270` (`POST /prospects/{id}/consent`, `CAN_WRITE`).
-- Observation : un conseiller peut annuler l'opposition d'un prospect sans motif ni preuve. Le changement est
-  tracé dans `consent_events`.
-- Recommandation : selon la décision BIZ n° 3, exiger un motif ou réserver l'action aux administrateurs.
-- Complexité : S
+### AUDIT-API-004 — ~~Rétablissement du consentement ouvert à tout rôle d'écriture~~ (constat erroné)
+- Statut : **retiré le 12/11/2026**. La route `POST /prospects/{id}/consent` est déclarée `CAN_WRITE`, mais
+  son corps refuse en 403 la levée d'une désinscription à tout autre rôle qu'administrateur
+  (`backend/app/api/v1/prospects.py:270-277`). L'audit s'était arrêté à la déclaration de la route.
+- Reste ouvert, à décider : faut-il en plus un motif ou un justificatif ? Le changement est déjà tracé dans
+  `consent_events`.
 
 Constats liés, décrits ailleurs :
 - envoi bloqué en `sending` (AUDIT-DATA-004) ;
@@ -132,7 +129,7 @@ Constats liés, décrits ailleurs :
 
 ## 7. Questions et décisions humaines
 
-1. Qui peut rétablir le consentement d'un prospect opposé, et avec quel justificatif ?
+1. Faut-il un justificatif pour rétablir le consentement d'un prospect opposé (déjà réservé à l'administrateur) ?
 2. Valeur de la limite de taille des requêtes sur le proxy du serveur.
 
 ## 8. Recommandations priorisées

@@ -42,6 +42,7 @@ const TASK_LABELS: Record<TodoItem["kind"], string> = {
   escalation: "Prendre le relais",
   kb_gap: "Compléter une réponse",
   incident: "Résoudre un incident",
+  opt_out_check: "Vérifier une opposition",
 };
 
 /** Bloc de la page avec son rang dans la cascade d'apparition (règle 9). */

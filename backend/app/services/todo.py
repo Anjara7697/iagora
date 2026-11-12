@@ -104,6 +104,7 @@ async def list_todo(
         "$or": [
             {"status": "handed_off"},
             {"status": "open", "messages.metadata.draft.status": drafts.PENDING},
+            {"opt_out_review.status": conversations.OPT_OUT_REVIEW_PENDING},
         ]
     }
     if conversation_id is not None:
@@ -155,6 +156,28 @@ async def list_todo(
                         risk=draft_risk(meta, sources),
                         confidence=confidence,
                         sources=sources,
+                    ),
+                )
+            )
+        review = doc.get("opt_out_review") or {}
+        if review.get("status") == conversations.OPT_OUT_REVIEW_PENDING:
+            items.append(
+                TodoItem(
+                    id=f"optout:{conv_id}",
+                    kind="opt_out_check",
+                    priority="high",
+                    conversation_id=conv_id,
+                    prospect=card,
+                    channel=doc["channel"],
+                    title="Opposition à vérifier",
+                    detail=review.get("excerpt"),
+                    created_at=_aware(review.get("at")),
+                    recommendation=TodoRecommendation(
+                        action="Relire le message : confirmer l'opposition, ou rétablir le "
+                        "consentement si ce n'était pas une demande d'arrêt",
+                        reason="Désinscription enregistrée par prudence sur une formule ambiguë "
+                        "(« stop », « désinscrire » dans un message long ou une question).",
+                        risk="medium",
                     ),
                 )
             )

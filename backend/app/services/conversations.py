@@ -380,3 +380,44 @@ async def update_conversation(
         )
         logger.info("Conversation %s mise à jour : %s", conversation_id, sorted(changes))
     return to_read(doc)
+
+
+# --- Opposition à vérifier (AUDIT-BIZ-004) ---
+
+OPT_OUT_REVIEW_PENDING = "pending"
+
+
+async def request_opt_out_review(db: Any, conversation_id: str, text: str) -> None:
+    """Signale dans « À faire » une demande d'arrêt détectée sur une formule ambiguë. La
+    désinscription est déjà enregistrée : rien n'est envoyé au prospect en attendant."""
+    await db[COLLECTION].update_one(
+        {"_id": _oid(conversation_id)},
+        {
+            "$set": {
+                "opt_out_review": {
+                    "status": OPT_OUT_REVIEW_PENDING,
+                    "at": _now(),
+                    "excerpt": " ".join(text.split())[:300],
+                }
+            }
+        },
+    )
+
+
+async def resolve_opt_out_review(
+    db: Any, conversation_id: str, decision: str, actor_id: int
+) -> dict[str, Any]:
+    """Clôt la vérification (`confirmed` ou `restored`). Une seule décision par signalement."""
+    result = await db[COLLECTION].find_one_and_update(
+        {"_id": _oid(conversation_id), "opt_out_review.status": OPT_OUT_REVIEW_PENDING},
+        {
+            "$set": {
+                "opt_out_review.status": decision,
+                "opt_out_review.decided_by": actor_id,
+                "opt_out_review.decided_at": _now(),
+            }
+        },
+    )
+    if result is None:
+        raise ConflictError("Aucune opposition à vérifier sur cette conversation")
+    return dict(result)

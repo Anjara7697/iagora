@@ -23,6 +23,13 @@ chargée ou des filtres affichés. Une tâche qui n'est plus en attente renvoie 
 message explicite ; son échange reste consultable dans Conversations.
 La file « À traiter » affiche 50 éléments par page ; les interactions, 20.
 
+**Oppositions à vérifier.** Un « stop », « désinscrire » ou « unsubscribe » est toujours enregistré tout
+de suite. Quand il apparaît dans une question ou un message long (12 mots ou plus), la demande peut parler
+d'autre chose (« comment me désinscrire de mon école actuelle ? ») : elle arrive aussi dans « À traiter ».
+Le conseiller confirme l'opposition ; si ce n'était pas une demande d'arrêt, un administrateur rétablit le
+consentement depuis la même tâche. Les formules sans équivoque (« ne me contactez plus », « STOP » seul…)
+ne créent pas de tâche.
+
 ## Convention des indicateurs
 
 - Une campagne compte un prospect une seule fois dans ses totaux, étapes,
