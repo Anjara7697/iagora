@@ -47,6 +47,8 @@ jobs:
       - run: mypy
       - name: Migrations (upgrade, puis vérification qu'aucun modèle n'est hors migration)
         run: alembic upgrade head && alembic check
+      - name: Retour arrière des migrations (descente complète puis remontée)
+        run: alembic downgrade base && alembic upgrade head && alembic check
       - name: Contrat OpenAPI à jour (scripts/export_openapi.py)
         run: python scripts/export_openapi.py --check
       - name: Tests (PostgreSQL dédiée, distincte de la base migrée, et MongoDB réel)
