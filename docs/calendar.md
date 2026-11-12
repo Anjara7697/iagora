@@ -69,6 +69,11 @@ vendredi), `CALENDAR_WORK_START_HOUR` / `CALENDAR_WORK_END_HOUR` (9 / 18), `CALE
 `CALENDAR_BUFFER_MINUTES` (0 : marge autour des rendez-vous existants).
 L'agent propose jusqu'à 3 créneaux, sur des jours différents quand c'est possible. Au moment de réserver,
 la disponibilité est **revérifiée** : si le créneau a été pris entre-temps, la demande est transférée.
+Un créneau **déjà passé** (ou à moins de 15 minutes) quand le prospect le choisit n'est jamais réservé :
+l'agent propose de nouveaux créneaux. Deux prospects qui choisissent le même créneau du même conseiller au
+même moment sont traités l'un après l'autre (bail MongoDB) ; le second voit le créneau pris.
+Un conseiller **désactivé**, ou qui n'est plus conseiller, ne reçoit plus de rendez-vous : l'agenda par
+défaut prend le relais, sinon la demande est transférée.
 
 ## Google Calendar par compte de service (`.env`, alternative)
 
@@ -119,7 +124,9 @@ reçoit des créneaux ; son choix crée le rendez-vous (visible dans l'agenda et
 | Situation | Comportement |
 |---|---|
 | `CALENDAR_PROVIDER=none` | Transfert normal, motif « agenda non branché » (escalade, pas incident). |
-| Google/Zoom en erreur (réseau, droits) | Transfert, motif « agenda indisponible » (incident). |
+| Limite de débit Google/Zoom (429) | Jusqu'à 3 essais rapprochés, y compris pour une création (rien n'a été créé). |
+| Google/Zoom en erreur (réseau, droits, 5xx) | Lecture des disponibilités : 3 essais ; création : un seul essai (pour ne pas dupliquer). Puis transfert, motif « agenda indisponible » (incident). |
+| Réunion Zoom créée mais événement Google refusé | La réunion Zoom est supprimée ; transfert, motif « réservation impossible ». |
 | Agenda non partagé avec le compte de service | Erreur explicite demandant de le partager. |
 | Aucun créneau libre sur la période | Transfert, motif « aucun créneau ». |
 | Créneau pris entre la proposition et le choix | Transfert, motif « réservation impossible ». |

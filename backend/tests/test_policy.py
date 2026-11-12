@@ -153,6 +153,19 @@ def test_slot_choice_books_only_a_proposed_slot():
         assert policy.decide(s).action is Action.PROPOSE_MEETING  # jamais de réservation hasardeuse
 
 
+def test_a_past_or_imminent_slot_is_proposed_again_never_booked(monkeypatch):
+    """AUDIT-BIZ-001 : le prospect répond trop tard, le créneau est passé."""
+    slots = make_slots(3)
+    choice = state(Qualification(intent="slot_choice", chosen_slot=1), pending_slots=slots)
+    monkeypatch.setattr(policy, "now", lambda: slots[0].start + timedelta(days=2))
+    decision = policy.decide(choice)
+    assert decision.action is Action.PROPOSE_MEETING and "passé" in decision.reason
+    monkeypatch.setattr(policy, "now", lambda: slots[0].start - timedelta(minutes=5))
+    assert policy.decide(choice).action is Action.PROPOSE_MEETING  # trop proche
+    monkeypatch.setattr(policy, "now", lambda: slots[0].start - timedelta(hours=2))
+    assert policy.decide(choice).action is Action.BOOK_MEETING
+
+
 def test_advanced_prospects_are_not_pushed_back_to_a_meeting():
     s = state(
         Qualification(intent="meeting_request"), total=90, missing=[], stage=S.MEETING_SCHEDULED

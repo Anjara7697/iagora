@@ -14,6 +14,7 @@ import httpx
 
 from app.config import Settings
 from app.graph.ports import CalendarError
+from app.integrations.calendar import retry
 
 TOKEN_URL = "https://zoom.us/oauth/token"  # noqa: S105 - URL publique, pas un secret
 API = "https://api.zoom.us/v2"
@@ -79,13 +80,35 @@ class ZoomClient:
     async def _create(self, host: str, payload: dict[str, Any]) -> httpx.Response:
         token = await self._access_token()
         try:
-            return await self._http.post(
-                f"{API}/users/{host}/meetings",
-                headers={"Authorization": f"Bearer {token}"},
-                json=payload,
+            return await retry.send(
+                lambda: self._http.post(
+                    f"{API}/users/{host}/meetings",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json=payload,
+                ),
+                read_only=False,
             )
         except httpx.HTTPError as exc:
             raise CalendarError(f"Zoom injoignable ({type(exc).__name__})") from exc
+
+    async def delete_meeting(self, meeting_id: str) -> None:
+        """Supprime une réunion (annulation d'une réservation incomplète). Une réunion déjà
+        absente (404) est considérée comme supprimée."""
+        token = await self._access_token()
+        try:
+            response = await retry.send(
+                lambda: self._http.delete(
+                    f"{API}/meetings/{meeting_id}",
+                    headers={"Authorization": f"Bearer {token}"},
+                ),
+                read_only=True,  # suppression idempotente : peut être réessayée sans risque
+            )
+        except httpx.HTTPError as exc:
+            raise CalendarError(f"Zoom injoignable ({type(exc).__name__})") from exc
+        if response.status_code >= 400 and response.status_code != 404:
+            raise CalendarError(
+                f"Zoom : suppression de la réunion refusée ({response.status_code})"
+            )
 
     async def create_meeting(
         self, *, topic: str, start: datetime, minutes: int, tz: str, host: str | None

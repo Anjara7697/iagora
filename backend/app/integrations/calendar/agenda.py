@@ -76,6 +76,8 @@ class GoogleZoomCalendar:
     ) -> BookedMeeting:
         calendar_id = self._calendar_id(advisor_email)
         tz = self._s.calendar_timezone
+        if slot.start <= datetime.now(UTC):
+            raise CalendarError("Créneau déjà passé")  # filet : la décision le reproposait déjà
         # Le créneau a pu être pris depuis la proposition : on revérifie juste avant de réserver.
         if await self._google.busy(calendar_id, slot.start, slot.end, tz):
             raise CalendarError("Créneau pris entre-temps")
@@ -91,14 +93,23 @@ class GoogleZoomCalendar:
         lines = [f"Rendez-vous avec {who}", f"Email : {prospect_email}" if prospect_email else ""]
         if url:
             lines.append(f"Visioconférence Zoom : {url}")
-        event_id = await self._google.create_event(
-            calendar_id,
-            summary=topic,
-            description="\n".join(line for line in lines if line),
-            start=slot.start,
-            end=slot.end,
-            location=url,
-        )
+        try:
+            event_id = await self._google.create_event(
+                calendar_id,
+                summary=topic,
+                description="\n".join(line for line in lines if line),
+                start=slot.start,
+                end=slot.end,
+                location=url,
+            )
+        except CalendarError:
+            if zoom_id:
+                # Sans événement d'agenda, la réunion Zoom serait orpheline (AUDIT-AI-006).
+                try:
+                    await self._zoom.delete_meeting(zoom_id)
+                except CalendarError:
+                    logger.warning("Réunion Zoom %s à supprimer à la main", zoom_id)
+            raise
         logger.info("Rendez-vous réservé (agenda %s, créneau %s)", calendar_id, slot.id)
         return BookedMeeting(
             calendar_event_id=event_id, meeting_url=url, zoom_meeting_id=zoom_id, slot=slot

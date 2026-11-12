@@ -13,6 +13,7 @@ import jwt
 
 from app.config import Settings
 from app.graph.ports import CalendarError
+from app.integrations.calendar import retry
 
 SCOPE = "https://www.googleapis.com/auth/calendar"
 API = "https://www.googleapis.com/calendar/v3"
@@ -92,11 +93,16 @@ class GoogleCalendarClient:
         self._token_expiry = time.time() + int(body.get("expires_in", 3600))
         return self._token
 
-    async def _call(self, method: str, url: str, **kwargs: Any) -> dict[str, Any]:
+    async def _call(
+        self, method: str, url: str, *, read_only: bool = False, **kwargs: Any
+    ) -> dict[str, Any]:
         token = await self._access_token()
         try:
-            response = await self._http.request(
-                method, url, headers={"Authorization": f"Bearer {token}"}, **kwargs
+            response = await retry.send(
+                lambda: self._http.request(
+                    method, url, headers={"Authorization": f"Bearer {token}"}, **kwargs
+                ),
+                read_only=read_only,
             )
         except httpx.HTTPError as exc:
             raise CalendarError(f"Google Calendar injoignable ({type(exc).__name__})") from exc
@@ -110,6 +116,7 @@ class GoogleCalendarClient:
         body = await self._call(
             "POST",
             f"{API}/freeBusy",
+            read_only=True,  # lecture des disponibilités : sans effet chez Google
             json={
                 "timeMin": _iso(start),
                 "timeMax": _iso(end),
