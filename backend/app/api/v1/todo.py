@@ -111,6 +111,14 @@ async def get_agent_mode(db: MongoDb) -> AgentModeRead:
 async def set_agent_mode(payload: AgentModeUpdate, db: MongoDb, user: CurrentUser) -> AgentModeRead:
     """Mode de l'agent. Tout conseiller peut passer en `manual` (arrêt d'urgence) ou en `assisted` ;
     seul un administrateur peut autoriser l'envoi sans validation (`auto`)."""
+    if payload.mode is AgentMode.AUTO and not agent_settings.auto_mode_allowed():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=(
+                "Mode automatique désactivé en production : "
+                "chaque réponse est validée par un conseiller"
+            ),
+        )
     if payload.mode is AgentMode.AUTO and user.role is not UserRole.ADMIN:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, detail="Seul un administrateur peut désactiver la validation"
