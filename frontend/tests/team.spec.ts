@@ -25,8 +25,10 @@ const members = [
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; mustChange?: boolean; calls?: unknown[] } = {},
+  opts: { role?: string; mustChange?: boolean; calls?: unknown[]; failUsers?: boolean } = {},
 ) {
+  // Copie par test : une modification (PATCH) se relit au rechargement, comme sur l'API.
+  const team = members.map((m) => ({ ...m }));
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -55,14 +57,18 @@ async function mockApi(
         temporary_password: "Abcd2345Efgh6789",
       };
       code = 201;
+    } else if (path === "/users" && opts.failUsers) {
+      code = 503;
+      body = { detail: "Base indisponible" };
     } else if (path === "/users")
-      body = { items: members, total: 2, limit: 200, offset: 0 };
+      body = { items: team, total: team.length, limit: 200, offset: 0 };
     else if (path === "/users/2/reset-password") {
       opts.calls?.push({ path });
       body = { temporary_password: "Zyxw9876Vuts5432" };
     } else if (path === "/users/2" && method === "PATCH") {
       opts.calls?.push({ path, body: request.postDataJSON() });
-      body = { ...members[1], ...request.postDataJSON() };
+      team[1] = { ...team[1], ...request.postDataJSON() };
+      body = team[1];
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
@@ -88,51 +94,118 @@ test("l'administrateur ajoute un conseiller et voit son mot de passe temporaire 
   await mockApi(page, { calls });
   await login(page);
   await page.goto("/team");
-  const form = page.getByRole("region", { name: "Ajouter un membre" });
+  await expect(page.getByRole("status").filter({ hasText: "2 membres · 2 actifs" })).toBeVisible();
+  // Règle 1 : la création s'ouvre dans un panneau latéral.
+  await page.getByRole("button", { name: "Ajouter un membre" }).first().click();
+  const form = page.getByRole("dialog", { name: "Ajouter un membre" });
   await form.getByLabel("Nom d’utilisateur").fill("lea");
   await form.getByLabel("Email").fill("lea@example.com");
+  await auditA11y(page, "équipe (ajout)");
   await form.getByRole("button", { name: "Créer le membre" }).click();
+  await expect(form).toHaveCount(0);
+  await expect(page.getByText("Membre ajouté")).toBeVisible();
   const secret = page.getByRole("status", { name: "Mot de passe temporaire" });
   await expect(secret.getByText("Abcd2345Efgh6789")).toBeVisible();
   expect(calls).toContainEqual({
     path: "/users",
     body: { username: "lea", email: "lea@example.com", role: "ADVISOR" },
   });
-  await secret
-    .getByRole("button", { name: "J’ai transmis le mot de passe" })
-    .click();
+  await secret.getByRole("button", { name: "J’ai transmis le mot de passe" }).click();
   await expect(page.getByText("Abcd2345Efgh6789")).toHaveCount(0);
   await auditA11y(page, "équipe");
 });
 
-test("réinitialiser, changer le rôle et désactiver un membre", async ({
+test("fiche d'un membre : rôle, réinitialisation et désactivation confirmées", async ({
   page,
 }) => {
   const calls: unknown[] = [];
   await mockApi(page, { calls });
   await login(page);
   await page.goto("/team");
-  const paul = page.getByRole("listitem", { name: "Membre paul" });
-  const self = page.getByRole("listitem", { name: "Membre admin" });
-  // Pas d'action sur son propre compte (rôle, désactivation, réinitialisation).
-  await expect(self.getByLabel("Rôle de admin")).toBeDisabled();
-  await expect(self.getByRole("button", { name: "Désactiver" })).toHaveCount(0);
-  page.once("dialog", (d) => void d.accept());
-  await paul
-    .getByRole("button", { name: "Réinitialiser le mot de passe" })
-    .click();
-  await expect(page.getByText("Zyxw9876Vuts5432")).toBeVisible();
-  await choose(paul.getByLabel("Rôle de paul"), "VIEWER");
-  await paul.getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("row", { name: /paul/ }).click();
+  await expect(page).toHaveURL(/member=2/);
+  const panel = page.getByRole("dialog", { name: "paul" });
+  await choose(panel.getByLabel("Rôle"), "VIEWER");
+  await panel.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(page.getByText("Membre mis à jour")).toBeVisible();
+
+  await panel.getByRole("button", { name: "Réinitialiser le mot de passe" }).click();
+  const confirmReset = page.getByRole("alertdialog", { name: "Réinitialiser le mot de passe de paul ?" });
+  await expect(confirmReset).toContainText("Ses sessions ouvertes seront fermées");
+  await confirmReset.getByRole("button", { name: "Réinitialiser" }).click();
+  // Le mot de passe s'affiche dans le panneau ouvert, une seule fois.
+  await expect(panel.getByText("Zyxw9876Vuts5432")).toBeVisible();
+
+  await panel.getByRole("button", { name: "Désactiver" }).click();
+  const confirmOff = page.getByRole("alertdialog", { name: "Désactiver paul ?" });
+  await confirmOff.getByRole("button", { name: "Annuler" }).click();
+  expect(calls).not.toContainEqual({ path: "/users/2", body: { is_active: false } });
+  await panel.getByRole("button", { name: "Désactiver" }).click();
+  await page.getByRole("alertdialog", { name: "Désactiver paul ?" }).getByRole("button", { name: "Désactiver" }).click();
   await expect
     .poll(() => calls)
     .toEqual(
       expect.arrayContaining([
-        { path: "/users/2/reset-password" },
         { path: "/users/2", body: { role: "VIEWER" } },
+        { path: "/users/2/reset-password" },
         { path: "/users/2", body: { is_active: false } },
       ]),
     );
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  await expect(page).not.toHaveURL(/member=/);
+  // Panneau fermé : le mot de passe reste visible sur la page jusqu'à confirmation.
+  await expect(page.getByRole("status", { name: "Mot de passe temporaire" })).toContainText("Zyxw9876Vuts5432");
+});
+
+test("son propre compte : actions impossibles visibles avec leur raison", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.goto("/team?member=1");
+  const panel = page.getByRole("dialog", { name: "admin" });
+  await expect(panel.getByText("Vous ne pouvez pas modifier votre propre rôle.")).toBeVisible();
+  const off = panel.getByRole("button", { name: "Désactiver" });
+  await expect(off).toHaveAttribute("aria-disabled", "true");
+  await off.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Vous ne pouvez pas désactiver votre propre compte.");
+  await expect(panel.getByRole("button", { name: "Réinitialiser le mot de passe" })).toHaveAttribute("aria-disabled", "true");
+  await auditA11y(page, "équipe (son compte)");
+});
+
+test("recherche et rôle dans l'adresse ; aucune correspondance", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.goto("/team");
+  await page.getByRole("button", { name: "Conseiller", exact: true }).click();
+  await expect(page).toHaveURL(/role=ADVISOR/);
+  await expect(page.getByRole("status").filter({ hasText: "1 membre sur 2" })).toBeVisible();
+  await page.getByLabel("Rechercher un membre").fill("inconnu");
+  await expect(page.getByText("Aucun membre ne correspond")).toBeVisible();
+  await page.getByRole("button", { name: "Afficher tous les membres" }).click();
+  await expect(page.getByRole("row", { name: /paul/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/team$/);
+});
+
+test("fermer une fiche modifiée demande confirmation", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await page.goto("/team?member=2");
+  const panel = page.getByRole("dialog", { name: "paul" });
+  await panel.getByLabel("Email").fill("paul.martin@example.com");
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(panel.getByLabel("Email")).toHaveValue("paul.martin@example.com");
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("alertdialog", { name: "Abandonner les modifications ?" }).getByRole("button", { name: "Abandonner" }).click();
+  await expect(panel).toHaveCount(0);
+});
+
+test("équipe indisponible : message clair et nouvel essai", async ({ page }) => {
+  await mockApi(page, { failUsers: true });
+  await login(page);
+  await page.goto("/team");
+  await expect(page.getByRole("alert").filter({ hasText: "Chargement de l’équipe impossible" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réessayer" })).toBeVisible();
 });
 
 test("mot de passe temporaire : redirection vers Mon compte puis changement", async ({

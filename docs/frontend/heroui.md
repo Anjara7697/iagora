@@ -169,6 +169,11 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     seule barre « Enregistrer les paramètres », commune aux catégories, reste collée en bas de l'écran et reprend sa
     place après le dernier champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
     « Revenir aux valeurs du serveur » passe par `ConfirmDialog` ; succès en Toast, échec en `ErrorText`.
+32. **Équipe** (`app/team`, `components/team/`) : tableau des membres (recherche et rôle dans l'adresse, compteur
+    « N membres · N actifs ») ; « Ajouter un membre » et la fiche d'un membre s'ouvrent dans un panneau latéral
+    (`?member=`). Réinitialiser le mot de passe, désactiver et réactiver passent par `ConfirmDialog` ; sur son propre
+    compte, ces actions et le rôle restent visibles, désactivés avec leur raison. Le mot de passe temporaire
+    s'affiche une seule fois, dans le panneau ouvert, puis sur la page jusqu'à « J'ai transmis le mot de passe ».
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.

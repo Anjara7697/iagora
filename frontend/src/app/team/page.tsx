@@ -1,307 +1,235 @@
 "use client";
 
-import { useState } from "react";
+import { SearchX, UserPlus, UsersRound } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
-import { KeyRound, Pencil, UserPlus } from "lucide-react";
-import { Btn, Field, SelectBox, Tag, TextInput } from "@/components/ds/controls";
-import { PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
-import { ActionsBar, Feedback, SecretOnce, SettingsCard as Section } from "@/components/ds/settings";
-import { Loading } from "@/components/ui";
-import { api, ApiError } from "@/lib/api";
+import { Btn, Field, FilterChipGroup, Notice, Tag, TextInput } from "@/components/ds/controls";
+import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
+import { reveal } from "@/components/ds/motion";
+import { DataTable, Table } from "@/components/ds/table";
+import {
+  CreateMemberPanel,
+  MemberPanel,
+  ROLE_LABELS,
+  TemporaryPassword,
+  memberState,
+  type Secret,
+} from "@/components/team/TeamPanels";
 import { formatDate } from "@/lib/labels";
+import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
-import type { CreatedUser, Page, Role, User } from "@/lib/types";
+import type { Page, Role, User } from "@/lib/types";
 
-const ROLE_LABELS: Record<Role, string> = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
-const ROLE_HELP: Record<Role, string> = {
-  ADMIN: "accès complet, dont Équipe, Intégrations et Paramètres",
-  ADVISOR: "file, conversations, prospects, validations",
-  VIEWER: "consultation seule",
-};
+type RoleFilter = Role | "";
+type TeamView = { q: string; role: RoleFilter; member: number | null };
 
-function MemberRow({
-  member,
-  self,
-  onChanged,
-  onPassword,
-}: {
-  member: User;
-  self: boolean;
-  onChanged: () => void;
-  onPassword: (who: string, password: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [username, setUsername] = useState(member.username);
-  const [email, setEmail] = useState(member.email);
-  const [error, setError] = useState<string | null>(null);
+/** Recherche, rôle et membre ouvert dans l'adresse (règle 6) ; une valeur inconnue est ignorée. */
+function readView(params: URLSearchParams): TeamView {
+  const role = params.get("role") ?? "";
+  const member = Number(params.get("member"));
+  return {
+    q: params.get("q") ?? "",
+    role: role in ROLE_LABELS ? (role as Role) : "",
+    member: Number.isInteger(member) && member > 0 ? member : null,
+  };
+}
 
-  async function patch(body: Record<string, unknown>) {
-    setError(null);
-    try {
-      await api(`/users/${member.id}`, { method: "PATCH", body });
-      setEditing(false);
-      onChanged();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
-    }
-  }
-
-  async function reset() {
-    if (
-      !window.confirm(
-        `Réinitialiser le mot de passe de ${member.username} ? Ses sessions ouvertes seront fermées.`,
-      )
-    )
-      return;
-    setError(null);
-    try {
-      const r = await api<{ temporary_password: string }>(
-        `/users/${member.id}/reset-password`,
-        { method: "POST" },
-      );
-      onPassword(member.username, r.temporary_password);
-      onChanged();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
-    }
-  }
-
-  const state = !member.is_active
-    ? { label: "Désactivé", tone: "neutral" as const }
-    : member.must_change_password
-      ? { label: "Mot de passe à choisir", tone: "warning" as const }
-      : { label: "Actif", tone: "success" as const };
-
-  return (
-    <div
-      className="flex flex-wrap items-start gap-4 border-t border-separator py-4 first:border-t-0 first:pt-0 last:pb-0"
-      role="listitem"
-      aria-label={`Membre ${member.username}`}
-    >
-      <span
-        className={cx(
-          "inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
-          member.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
-        )}
-        aria-hidden="true"
-      >
-        {initials(member.username)}
-      </span>
-      <span className="flex min-w-[240px] flex-1 flex-col gap-2">
-        {editing ? (
-          <span className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <TextInput aria-label="Nom d’utilisateur" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <TextInput aria-label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </span>
-        ) : (
-          <span className="flex flex-col">
-            <strong className="text-sm font-semibold text-foreground">
-              {member.username}
-              {self && <span className="font-normal text-muted"> · vous</span>}
-            </strong>
-            <span className="text-[13px] text-muted">{member.email}</span>
-          </span>
-        )}
-        <span className="flex flex-wrap items-center gap-2">
-          <SelectBox
-            aria-label={`Rôle de ${member.username}`}
-            value={member.role}
-            disabled={self}
-            onChange={(e) => patch({ role: e.target.value })}
-            className="w-44"
-          >
-            {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
-          </SelectBox>
-          <Tag tone={state.tone}>{state.label}</Tag>
-          <span className="text-xs text-muted">Membre depuis le {formatDate(member.created_at ?? null)}</span>
-        </span>
-        {error && (
-          <span className="text-[13px] text-danger" role="alert">
-            {error}
-          </span>
-        )}
-      </span>
-      <ActionsBar className="justify-end">
-        {editing ? (
-          <>
-            <Btn size="sm" variant="primary" onClick={() => patch({ username, email })}>
-              Enregistrer
-            </Btn>
-            <Btn size="sm" onClick={() => setEditing(false)}>
-              Annuler
-            </Btn>
-          </>
-        ) : (
-          <Btn size="sm" variant="outline" onClick={() => setEditing(true)}>
-            <Pencil className="size-3.5" aria-hidden="true" />
-            Modifier
-          </Btn>
-        )}
-        {!self && (
-          <>
-            <Btn size="sm" variant="ghost" onClick={reset}>
-              <KeyRound className="size-3.5" aria-hidden="true" />
-              Réinitialiser le mot de passe
-            </Btn>
-            <Btn
-              size="sm"
-              variant={member.is_active ? "danger-soft" : "outline"}
-              onClick={() => patch({ is_active: !member.is_active })}
-            >
-              {member.is_active ? "Désactiver" : "Réactiver"}
-            </Btn>
-          </>
-        )}
-      </ActionsBar>
-    </div>
-  );
+function teamHref(view: TeamView) {
+  const params = new URLSearchParams();
+  if (view.q) params.set("q", view.q);
+  if (view.role) params.set("role", view.role);
+  if (view.member) params.set("member", String(view.member));
+  const query = params.toString();
+  return `/team${query ? `?${query}` : ""}`;
 }
 
 export default function TeamPage() {
+  return (
+    <Suspense>
+      <Team />
+    </Suspense>
+  );
+}
+
+function Team() {
   const user = useCurrentUser();
   const isAdmin = user?.role === "ADMIN";
-  const members = useApi<Page<User>>(isAdmin ? "/users?limit=200" : null, {
-    keepPrevious: true,
-  });
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("ADVISOR");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [secret, setSecret] = useState<{
-    who: string;
-    password: string;
-  } | null>(null);
+  const members = useApi<Page<User>>(isAdmin ? "/users?limit=200" : null, { keepPrevious: true });
+  const view = readView(useSearchParams());
+  // Relit l'adresse courante : deux changements rapprochés (frappe, filtre) ne s'écrasent pas.
+  const navigate = (patch: Partial<TeamView>) =>
+    replaceUrl(teamHref({ ...readView(new URLSearchParams(window.location.search)), ...patch }));
+  const [creating, setCreating] = useState(false);
+  const [secret, setSecret] = useState<Secret | null>(null);
 
   if (user && !isAdmin)
     return (
       <Screen>
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
-          Cette page est réservée aux administrateurs.
-        </p>
+        <Notice tone="warning">Cette page est réservée aux administrateurs.</Notice>
       </Screen>
     );
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await api<CreatedUser>("/users", {
-        method: "POST",
-        body: { username, email, role },
-      });
-      if (created.temporary_password)
-        setSecret({
-          who: created.username,
-          password: created.temporary_password,
-        });
-      setUsername("");
-      setEmail("");
-      setRole("ADVISOR");
-      members.reload();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Échec");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const active = members.data?.items.filter((m) => m.is_active).length ?? 0;
+  const all = members.data?.items ?? [];
+  const needle = view.q.trim().toLocaleLowerCase("fr");
+  const shown = all.filter(
+    (m) => (!view.role || m.role === view.role) && `${m.username} ${m.email}`.toLocaleLowerCase("fr").includes(needle),
+  );
+  const filtered = !!view.q || !!view.role;
+  const active = all.filter((m) => m.is_active).length;
+  const opened = all.find((m) => m.id === view.member) ?? null;
+  const panelOpen = creating || opened !== null;
 
   return (
     <Screen className="max-w-[1100px]">
       <PageHeader
+        {...reveal(0)}
         eyebrow="Administration · Équipe"
         title="Équipe"
         subtitle="Les conseillers s’ajoutent ici, sans passer par le serveur. Chaque nouveau membre reçoit un mot de passe temporaire et choisit le sien à la première connexion."
+        actions={
+          <Btn variant="primary" onClick={() => setCreating(true)}>
+            <UserPlus className="size-4" aria-hidden="true" />
+            Ajouter un membre
+          </Btn>
+        }
       />
 
-      {secret && (
-        <SecretOnce
-          label="Mot de passe temporaire"
-          intro={
-            <>
-              Mot de passe temporaire de <strong>{secret.who}</strong>, à
-              transmettre par un canal sûr :
-            </>
-          }
-          secret={secret.password}
-          doneLabel="J’ai transmis le mot de passe"
-          onDone={() => setSecret(null)}
-        />
+      {/* Affiché dans le panneau tant qu'il est ouvert, sur la page ensuite. */}
+      {secret && !panelOpen && <TemporaryPassword secret={secret} onDone={() => setSecret(null)} />}
+
+      {members.error ? (
+        <ErrorState message={`Chargement de l’équipe impossible : ${members.error.message}`} onRetry={members.reload} />
+      ) : (
+        <section className="flex flex-col gap-4" aria-label="Membres de l’équipe">
+          <div className={cx("flex flex-wrap items-end gap-3", reveal(1).className)} style={reveal(1).style}>
+            <Field label="Rechercher un membre" className="w-full sm:w-64">
+              <TextInput
+                variant="secondary"
+                type="search"
+                value={view.q}
+                placeholder="Nom ou email…"
+                onChange={(e) => navigate({ q: e.target.value })}
+              />
+            </Field>
+            <FilterChipGroup
+              label="Rôle"
+              value={view.role}
+              onChange={(role) => navigate({ role })}
+              options={[
+                { value: "" as RoleFilter, text: "Tous" },
+                ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({ value: r as RoleFilter, text: ROLE_LABELS[r] })),
+              ]}
+            />
+            <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+              {members.data
+                ? `${shown.length} membre${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${all.length}` : ""} · ${active} actif${active > 1 ? "s" : ""}`
+                : ""}
+            </span>
+          </div>
+
+          <DataTable
+            {...reveal(2)}
+            label="Liste des membres"
+            minWidth={680}
+            isLoading={members.loading && !members.data}
+            loadingLabel="Chargement de l’équipe…"
+            columns={[
+              { id: "member", label: "Membre", className: "min-w-[240px]" },
+              { id: "role", label: "Rôle" },
+              { id: "state", label: "État" },
+              { id: "since", label: "Membre depuis" },
+            ]}
+            emptyState={
+              filtered ? (
+                <EmptyPanel
+                  icon={SearchX}
+                  title="Aucun membre ne correspond"
+                  description={[view.q && `Recherche « ${view.q.trim()} »`, view.role && ROLE_LABELS[view.role]].filter(Boolean).join(" · ")}
+                  action={
+                    <Btn variant="secondary" onClick={() => navigate({ q: "", role: "" })}>
+                      Afficher tous les membres
+                    </Btn>
+                  }
+                />
+              ) : (
+                <EmptyPanel
+                  icon={UsersRound}
+                  title="Aucun membre pour l’instant"
+                  description="Ajoutez les conseillers qui traiteront les échanges avec les prospects."
+                  action={
+                    <Btn variant="primary" onClick={() => setCreating(true)}>
+                      <UserPlus className="size-4" aria-hidden="true" />
+                      Ajouter un membre
+                    </Btn>
+                  }
+                />
+              )
+            }
+          >
+            {shown.map((m, i) => {
+              const state = memberState(m);
+              const row = reveal(3 + i, 40);
+              return (
+                <Table.Row
+                  key={m.id}
+                  id={m.id}
+                  onAction={() => navigate({ member: m.id })}
+                  className={cx("cursor-pointer", m.id === view.member && "bg-accent-soft/50", row.className)}
+                  style={row.style}
+                >
+                  <Table.Cell>
+                    <span className="flex items-center gap-3">
+                      <span
+                        className={cx(
+                          "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
+                          m.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
+                        )}
+                        aria-hidden="true"
+                      >
+                        {initials(m.username)}
+                      </span>
+                      <span className="flex min-w-0 flex-col">
+                        <strong className="text-sm font-semibold text-foreground">
+                          {m.username}
+                          {m.id === user?.id && <span className="font-normal text-muted"> · vous</span>}
+                        </strong>
+                        <span className="text-[13px] text-muted">{m.email}</span>
+                      </span>
+                    </span>
+                  </Table.Cell>
+                  <Table.Cell className="whitespace-nowrap">{ROLE_LABELS[m.role]}</Table.Cell>
+                  <Table.Cell>
+                    <Tag tone={state.tone}>{state.label}</Tag>
+                  </Table.Cell>
+                  <Table.Cell className="text-xs whitespace-nowrap text-muted tabular-nums">
+                    {formatDate(m.created_at ?? null)}
+                  </Table.Cell>
+                </Table.Row>
+              );
+            })}
+          </DataTable>
+        </section>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
-          <Loading
-            loading={members.loading && !members.data}
-            error={members.error}
-            onRetry={members.reload}
-            shape="rows"
-          />
-          {members.data && (
-            <Section
-              region="Membres de l’équipe"
-              label="Membres"
-              title={`${active} actif(s) sur ${members.data.total}`}
-            >
-              <div role="list" className="flex flex-col border-t border-separator pt-4">
-                {members.data.items.map((m) => (
-                  <MemberRow
-                    key={`${m.id}-${m.username}-${m.email}-${m.role}-${m.is_active}`}
-                    member={m}
-                    self={m.id === user?.id}
-                    onChanged={members.reload}
-                    onPassword={(who, password) => setSecret({ who, password })}
-                  />
-                ))}
-              </div>
-            </Section>
-          )}
-        </div>
-
-        <Section
-          region="Ajouter un membre"
-          label="Nouveau membre"
-          title="Ajouter un membre"
-          intro="Trois rôles : Administrateur (accès complet), Conseiller (file, conversations, prospects), Observateur (consultation seule)."
-          className="order-1 xl:sticky xl:top-24 xl:order-2"
-        >
-          <form onSubmit={create} className="flex flex-col gap-4 border-t border-separator pt-4">
-            <Field label="Nom d’utilisateur" hint="3 caractères minimum.">
-              <TextInput value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
-            </Field>
-            <Field label="Email" hint="Sert aussi d’identifiant de connexion.">
-              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </Field>
-            <Field label="Rôle">
-              <SelectBox value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABELS[r]} — {ROLE_HELP[r]}
-                  </option>
-                ))}
-              </SelectBox>
-            </Field>
-            <ActionsBar className="border-t border-separator pt-4">
-              <Btn variant="primary" type="submit" disabled={busy || username.trim().length < 3 || !email}>
-                <UserPlus className="size-4" aria-hidden="true" />
-                Créer le membre
-              </Btn>
-            </ActionsBar>
-            <Feedback error={error} />
-          </form>
-        </Section>
-      </div>
+      <CreateMemberPanel
+        open={creating}
+        onClose={() => setCreating(false)}
+        onCreated={(created) => {
+          setCreating(false);
+          if (created.temporary_password) setSecret({ who: created.username, password: created.temporary_password });
+          members.reload();
+        }}
+      />
+      <MemberPanel
+        member={creating ? null : opened}
+        self={opened?.id === user?.id}
+        secret={secret}
+        onClose={() => navigate({ member: null })}
+        onChanged={members.reload}
+        onPassword={setSecret}
+        onSecretDone={() => setSecret(null)}
+      />
     </Screen>
   );
 }
