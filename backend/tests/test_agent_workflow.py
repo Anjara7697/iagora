@@ -717,3 +717,17 @@ async def test_each_run_records_the_prompt_version_and_the_model_calls(client, e
     doc = await mongo_db["agent_runs"].find_one({"conversation_id": cid}, sort=[("started_at", -1)])
     assert doc["prompt_version"] == prompts.PROMPT_VERSION and len(prompts.PROMPT_VERSION) == 12
     assert isinstance(doc["llm_calls"], list)  # le faux modèle n'appelle aucun fournisseur
+
+
+@pytest.mark.parametrize(
+    ("email", "expected"),
+    [("jean.dupont@example.com", False), ("camille@demo.example.com", True)],
+)
+async def test_only_a_fictitious_prospect_may_use_fictitious_documents(
+    client, env, email, expected
+):
+    """AUDIT-AI-002 : un vrai prospect n'obtient jamais d'extrait fictif, même sur `dev`."""
+    env.llm.qualification = Qualification(intent="question")
+    pid, mid, cid = await lead(client, "Combien de temps dure le programme ?", email=email)
+    await run(client, cid)
+    assert env.kb.include_demo_calls and set(env.kb.include_demo_calls) == {expected}
