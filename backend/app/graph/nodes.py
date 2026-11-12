@@ -231,19 +231,20 @@ class WorkflowNodes:
                 role="user", content="(le prospect vient d'arriver : écris le premier message)"
             )
         ]
-        sources = [p.text for p in passages] + [m.content for m in ctx.history]
+        sources = [p.text for p in passages]
         sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
+        conversation = [m.content for m in ctx.history]
 
         try:
             reply = (await self.deps.llm.generate(system, messages)).strip()
-            claims = policy.ungrounded_claims(reply, sources)
+            claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
             if claims:  # un seul nouvel essai, plus strict
                 reply = (
                     await self.deps.llm.generate(
                         system + prompts.strict_retry_note(claims), messages
                     )
                 ).strip()
-                claims = policy.ungrounded_claims(reply, sources)
+                claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {

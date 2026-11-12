@@ -87,6 +87,17 @@ async def test_invented_price_is_counted_raw_but_never_sent(session_factory, mon
     assert s.raw_hallucination.ok >= 1 and s.sent_hallucination.ok == 0
 
 
+@pytest.mark.parametrize("case_id", ["cond_cpf", "cond_sans_bac", "cond_duree_en_lettres"])
+async def test_invented_conditions_and_spelled_durations_are_never_sent(
+    session_factory, mongo_db, case_id
+):
+    """AUDIT-AI-001 : CPF, « sans le bac » et « deux ans » ne sont jamais envoyés. Sans extrait,
+    la question part avant rédaction ; avec un extrait, la réponse est rejetée après rédaction."""
+    [r] = await play(session_factory, mongo_db, [case_id])
+    assert r.sent_claims == []
+    assert r.handoff_reason in ("question_hors_base", "reponse_non_verifiable")
+
+
 async def test_without_the_figure_check_the_invented_price_is_sent(session_factory, mongo_db):
     [r] = await play(session_factory, mongo_db, ["prix_cout"], ablation="sans-garde-chiffres")
     assert r.sent_claims and not r.ok

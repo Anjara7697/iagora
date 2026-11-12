@@ -185,7 +185,8 @@ Mission : {goal}
 
 def strict_retry_note(claims: Sequence[str]) -> str:
     return (
-        "\n\nATTENTION : ta réponse précédente contenait des informations chiffrées non "
-        f"présentes dans les extraits ({', '.join(claims)}). Réécris-la SANS aucun chiffre, prix, "
-        "durée ni date qui ne figure pas dans les extraits ou dans les messages du prospect."
+        "\n\nATTENTION : ta réponse précédente contenait des informations non présentes dans les "
+        f"extraits ({', '.join(claims)}). Réécris-la SANS aucun chiffre, prix, durée, date, ni "
+        "condition d'admission ou de financement (CPF, éligibilité, gratuité…) qui ne figure pas "
+        "dans les extraits. Si l'information manque, dis qu'un conseiller la donnera."
     )
