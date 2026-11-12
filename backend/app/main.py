@@ -11,7 +11,7 @@ from app.agents.auto import email_loop, follow_up_loop, meta_resume_loop, reply_
 from app.agents.runtime import ensure_run_indexes
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.core.http_guard import HttpGuard
 from app.core.logging import configure_logging
 from app.database.clients import close_clients, get_mongo_db
@@ -21,8 +21,21 @@ from app.services.conversations import ensure_indexes
 logger = logging.getLogger(__name__)
 
 
+def require_explicit_environment(settings: Settings) -> None:
+    """Refuse de démarrer le serveur sans ENVIRONMENT explicite (AUDIT-ARCH-004).
+
+    Sans lui, l'API se croirait en « development » : documentation publique, documents fictifs dans
+    le RAG, simulateur autorisé. Les outils en ligne de commande et les tests n'en dépendent pas."""
+    if "environment" not in settings.model_fields_set:
+        raise RuntimeError(
+            "ENVIRONMENT absent : indiquez ENVIRONMENT=production (ou development pour une "
+            "instance d'essai) dans le fichier .env avant de démarrer l'API."
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    require_explicit_environment(get_settings())
     try:
         await ensure_indexes(get_mongo_db())
         await ensure_run_indexes(get_mongo_db())
