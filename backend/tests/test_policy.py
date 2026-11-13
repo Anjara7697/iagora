@@ -390,3 +390,25 @@ def test_the_conversation_justifies_facts_never_prices_or_conditions():
     ) == ["2000 euros", "eligible", "cpf"]
     kb = ["Le Master eBIHAR est éligible au CPF."]
     assert policy.ungrounded_claims("Le Master est éligible au CPF.", kb) == []
+
+
+def test_amounts_written_differently_from_the_source_are_recognised():
+    """Une source « 7 000 euros » justifie « 7000 € », « 7.000 € » ou « 7 000 EUR », jamais un
+    autre montant (documents réels de DATUM : montants écrits en toutes lettres de la devise)."""
+    sources = [
+        "Le master coûte 7 000 euros par an, 4 500 euros pour un client. Remise de 10 pour cent."
+    ]
+    for reply in (
+        "Il coûte 7000 € par an.",
+        "Il coûte 7.000 € par an.",
+        "Il coûte 7 000 EUR.",
+        "Prix réduit : 4500€.",
+        "Remise de 10 %.",
+    ):
+        assert policy.ungrounded_claims(reply, sources) == [], reply
+    for reply, claim in (
+        ("Il coûte 6500 € par an.", "6500 €"),
+        ("Il coûte 700 €.", "700 €"),
+        ("Il coûte 70 000 €.", "70 000 €"),
+    ):
+        assert policy.ungrounded_claims(reply, sources) == [claim], reply

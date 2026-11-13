@@ -376,6 +376,14 @@ def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
 
+def _canonical(text: str) -> str:
+    """Écritures équivalentes d'un montant ramenées à une seule (texte déjà `normalize`) :
+    « 7 000 euros », « 7.000 € » et « 7000 eur » deviennent « 7000€ » ; « 5 pour cent », « 5% »."""
+    text = re.sub(r"(?<=\d)[ .\u00a0\u202f](?=\d{3}(?!\d))", "", text)
+    text = re.sub(r"(?<=\d)\s?(?:euros?|eur)\b", "€", text)
+    return re.sub(r"(?<=\d)\s?pour ?cent\b", "%", text)
+
+
 def _extra_terms(terms: tuple[str, ...]) -> re.Pattern[str] | None:
     """Termes ajoutés par l'administrateur, comparés sans accents ni majuscules."""
     words = [re.escape(normalize(t.strip())) for t in terms if t.strip()]
@@ -395,8 +403,8 @@ def ungrounded_claims(
     messages déjà échangés, qui ne justifient que les durées, dates, heures et niveaux d'études,
     jamais un prix ni une condition d'admission ou de financement.
     """
-    validated = _compact(normalize(" ".join(sources)))
-    everything = validated + _compact(normalize(" ".join(conversation or [])))
+    validated = _compact(_canonical(normalize(" ".join(sources))))
+    everything = validated + _compact(_canonical(normalize(" ".join(conversation or []))))
     text = normalize(reply)
     bad = []
     checks = [(_PRICE, validated), (_TERMS, validated), (_FACT, everything)]
@@ -404,6 +412,6 @@ def ungrounded_claims(
         checks.append((extra, validated))
     for pattern, haystack in checks:
         for match in pattern.finditer(text):
-            if _compact(match.group(0)) not in haystack:
+            if _compact(_canonical(match.group(0))) not in haystack:
                 bad.append(match.group(0).strip())
     return list(dict.fromkeys(bad))
