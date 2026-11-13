@@ -4,7 +4,7 @@ import { toast } from "@heroui/react";
 import { Check, Megaphone, MessagesSquare, Route, Send, UserPlus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import SimulationNotice from "@/components/SimulationNotice";
 import { canUseSimulator } from "@/lib/access";
 import GuidedSimulation from "@/components/GuidedSimulation";

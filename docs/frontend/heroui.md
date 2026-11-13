@@ -94,6 +94,10 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
 
+Session : `lib/session/` (`SessionProvider`, `useCurrentUser`). Après la connexion, l'arrivée se fait sur Aujourd'hui ;
+une session expirée renvoie à `/login?next=…`, qui ramène à la page en cours (adresse vérifiée par `returnPath` :
+un écran connu de la console, jamais une adresse externe).
+
 16. **Barre du haut** : à gauche, la recherche unique (la palette `CommandPalette`, Ctrl K / ⌘ K : prospects,
     pages, actions) ; à droite, « N à traiter » et le menu du compte. Pas de second champ de recherche dans un
     écran pour les mêmes données.

@@ -2,7 +2,7 @@
 
 import { UserRound } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { toast } from "@heroui/react";
 import { Btn, ErrorText, Field, SelectBox, Notice } from "@/components/ds/controls";
 import { Eyebrow, initialsOf } from "@/components/ds/layout";

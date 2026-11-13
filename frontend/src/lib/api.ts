@@ -1,3 +1,5 @@
+import { loginHref } from "./session/returnPath";
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -115,6 +117,9 @@ export function humanError(status: number, payload: unknown): string {
   return GENERIC[status] ?? `Erreur ${status} : réessayez dans un instant.`;
 }
 
+/** Redirection vers la connexion déjà demandée (la page va être remplacée). */
+let redirectingToLogin = false;
+
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const headers: Record<string, string> = { ...CSRF_HEADERS };
   let body: BodyInit | undefined;
@@ -138,8 +143,11 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   } catch {
     throw new ApiError(0, NETWORK_ERROR);
   }
-  if (res.status === 401 && !path.startsWith("/auth/login")) {
-    window.location.assign("/login");
+  // Session absente ou expirée : connexion, puis retour à la page en cours (NAV-03). Une seule redirection même si
+  // plusieurs requêtes échouent ensemble : une seconde rechargerait la page de connexion pendant la saisie.
+  if (res.status === 401 && !path.startsWith("/auth/login") && window.location.pathname !== "/login" && !redirectingToLogin) {
+    redirectingToLogin = true;
+    window.location.assign(loginHref(window.location.pathname + window.location.search));
   }
   const text = await res.text();
   let payload: unknown;

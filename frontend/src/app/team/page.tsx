@@ -3,7 +3,7 @@
 import { SearchX, UserPlus, UsersRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, Field, FilterChipGroup, Notice, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";

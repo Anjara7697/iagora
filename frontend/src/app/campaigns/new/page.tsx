@@ -6,7 +6,7 @@ import CampaignForm, {
   EMPTY_VALUES,
   type CampaignValues,
 } from "@/components/CampaignForm";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";

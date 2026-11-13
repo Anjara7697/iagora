@@ -4,7 +4,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, Check as CheckBox, ErrorText, Field, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Loading } from "@/components/ui";

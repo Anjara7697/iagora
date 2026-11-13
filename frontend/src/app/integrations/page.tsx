@@ -4,7 +4,7 @@ import { SearchField } from "@heroui/react";
 import { ArrowRight, Plug } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { CalendarSettings } from "@/components/CalendarSettings";
 import { ConnectorIcon } from "@/components/ConnectorIcons";
 import { Drawer } from "@/components/Drawer";

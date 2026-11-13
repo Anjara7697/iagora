@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, TextInput } from "@/components/ds/controls";
 import { Screen, initialsOf as initials } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } from "@/components/ds/settings";

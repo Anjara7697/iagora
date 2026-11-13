@@ -4,7 +4,7 @@ import { CalendarDays, Clock, RefreshCw, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { Box } from "@/components/ds/card";
 import { Btn, Check, SelectBox, Segmented } from "@/components/ds/controls";

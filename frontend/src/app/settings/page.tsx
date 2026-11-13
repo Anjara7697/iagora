@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TestingAccess from "@/components/TestingAccess";
 import { canUseSimulator } from "@/lib/access";
 import { Suspense, useEffect, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, ErrorText, Notice, SelectBox } from "@/components/ds/controls";
 import { ErrorState, PageHeader, Screen, cx } from "@/components/ds/layout";

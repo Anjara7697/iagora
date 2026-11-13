@@ -11,7 +11,7 @@ import { Skeleton, toast } from "@heroui/react";
 import { Send, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Box } from "@/components/ds/card";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, LinkButton, Notice } from "@/components/ds/controls";

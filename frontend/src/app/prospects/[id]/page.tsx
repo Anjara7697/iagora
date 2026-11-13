@@ -5,7 +5,7 @@ import { ShieldCheck, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { EraseForm, ErasureResult } from "@/components/ErasePanel";
 import ProspectResultsReturn, { backLinkClass } from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";

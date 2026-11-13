@@ -7,6 +7,7 @@ import { Brand } from "@/components/ds/Brand";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { api, ApiError } from "@/lib/api";
+import { returnPath } from "@/lib/session";
 import { Box } from "@/components/ds/card";
 
 export default function LoginPage() {
@@ -23,7 +24,8 @@ export default function LoginPage() {
     try {
       // La session arrive dans un témoin HttpOnly : le jeton du corps n'est pas conservé.
       await api("/auth/login", { method: "POST", form: { username, password } });
-      router.replace("/prospects");
+      // Arrivée sur l'accueil (NAV-01), ou retour à la page où la session avait expiré (NAV-03).
+      router.replace(returnPath(new URLSearchParams(window.location.search).get("next")) ?? "/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Connexion impossible");
     } finally {

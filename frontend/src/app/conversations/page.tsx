@@ -9,7 +9,7 @@
 import { ArrowRight, Inbox as InboxIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, ListScroll, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
