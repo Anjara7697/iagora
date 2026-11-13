@@ -209,3 +209,14 @@ sans préparer chaque premier message à la main.
 **À confirmer avec le DPO.** La mention ou la case d'accord du formulaire d'inscription à l'événement : c'est elle
 qui permet de cocher le consentement à l'import.
 
+## D-30 — Remise à zéro des données d'une instance d'essai
+
+*13 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Avant une réunion ou une démonstration, `dev` doit repartir d'une console vide (prospects,
+campagnes, base de connaissances), sans perdre comptes, connecteurs ni réglages.
+
+**Décision.** Commande `python -m app.cli reset-dev-data` : aperçu par défaut, effacement avec `--apply`,
+refusée en production, sauvegarde faite juste avant par le responsable (`deploiement.md` §7 bis). C'est un outil
+d'exploitation de l'instance d'essai, qui ne contient que des données de test : il efface toutes ses données
+métier, pas seulement les fiches en `@demo.example.com`.
