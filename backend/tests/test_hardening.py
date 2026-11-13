@@ -1,8 +1,10 @@
 """Durcissement avant production : limitation de connexion, erreurs, bail des tâches de fond."""
 
+import logging
+
 import pytest
 from app.config import Settings
-from app.core.ratelimit import LoginLimiter, limiter
+from app.core.ratelimit import LoginLimiter
 from app.main import create_app
 from app.services import lease
 from httpx import ASGITransport, AsyncClient
@@ -27,28 +29,48 @@ def test_production_refuses_unsafe_settings():
 
 def test_limiter_blocks_after_repeated_failures_then_recovers():
     lim = LoginLimiter(max_failures=3, window=60)
-    key = lim.key("1.2.3.4", "Alice")
     for t in (0, 1, 2):
-        assert lim.retry_after(key, now=t) == 0
-        lim.record_failure(key, now=t)
-    assert lim.retry_after(key, now=3) > 0  # bloqué
-    assert lim.retry_after(lim.key("1.2.3.4", "bob"), now=3) == 0  # autre identifiant : libre
-    assert lim.retry_after(key, now=100) == 0  # fenêtre écoulée
-    lim.record_failure(key, now=100)
-    lim.reset(key)
-    assert lim.retry_after(key, now=101) == 0
+        assert lim.retry_after("1.2.3.4", "Alice", now=t) == 0
+        lim.record_failure("1.2.3.4", "Alice", now=t)
+    assert lim.retry_after("1.2.3.4", " alice ", now=3) > 0  # bloqué (casse et espaces ignorés)
+    assert lim.retry_after("1.2.3.4", "bob", now=3) == 0  # autre identifiant : libre
+    assert lim.retry_after("1.2.3.4", "Alice", now=100) == 0  # fenêtre écoulée
+    lim.record_failure("1.2.3.4", "Alice", now=100)
+    lim.reset("1.2.3.4", "Alice")
+    assert lim.retry_after("1.2.3.4", "Alice", now=101) == 0
+
+
+def test_limiter_blocks_an_identifier_attacked_from_many_addresses(caplog):
+    """AUDIT-SEC-005 : la limite par identifiant vaut toutes adresses confondues."""
+    caplog.set_level(logging.WARNING, logger="app.core.ratelimit")
+    lim = LoginLimiter(max_failures=5, window=60, per_username=4, per_ip=100)
+    for i in range(4):
+        lim.record_failure(f"10.0.0.{i}", "alice", now=i)
+    assert lim.retry_after("10.0.0.99", "alice", now=5) > 0  # adresse jamais vue : bloquée
+    assert lim.retry_after("10.0.0.99", "bob", now=5) == 0
+    # Le blocage est journalisé sans l'identifiant en clair.
+    assert "(user)" in caplog.text and "alice" not in caplog.text
+
+
+def test_limiter_blocks_an_address_spraying_many_identifiers():
+    lim = LoginLimiter(max_failures=5, window=60, per_username=100, per_ip=3)
+    for i, name in enumerate(("alice", "bob", "chloe")):
+        lim.record_failure("6.6.6.6", name, now=i)
+    assert lim.retry_after("6.6.6.6", "david", now=4) > 0
+    assert lim.retry_after("7.7.7.7", "david", now=4) == 0
+    # Se connecter à son propre compte n'efface pas le compteur de l'adresse.
+    lim.reset("6.6.6.6", "david")
+    assert lim.retry_after("6.6.6.6", "emma", now=5) > 0
 
 
 async def test_login_is_blocked_after_five_failures(client, make_client):
     anonymous = await make_client(None)
-    limiter.reset(limiter.key("127.0.0.1", "ghost"))
     codes = []
     for _ in range(7):
         r = await anonymous.post(f"{API}/auth/login", data={"username": "ghost", "password": "x"})
         codes.append(r.status_code)
     assert codes[:5] == [401] * 5 and codes[5:] == [429, 429]
     assert "Retry-After" in r.headers
-    limiter.reset(limiter.key("127.0.0.1", "ghost"))
 
 
 async def test_unexpected_errors_never_leak_details(client, monkeypatch):

@@ -5,22 +5,32 @@ export const API_URL =
 export const SIMULATOR_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_SIMULATOR !== "false";
 
-const TOKEN_KEY = "iagora.token";
+// Session : témoin HttpOnly posé par l'API (AUDIT-SEC-004), jamais lisible par la page. Le
+// navigateur l'envoie seul (`credentials: "include"`) ; l'en-tête ci-dessous, exigé par l'API sur
+// les écritures, ne peut pas être posé par un formulaire d'un autre site (anti-CSRF).
+const CSRF_HEADERS = { "X-IAGORA-CSRF": "1" };
+const LEGACY_TOKEN_KEY = "iagora.token";
 
-export function getToken(): string | null {
+/** Efface le jeton des versions précédentes de la console (stocké dans `localStorage`). */
+export function forgetLegacyToken(): void {
   try {
-    return window.localStorage.getItem(TOKEN_KEY);
+    window.localStorage.removeItem(LEGACY_TOKEN_KEY);
   } catch {
-    return null;
+    /* stockage indisponible : rien à effacer */
   }
 }
 
-export function setToken(token: string | null): void {
+/** Ferme la session côté serveur (le témoin est effacé par la réponse). Ne lève jamais. */
+export async function logout(): Promise<void> {
   try {
-    if (token) window.localStorage.setItem(TOKEN_KEY, token);
-    else window.localStorage.removeItem(TOKEN_KEY);
+    await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      headers: CSRF_HEADERS,
+      credentials: "include",
+      cache: "no-store",
+    });
   } catch {
-    /* stockage indisponible (navigation privée) : la session ne sera pas conservée */
+    /* serveur injoignable : la session expirera d'elle-même */
   }
 }
 
@@ -101,9 +111,7 @@ export function humanError(status: number, payload: unknown): string {
 }
 
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers: Record<string, string> = { ...CSRF_HEADERS };
   let body: BodyInit | undefined;
   if (options.multipart) {
     body = options.multipart;
@@ -119,13 +127,13 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
       method: options.method ?? "GET",
       headers,
       body,
+      credentials: "include",
       cache: "no-store",
     });
   } catch {
     throw new ApiError(0, "Serveur injoignable : le backend est-il démarré ?");
   }
   if (res.status === 401 && !path.startsWith("/auth/login")) {
-    setToken(null);
     window.location.assign("/login");
   }
   const text = await res.text();
@@ -156,11 +164,11 @@ export function qs(
 
 /** Télécharge un fichier (export CSV) avec la session en cours. */
 export async function download(path: string, filename: string): Promise<void> {
-  const token = getToken();
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: CSRF_HEADERS,
+      credentials: "include",
       cache: "no-store",
     });
   } catch {

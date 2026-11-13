@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.auto import email_loop, follow_up_loop, meta_resume_loop, reply_queue_loop
 from app.agents.runtime import ensure_run_indexes
+from app.api.cookies import CSRF_HEADER
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
 from app.config import Settings, get_settings
@@ -103,7 +104,9 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", CSRF_HEADER],
+        # Témoin de session de la console (AUDIT-SEC-004) : origines explicites seulement.
+        allow_credentials=True,
     )
     # Ajouté en dernier, donc le plus à l'extérieur : en-têtes aussi sur les réponses CORS et
     # les erreurs.

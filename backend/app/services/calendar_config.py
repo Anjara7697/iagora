@@ -7,9 +7,12 @@
   chiffré, compte Google, état). Rien n'est renvoyé par l'API en clair.
 """
 
+import hashlib
+import hmac
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, NamedTuple
 
 import jwt
 
@@ -119,29 +122,57 @@ def refresh_token(settings: Settings, connection: dict[str, Any]) -> str | None:
 
 
 # --- État signé du parcours OAuth ---------------------------------------------------------------
+#
+# L'état est signé et porte l'empreinte d'un nonce remis au navigateur dans un témoin court
+# (AUDIT-SEC-008) : un lien d'autorisation ouvert dans un autre navigateur (celui d'un collègue)
+# est refusé au retour, au lieu de relier son compte Google ou Zoom à celui du demandeur.
+
+
+class OAuthState(NamedTuple):
+    user_id: int
+    return_to: str
+    browser: str  # empreinte SHA-256 du nonce du navigateur
+
+
+def browser_nonce() -> tuple[str, str]:
+    """(nonce à poser dans le témoin, empreinte à mettre dans l'état)."""
+    nonce = secrets.token_urlsafe(24)
+    return nonce, hashlib.sha256(nonce.encode()).hexdigest()
+
+
+def same_browser(state: OAuthState, cookie: str | None) -> bool:
+    if not (cookie and state.browser):
+        return False
+    digest = hashlib.sha256(cookie.encode()).hexdigest()
+    return hmac.compare_digest(digest, state.browser)
 
 
 def make_state(
-    settings: Settings, user_id: int, return_to: str, purpose: str = STATE_PURPOSE
+    settings: Settings,
+    user_id: int,
+    return_to: str,
+    purpose: str = STATE_PURPOSE,
+    browser: str = "",
 ) -> str:
     now = datetime.now(UTC)
     claims = {
         "sub": str(user_id),
         "purpose": purpose,
         "ret": return_to,
+        "bro": browser,
         "iat": now,
         "exp": now + timedelta(minutes=10),
     }
     return jwt.encode(claims, settings.jwt_secret_key.get_secret_value(), algorithm="HS256")
 
 
-def read_state(
-    settings: Settings, state: str, purpose: str = STATE_PURPOSE
-) -> tuple[int, str] | None:
+def read_state(settings: Settings, state: str, purpose: str = STATE_PURPOSE) -> OAuthState | None:
     try:
         claims = jwt.decode(state, settings.jwt_secret_key.get_secret_value(), algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
     if claims.get("purpose") != purpose:
         return None
-    return int(claims["sub"]), str(claims.get("ret") or "")
+    return OAuthState(
+        int(claims["sub"]), str(claims.get("ret") or ""), str(claims.get("bro") or "")
+    )

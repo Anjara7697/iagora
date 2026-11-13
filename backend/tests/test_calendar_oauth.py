@@ -195,8 +195,18 @@ async def test_full_connection_flow(make_client, mongo_db, settings_override, mo
         return "refresh-xyz", "conseil@gmail.com"
 
     monkeypatch.setattr(calendar_api.google_oauth, "exchange_code", fake_exchange)
-    anon = await make_client(None)
-    back = await anon.get(
+    # AUDIT-SEC-008 : le lien ouvert dans un autre navigateur (sans le témoin du parcours) est
+    # refusé, sans relier de compte Google.
+    colleague = await make_client(None)
+    other = await colleague.get(
+        f"{API}/calendar/google/callback",
+        params={"state": params["state"][0], "code": "the-code"},
+    )
+    assert other.status_code == 303 and "calendar=error" in other.headers["location"]
+    assert await calendar_config.get_connection(mongo_db, me["id"]) is None
+    # Le navigateur qui a demandé le lien porte le témoin : connexion acceptée, témoin effacé.
+    assert advisor.cookies.get("iagora_oauth_calendar_oauth")
+    back = await advisor.get(
         f"{API}/calendar/google/callback",
         params={"state": params["state"][0], "code": "the-code"},
     )
@@ -228,7 +238,8 @@ async def test_callback_rejects_forged_state_and_open_redirects(make_client, set
     s = base(cors_origins=[CONSOLE])
     state = calendar_config.make_state(s, 1, "https://evil.example/steal")
     r = await anon.get(f"{API}/calendar/google/callback", params={"state": state, "error": "no"})
-    assert r.headers["location"].startswith(f"{CONSOLE}/account?calendar=refused")
+    # Pas de redirection ouverte ; sans témoin du parcours, le retour est refusé.
+    assert r.headers["location"].startswith(f"{CONSOLE}/account?calendar=error")
 
 
 async def test_calendar_settings_are_admin_only(make_client):

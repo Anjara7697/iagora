@@ -7,7 +7,7 @@ import { Screen, initialsOf as initials } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } from "@/components/ds/settings";
 import { MyCalendar } from "@/components/MyCalendar";
 import { MyZoom } from "@/components/MyZoom";
-import { api, ApiError, setToken } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 const ROLE_LABELS = {
   ADMIN: "Administrateur",
@@ -33,12 +33,11 @@ export default function AccountPage() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ access_token: string }>("/auth/password", {
+      await api("/auth/password", {
         method: "POST",
         body: { current_password: current, new_password: next },
       });
-      // Les autres sessions sont fermées ; celle-ci repart avec le nouveau jeton.
-      setToken(r.access_token);
+      // Les autres sessions sont fermées ; celle-ci repart avec un témoin renouvelé par l'API.
       setDone(true);
       window.location.assign("/");
     } catch (err) {

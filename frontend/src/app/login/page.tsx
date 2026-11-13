@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Brand } from "@/components/ds/Brand";
 import { Btn, ErrorText, Field, TextInput } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
-import { api, ApiError, setToken } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Box } from "@/components/ds/card";
 
 export default function LoginPage() {
@@ -21,11 +21,8 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const token = await api<{ access_token: string }>("/auth/login", {
-        method: "POST",
-        form: { username, password },
-      });
-      setToken(token.access_token);
+      // La session arrive dans un témoin HttpOnly : le jeton du corps n'est pas conservé.
+      await api("/auth/login", { method: "POST", form: { username, password } });
       router.replace("/prospects");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Connexion impossible");
