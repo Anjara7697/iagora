@@ -475,7 +475,7 @@ async def test_prompts_never_contain_contact_details(client, env):
 
 
 async def test_first_contact_writes_an_introduction(client, env):
-    pid, mid, cid = await lead(client, None)
+    pid, mid, cid = await lead(client, None, consent_granted=True)
     out = (await run(client, cid)).json()
     assert out["trigger"] == "first_contact" and out["action"] == "continue_conversation"
     assert out["reply"] == INTRO
@@ -487,9 +487,23 @@ async def test_first_contact_writes_an_introduction(client, env):
 
 
 async def test_run_can_target_a_prospect_and_opens_the_conversation(client, env):
-    pid, mid, cid = await lead(client, None)
+    pid, mid, cid = await lead(client, None, consent_granted=True)
     out = await client.post(f"{API}/agent/runs", json={"prospect_id": pid})
     assert out.status_code == 201 and out.json()["conversation_id"] == cid  # reprend l'active
+
+
+async def test_agent_never_writes_first_without_consent(client, env):
+    """D-29 : sans consentement recueilli, l'agent n'écrit pas le premier message."""
+    pid, mid, cid = await lead(client, None)
+    refused = await run(client, cid)
+    assert refused.status_code == 409 and "Consentement non recueilli" in refused.json()["detail"]
+    assert env.llm.generate_calls == []
+    assert (await conversation(client, cid))["messages"] == []
+    # Une personne qui écrit d'elle-même reçoit toujours sa réponse.
+    pid2, mid2, cid2 = await lead(
+        client, "Bonjour, des informations ?", email="autre@example.com", phone="0699999999"
+    )
+    assert (await run(client, cid2)).status_code == 201
 
 
 # --- Traçabilité (NF-04, OB-05) ---

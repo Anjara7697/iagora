@@ -10,7 +10,7 @@ export default function ProspectTaskReturn() {
   const task = params.get("task");
   if (!task) return null;
   const kind = params.get("kind");
-  const filter = ["validation", "escalation", "kb_gap", "incident"].includes(
+  const filter = ["validation", "first_contact", "escalation", "kb_gap", "incident"].includes(
     kind ?? "",
   )
     ? kind

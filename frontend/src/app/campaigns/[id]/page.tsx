@@ -7,6 +7,7 @@ import { Suspense, useRef, useState } from "react";
 import { useCurrentUser } from "@/components/AppShell";
 import CampaignOverview from "@/components/campaign/CampaignOverview";
 import CampaignProspects from "@/components/campaign/CampaignProspects";
+import { FirstContacts } from "@/components/campaign/FirstContacts";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
@@ -190,7 +191,8 @@ function CampaignDetail() {
               {stats.error && <ErrorState message={`Statistiques indisponibles : ${stats.error.message}`} onRetry={stats.reload} />}
               {stats.data && <CampaignOverview stats={stats.data} />}
             </Tabs.Panel>
-            <Tabs.Panel id="prospects" className="pt-4">
+            <Tabs.Panel id="prospects" className="flex flex-col gap-4 pt-4">
+              <FirstContacts campaign={c} />
               <CampaignProspects
                 campaign={c}
                 stage={view.stage}

@@ -106,6 +106,9 @@ async def new_demo_prospect(
             campaign_id=campaign_id,
             source_id=source_id,
             profile=profile or {},
+            # Prospect fictif traité comme un contact consentant : le premier contact est permis.
+            consent_granted=True,
+            consent_source="recette (prospect fictif)",
         ),
     )
     memberships = await prospects.get_memberships(session, prospect.id)

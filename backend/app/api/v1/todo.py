@@ -22,8 +22,10 @@ from app.schemas.conversation import MessageRead
 from app.schemas.todo import (
     AgentModeRead,
     AgentModeUpdate,
+    BatchResult,
     DraftApprove,
     DraftReject,
+    FirstContactApproval,
     OptOutReviewDecision,
     TodoItem,
     TodoPage,
@@ -48,7 +50,10 @@ async def list_todo(
     kind: Annotated[
         str | None,
         Query(
-            pattern="^(validation|escalation|kb_gap|incident|application|enrollment|opt_out_check)$"
+            pattern=(
+                "^(validation|first_contact|escalation|kb_gap|incident|application|enrollment"
+                "|opt_out_check)$"
+            )
         ),
     ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -162,6 +167,40 @@ async def approve_draft(
     """Valide le brouillon (éventuellement modifié) : il devient un message prêt à partir."""
     await _guard_consent(session, db, conversation_id)
     return await drafts.approve(db, conversation_id, message_id, user.id, payload.content)
+
+
+@router.post("/todo/first-contacts/approve", response_model=BatchResult, dependencies=[CAN_WRITE])
+async def approve_first_contacts(
+    payload: FirstContactApproval,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+    scope: CurrentScope,
+) -> BatchResult:
+    """Valide ensemble des premiers contacts relus dans la file (sans modification). Seuls des
+    brouillons « premier contact » en attente, visibles et non désinscrits, sont validés ; les
+    autres sont ignorés et comptés. Les envois restent étalés dans la fenêtre d'envoi."""
+    approved = skipped = 0
+    for ref in payload.drafts:
+        try:
+            doc = await conversation_service.get_doc(db, ref.conversation_id)
+            await scope_service.ensure_visible(session, scope, int(doc["prospect_id"]))
+            message = next(
+                (m for m in doc.get("messages", []) if m.get("id") == ref.message_id), None
+            )
+            if (
+                message is None
+                or not drafts.is_pending(message)
+                or not (message.get("metadata") or {}).get("first_contact")
+            ):
+                skipped += 1
+                continue
+            await _guard_consent(session, db, ref.conversation_id)
+            await drafts.approve(db, ref.conversation_id, ref.message_id, user.id, None)
+            approved += 1
+        except (ConflictError, NotFoundError):
+            skipped += 1
+    return BatchResult(approved=approved, skipped=skipped)
 
 
 @router.post(

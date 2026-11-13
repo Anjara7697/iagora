@@ -109,3 +109,47 @@ test("session : témoin HttpOnly, déconnexion révoquée côté serveur", async
   await page.goto("/prospects");
   await page.waitForURL(/\/login$/);
 });
+
+test("import dans une campagne : colonne consentement et premiers contacts comptés par l'API", async ({ page }) => {
+  expect(PASSWORD, "E2E_ADMIN_PASSWORD manquant").not.toBe("");
+  const token = await apiToken();
+  const ctx = await request.newContext({ extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
+  const stamp = Date.now();
+  const created = await ctx.post(`${API}/campaigns`, {
+    data: {
+      name: `Salon e2e ${stamp}`,
+      status: "active",
+      target_codes: ["ebihar_students"],
+      sources: [{ name: "Import CSV", type: "import", platform: "web" }],
+    },
+  });
+  expect(created.status()).toBe(201);
+  const campaign = await created.json();
+
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill(USER);
+  await page.getByLabel("Mot de passe").fill(PASSWORD);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+
+  await page.goto(`/campaigns/${campaign.id}?tab=prospects`);
+  await page.getByRole("region", { name: "Premiers contacts" }).getByRole("link", { name: "Importer une liste" }).click();
+  await expect(page.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", String(campaign.sources[0].id));
+  const csv = [
+    "prénom;email;consentement",
+    `Inès;ines.${stamp}@demo.example.com;oui`,
+    `Jules;jules.${stamp}@demo.example.com;non`,
+  ].join("\n");
+  await page.getByLabel("Fichier CSV (2 Mo, 5000 lignes maximum)").setInputFiles({
+    name: "salon.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv),
+  });
+  await page.getByRole("button", { name: "Aperçu", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Aperçu de l’import" })).toBeVisible();
+  await page.getByRole("button", { name: "Importer", exact: true }).click();
+  const card = page.getByRole("region", { name: "Résultat de l’import" }).getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("1 personne de la campagne peut recevoir un premier message de l’agent.")).toBeVisible();
+  await expect(card.getByText("1 personne sans consentement (l’agent ne lui écrit pas)", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réessayer" })).toHaveCount(0);
+});

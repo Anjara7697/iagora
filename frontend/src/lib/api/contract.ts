@@ -55,6 +55,8 @@ export type ApiContract = [
   Expect<Missing<T.ErasureReport, S["ErasureReport"]>>,
   Expect<Missing<T.ServiceToken, S["ServiceTokenCreated"]>>, // `token` : seulement à la création
   Expect<Missing<T.ImportReport, S["ImportReport"]>>,
+  Expect<Missing<T.FirstContacts, S["FirstContactsRead"]>>,
+  Expect<Missing<T.BatchResult, S["BatchResult"]>>,
   Expect<Missing<T.Appointment, S["AppointmentRead"]>>,
   Expect<Missing<T.DashboardOverview, S["DashboardOverview"]>>,
   Expect<Missing<T.Analytics, S["Analytics"]>>,

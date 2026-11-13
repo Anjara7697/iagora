@@ -492,6 +492,25 @@
         "title": "AppointmentStatus",
         "type": "string"
       },
+      "BatchResult": {
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "integer"
+          },
+          "skipped": {
+            "description": "Brouillons déjà traités, hors périmètre ou non éligibles",
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "approved",
+          "skipped"
+        ],
+        "title": "BatchResult",
+        "type": "object"
+      },
       "Body_import_prospects_api_v1_prospects_import_post": {
         "properties": {
           "campaign_id": {
@@ -2274,6 +2293,26 @@
         "title": "DraftOutcomes",
         "type": "object"
       },
+      "DraftRef": {
+        "properties": {
+          "conversation_id": {
+            "maxLength": 64,
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "message_id": {
+            "maxLength": 64,
+            "title": "Message Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message_id"
+        ],
+        "title": "DraftRef",
+        "type": "object"
+      },
       "DraftReject": {
         "properties": {
           "reason": {
@@ -3012,6 +3051,79 @@
         "title": "ExternalEvent",
         "type": "object"
       },
+      "FirstContactApproval": {
+        "description": "Premiers contacts relus et validés ensemble (au plus 100, ceux affichés dans la file).",
+        "properties": {
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/DraftRef"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Drafts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "drafts"
+        ],
+        "title": "FirstContactApproval",
+        "type": "object"
+      },
+      "FirstContactsRead": {
+        "description": "Premiers contacts d'une campagne : qui les recevrait, et pourquoi les autres non (D-29).",
+        "properties": {
+          "already_contacted": {
+            "default": 0,
+            "description": "Déjà en échange ou plus à l'étape Nouveau",
+            "title": "Already Contacted",
+            "type": "integer"
+          },
+          "campaign_active": {
+            "title": "Campaign Active",
+            "type": "boolean"
+          },
+          "eligible": {
+            "description": "Personnes à qui l'agent peut écrire le premier message",
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "in_progress": {
+            "default": 0,
+            "description": "Premier contact déjà en préparation",
+            "title": "In Progress",
+            "type": "integer"
+          },
+          "opted_out": {
+            "default": 0,
+            "title": "Opted Out",
+            "type": "integer"
+          },
+          "queued": {
+            "default": 0,
+            "description": "Premiers contacts mis en préparation par cette demande",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "without_consent": {
+            "default": 0,
+            "description": "Consentement non recueilli : aucun message",
+            "title": "Without Consent",
+            "type": "integer"
+          },
+          "without_email": {
+            "default": 0,
+            "title": "Without Email",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "campaign_active",
+          "eligible"
+        ],
+        "title": "FirstContactsRead",
+        "type": "object"
+      },
       "FunnelStep": {
         "properties": {
           "count": {
@@ -3154,6 +3266,18 @@
             "description": "Colonne du fichier -> champ IAGORA",
             "title": "Columns",
             "type": "object"
+          },
+          "consent_by_column": {
+            "default": false,
+            "description": "Vrai si une colonne « consentement » décide ligne par ligne",
+            "title": "Consent By Column",
+            "type": "boolean"
+          },
+          "consented": {
+            "default": 0,
+            "description": "Lignes valides enregistrées avec consentement",
+            "title": "Consented",
+            "type": "integer"
           },
           "created": {
             "title": "Created",
@@ -6425,6 +6549,7 @@
           "kind": {
             "enum": [
               "validation",
+              "first_contact",
               "escalation",
               "kb_gap",
               "incident",
@@ -8441,6 +8566,100 @@
           }
         ],
         "summary": "Update Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/first-contacts": {
+      "get": {
+        "description": "Combien de personnes de la campagne recevraient un premier message de l'agent (D-29).",
+        "operationId": "preview_first_contacts_api_v1_campaigns__campaign_id__first_contacts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstContactsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Preview First Contacts",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "description": "Demande à l'agent le premier message de chaque personne éligible. En mode assisté, chaque\nmessage devient un brouillon à valider (« À traiter », Premiers contacts) : rien ne part\nseul.",
+        "operationId": "prepare_first_contacts_api_v1_campaigns__campaign_id__first_contacts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirstContactsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Prepare First Contacts",
         "tags": [
           "campaigns"
         ]
@@ -12444,7 +12663,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "pattern": "^(validation|escalation|kb_gap|incident|application|enrollment|opt_out_check)$",
+                  "pattern": "^(validation|first_contact|escalation|kb_gap|incident|application|enrollment|opt_out_check)$",
                   "type": "string"
                 },
                 {
@@ -12506,6 +12725,53 @@
           }
         ],
         "summary": "List Todo",
+        "tags": [
+          "assisted-mode"
+        ]
+      }
+    },
+    "/api/v1/todo/first-contacts/approve": {
+      "post": {
+        "description": "Valide ensemble des premiers contacts relus dans la file (sans modification). Seuls des\nbrouillons « premier contact » en attente, visibles et non désinscrits, sont validés ; les\nautres sont ignorés et comptés. Les envois restent étalés dans la fenêtre d'envoi.",
+        "operationId": "approve_first_contacts_api_v1_todo_first_contacts_approve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirstContactApproval"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Approve First Contacts",
         "tags": [
           "assisted-mode"
         ]

@@ -59,6 +59,11 @@ directes en mode automatique) sont envoyés un par un, dans le même fil (`Re:`,
 `References`), avec une mention de désinscription (`STOP`) et l'en-tête `List-Unsubscribe`. Chaque message
 est réclamé de façon atomique avant l'envoi : jamais deux envois. Jamais vers un prospect désinscrit.
 
+**Premiers contacts** (l'agent écrit en premier, souvent après un import) : ils ne partent que dans la
+fenêtre d'envoi des Paramètres (jours ouvrés et heures des relances, fuseau des Paramètres) et au plus cinq
+par passage de la boîte, soit environ 300 par heure. Les autres restent prêts pour les passages suivants ;
+le passage le note (« premiers contacts étalés… »). Les réponses aux prospects ne sont pas concernées.
+
 Cycle de vie : `not_sent → sending → sent | failed | blocked`. Un refus du serveur est retenté
 (3 essais), puis le message passe à `failed` et reste visible dans la console.
 

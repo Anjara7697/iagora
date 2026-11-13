@@ -138,16 +138,23 @@ async def list_todo(
             sources = [str(s) for s in meta.get("sources", [])]
             run = await db[RUNS].find_one({"conversation_id": conv_id}, sort=[("started_at", -1)])
             confidence = meta.get("confidence")
+            first = bool(meta.get("first_contact"))
             items.append(
                 TodoItem(
                     id=f"draft:{conv_id}:{message['id']}",
-                    kind="validation",
+                    kind="first_contact" if first else "validation",
                     priority=draft_priority(level),
                     conversation_id=conv_id,
                     prospect=card,
                     channel=doc["channel"],
-                    title="Brouillon de réponse à valider",
-                    detail=_last_prospect_text(doc),
+                    title=(
+                        "Premier contact à valider" if first else "Brouillon de réponse à valider"
+                    ),
+                    detail=(
+                        "L'agent écrit le premier message (prospection)"
+                        if first
+                        else _last_prospect_text(doc)
+                    ),
                     created_at=_aware(message.get("created_at")),
                     draft=TodoDraft(
                         message_id=message["id"],
@@ -159,7 +166,12 @@ async def list_todo(
                         footer=footer if doc["channel"] == "email" else None,
                     ),
                     recommendation=TodoRecommendation(
-                        action="Valider ou modifier la réponse de l'agent",
+                        action=(
+                            "Relire le premier message : il partira tel quel, dans la fenêtre "
+                            "d'envoi"
+                            if first
+                            else "Valider ou modifier la réponse de l'agent"
+                        ),
                         reason=(run or {}).get("reason"),
                         risk=draft_risk(meta, sources),
                         confidence=confidence,

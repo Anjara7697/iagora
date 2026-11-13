@@ -407,6 +407,32 @@ export interface paths {
         patch: operations["update_campaign_api_v1_campaigns__campaign_id__patch"];
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/first-contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview First Contacts
+         * @description Combien de personnes de la campagne recevraient un premier message de l'agent (D-29).
+         */
+        get: operations["preview_first_contacts_api_v1_campaigns__campaign_id__first_contacts_get"];
+        put?: never;
+        /**
+         * Prepare First Contacts
+         * @description Demande à l'agent le premier message de chaque personne éligible. En mode assisté, chaque
+         *     message devient un brouillon à valider (« À traiter », Premiers contacts) : rien ne part
+         *     seul.
+         */
+        post: operations["prepare_first_contacts_api_v1_campaigns__campaign_id__first_contacts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/responsible": {
         parameters: {
             query?: never;
@@ -1691,6 +1717,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/todo/first-contacts/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve First Contacts
+         * @description Valide ensemble des premiers contacts relus dans la file (sans modification). Seuls des
+         *     brouillons « premier contact » en attente, visibles et non désinscrits, sont validés ; les
+         *     autres sont ignorés et comptés. Les envois restent étalés dans la fenêtre d'envoi.
+         */
+        post: operations["approve_first_contacts_api_v1_todo_first_contacts_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todo/item": {
         parameters: {
             query?: never;
@@ -2049,6 +2097,16 @@ export interface components {
          * @enum {string}
          */
         AppointmentStatus: "proposed" | "scheduled" | "done" | "cancelled" | "no_show";
+        /** BatchResult */
+        BatchResult: {
+            /** Approved */
+            approved: number;
+            /**
+             * Skipped
+             * @description Brouillons déjà traités, hors périmètre ou non éligibles
+             */
+            skipped: number;
+        };
         /** Body_import_prospects_api_v1_prospects_import_post */
         Body_import_prospects_api_v1_prospects_import_post: {
             /** Campaign Id */
@@ -2694,6 +2752,13 @@ export interface components {
             /** Superseded */
             superseded: number;
         };
+        /** DraftRef */
+        DraftRef: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Message Id */
+            message_id: string;
+        };
         /** DraftReject */
         DraftReject: {
             /** Reason */
@@ -3021,6 +3086,61 @@ export interface components {
             /** Zoom Meeting Id */
             zoom_meeting_id?: string | null;
         };
+        /**
+         * FirstContactApproval
+         * @description Premiers contacts relus et validés ensemble (au plus 100, ceux affichés dans la file).
+         */
+        FirstContactApproval: {
+            /** Drafts */
+            drafts: components["schemas"]["DraftRef"][];
+        };
+        /**
+         * FirstContactsRead
+         * @description Premiers contacts d'une campagne : qui les recevrait, et pourquoi les autres non (D-29).
+         */
+        FirstContactsRead: {
+            /**
+             * Already Contacted
+             * @description Déjà en échange ou plus à l'étape Nouveau
+             * @default 0
+             */
+            already_contacted: number;
+            /** Campaign Active */
+            campaign_active: boolean;
+            /**
+             * Eligible
+             * @description Personnes à qui l'agent peut écrire le premier message
+             */
+            eligible: number;
+            /**
+             * In Progress
+             * @description Premier contact déjà en préparation
+             * @default 0
+             */
+            in_progress: number;
+            /**
+             * Opted Out
+             * @default 0
+             */
+            opted_out: number;
+            /**
+             * Queued
+             * @description Premiers contacts mis en préparation par cette demande
+             * @default 0
+             */
+            queued: number;
+            /**
+             * Without Consent
+             * @description Consentement non recueilli : aucun message
+             * @default 0
+             */
+            without_consent: number;
+            /**
+             * Without Email
+             * @default 0
+             */
+            without_email: number;
+        };
         /** FunnelStep */
         FunnelStep: {
             /**
@@ -3073,6 +3193,18 @@ export interface components {
             columns: {
                 [key: string]: string;
             };
+            /**
+             * Consent By Column
+             * @description Vrai si une colonne « consentement » décide ligne par ligne
+             * @default false
+             */
+            consent_by_column: boolean;
+            /**
+             * Consented
+             * @description Lignes valides enregistrées avec consentement
+             * @default 0
+             */
+            consented: number;
             /** Created */
             created: number;
             /** Dry Run */
@@ -4360,7 +4492,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "validation" | "escalation" | "kb_gap" | "incident" | "application" | "enrollment" | "opt_out_check";
+            kind: "validation" | "first_contact" | "escalation" | "kb_gap" | "incident" | "application" | "enrollment" | "opt_out_check";
             /**
              * Priority
              * @enum {string}
@@ -5402,6 +5534,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_first_contacts_api_v1_campaigns__campaign_id__first_contacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstContactsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_first_contacts_api_v1_campaigns__campaign_id__first_contacts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FirstContactsRead"];
                 };
             };
             /** @description Validation Error */
@@ -7807,6 +8001,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TodoPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_first_contacts_api_v1_todo_first_contacts_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FirstContactApproval"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResult"];
                 };
             };
             /** @description Validation Error */

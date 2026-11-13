@@ -2,7 +2,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 
-from app.api.dependencies import ADMIN_ONLY, ANY_ROLE, CurrentUser, DbSession
+from app.api.dependencies import (
+    ADMIN_ONLY,
+    ANY_ROLE,
+    CAN_WRITE,
+    CurrentScope,
+    CurrentUser,
+    DbSession,
+    MongoDb,
+)
 from app.models.enums import CampaignStatus
 from app.schemas.campaign import (
     CampaignCreate,
@@ -11,12 +19,14 @@ from app.schemas.campaign import (
     CampaignRead,
     CampaignStats,
     CampaignUpdate,
+    FirstContactsRead,
     SourceInput,
     TargetRead,
 )
 from app.schemas.common import Page
-from app.services import campaign_ownership
+from app.services import campaign_ownership, first_contacts
 from app.services import campaigns as service
+from app.services import scope as scope_service
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"], dependencies=[ANY_ROLE])
 
@@ -112,3 +122,38 @@ targets_router = APIRouter(prefix="/targets", tags=["campaigns"], dependencies=[
 async def list_targets(session: DbSession) -> list[TargetRead]:
     """Cibles commerciales disponibles pour une campagne."""
     return [TargetRead.model_validate(t) for t in await service.list_targets(session)]
+
+
+def _first_contacts_read(result: first_contacts.FirstContactPlan) -> FirstContactsRead:
+    return FirstContactsRead(
+        campaign_active=result.campaign_active,
+        eligible=len(result.eligible),
+        queued=result.queued,
+        without_consent=result.without_consent,
+        without_email=result.without_email,
+        already_contacted=result.already_contacted,
+        in_progress=result.in_progress,
+        opted_out=result.opted_out,
+    )
+
+
+@router.get("/{campaign_id}/first-contacts", response_model=FirstContactsRead)
+async def preview_first_contacts(
+    campaign_id: int, session: DbSession, db: MongoDb, scope: CurrentScope
+) -> FirstContactsRead:
+    """Combien de personnes de la campagne recevraient un premier message de l'agent (D-29)."""
+    visible = await scope_service.prospect_ids(session, scope)
+    return _first_contacts_read(await first_contacts.plan(session, db, campaign_id, visible))
+
+
+@router.post(
+    "/{campaign_id}/first-contacts", response_model=FirstContactsRead, dependencies=[CAN_WRITE]
+)
+async def prepare_first_contacts(
+    campaign_id: int, session: DbSession, db: MongoDb, scope: CurrentScope
+) -> FirstContactsRead:
+    """Demande à l'agent le premier message de chaque personne éligible. En mode assisté, chaque
+    message devient un brouillon à valider (« À traiter », Premiers contacts) : rien ne part
+    seul."""
+    visible = await scope_service.prospect_ids(session, scope)
+    return _first_contacts_read(await first_contacts.enqueue(session, db, campaign_id, visible))

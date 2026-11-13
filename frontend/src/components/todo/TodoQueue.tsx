@@ -13,6 +13,7 @@ import { Box } from "@/components/ds/card";
 import { ListScroll } from "@/components/ds/layout";
 import { TablePagination } from "@/components/ds/table";
 import type { RefObject } from "react";
+import { FirstContactBatch } from "@/components/todo/FirstContactBatch";
 import { KindFilter, revealed, PAGE_SIZE, TASK_LABELS, KIND_ORDER, itemName, KIND_TONE, PRIORITY_TONE, EXECUTION_TONE, PersonMark } from "@/components/todo/shared";
 
 function Row({
@@ -69,6 +70,8 @@ export function TodoQueue({
   titleRef: queueTitle,
   onNavigate: go,
   onKindChange: setKind,
+  guard,
+  onBatchDone,
 }: {
   tab: "todo" | "treated";
   kind: KindFilter;
@@ -82,6 +85,10 @@ export function TodoQueue({
   titleRef: RefObject<HTMLHeadingElement | null>;
   onNavigate: (url: string) => void;
   onKindChange: (kind: KindFilter) => void;
+  /** Protège une saisie en cours dans le détail avant une action de la file. */
+  guard: (action: () => void) => void;
+  /** Après une validation groupée des premiers contacts : la file et les compteurs se rechargent. */
+  onBatchDone: () => void;
 }) {
   const [showAllKinds, setShowAllKinds] = useState(false);
   const total = knownTotal ?? 0;
@@ -191,6 +198,7 @@ export function TodoQueue({
               )
             }
           />
+          {kind === "first_contact" && <FirstContactBatch items={items} guard={guard} onDone={onBatchDone} />}
           <Loading loading={list.loading} error={list.error} onRetry={list.reload} shape="rows" />
           {list.data?.truncated && (
             // AUDIT-DATA-005 : au-delà du volume lu par l'API, les demandes les plus anciennes manquent.

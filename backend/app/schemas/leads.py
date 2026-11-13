@@ -60,3 +60,7 @@ class ImportReport(BaseModel):
     existing: int
     invalid: list[ImportRowError] = Field(default_factory=list)
     columns: dict[str, str] = Field(description="Colonne du fichier -> champ IAGORA")
+    consented: int = Field(0, description="Lignes valides enregistrées avec consentement")
+    consent_by_column: bool = Field(
+        False, description="Vrai si une colonne « consentement » décide ligne par ligne"
+    )

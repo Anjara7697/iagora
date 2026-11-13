@@ -169,6 +169,14 @@ async def _run_agent(
         await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
         trigger, inbound_text = "inbound_message", inputs[-1]["content"]
     elif not messages:
+        # L'agent écrit en premier : seulement à une personne qui a consenti (import coché, case de
+        # formulaire, accord recueilli par un conseiller). Une personne qui écrit d'elle-même reçoit
+        # toujours sa réponse ; un désinscrit n'est jamais contacté (décision D-29).
+        if not simulation and (await get_prospect(session, pid)).consent_status.value != "granted":
+            raise ConflictError(
+                "Consentement non recueilli : l'agent n'écrit pas en premier à ce prospect. "
+                "Enregistrez son accord sur la fiche avant de lancer l'agent."
+            )
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
         trigger, inbound_text = "inbound_message", messages[-1]["content"]

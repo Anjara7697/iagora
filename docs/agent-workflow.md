@@ -99,6 +99,7 @@ Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `
 | Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée | F-20, NF-10 |
 | Disponibilité inventée | Aucun créneau cité s'il ne vient pas de l'agenda ; agenda absent → transfert | NF-10, F-18 |
 | Prospect désinscrit | Détection sans modèle ; envoi sortant refusé par le service même si le workflow se trompait | S-03 |
+| Premier message à une personne qui n'a rien demandé | L'agent n'écrit en premier qu'avec un consentement accordé (refus 409 sinon) ; premiers contacts étalés dans la fenêtre d'envoi | D-29 |
 | API du modèle en panne ou quota dépassé | Nouveaux essais avec attente croissante, puis transfert avec résumé sans modèle | NF-05 |
 | Données personnelles envoyées au modèle | Prénom et informations de qualification seulement : jamais email, téléphone ni identifiants | S-01 |
 | Réponse non traçable | Chaque exécution est journalisée (noeuds, décision, justification, scores) | NF-04, OB-05 |
