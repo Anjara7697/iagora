@@ -152,7 +152,7 @@ La session est un témoin `HttpOnly` posé par l'API, illisible par la page (auc
 
 - Authentification JWT, mots de passe argon2, rôles ADMIN / ADVISOR / VIEWER relus en base à chaque requête.
 - Session de la console (lot 10) : jeton dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en
-  production), en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par ce témoin. Chaque
+  production et derrière HTTPS), en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par ce témoin. Chaque
   connexion ouvre une session en base (`auth_sessions`) ; la déconnexion la révoque côté serveur. Les
   scripts et n8n gardent l'en-tête `Authorization: Bearer`.
 - Limitation des connexions (en mémoire, 15 minutes) : 5 échecs par adresse et identifiant, 20 par

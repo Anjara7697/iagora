@@ -130,7 +130,7 @@ flowchart LR
 - Complexité : S (Caddy) ; M (CSP stricte)
 
 ### AUDIT-SEC-004 — Jeton d'accès dans `localStorage`
-- Statut : **traité le 13/11/2026** (lot 10) : session dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en production) posé par l'API, en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par le témoin, plus aucun jeton dans `localStorage` (l'ancien est effacé au chargement).
+- Statut : **traité le 13/11/2026** (lot 10) : session dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en production et derrière HTTPS) posé par l'API, en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par le témoin, plus aucun jeton dans `localStorage` (l'ancien est effacé au chargement).
 - Catégorie : dette (connue, `limites-et-dette.md`)
 - Criticité : **P2**
 - Confiance : Confirmé
