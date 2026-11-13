@@ -1,7 +1,8 @@
 # Feuille de route de la refonte du frontend
 
-Plan proposé à partir du [rapport général](FRONTEND_AUDIT.md). **Rien n'est implémenté** : chaque lot attend la
-validation des orientations ([UX et UI](FRONTEND_UX_UI_AUDIT.md) §5 et §6).
+Plan établi à partir du [rapport général](FRONTEND_AUDIT.md). Orientations validées le 13/11/2026 (voir
+« Décisions ») ; **rien n'est encore implémenté**. Le découpage en Pull Requests des deux premiers lots est dans
+« Plan de travail » ; celui des lots suivants s'écrit au démarrage de chacun.
 
 ## Principes
 
@@ -180,9 +181,76 @@ lot 2 au prix d'une reprise visuelle ensuite.
 | Bibliothèque de requêtes | à réévaluer après le lot 1 |
 | Lighthouse, profil React, lecteur d'écran réel, recette sur données réelles | non exécutés pendant l'audit |
 
-## Décisions attendues
+## Décisions
 
-1. Les orientations 5.1 à 5.5 de l'[audit UX et UI](FRONTEND_UX_UI_AUDIT.md).
-2. Les règles des parcours à modifier (tableau du §6 du même document).
-3. L'ordre des lots 2 et 3.
-4. Pour le lot 4 : le backend peut-il fournir le tri des listes ?
+Prises par le responsable du projet le 13/11/2026 :
+
+| Sujet | Décision |
+|---|---|
+| Orientations 5.1 à 5.5 de l'[audit UX et UI](FRONTEND_UX_UI_AUDIT.md) | validées |
+| Ordre des lots | design system (lot 2) avant « À traiter » (lot 3) ; le socle (lot 1) reste en premier |
+| Règles des parcours touchées (4, 5, 8, 9, 20, 27, 28, 33) | découlent des orientations validées ; chaque règle est réécrite dans `docs/frontend/heroui.md` par la Pull Request qui l'applique, et signalée dans sa description |
+
+Encore ouvert :
+
+| Sujet | Effet tant que ce n'est pas tranché |
+|---|---|
+| Tri des listes côté serveur (UX-12) | le lot 4 se fait sans tri ni sélection multiple ; aucun contrat d'API n'est modifié |
+
+## Plan de travail
+
+Une ligne = une branche depuis `dev` à jour et une Pull Request vers `dev`. Une Pull Request ne démarre que
+lorsque celle dont elle dépend est fusionnée. Vérifications communes à toutes : `npm run lint`,
+`npm run typecheck`, `npm run build`, `npm run test:e2e`, plus celles de la colonne « Vérification propre ».
+
+### Lot 1 — Socle technique
+
+| N° | Branche | Contenu | Fichiers principaux | Constats | Dépend de | Vérification propre |
+|---|---|---|---|---|---|---|
+| 1.1 | `test/frontend-filet-visuel` | projets Playwright mobile (390 px) et sombre sur un sous-ensemble de tests marqués ; captures de référence des écrans principaux ; tests unitaires des fonctions pures | `playwright.config.ts`, `tests/`, `package.json` (script de test) | TEST-01, TEST-02, TEST-04, A11Y-06 | — | la CI exécute les trois projets ; captures de référence versionnées |
+| 1.2 | `fix/frontend-erreurs-et-titres` | `error.tsx`, `global-error.tsx`, `not-found.tsx` ; titre de document par écran ; message réseau reformulé ; `tw-animate-css` déclaré | `src/app/`, `src/lib/labels.ts`, `src/lib/api.ts`, `package.json` | ARCH-02, A11Y-03, DATA-06, DEP-01 | 1.1 | tests : exception de rendu, adresse inconnue, titre de trois écrans |
+| 1.3 | `refactor/frontend-session` | `SessionProvider`, `useWorkQueueCount`, mise en page séparée ; arrivée sur Aujourd'hui ; retour à la page d'origine après reconnexion | `src/components/AppShell.tsx`, `src/lib/session/`, `src/app/login/page.tsx`, `src/lib/api.ts` | ARCH-01, NAV-01, NAV-03 | 1.2 | captures de référence inchangées ; test : session expirée puis retour ; adresse de retour externe refusée |
+| 1.4 | `feat/frontend-donnees` | annulation, déduplication des GET en cours, délai maximal, délai de frappe des recherches | `src/lib/api.ts`, `src/lib/useApi.ts`, `src/lib/data/`, pages Prospects et Conversations | DATA-01, DATA-02, DATA-05 | 1.3 | tests : une requête de liste après six caractères ; un seul `/todo?limit=1` sur Aujourd'hui ; `reload` après écriture rappelle bien l'API |
+
+Points à lever au début du lot :
+
+- **Tests unitaires** : `node --test` est déjà utilisé dans le dépôt (`tools/n8n`), en JavaScript. Les fonctions à
+  tester sont en TypeScript et certaines importent par l'alias `@/` (`lib/campaignNav.ts`). À vérifier en 1.1 :
+  exécution directe par Node 22 de la CI, sans nouvelle dépendance. Si ce n'est pas possible, la question d'un
+  outil de test est soumise au responsable du projet avant tout ajout.
+- **Captures de référence** : elles dépendent des polices et du moteur de rendu. Elles sont produites et
+  comparées dans la CI seulement, sur le build de production, avec un seuil de tolérance.
+
+### Lot 2 — Design system
+
+| N° | Branche | Contenu | Fichiers principaux | Constats | Règles réécrites | Dépend de | Vérification propre |
+|---|---|---|---|---|---|---|---|
+| 2.1 | `feat/ds-jetons` | échelle de texte nommée, rayons `sm` / `lg` / `full`, ombres réservées à ce qui flotte ; appliqués dans `components/ds` seulement | `src/app/heroui.css`, `src/components/ds/*` | UI-07, UI-08, UI-09 | 7 | lot 1 | aucune taille en pixels ni rayon hors échelle dans `components/ds` |
+| 2.2 | `feat/ds-champs` | champs, listes et recherche à bordure ; une seule apparence | `heroui.css`, `ds/controls.tsx` | UI-01, UI-02 | 8 | 2.1 | contraste des bordures et du texte d'aide par axe, deux thèmes |
+| 2.3 | `feat/ds-structure` | `PageHeader` sur une ligne, `BackLink`, onglets de fiche soulignés, segments à largeur du contenu, sections sans carte, entrée d'écran en fondu | `ds/layout.tsx`, `ds/controls.tsx`, `ds/motion.tsx` | UX-10, NAV-04, UI-03, UI-06, UI-10 | 3, 9 | 2.2 | mouvement réduit respecté ; hauteur d'en-tête mesurée |
+| 2.4 | `feat/ds-pastilles` | familles statut, étape, mesure, marque ; chiffres clés sans couleur de jugement, pastille visible à côté | `ds/badges.tsx`, `ds/controls.tsx`, `ds/layout.tsx`, `heroui.css` | UI-04 | 10 | 2.1 | « Très chaud » reste la seule pastille pleine |
+| 2.5 | `refactor/ds-panneau` | `components/Drawer.tsx` branché sur le `Drawer` HeroUI, même interface | `src/components/Drawer.tsx` | ARCH-03, A11Y-02 | — | 2.1 | les 7 écrans appelants passent leurs tests sans modification ; garde de saisie superposée vérifiée |
+| 2.6 | `feat/ds-pagination-a11y` | pagination abrégée ; règles axe WCAG 2.2 et violations modérées ; taille des cibles mesurée | `ds/table.tsx`, `tests/a11y.ts` | PERF-05, A11Y-01, A11Y-05 | — | 2.3 | aucune violation grave, critique ou modérée sur les écrans capturés |
+| 2.7 | `refactor/ecrans-jetons` | remplacement des tailles et rayons hors échelle dans les écrans (mécanique, sans changement de structure) | `src/app/**`, `src/components/**` hors `ds` | UI-07, UI-08 | — | 2.1 à 2.4 | plus aucune taille de texte en pixels dans `src` ; une Pull Request par groupe d'écrans si la revue le demande |
+
+Chaque Pull Request du lot 2 change l'apparence de plusieurs écrans : elle met à jour les captures de
+référence et joint les captures avant / après, bureau et mobile, clair et sombre.
+
+### Lots 3 à 7
+
+Contenu, risques et critères d'acceptation : sections « Lot 3 » à « Lot 7 » ci-dessus. Découpage prévu :
+
+| Lot | Pull Requests prévues |
+|---|---|
+| 3 | disposition en trois zones ; raccourcis clavier |
+| 4 | une par écran : Prospects, Campagnes, Conversations, Équipe et Base de connaissances |
+| 5 | une |
+| 6 | Intégrations ; Paramètres et formulaires ; Simulateur et menu |
+| 7 | rangement des dossiers ; exports et doublons ; types dérivés du schéma, par domaine |
+
+## Suivi
+
+| Lot | État |
+|---|---|
+| Audit (phases 1 et 2) | fusionné, [Anjara7697/iagora#184](https://github.com/Anjara7697/iagora/pull/184) |
+| 1 à 7 | à faire |
