@@ -6,7 +6,9 @@ import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./heroui.css";
 
 export const metadata: Metadata = {
-  title: "Commercial 2.0 - DATUM Academy",
+  // Chaque écran donne son titre complet (`layout.tsx` de sa route, d'après `documentTitle`) : « Prospects · IAGORA ».
+  // L'accueil, seul écran sans titre propre, prend la valeur par défaut ; le gabarit sert à la page introuvable.
+  title: { template: "%s · IAGORA", default: "Aujourd’hui · IAGORA" },
   description: "Console de l'Agent Intelligent Commercial 2.0",
 };
 

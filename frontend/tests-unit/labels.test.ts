@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { composeDocument, slugify, splitDocument } from "@/lib/knowledgeDoc";
 import { percent, rateBadge, RATE_THRESHOLDS } from "@/lib/kpi";
-import { fullName, initials, isDemoEmail, label, relativeTime, STAGES } from "@/lib/labels";
+import { documentTitle, fullName, initials, isDemoEmail, label, pageTitle, relativeTime, STAGES } from "@/lib/labels";
 
 describe("libellés", () => {
   test("label : traduction, clé inconnue gardée, valeur absente en tiret", () => {
@@ -72,4 +72,20 @@ describe("documents de la base de connaissances", () => {
     assert.equal(splitDocument("## Section").body, "## Section");
     assert.equal(splitDocument("---\ntitle: x").body, "---\ntitle: x");
   });
+});
+
+test("pageTitle : titre de chaque écran, routes dynamiques comprises", () => {
+  assert.equal(pageTitle("/"), "Aujourd’hui");
+  assert.equal(pageTitle("/campaigns"), "Campagnes");
+  assert.equal(pageTitle("/campaigns/new"), "Nouvelle campagne");
+  assert.equal(pageTitle("/campaigns/[id]"), "Campagne");
+  assert.equal(pageTitle("/prospects/import"), "Import de prospects");
+  assert.equal(pageTitle("/prospects/[id]"), "Fiche prospect");
+  assert.equal(pageTitle("/settings/testing"), "Tests et démonstration");
+  assert.equal(pageTitle("/login"), "Connexion");
+  assert.equal(pageTitle("/inconnu"), "IAGORA");
+});
+
+test("documentTitle : titre de l'écran suivi du nom du produit", () => {
+  assert.equal(documentTitle("/prospects"), "Prospects · IAGORA");
 });
