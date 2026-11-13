@@ -197,7 +197,7 @@ class WorkflowNodes:
         }
 
     async def decide_next_action(self, state: SalesAgentState) -> Update:
-        decision: Decision = policy.decide(state)
+        decision: Decision = policy.decide(state, self.deps.tuning)
         return {
             "decision": decision,
             "trace": _t("decide_next_action", f"{decision.action.value} : {decision.reason}"),
@@ -240,14 +240,19 @@ class WorkflowNodes:
 
         try:
             reply = (await self.deps.llm.generate(system, messages)).strip()
-            claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
+            extra = self.deps.tuning.extra_terms
+            claims = policy.ungrounded_claims(
+                reply, sources, conversation=conversation, extra_terms=extra
+            )
             if claims:  # un seul nouvel essai, plus strict
                 reply = (
                     await self.deps.llm.generate(
                         system + prompts.strict_retry_note(claims), messages
                     )
                 ).strip()
-                claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
+                claims = policy.ungrounded_claims(
+                    reply, sources, conversation=conversation, extra_terms=extra
+                )
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {
@@ -477,14 +482,13 @@ class WorkflowNodes:
             update["reply_text"] = None
         return update
 
-    @staticmethod
-    def _reason_from_decision(state: SalesAgentState) -> str:
+    def _reason_from_decision(self, state: SalesAgentState) -> str:
         if state.get("llm_failed"):
             return "llm_indisponible"
         if state.get("risk_alerts"):
             return "situation_sensible"
         q = state.get("qualification")
-        if q is not None and q.confidence < policy.MIN_CONFIDENCE:
+        if q is not None and q.confidence < self.deps.tuning.min_confidence:
             return "incertitude"
         return "demande_conseiller"
 

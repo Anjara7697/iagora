@@ -135,6 +135,33 @@ def test_cold_prospect_is_nurtured_hot_one_gets_a_meeting():
     assert policy.decide(mid).action is Action.CONTINUE_CONVERSATION
 
 
+def test_thresholds_come_from_the_settings():
+    """Décision D-27 : l'administrateur règle les seuils ; les règles restent les mêmes."""
+    from app.graph.ports import PolicyTuning
+
+    lower = PolicyTuning(propose_meeting_min_score=30, nurture_max_score=5, min_confidence=0.8)
+    warm = state(Qualification(intent="interested"), total=35, missing=[])
+    assert policy.decide(warm).action is Action.CONTINUE_CONVERSATION  # défaut : 50
+    assert policy.decide(warm, lower).action is Action.PROPOSE_MEETING
+    cold = state(Qualification(intent="other"), total=10)
+    assert policy.decide(cold).action is Action.NURTURE  # défaut : 24
+    assert policy.decide(cold, lower).action is Action.CONTINUE_CONVERSATION
+    unsure = state(Qualification(intent="question", confidence=0.6), total=30)
+    assert policy.decide(unsure).action is Action.CONTINUE_CONVERSATION  # défaut : 0,5
+    assert policy.decide(unsure, lower).action is Action.HUMAN_HANDOFF
+
+
+def test_terms_added_by_the_admin_are_checked_like_the_built_in_ones():
+    reply = "Cette formation est éligible au Pass Transition."
+    assert policy.ungrounded_claims(reply, []) == ["eligible"]
+    added = policy.ungrounded_claims(reply, [], extra_terms=("Pass Transition",))
+    assert added == ["eligible", "pass transition"]
+    sourced = ["Le Pass Transition finance la formation (document validé)."]
+    assert policy.ungrounded_claims(reply, sourced, extra_terms=("pass transition",)) == [
+        "eligible"
+    ]
+
+
 def test_explicit_meeting_request_and_refusal():
     q = Qualification(intent="meeting_request")
     assert policy.decide(state(q, total=5)).action is Action.PROPOSE_MEETING

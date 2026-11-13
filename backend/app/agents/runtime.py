@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import RecordingMessenger
 from app.agents.gateway import DbGateway
+from app.config import get_settings
 from app.database.collections import AGENT_RUNS
 from app.graph import prompts
 from app.graph.builder import build_workflow
@@ -30,6 +31,7 @@ from app.services import (
     drafts,
     follow_ups,
     lease,
+    runtime_settings,
 )
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
@@ -181,6 +183,7 @@ async def _run_agent(
         messenger=RecordingMessenger(session, db, mode),
         calendar=calendar,
         knowledge=knowledge,
+        tuning=runtime_settings.tuning(await runtime_settings.effective(db, get_settings())),
     )
     graph = build_workflow(deps)
     initial: SalesAgentState = {

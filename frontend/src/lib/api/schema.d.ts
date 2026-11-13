@@ -3721,6 +3721,27 @@ export interface components {
              */
             agent_auto_reply: boolean;
             /**
+             * Agent Extra Terms
+             * @description Termes qui engagent l'école, séparés par des virgules
+             * @default
+             */
+            agent_extra_terms: string;
+            /**
+             * Agent Meeting Min Score
+             * @default 50
+             */
+            agent_meeting_min_score: number;
+            /**
+             * Agent Min Confidence
+             * @default 0.5
+             */
+            agent_min_confidence: number;
+            /**
+             * Agent Nurture Max Score
+             * @default 24
+             */
+            agent_nurture_max_score: number;
+            /**
              * Calendar Buffer Minutes
              * @default 0
              */
@@ -3857,6 +3878,27 @@ export interface components {
              * @default true
              */
             agent_auto_reply: boolean;
+            /**
+             * Agent Extra Terms
+             * @description Termes qui engagent l'école, séparés par des virgules
+             * @default
+             */
+            agent_extra_terms: string;
+            /**
+             * Agent Meeting Min Score
+             * @default 50
+             */
+            agent_meeting_min_score: number;
+            /**
+             * Agent Min Confidence
+             * @default 0.5
+             */
+            agent_min_confidence: number;
+            /**
+             * Agent Nurture Max Score
+             * @default 24
+             */
+            agent_nurture_max_score: number;
             /**
              * Calendar Buffer Minutes
              * @default 0

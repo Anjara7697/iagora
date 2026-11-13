@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     agent_events_retention_days: int = Field(30, ge=1, le=365)
     follow_up_interval_seconds: int = Field(300, ge=5)
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
+    # Seuils de décision de l'agent (décision D-27, réglables dans Paramètres, à confirmer par
+    # DATUM) : score à partir duquel un rendez-vous est proposé, score jusqu'auquel un prospect
+    # froid est entretenu, confiance minimale de lecture du message, termes engageants ajoutés.
+    agent_meeting_min_score: int = Field(50, ge=1, le=100)
+    agent_nurture_max_score: int = Field(24, ge=0, le=99)
+    agent_min_confidence: float = Field(0.5, ge=0.1, le=0.95)
+    agent_extra_terms: str = Field("", max_length=1000)
     # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).
     follow_up_window_start_hour: int = Field(8, ge=0, le=23)
     follow_up_window_end_hour: int = Field(19, ge=1, le=24)

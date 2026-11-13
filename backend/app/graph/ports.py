@@ -250,6 +250,20 @@ class KnowledgeBase(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class PolicyTuning:
+    """Seuils de décision réglables par l'administrateur dans Paramètres (décision D-27).
+
+    Les valeurs par défaut sont celles du cahier des charges ; les règles elles-mêmes restent dans
+    `policy.py`. `extra_terms` : termes qui engagent l'école, ajoutés à la liste du code (jamais
+    retirés) : toute réponse qui les cite sans source est bloquée (NF-10)."""
+
+    propose_meeting_min_score: int = 50
+    nurture_max_score: int = 24
+    min_confidence: float = 0.5
+    extra_terms: tuple[str, ...] = ()
+
+
 @dataclass
 class Deps:
     llm: LanguageModel
@@ -257,3 +271,4 @@ class Deps:
     messenger: Messenger
     calendar: Calendar
     knowledge: KnowledgeBase
+    tuning: PolicyTuning = field(default_factory=PolicyTuning)

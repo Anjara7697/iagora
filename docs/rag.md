@@ -64,7 +64,23 @@ API : `GET /knowledge/status | documents | documents/{slug}`, `PUT/DELETE /knowl
 | `kb-eval` | (dev) Mesure la recherche sur des questions types et aide à régler le seuil |
 
 `seed-demo` charge aussi une base **fictive** (`backend/app/devtools/demo_kb/`) marquée `is_demo`. Ces documents ne
-sont **jamais servis en production** (`ENVIRONMENT=production`) et se retirent avec `kb-delete --demo`.
+servent qu'aux prospects fictifs (`@demo.example.com`), ne sont **jamais servis en production**
+(`ENVIRONMENT=production`) et se retirent avec `kb-delete --demo`.
+
+## Importer les documents officiels de DATUM (décision D-28)
+
+Le responsable fournit et importe lui-même les documents (programmes, admission, financement) : ils ne passent ni
+par Git ni par un outil externe.
+
+1. Pour chaque sujet, un fichier Markdown validé par DATUM, avec un titre `#` et des sections `##` courtes (une
+   information par section : durée, rythme, conditions, coût, financement…). Indiquer le programme visé dans la page
+   « Base de connaissances » (ou le laisser vide pour une information valable pour tous).
+2. Les déposer depuis la console (Base de connaissances → « Ajouter un document »), ou sur le serveur :
+   `docker compose … exec iagora-api python -m app.cli kb-ingest /chemin/vers/le/dossier`.
+3. Lancer `kb-eval` puis ajuster `RAG_MIN_SCORE` si besoin (voir ci-dessous).
+4. Ajouter dans Paramètres → « Agent et relances » les termes propres à DATUM qui engagent l'école (dispositifs de
+   financement, labels) : une réponse qui les cite sans document validé sera bloquée.
+5. Vérifier avec le simulateur ou `eval-agent --live` que l'agent répond à partir des nouveaux documents.
 
 ## Régler le seuil de pertinence
 
@@ -85,5 +101,6 @@ haut des questions hors sujet ; le bon seuil se situe entre les deux.
 
 - La recherche utilise le texte du dernier message du prospect seul : une question de suivi très courte
   (« et le prix ? ») manque de contexte. À améliorer en réécrivant la requête avec l'historique.
-- Les documents officiels de DATUM Academy restent à fournir ; la base de démonstration est fictive.
+- Les documents officiels de DATUM Academy restent à importer (procédure ci-dessus) ; la base de démonstration est
+  fictive.
 - Le chargement se fait en ligne de commande ; une page d'administration viendra avec le tableau de bord.

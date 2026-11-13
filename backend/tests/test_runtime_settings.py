@@ -229,3 +229,27 @@ async def test_settings_are_admin_only(make_client):
     advisor = await make_client(UserRole.ADVISOR)
     assert (await advisor.get(f"{API}/settings")).status_code == 403
     assert (await advisor.put(f"{API}/settings", json=FORM)).status_code == 403
+
+
+async def test_agent_thresholds_are_saved_validated_and_applied(client, mongo_db):
+    """Décision D-27 : seuils et termes engageants réglables, bornés et cohérents."""
+    tuned = {
+        **FORM,
+        "agent_meeting_min_score": 40,
+        "agent_nurture_max_score": 10,
+        "agent_min_confidence": 0.7,
+        "agent_extra_terms": "Pass Transition, prise en charge totale",
+    }
+    assert (await client.put(f"{API}/settings", json=tuned)).status_code == 204
+    read = (await client.get(f"{API}/settings")).json()
+    assert (
+        read["agent_meeting_min_score"] == 40
+        and read["agent_extra_terms"] == tuned["agent_extra_terms"]
+    )
+    effective = await runtime_settings.effective(mongo_db, base())
+    tuning = runtime_settings.tuning(effective)
+    assert tuning.propose_meeting_min_score == 40 and tuning.min_confidence == 0.7
+    assert tuning.extra_terms == ("Pass Transition", "prise en charge totale")
+    # Incohérent (entretien >= rendez-vous) ou hors bornes : refusé.
+    for bad in ({"agent_nurture_max_score": 40}, {"agent_min_confidence": 0.05}):
+        assert (await client.put(f"{API}/settings", json={**tuned, **bad})).status_code == 422

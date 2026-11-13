@@ -211,6 +211,59 @@ export function AgentSection({
             onChange={(v) => set("follow_up_weekdays_only", v)}
             title="Relances en semaine uniquement"
           />
+          <InfoRow
+            label="Seuils de décision de l’agent"
+            note="Valeurs du cahier des charges par défaut (50, 24, 0,5), à confirmer avec DATUM. Les règles restent les mêmes : seuls les seuils changent."
+          />
+          <Field
+            label="Score à partir duquel proposer un rendez-vous"
+            note="Prospect qualifié (profil complet) dont le score atteint ce seuil : l’agent propose des créneaux réels."
+          >
+            <TextInput variant="secondary"
+              type="number"
+              min={1}
+              max={100}
+              value={form.agent_meeting_min_score}
+              onChange={num("agent_meeting_min_score")}
+            />
+          </Field>
+          <Field
+            label="Score jusqu’auquel un prospect est jugé froid"
+            note="En dessous, un message neutre est suivi d’un entretien espacé, sans insister. Doit rester sous le seuil de rendez-vous."
+          >
+            <TextInput variant="secondary"
+              type="number"
+              min={0}
+              max={99}
+              value={form.agent_nurture_max_score}
+              onChange={num("agent_nurture_max_score")}
+            />
+          </Field>
+          <Field
+            label="Confiance minimale de lecture (0,1 à 0,95)"
+            note="Si le modèle comprend le message avec moins de confiance, la conversation passe à un conseiller."
+          >
+            <TextInput variant="secondary"
+              type="number"
+              step="0.05"
+              min={0.1}
+              max={0.95}
+              value={form.agent_min_confidence}
+              onChange={num("agent_min_confidence")}
+            />
+          </Field>
+          <Field
+            label="Termes qui engagent l’école (en plus de la liste intégrée)"
+            note="Séparés par des virgules. Une réponse qui les cite sans document validé est bloquée, comme CPF, RNCP ou « éligible »."
+          >
+            <TextBox variant="secondary"
+              rows={2}
+              maxLength={1000}
+              placeholder="Pass Transition, prise en charge totale"
+              value={form.agent_extra_terms}
+              onChange={(e) => set("agent_extra_terms", e.target.value)}
+            />
+          </Field>
         </SettingsCard>
   );
 }
