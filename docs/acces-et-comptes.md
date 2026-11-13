@@ -28,8 +28,8 @@ Ils sont lus depuis l'environnement (`backend/app/config.py`). En local : `.env`
 
 | Variable | Contenu | Conséquence d'un changement |
 |---|---|---|
-| `JWT_SECRET_KEY` | Signature des jetons de connexion (32 caractères minimum en production) | Tous les utilisateurs sont déconnectés ; si `CONNECTORS_SECRET_KEY` est vide, le mot de passe email enregistré devient illisible |
-| `CONNECTORS_SECRET_KEY` | Chiffrement des identifiants saisis dans la console | Ressaisir le mot de passe de la boîte email dans « Intégrations » |
+| `JWT_SECRET_KEY` | Signature des jetons de connexion (32 caractères minimum en production) | Tous les utilisateurs sont déconnectés. Sans `CONNECTORS_SECRET_KEY` (développement), ou avant `rotate-connector-secrets`, les identifiants des connecteurs deviennent illisibles |
+| `CONNECTORS_SECRET_KEY` | Chiffrement des identifiants saisis dans la console ; obligatoire en production, différent de `JWT_SECRET_KEY` | Ressaisir les identifiants des connecteurs dans « Intégrations » (ou, en ajoutant une première clé dédiée, lancer `rotate-connector-secrets`) |
 | `POSTGRES_PASSWORD`, `MONGO_PASSWORD` | Accès aux bases | Changer aussi le mot de passe dans la base elle-même |
 | `GEMINI_API_KEY` (ou `OPENAI_API_KEY`) | Modèle de langage et embeddings | Aucune, si le modèle d'embeddings ne change pas |
 | `EMAIL_USERNAME`, `EMAIL_PASSWORD` | Boîte email (valeur de départ si rien n'est enregistré dans la console) | Le réglage de la console est prioritaire |
@@ -62,8 +62,13 @@ la remplacer et retirer l'ancienne de `~/.ssh/authorized_keys`.
 - Les autres comptes se créent dans **Équipe** (administrateur) : mot de passe temporaire affiché une fois,
   à changer à la première connexion. Chacun change son mot de passe dans **Mon compte**.
 - Les identifiants des connecteurs (boîte email, Google, Zoom, clé du modèle) se saisissent dans la console :
-  chiffrés en base avec `CONNECTORS_SECRET_KEY` (à défaut dérivée de `JWT_SECRET_KEY`). Changer cette clé
-  rend ces identifiants illisibles : il faut alors les ressaisir.
+  chiffrés en base avec `CONNECTORS_SECRET_KEY` (en développement, à défaut, dérivée de `JWT_SECRET_KEY`).
+  Changer cette clé rend ces identifiants illisibles : il faut alors les ressaisir. Exception : en passant
+  de la clé dérivée à une clé dédiée, les anciens restent lisibles, puis
+  `python -m app.cli rotate-connector-secrets` les rechiffre.
+- La session de la console dure 60 minutes (`ACCESS_TOKEN_EXPIRE_MINUTES`) dans un témoin `HttpOnly`.
+  « Déconnexion » la ferme côté serveur : un jeton copié ne sert plus. Changer son mot de passe, être
+  désactivé ou voir son mot de passe réinitialisé ferment toutes les sessions du compte.
 - Chaque conseiller connecte son agenda Google et, si besoin, son compte Zoom dans **Mon compte**.
 
 ## Remplacer un secret (procédure)

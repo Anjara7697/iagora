@@ -218,7 +218,9 @@ typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
   protection existait déjà sur les autres parcours) ; écrans d'administration revus avec les règles 1 à 30 (FE-002) ;
   jetons de couleur (FE-003) ; liste « À faire » tronquée signalée (DATA-005).
 
-**Lot 10 — Sessions et accès (M, P2, avant d'ouvrir à plus d'utilisateurs).**
+**Lot 10 — Sessions et accès (M, P2, avant d'ouvrir à plus d'utilisateurs).** Fait le 13/11/2026 : voir
+SECURITY_AUDIT (statuts de SEC-004, SEC-005, SEC-007, SEC-008, SEC-009) et `docs/deploiement.md` §7 pour la
+mise en place sur un environnement existant.
 - Périmètre : cookie `HttpOnly` (SEC-004), limite de connexion par identifiant (SEC-005), révocation (SEC-009),
   état OAuth (SEC-008), clé de chiffrement dédiée (SEC-007).
 - Risque : le plus élevé des lots, car il touche la connexion. Le faire hors période de soutenance.

@@ -29,8 +29,9 @@ Un administrateur ouvre **Intégrations → Messagerie → Paramètres de la bo�
 3. Renseigner le bac à sable, cocher « Relever la boîte » puis, plus tard, « Envoyer réellement ».
 4. **Enregistrer**. La relève prend la nouvelle configuration au passage suivant, **sans redémarrage**.
 
-Le mot de passe est chiffré en base (clé `CONNECTORS_SECRET_KEY`, à défaut dérivée de `JWT_SECRET_KEY` :
-changer cette clé oblige à ressaisir le mot de passe) et n'est jamais renvoyé par l'API. Gmail, Yahoo et
+Le mot de passe est chiffré en base (clé `CONNECTORS_SECRET_KEY`, obligatoire en production ; en
+développement, à défaut dérivée de `JWT_SECRET_KEY` : changer cette clé oblige à ressaisir le mot de passe)
+et n'est jamais renvoyé par l'API. Gmail, Yahoo et
 iCloud exigent un **mot de passe d'application** ; Microsoft 365 refuse souvent la connexion par mot de
 passe (OAuth : lot suivant).
 

@@ -185,8 +185,8 @@ Parcours guidé (qualification, objection, rendez-vous fictif) et contrat de pr�
 et étapes de recette : [guide n8n](docs/n8n/README.md).
 
 Le simulateur se désactive avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false` (déploiement réel).
-Le jeton de connexion est conservé dans le navigateur (`localStorage`) : suffisant pour un outil interne, à durcir
-(cookie `HttpOnly`) avant une exposition publique.
+La session de la console est un témoin `HttpOnly` posé par l'API (illisible par la page) et révoquée à la
+déconnexion : la console et l'API doivent être servies sur le même site (voir `docs/deploiement.md`).
 
 ### Base de connaissances (RAG)
 
