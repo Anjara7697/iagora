@@ -1200,3 +1200,21 @@ test("lever une désinscription exige un motif écrit (administrateur)", async (
     },
   ]);
 });
+
+test("recherche : une seule requête une fois la frappe arrêtée", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const searched: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/api/v1/prospects") && url.searchParams.has("q")) searched.push(url.searchParams.get("q") ?? "");
+  });
+  const search = page.getByRole("searchbox", { name: "Rechercher" });
+  await search.pressSequentially("alice", { delay: 40 });
+  // Le champ et l'adresse suivent la saisie sans délai.
+  await expect(search).toHaveValue("alice");
+  await expect(page).toHaveURL(/q=alice/);
+  await expect(page.getByRole("status").filter({ hasText: /prospect/ })).toHaveText("26 prospects sur 26");
+  await page.waitForTimeout(500);
+  expect(searched.filter((q) => q !== "")).toEqual(["alice"]);
+});

@@ -143,6 +143,7 @@ Next.js 15 (App Router, TypeScript), dans `frontend/src/` :
   contrat OpenAPI de l'API (vérifiés en CI) ;
 - `components/` : cadre commun (`AppShell`, `shell/`), composants HeroUI du projet (`ds/`), un dossier par écran.
 - `lib/session/` : session de la console (`SessionProvider`, `useCurrentUser`), adresse de retour après la connexion (`returnPath`) ; `AppShell` n'assure que la mise en page.
+- Lectures de l'API : `useApi` passe par `lib/sharedGet.ts` (une requête pour plusieurs composants qui lisent la même adresse en même temps, abandon quand plus personne ne l'attend) ; `api()` limite une lecture à 30 s, jamais une écriture ; les recherches qui interrogent l'API attendent la fin de la frappe (`useDebouncedValue`).
 
 Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 35).
 

@@ -56,6 +56,13 @@ type Options = {
   form?: Record<string, string>;
   /** Envoi de fichier (multipart) : le navigateur fixe lui-même l'en-tête Content-Type. */
   multipart?: FormData;
+  /** Abandon par l'appelant (écran quitté, filtre changé) : la promesse est rejetée par une `AbortError`. */
+  signal?: AbortSignal;
+  /**
+   * Délai maximal d'une lecture (GET), 30 s par défaut (DATA-05). Les écritures n'en ont pas : abandonner côté
+   * navigateur n'arrête pas le serveur, et l'utilisateur risquerait de recommencer une action déjà faite.
+   */
+  timeoutMs?: number;
 };
 
 const UUID =
@@ -117,6 +124,20 @@ export function humanError(status: number, payload: unknown): string {
   return GENERIC[status] ?? `Erreur ${status} : réessayez dans un instant.`;
 }
 
+const GET_TIMEOUT_MS = 30_000;
+const TIMEOUT_ERROR = "Le serveur met trop de temps à répondre : réessayez dans un instant.";
+
+/** Requête abandonnée par l'appelant (pas une erreur à afficher). */
+export const isAbort = (error: unknown) => error instanceof DOMException && error.name === "AbortError";
+
+const writeListeners = new Set<() => void>();
+
+/** Appelé après chaque écriture envoyée (POST, PUT, PATCH, DELETE), réussie ou non : les lectures gardées sont périmées. */
+export function onApiWrite(listener: () => void): () => void {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
+}
+
 /** Redirection vers la connexion déjà demandée (la page va être remplacée). */
 let redirectingToLogin = false;
 
@@ -131,17 +152,21 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(options.body);
   }
+  const method = options.method ?? "GET";
+  const timeout = method === "GET" ? AbortSignal.timeout(options.timeoutMs ?? GET_TIMEOUT_MS) : null;
+  const signal = timeout && options.signal ? AbortSignal.any([options.signal, timeout]) : (timeout ?? options.signal);
+  /** Échec d'envoi ou de lecture : abandon voulu (relancé tel quel), délai dépassé, ou réseau. */
+  const failed = (error: unknown): never => {
+    if (options.signal?.aborted) throw error;
+    throw new ApiError(0, timeout?.aborted ? TIMEOUT_ERROR : NETWORK_ERROR);
+  };
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, {
-      method: options.method ?? "GET",
-      headers,
-      body,
-      credentials: "include",
-      cache: "no-store",
-    });
-  } catch {
-    throw new ApiError(0, NETWORK_ERROR);
+    res = await fetch(`${API_URL}${path}`, { method, headers, body, signal, credentials: "include", cache: "no-store" });
+  } catch (error) {
+    return failed(error);
+  } finally {
+    if (method !== "GET") for (const listener of writeListeners) listener();
   }
   // Session absente ou expirée : connexion, puis retour à la page en cours (NAV-03). Une seule redirection même si
   // plusieurs requêtes échouent ensemble : une seconde rechargerait la page de connexion pendant la saisie.
@@ -149,7 +174,12 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     redirectingToLogin = true;
     window.location.assign(loginHref(window.location.pathname + window.location.search));
   }
-  const text = await res.text();
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (error) {
+    return failed(error);
+  }
   let payload: unknown;
   try {
     payload = text ? JSON.parse(text) : null;

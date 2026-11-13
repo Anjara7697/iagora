@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { isAbort } from "./api";
+import { sharedGet } from "./sharedGet";
 import type { User } from "./types";
 import { WORK_QUEUE_CHANGED } from "./workQueue";
 
@@ -13,23 +14,32 @@ export function useWorkQueueCount(user: User | null, pathname: string): number |
   const [waiting, setWaiting] = useState<number | null>(null);
   useEffect(() => {
     if (!user || user.must_change_password) return;
-    let active = true;
-    let request = 0;
-    const refresh = () => {
-      const current = ++request;
-      api<{ total: number }>("/todo?limit=1")
+    // Même adresse que l'accueil : une seule requête quand les deux la demandent ensemble (`sharedGet`).
+    let release = () => {};
+    const refresh = (fresh: boolean) => {
+      release();
+      const request = sharedGet<{ total: number }>("/todo?limit=1", { fresh });
+      release = request.release;
+      let current = true;
+      const previous = release;
+      release = () => {
+        current = false;
+        previous();
+      };
+      request.promise
         .then((page) => {
-          if (active && current === request) setWaiting(page.total);
+          if (current) setWaiting(page.total);
         })
-        .catch(() => {
-          if (active && current === request) setWaiting(null);
+        .catch((error: unknown) => {
+          if (current && !isAbort(error)) setWaiting(null);
         });
     };
-    refresh();
-    window.addEventListener(WORK_QUEUE_CHANGED, refresh);
+    const onChange = () => refresh(true);
+    refresh(false);
+    window.addEventListener(WORK_QUEUE_CHANGED, onChange);
     return () => {
-      active = false;
-      window.removeEventListener(WORK_QUEUE_CHANGED, refresh);
+      release();
+      window.removeEventListener(WORK_QUEUE_CHANGED, onChange);
     };
   }, [user, pathname]);
   return waiting;
