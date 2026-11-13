@@ -8,7 +8,7 @@ import sys
 
 from pydantic import ValidationError
 
-from app import agent_commands, kb_commands, privacy_commands, security_commands
+from app import agent_commands, kb_commands, privacy_commands, reset_commands, security_commands
 from app.database.session import dispose_engine, get_sessionmaker
 from app.devtools import commands
 from app.models.enums import UserRole
@@ -101,6 +101,11 @@ def main() -> None:
         "phone-report",
         help="Aperçu de la mise au format international des téléphones (collisions à examiner)",
     )
+    wipe = sub.add_parser(
+        "reset-dev-data",
+        help="(essai) Effacer prospects, campagnes, conversations et base de connaissances",
+    )
+    wipe.add_argument("--apply", action="store_true", help="Effacer réellement (sinon : aperçu)")
     sub.add_parser(
         "rotate-connector-secrets",
         help="Rechiffrer les identifiants des connecteurs avec CONNECTORS_SECRET_KEY",
@@ -174,6 +179,8 @@ def main() -> None:
         )
     elif args.command == "phone-report":
         sys.exit(asyncio.run(privacy_commands.cmd_phone_report()))
+    elif args.command == "reset-dev-data":
+        sys.exit(asyncio.run(reset_commands.cmd_reset_dev_data(apply=args.apply)))
     elif args.command == "rotate-connector-secrets":
         sys.exit(asyncio.run(security_commands.cmd_rotate_connector_secrets()))
     elif args.command == "calendar-check":

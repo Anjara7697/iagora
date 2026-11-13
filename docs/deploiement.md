@@ -230,6 +230,28 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
   affiche l'ancien commit). Une migration appliquée n'est pas défaite automatiquement : en cas de
   migration problématique, restaurer la sauvegarde faite juste avant (`deploy/restore.sh`).
 
+## 7 bis. Repartir d'une instance d'essai vide (`dev`, décision D-30)
+
+Pour une démonstration ou une recette « propre », sur `dev` uniquement (la commande est refusée en
+production) :
+
+```bash
+cd /srv/iagora-dev
+deploy/backup.sh                                   # sauvegarde juste avant
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+  python -m app.cli reset-dev-data                 # aperçu : ce qui serait effacé
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+  python -m app.cli reset-dev-data --apply         # efface
+```
+
+Effacé : prospects et tout ce qui en dépend (échanges, scores, étapes, relances, rendez-vous, consentements,
+liste d'opposition), campagnes et sources, base de connaissances, conversations, décisions et file de l'agent,
+événements Meta reçus. Conservé : comptes, Paramètres, boîte email, agenda, Zoom, Meta, clés chiffrées,
+connexions des conseillers et jetons de service. Les formulaires Meta et les jetons rattachés à une campagne
+effacée perdent leur destination : la commande le signale. Ensuite : recréer les campagnes, importer les
+documents de la base de connaissances (`rag.md`), puis rattacher de nouveau les formulaires. Les emails déjà
+lus dans la boîte ne sont pas relus.
+
 ## 8. Points de vigilance
 
 - Un seul processus API (boucles de relance et d'email dans le même processus, protégées par un bail
