@@ -228,7 +228,7 @@ export function ColorChoice({
     <ColorPicker value={value} onChange={(color) => onChange(color.toString("hex").toLowerCase())}>
       <ColorPicker.Trigger aria-label={`${label} : ${value}`} aria-describedby={describedBy}>
         <ColorSwatch size="md" />
-        <span className="font-mono text-[13px] text-foreground">{value}</span>
+        <span className="font-mono text-body-sm text-foreground">{value}</span>
       </ColorPicker.Trigger>
       <ColorPicker.Popover className="flex w-60 flex-col gap-3 p-3">
         <ColorArea aria-label={`${label} : saturation et luminosité`} colorSpace="hsb" xChannel="saturation" yChannel="brightness">
@@ -408,7 +408,7 @@ export function FileInput({
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-2.5">
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-surface-secondary px-3 py-2.5">
       <input
         ref={input}
         id={id}
@@ -422,7 +422,7 @@ export function FileInput({
       <Btn variant="secondary" size="sm" onClick={() => input.current?.click()}>
         {buttonLabel}
       </Btn>
-      <span className="min-w-0 truncate text-[13px] text-muted">{file ? file.name : emptyLabel}</span>
+      <span className="min-w-0 truncate text-body-sm text-muted">{file ? file.name : emptyLabel}</span>
     </div>
   );
 }
@@ -455,9 +455,9 @@ export function Check({
         <Checkbox.Control>
           <Checkbox.Indicator />
         </Checkbox.Control>
-        <span className="flex flex-col gap-0.5 text-sm text-foreground">
+        <span className="flex flex-col gap-0.5 text-body text-foreground">
           <span>{children}</span>
-          {hint && <span className="text-xs text-muted">{hint}</span>}
+          {hint && <span className="text-caption text-muted">{hint}</span>}
         </span>
       </Checkbox.Content>
     </Checkbox>

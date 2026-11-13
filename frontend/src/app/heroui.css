@@ -90,7 +90,9 @@
   --level-very-hot: #c2410c;
   --level-very-hot-foreground: #ffffff;
   --backdrop: rgba(24, 24, 27, 0.4);
-  --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
+  /* Ce qui est posé sur la page (cartes, indicateur d'onglet) : un filet, pas d'ombre. L'ombre est réservée à ce qui
+     flotte au-dessus (menus, panneaux, toasts, dialogues : --overlay-shadow). */
+  --surface-shadow: 0 0 0 1px var(--border);
   --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -141,7 +143,7 @@
   --level-very-hot: #f0722f;
   --level-very-hot-foreground: #111113;
   --backdrop: rgba(0, 0, 0, 0.6);
-  --surface-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --surface-shadow: 0 0 0 1px var(--border);
   --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 14px 28px 0 rgba(0, 0, 0, 0.45);
 }
 :root {
@@ -151,6 +153,24 @@
   --field-radius: var(--radius-lg);
   --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Échelle de texte (DESIGN_SYSTEM.md §4) : un nom par rôle, à utiliser à la place des tailles en pixels.
+   `text-caption` horodatage, aide, en-tête de colonne · `text-body-sm` lignes de tableau, texte secondaire ·
+   `text-body` texte courant · `text-title-sm` titre de section · `text-title` titre d'écran · `text-display` chiffre clé. */
+@theme {
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.125rem;
 }
 
 @theme inline {
@@ -222,6 +242,10 @@
   .card,
   .alert {
     border-radius: var(--radius-lg);
+  }
+  /* Les alertes ont déjà un fond coloré : ni ombre ni filet. */
+  .alert {
+    box-shadow: none;
   }
   /* Onglet survolé : texte plus foncé plutôt qu'une opacité réduite (HeroUI), qui faisait passer le texte sous le
      contraste AA, surtout en thème sombre. */

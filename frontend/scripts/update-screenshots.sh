@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Régénère les captures de référence (tests/visuel.spec.ts) dans l'image Playwright de la CI : même navigateur,
+# Régénère toutes les captures de référence (tests/visuel.spec.ts), même celles dont l'écart reste sous la tolérance,
+# dans l'image Playwright de la CI : même navigateur,
 # mêmes polices, donc les mêmes pixels que la CI. Nécessite Docker. Les arguments sont passés à Playwright
 # (ex. `npm run test:visual:update -- -g aujourdhui`).
 # node_modules et .next restent dans des volumes du conteneur : rien n'est écrasé dans la copie locale.
@@ -17,7 +18,7 @@ docker run --rm --ipc=host \
     set -e
     npm ci --no-audit --no-fund
     npm run build
-    npx playwright test tests/visuel.spec.ts --update-snapshots --trace off "$@" || status=$?
+    npx playwright test tests/visuel.spec.ts --update-snapshots=all --trace off "$@" || status=$?
     chown -R '"$owner"' tests/__screenshots__
     exit ${status:-0}
   ' bash "$@"
