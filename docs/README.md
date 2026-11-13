@@ -61,6 +61,7 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 | [recette-locale.md](recette-locale.md) | Procédure de recette avec Gemini puis une boîte IONOS |
 | [revue-qualite.md](revue-qualite.md) | Revue avant mise en production, lots de corrections, décisions |
 | [frontend/heroui.md](frontend/heroui.md) | Système d'interface HeroUI : thème, composants du design system, conventions et tests |
+| [frontend/audit/FRONTEND_AUDIT.md](frontend/audit/FRONTEND_AUDIT.md) | Audit du frontend du 13/11/2026 : rapport général et renvois vers l'audit UX et UI, l'architecture, le design system, la dette technique et la feuille de route |
 | [frontend/maquette-finale.md](frontend/maquette-finale.md) | (Historique) maquette finale : système visuel, état de chaque écran, écrans à créer |
 | [frontend/prototype-conformity.md](frontend/prototype-conformity.md) | (Historique) écarts entre la console et la maquette |
 | [frontend/integration-prototype.md](frontend/integration-prototype.md) | (Historique) intégration de la maquette dans Next.js |
