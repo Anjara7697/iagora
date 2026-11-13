@@ -34,6 +34,9 @@ export async function logout(): Promise<void> {
   }
 }
 
+/** Requête qui n'a pas atteint le serveur (réseau coupé, serveur arrêté) : dit quoi faire, sans terme technique. */
+const NETWORK_ERROR = "Serveur injoignable : vérifiez votre connexion internet, puis réessayez dans un instant.";
+
 export class ApiError extends Error {
   // Champ déclaré à part (pas de propriété de paramètre) : syntaxe que Node sait exécuter en retirant les types
   // (`erasableSyntaxOnly`), pour les tests unitaires.
@@ -133,7 +136,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(0, "Serveur injoignable : le backend est-il démarré ?");
+    throw new ApiError(0, NETWORK_ERROR);
   }
   if (res.status === 401 && !path.startsWith("/auth/login")) {
     window.location.assign("/login");
@@ -174,7 +177,7 @@ export async function download(path: string, filename: string): Promise<void> {
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(0, "Serveur injoignable : le backend est-il démarré ?");
+    throw new ApiError(0, NETWORK_ERROR);
   }
   if (!res.ok) {
     let payload: unknown = null;

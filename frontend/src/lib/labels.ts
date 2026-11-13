@@ -207,7 +207,7 @@ export function formatPeriod(start: string | null | undefined, end: string | nul
   return "Sans dates";
 }
 
-/** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
+/** Titre de l'écran selon la route, pour le titre du document (les plus spécifiques d'abord). */
 const PAGE_TITLES: [string, string][] = [
   ["/appointments", "Rendez-vous"],
   ["/dashboard", "Tableau de bord"],
@@ -227,8 +227,12 @@ const PAGE_TITLES: [string, string][] = [
   ["/settings/testing", "Tests et démonstration"],
   ["/settings", "Paramètres"],
   ["/account", "Mon compte"],
+  ["/login", "Connexion"],
   ["/simulator", "Simulateur"],
 ];
+
+/** Titre du document d'un écran : « Prospects · IAGORA ». */
+export const documentTitle = (pathname: string) => `${pageTitle(pathname)} · IAGORA`;
 
 export function pageTitle(pathname: string): string {
   if (pathname === "/") return "Aujourd’hui";
