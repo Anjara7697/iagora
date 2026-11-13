@@ -201,7 +201,27 @@ le parcours est capturé avant / après.
 
 ## Tests
 
-Les tests Playwright (`frontend/tests`) tournent sur une API simulée et incluent un audit axe.
+Trois niveaux, tous lancés par la CI (dans `frontend/`) :
+
+| Commande | Contenu |
+|---|---|
+| `npm run test:unit` | fonctions pures de `src/lib` (adresses des écrans, erreurs lisibles, libellés), avec `node --test` seul (Node >= 22.18) ; fichiers dans `tests-unit/` |
+| `npm run test:e2e` | tests Playwright (`tests/`) sur une API simulée, avec audit axe |
+| `npm run test:visual:update` | régénère les captures de référence, dans l'image Playwright de la CI (Docker) |
+
+**Projets Playwright** : `bureau` exécute tous les tests ; `mobile` (390 px) et `sombre` seulement ceux étiquetés
+`@mobile` et `@sombre` (`test("…", { tag: ["@mobile", "@sombre"] }, …)`). Un nouvel écran ou un état important
+reçoit ces étiquettes.
+
+**Captures de référence** (`tests/visuel.spec.ts`) : les écrans principaux, sur un jeu de données fixe
+(`tests/fixtures/console.ts`, horloge arrêtée), comparés à `tests/__screenshots__/` dans les trois projets ; chaque
+capture vérifie aussi l'absence de défilement horizontal et passe l'audit axe. Les comparaisons ne valent que dans
+l'image de la CI : hors CI, elles sont ignorées (le reste du test s'exécute). Après un changement visuel voulu,
+lancer `npm run test:visual:update` (`-- -g <écran>` pour un seul écran), relire les images modifiées et les
+joindre à la Pull Request. En CI, un échec dépose les captures obtenues et les différences dans l'artefact
+`playwright-test-results`.
+
+Particularités HeroUI :
 
 - Un `Table` HeroUI a le rôle `grid` ; une ligne n'y est nommée que par son en-tête de ligne.
 - Un `Select` HeroUI garde son popover en animation de sortie : attendre sa fermeture avant d'interroger

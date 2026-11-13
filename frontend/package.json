@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "test:unit": "node --test --import ./tests-unit/register.mjs \"tests-unit/**/*.test.ts\"",
+    "test:visual:update": "bash scripts/update-screenshots.sh",
     "api:types": "openapi-typescript src/lib/api/openapi.json -o src/lib/api/schema.d.ts",
     "api:check": "npm run api:types && git diff --exit-code -- src/lib/api/schema.d.ts"
   },

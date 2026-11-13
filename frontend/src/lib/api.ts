@@ -35,11 +35,13 @@ export async function logout(): Promise<void> {
 }
 
 export class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
+  // Champ déclaré à part (pas de propriété de paramètre) : syntaxe que Node sait exécuter en retirant les types
+  // (`erasableSyntaxOnly`), pour les tests unitaires.
+  status: number;
+
+  constructor(status: number, message: string) {
     super(message);
+    this.status = status;
   }
 }
 

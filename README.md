@@ -39,7 +39,7 @@ docker-compose.yml  backend + PostgreSQL + MongoDB + Redis
 
 ## Démarrage rapide
 
-Prérequis : Docker, ou bien Python >= 3.11 et Node >= 20.
+Prérequis : Docker, ou bien Python >= 3.11 et Node >= 22.18 (les tests unitaires de la console s’exécutent avec Node seul).
 
 ```bash
 cp .env.example .env        # Windows : copy .env.example .env
