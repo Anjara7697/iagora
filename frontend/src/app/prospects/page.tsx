@@ -27,6 +27,7 @@ import { prospectResultsHref, readProspectResults, type ProspectResults } from "
 import type { Campaign, Page, Prospect } from "@/lib/types";
 import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 function Prospects() {
   const params = useSearchParams();
@@ -71,8 +72,10 @@ function Prospects() {
   const activePanel = panelFilters.filter((f) => f.value);
   const panelCount = activePanel.length + (hideDemo ? 1 : 0);
   const filtered = !!(q || mine || pendingCampaign || panelCount);
+  // Recherche envoyée une fois la frappe arrêtée (DATA-01) ; le champ et l'adresse suivent la saisie sans délai.
+  const searched = useDebouncedValue(q);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
+    `/prospects${qs({ q: searched, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
     { keepPrevious: true },
   );
   // Total sans filtre, pour « N sur M » (règle 5).

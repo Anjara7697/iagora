@@ -18,6 +18,7 @@ import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { OWNER_FILTERS, STATUS_FILTERS, conversationHref, isFiltered, readConversationView, type ConversationView as InboxView } from "@/lib/conversationNav";
 import { replaceUrl } from "@/lib/url";
 import type { ConversationSummary, Page } from "@/lib/types";
@@ -54,11 +55,13 @@ function Inbox() {
   };
 
   const offset = (view.page - 1) * LIMIT;
+  // Recherche envoyée une fois la frappe arrêtée (DATA-01) ; le champ et l'adresse suivent la saisie sans délai.
+  const searched = useDebouncedValue(view.q);
   const list = useApi<Page<ConversationSummary>>(
     `/conversations${qs({
       status: view.status,
       channel: view.channel,
-      q: view.q,
+      q: searched,
       advisor_id: view.owner === "me" ? user?.id : undefined,
       unassigned: view.owner === "none" ? "true" : undefined,
       limit: LIMIT,
