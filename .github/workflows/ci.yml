@@ -86,12 +86,22 @@ jobs:
       - name: Types de l'API à jour (src/lib/api/schema.d.ts)
         run: npm run api:check
       - run: npm run typecheck
+      - name: Tests unitaires (fonctions pures de src/lib, Node seul)
+        run: npm run test:unit
       # Build d'abord : les tests navigateur tournent sur la version de production (pages compilées une fois).
       - run: npm run build
       - name: Tests navigateur (API simulée, version de production)
         run: npm run test:e2e
         env:
           PLAYWRIGHT_PRODUCTION: "1"
+      # En cas d'échec, captures obtenues, attendues et différences (tests/visuel.spec.ts) à télécharger.
+      - name: Résultats des tests navigateur
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: frontend/test-results/
+          retention-days: 7
 
   audit:
     # Failles connues des dépendances (AUDIT-OPS-004) : signalées en avertissement, sans bloquer la CI
