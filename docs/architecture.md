@@ -139,22 +139,31 @@ Next.js 15 (App Router, TypeScript), dans `frontend/src/` :
   (`/appointments`), Prospects (liste, fiche, import CSV), Campagnes (liste, fiche, création), Tableau de bord
   (`/dashboard`), Analyses (`/analytics`), Agent, Base de connaissances, Équipe (`/team`), Intégrations, Paramètres
   (et `/settings/testing`), Simulateur, Mon compte (`/account`), connexion ;
-- `lib/api.ts`, `lib/useApi.ts` : appels à l'API avec le jeton ; `lib/api/schema.d.ts` : types générés depuis le
+- `lib/api.ts`, `lib/useApi.ts` : appels à l'API (session dans un témoin, en-tête anti-CSRF) ; `lib/api/schema.d.ts` : types générés depuis le
   contrat OpenAPI de l'API (vérifiés en CI) ;
 - `components/` : cadre commun (`AppShell`, `shell/`), composants HeroUI du projet (`ds/`), un dossier par écran.
 
 Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 34).
 
-Le jeton est conservé dans `localStorage` (à remplacer par un cookie `HttpOnly` avant une exposition
-publique). Le simulateur se désactive au build avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false`.
+La session est un témoin `HttpOnly` posé par l'API, illisible par la page (aucun jeton dans
+`localStorage`). Le simulateur se désactive au build avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false`.
 
 ## Sécurité
 
 - Authentification JWT, mots de passe argon2, rôles ADMIN / ADVISOR / VIEWER relus en base à chaque requête.
-- Limitation des connexions : 5 échecs en 15 minutes par adresse et identifiant (en mémoire).
-- En `ENVIRONMENT=production`, l'application refuse de démarrer avec un secret JWT faible, `DEBUG` actif
-  ou un CORS ouvert ; `/docs` et `/openapi.json` sont coupés ; les outils de démo sont refusés.
-- Les identifiants saisis dans la console (boîte email) sont chiffrés avec `CONNECTORS_SECRET_KEY`.
+- Session de la console (lot 10) : jeton dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en
+  production et derrière HTTPS), en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par ce témoin. Chaque
+  connexion ouvre une session en base (`auth_sessions`) ; la déconnexion la révoque côté serveur. Les
+  scripts et n8n gardent l'en-tête `Authorization: Bearer`.
+- Limitation des connexions (en mémoire, 15 minutes) : 5 échecs par adresse et identifiant, 20 par
+  identifiant toutes adresses, 50 par adresse ; chaque blocage est journalisé (empreinte de l'identifiant).
+- Connexion Google et Zoom : l'état OAuth est lié au navigateur qui a demandé le lien (témoin court) ; un
+  lien ouvert ailleurs est refusé.
+- En `ENVIRONMENT=production`, l'application refuse de démarrer avec un secret JWT faible, sans
+  `CONNECTORS_SECRET_KEY` dédiée, avec `DEBUG` actif ou un CORS ouvert ; `/docs` et `/openapi.json` sont
+  coupés ; les outils de démo sont refusés.
+- Les identifiants saisis dans la console (connecteurs, clé du modèle) sont chiffrés avec
+  `CONNECTORS_SECRET_KEY` ; `rotate-connector-secrets` les rechiffre après un changement de clé.
 
 ## Configuration et environnements
 

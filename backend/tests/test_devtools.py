@@ -234,6 +234,7 @@ def test_dev_commands_refuse_to_run_in_production(monkeypatch):
         _env_file=None,
         environment="production",
         jwt_secret_key="x" * 40,
+        connectors_secret_key="k" * 40,
         cors_origins=["https://console.datum.example"],
     )
     monkeypatch.setattr(commands, "get_settings", lambda: prod)

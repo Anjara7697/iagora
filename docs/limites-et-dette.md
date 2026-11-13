@@ -29,9 +29,9 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Seul l'environnement `dev` est déployé et vérifié ; production, restauration d'une sauvegarde et quotas Gemini en usage réel restent à vérifier | [deploiement.md](deploiement.md) §8 |
 | P2 | Tâches de fond dans le processus de l'API : garder `--workers 1` (un second processus éventuel ne sert que le HTTP avec `BACKGROUND_WORKERS_ENABLED=false`) ; un worker dédié si la charge augmente | [architecture.md](architecture.md) |
 | P3 | File « À traiter » : 500 conversations examinées au plus ; au-delà, l'écran l'annonce (« Liste incomplète ») ; pagination côté base à faire si ce volume est atteint | [advisor-workflow.md](advisor-workflow.md) |
-| P2 | Limitation des connexions en mémoire, par processus | `core/ratelimit.py` |
-| P2 | Jeton de connexion dans `localStorage` au lieu d'un cookie `HttpOnly` | [architecture.md](architecture.md) |
-| P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production, gardé pour le lot 10 | [database/README.md](database/README.md) |
+| P3 | Limitation des connexions en mémoire, par processus (une seule instance déployée) : un compteur partagé (Redis) si plusieurs instances | `core/ratelimit.py` |
+| P3 | Pas de double authentification (reportée, décision du 12/11/2026) | [acces-et-comptes.md](acces-et-comptes.md) |
+| P3 | Redis déclaré (compose local, configuration) mais utilisé seulement par le contrôle de santé ; absent en production, gardé pour un compteur de connexions partagé | [database/README.md](database/README.md) |
 | P3 | Messages embarqués dans le document de conversation (16 Mo maximum) | [database/README.md](database/README.md) |
 | P3 | Identifiants sensibles à la casse | [revue-qualite.md](revue-qualite.md) |
 

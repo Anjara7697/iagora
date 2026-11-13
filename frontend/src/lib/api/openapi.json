@@ -7609,7 +7609,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "`username` : email ou nom d'utilisateur. 5 échecs en 15 minutes bloquent les essais\nsuivants pour ce couple (adresse, identifiant) : 429.",
+        "description": "`username` : email ou nom d'utilisateur. Ouvre une session : la console la reçoit dans un\ntémoin `HttpOnly` ; le jeton est aussi renvoyé pour les scripts (en-tête `Authorization`).\n\nTrop d'échecs en 15 minutes bloquent les essais suivants (429) : 5 pour un couple (adresse,\nidentifiant), 20 pour un identifiant, 50 pour une adresse.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -7649,6 +7649,26 @@
         ]
       }
     },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Ferme la session côté serveur (AUDIT-SEC-009) et efface le témoin. Sans session valide,\nefface seulement le témoin : la déconnexion réussit toujours.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "operationId": "me_api_v1_auth_me_get",
@@ -7677,7 +7697,7 @@
     },
     "/api/v1/auth/password": {
       "post": {
-        "description": "Change son propre mot de passe. Les autres sessions sont fermées ; un nouveau jeton est\nrenvoyé pour celle-ci.",
+        "description": "Change son propre mot de passe. Les autres sessions sont fermées ; une nouvelle session est\nouverte pour celle-ci (témoin renouvelé).",
         "operationId": "change_password_api_v1_auth_password_post",
         "requestBody": {
           "content": {

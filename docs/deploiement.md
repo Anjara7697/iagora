@@ -45,10 +45,17 @@ chmod 600 deploy/.env
 ```
 
 Renseigner `deploy/.env` (chaque secret : `openssl rand -hex 32`) :
-`IAGORA_PROJECT`, `ENVIRONMENT`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `NEXT_PUBLIC_API_URL`,
-`NEXT_PUBLIC_ENABLE_SIMULATOR`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `GEMINI_API_KEY`,
+`IAGORA_PROJECT`, `ENVIRONMENT`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `CONNECTORS_SECRET_KEY`,
+`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ENABLE_SIMULATOR`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `GEMINI_API_KEY`,
 `IAGORA_API_PORT`, `IAGORA_WEB_PORT`. **Ce fichier ne va jamais dans Git.** Sans `ENVIRONMENT`, l'API
-refuse de démarrer : indiquer `production`, ou `development` pour une instance d'essai.
+refuse de démarrer : indiquer `production`, ou `development` pour une instance d'essai. En production,
+`CONNECTORS_SECRET_KEY` est obligatoire (32 caractères minimum, différent de `JWT_SECRET_KEY`) et se
+conserve dans le coffre de mots de passe avec les secrets de sauvegarde : sans elle, les identifiants des
+connecteurs restaurés sont illisibles.
+
+La console et l'API doivent être servies **sur le même site** (même domaine, comme le bloc Caddy
+ci-dessous, ou deux sous-domaines du même domaine) : la session est un témoin `HttpOnly; SameSite=Strict`
+posé par l'API, que le navigateur n'envoie pas d'un site à un autre.
 
 Premier démarrage :
 
@@ -206,6 +213,19 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 ## 7. Mise à jour et retour arrière
 
 - Mise à jour : `deploy/deploy.sh <branche>`.
+- Passage au lot 10 (sessions et accès), une seule fois par environnement :
+  1. avant le déploiement, ajouter `CONNECTORS_SECRET_KEY` dans `deploy/.env` (`openssl rand -hex 32`) ;
+     en production, l'API refuse de démarrer sans elle ;
+  2. déployer : les utilisateurs se reconnectent une fois (la session passe dans un témoin `HttpOnly`) ;
+  3. rechiffrer les identifiants des connecteurs avec la nouvelle clé :
+
+     ```bash
+     docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+       python -m app.cli rotate-connector-secrets
+     ```
+
+     Avant cette commande, les anciens identifiants restent lisibles (ancienne clé dérivée du secret JWT) ;
+     après, le secret JWT peut changer sans les perdre.
 - Retour arrière du **code** : `git checkout <commit précédent> && deploy/deploy.sh <branche>` (le script
   affiche l'ancien commit). Une migration appliquée n'est pas défaite automatiquement : en cas de
   migration problématique, restaurer la sauvegarde faite juste avant (`deploy/restore.sh`).

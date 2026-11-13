@@ -36,21 +36,33 @@ const pageOf = (items: unknown[], total = items.length, offset = 0) => ({
 });
 
 async function mockApi(page: Page, role = "ADMIN", record = prospect) {
+  // Session simulée comme le témoin HttpOnly de l'API : ouverte à la connexion, fermée à la
+  // déconnexion, jamais lisible par la page.
+  let signedIn = false;
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    const request = route.request();
     let body: unknown;
     let status = 200;
     if (path === "/auth/login") {
-      const form = new URLSearchParams(route.request().postData() || "");
+      const form = new URLSearchParams(request.postData() || "");
       status = form.get("password") === "valid-password" ? 200 : 401;
+      signedIn = status === 200;
       body =
         status === 200
           ? { access_token: "test-session" }
           : { detail: "Identifiants invalides" };
-    } else if (!route.request().headers().authorization) {
+    } else if (path === "/auth/logout") {
+      signedIn = false;
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    } else if (!signedIn) {
       status = 401;
       body = { detail: "Authentification requise" };
+    } else if (request.method() !== "GET" && !request.headers()["x-iagora-csrf"]) {
+      status = 403;
+      body = { detail: "Requête refusée (origine)" };
     } else if (path === "/auth/me")
       body = {
         id: 1,
@@ -434,8 +446,21 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   await expect(
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
+  // Jeton laissé par une version précédente de la console : effacé au chargement (AUDIT-SEC-004).
+  await page.evaluate(() => localStorage.setItem("iagora.token", "ancien-jeton"));
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("iagora.token")))
+    .toBeNull();
+  const logout = page.waitForRequest(
+    (r) => r.url().endsWith("/auth/logout") && r.method() === "POST",
+  );
   await page.getByRole("button", { name: /Menu du compte/ }).click();
   await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
+  await logout;
+  await expect(page).toHaveURL(/\/login$/);
+  // Session fermée côté serveur : revenir sur une page renvoie à la connexion.
+  await page.goto("/prospects");
   await expect(page).toHaveURL(/\/login$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),

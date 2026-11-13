@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { api, ApiError, getToken, setToken } from "@/lib/api";
+import { api, ApiError, forgetLegacyToken, logout } from "@/lib/api";
 import { canUseSimulator } from "@/lib/access";
 import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
 import AccountMenu from "./shell/AccountMenu";
@@ -54,11 +54,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     let cancelled = false;
-    if (!getToken()) {
-      router.replace("/login");
-      return;
-    }
+    forgetLegacyToken();
     setError(null);
+    // Sans session (témoin absent ou expiré), l'API répond 401 et `api` renvoie vers /login.
     api<User>("/auth/me")
       .then((value) => {
         if (!cancelled) setUser(value);
@@ -280,8 +278,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               user={user}
               refreshKey={pathname}
               showAgent={!mustChange}
-              onLogout={() => {
-                setToken(null);
+              onLogout={async () => {
+                await logout();
                 setUser(null);
                 setNavOpen(false);
                 router.replace("/login");

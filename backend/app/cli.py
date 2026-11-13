@@ -8,7 +8,7 @@ import sys
 
 from pydantic import ValidationError
 
-from app import agent_commands, kb_commands, privacy_commands
+from app import agent_commands, kb_commands, privacy_commands, security_commands
 from app.database.session import dispose_engine, get_sessionmaker
 from app.devtools import commands
 from app.models.enums import UserRole
@@ -101,6 +101,10 @@ def main() -> None:
         "phone-report",
         help="Aperçu de la mise au format international des téléphones (collisions à examiner)",
     )
+    sub.add_parser(
+        "rotate-connector-secrets",
+        help="Rechiffrer les identifiants des connecteurs avec CONNECTORS_SECRET_KEY",
+    )
     cal = sub.add_parser(
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
@@ -170,6 +174,8 @@ def main() -> None:
         )
     elif args.command == "phone-report":
         sys.exit(asyncio.run(privacy_commands.cmd_phone_report()))
+    elif args.command == "rotate-connector-secrets":
+        sys.exit(asyncio.run(security_commands.cmd_rotate_connector_secrets()))
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":

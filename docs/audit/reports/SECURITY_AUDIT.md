@@ -130,6 +130,7 @@ flowchart LR
 - Complexité : S (Caddy) ; M (CSP stricte)
 
 ### AUDIT-SEC-004 — Jeton d'accès dans `localStorage`
+- Statut : **traité le 13/11/2026** (lot 10) : session dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en production et derrière HTTPS) posé par l'API, en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par le témoin, plus aucun jeton dans `localStorage` (l'ancien est effacé au chargement).
 - Catégorie : dette (connue, `limites-et-dette.md`)
 - Criticité : **P2**
 - Confiance : Confirmé
@@ -139,6 +140,7 @@ flowchart LR
 - Complexité : M
 
 ### AUDIT-SEC-005 — Limitation des connexions contournable et non partagée
+- Statut : **traité le 13/11/2026** (lot 10) : limites par identifiant (20) et par adresse (50) en plus du couple (5), blocages journalisés avec une empreinte de l'identifiant. Compteurs toujours en mémoire : une seule instance est déployée.
 - Catégorie : risque
 - Criticité : **P2**
 - Confiance : Confirmé
@@ -167,6 +169,7 @@ flowchart LR
 - Complexité : décision S ; implémentation L
 
 ### AUDIT-SEC-007 — Clé de chiffrement des connecteurs dérivée du secret JWT par défaut
+- Statut : **traité le 13/11/2026** (lot 10) : `CONNECTORS_SECRET_KEY` obligatoire en production et différente du secret JWT ; anciens secrets lisibles jusqu'à `rotate-connector-secrets` (procédure dans `docs/deploiement.md` §7).
 - Catégorie : dette
 - Criticité : **P3**
 - Confiance : Confirmé
@@ -178,6 +181,7 @@ flowchart LR
 - Complexité : S
 
 ### AUDIT-SEC-008 — État OAuth (Google, Zoom) non lié à la session du navigateur
+- Statut : **traité le 13/11/2026** (lot 10) : l'état porte l'empreinte d'un nonce remis au navigateur dans un témoin court (`SameSite=Lax`, 10 minutes) ; un lien ouvert dans un autre navigateur est refusé.
 - Catégorie : risque
 - Criticité : **P3**
 - Confiance : Probable
@@ -188,6 +192,7 @@ flowchart LR
 - Complexité : S
 
 ### AUDIT-SEC-009 — Pas de révocation d'un jeton à la déconnexion
+- Statut : **traité le 13/11/2026** (lot 10) : chaque connexion ouvre une session en base (`auth_sessions`) ; la déconnexion la révoque côté serveur, un jeton copié est refusé.
 - Catégorie : risque
 - Criticité : **P3**
 - Confiance : Confirmé

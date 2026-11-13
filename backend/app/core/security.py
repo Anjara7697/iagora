@@ -2,6 +2,7 @@
 
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import NamedTuple
 
 import jwt
 from argon2 import PasswordHasher
@@ -35,11 +36,21 @@ def password_stamp(changed_at: datetime | None) -> int:
     return int(aware.timestamp() * 1000)
 
 
-def create_access_token(user_id: int, settings: Settings, stamp: int = 0) -> str:
+class AccessClaims(NamedTuple):
+    user_id: int
+    password_stamp: int
+    # Session de la console (AUDIT-SEC-009) ; vide pour un jeton émis hors session.
+    session_id: str
+
+
+def create_access_token(
+    user_id: int, settings: Settings, stamp: int = 0, session_id: str = ""
+) -> str:
     now = datetime.now(UTC)
     claims = {
         "sub": str(user_id),
         "pwd": stamp,
+        "sid": session_id,
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
     }
@@ -48,8 +59,8 @@ def create_access_token(user_id: int, settings: Settings, stamp: int = 0) -> str
     )
 
 
-def decode_access_claims(token: str, settings: Settings) -> tuple[int, int] | None:
-    """(identifiant utilisateur, marque du mot de passe), ou None si le jeton est invalide."""
+def decode_access_claims(token: str, settings: Settings) -> AccessClaims | None:
+    """Contenu d'un jeton valide et non expiré, sinon None."""
     try:
         payload = jwt.decode(
             token,
@@ -57,7 +68,9 @@ def decode_access_claims(token: str, settings: Settings) -> tuple[int, int] | No
             algorithms=[settings.jwt_algorithm],
             options={"require": ["sub", "exp"]},
         )
-        return int(payload["sub"]), int(payload.get("pwd", 0))
+        return AccessClaims(
+            int(payload["sub"]), int(payload.get("pwd", 0)), str(payload.get("sid") or "")
+        )
     except (jwt.PyJWTError, ValueError, TypeError):
         return None
 
@@ -65,7 +78,7 @@ def decode_access_claims(token: str, settings: Settings) -> tuple[int, int] | No
 def decode_access_token(token: str, settings: Settings) -> int | None:
     """Retourne l'identifiant utilisateur, ou None si le jeton est invalide ou expiré."""
     claims = decode_access_claims(token, settings)
-    return claims[0] if claims else None
+    return claims.user_id if claims else None
 
 
 def temporary_password() -> str:

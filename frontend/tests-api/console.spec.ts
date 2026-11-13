@@ -65,3 +65,47 @@ test("connexion réelle, prospect créé par l'API et lu par la console, écrans
     await expect(page.getByText("Erreur interne du serveur"), `erreur 500 sur ${path}`).toHaveCount(0);
   }
 });
+
+test("session : témoin HttpOnly, déconnexion révoquée côté serveur", async ({ page, context }) => {
+  expect(PASSWORD, "E2E_ADMIN_PASSWORD manquant").not.toBe("");
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill(USER);
+  await page.getByLabel("Mot de passe").fill(PASSWORD);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+
+  // AUDIT-SEC-004 : la session vit dans un témoin HttpOnly, invisible du JavaScript de la page.
+  const session = (await context.cookies()).find((c) => c.name === "iagora_session");
+  expect(session, "témoin de session absent").toBeDefined();
+  expect(session?.httpOnly).toBe(true);
+  expect(session?.sameSite).toBe("Strict");
+  expect(await page.evaluate(() => document.cookie)).not.toContain("iagora_session");
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(session?.value ?? "-");
+
+  // Une écriture authentifiée par le témoin sans l'en-tête anti-CSRF est refusée.
+  const forged = await page.evaluate(async (api) => {
+    const r = await fetch(`${api}/prospects`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "csrf@demo.example.com" }),
+    });
+    return r.status;
+  }, API);
+  expect(forged).toBe(403);
+
+  // Déconnexion par le menu : témoin effacé, retour à la connexion.
+  await page.goto("/prospects");
+  await page.getByRole("button", { name: /Menu du compte/ }).click();
+  await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
+  await page.waitForURL(/\/login$/);
+  expect((await context.cookies()).find((c) => c.name === "iagora_session")).toBeUndefined();
+
+  // AUDIT-SEC-009 : le jeton copié avant la déconnexion est refusé par l'API.
+  const ctx = await request.newContext({ extraHTTPHeaders: { Authorization: `Bearer ${session?.value}` } });
+  expect((await ctx.get(`${API}/auth/me`)).status()).toBe(401);
+
+  // Revenir sur une page protégée renvoie à la connexion.
+  await page.goto("/prospects");
+  await page.waitForURL(/\/login$/);
+});

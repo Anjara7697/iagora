@@ -66,16 +66,14 @@ Vue technique : [architecture.md](architecture.md).
 
 Liste complète des limites : [limites-et-dette.md](limites-et-dette.md).
 
-### Décisions encore attendues
+### Décisions
 
-Elles bloquent la fin de la feuille de route d'audit ([MODERNIZATION_ROADMAP.md](audit/reports/MODERNIZATION_ROADMAP.md) §5) :
-
-- stockage externe des sauvegardes et outil d'alerte (lot 6) ;
-- durées de conservation avec le DPO et environnement pilote (lot 7) ;
-- justificatif exigé ou non pour rétablir le consentement d'un prospect opposé ;
-- validation par DATUM de la liste des termes qui engagent l'école (admission, financement : `_TERMS` dans
-  `graph/policy.py`) et du fuseau horaire des prospects (BIZ-003) ;
-- sessions et accès (cookie `HttpOnly`, révocation…) : lot 10, prévu après la soutenance.
+Les décisions de la feuille de route d'audit ont été prises le 12 novembre 2026 : voir
+[decisions.md](decisions.md) D-13 à D-28. Celles qui relèvent du DPO (conservation, base légale des leads
+Meta, sous-traitance du modèle) y sont des propositions à faire valider avant un pilote réel. Restent hors
+décision : les documents officiels de la base de connaissances (fournis par DATUM) et la double
+authentification (reportée). Les lots de la feuille de route sont tous livrés, le lot 10 (sessions et accès)
+compris.
 
 ## 3. Reprendre le projet en 15 minutes
 

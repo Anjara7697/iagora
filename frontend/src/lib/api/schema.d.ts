@@ -139,10 +139,34 @@ export interface paths {
         put?: never;
         /**
          * Login
-         * @description `username` : email ou nom d'utilisateur. 5 échecs en 15 minutes bloquent les essais
-         *     suivants pour ce couple (adresse, identifiant) : 429.
+         * @description `username` : email ou nom d'utilisateur. Ouvre une session : la console la reçoit dans un
+         *     témoin `HttpOnly` ; le jeton est aussi renvoyé pour les scripts (en-tête `Authorization`).
+         *
+         *     Trop d'échecs en 15 minutes bloquent les essais suivants (429) : 5 pour un couple (adresse,
+         *     identifiant), 20 pour un identifiant, 50 pour une adresse.
          */
         post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout
+         * @description Ferme la session côté serveur (AUDIT-SEC-009) et efface le témoin. Sans session valide,
+         *     efface seulement le témoin : la déconnexion réussit toujours.
+         */
+        post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -177,8 +201,8 @@ export interface paths {
         put?: never;
         /**
          * Change Password
-         * @description Change son propre mot de passe. Les autres sessions sont fermées ; un nouveau jeton est
-         *     renvoyé pour celle-ci.
+         * @description Change son propre mot de passe. Les autres sessions sont fermées ; une nouvelle session est
+         *     ouverte pour celle-ci (témoin renouvelé).
          */
         post: operations["change_password_api_v1_auth_password_post"];
         delete?: never;
@@ -4893,6 +4917,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

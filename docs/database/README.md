@@ -29,6 +29,8 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | Table `erasure_records` : empreintes SHA-256 de l'email et du téléphone, motif, `keep_suppressed`, auteur (migration 0011) | S-02 : trace d'un effacement RGPD sans conserver la donnée ; liste d'opposition qui empêche une réimportation |
 | `follow_ups.attempts` (migration 0012) | AUDIT-BIZ-005 : une relance en erreur technique n'est plus retentée sans limite |
 | Téléphones normalisés en E.164 (migration 0013) | F-05 : `06 11 22 33 44` et `+33611223344` désignent le même prospect |
+| `consent_events.reason` et `actor_user_id` (migration 0014) | Décision D-20 : motif écrit et auteur d'un consentement rétabli |
+| Table `auth_sessions` : identifiant aléatoire, utilisateur (`CASCADE`), expiration, révocation (migration 0015) | AUDIT-SEC-009 : le jeton porte l'identifiant de session ; la déconnexion la révoque côté serveur. Sessions expirées supprimées à la connexion suivante de l'utilisateur |
 
 ## Conversations dans MongoDB
 
@@ -72,8 +74,9 @@ Redis n'est utilisé que par le contrôle de santé (`/health/ready`), et seulem
 - en développement local, `docker-compose.yml` le démarre ;
 - en production, il n'est pas déployé (`REDIS_URL: ""` dans `deploy/compose.prod.yml`) : rien n'en dépend.
 
-Il est gardé pour un usage prévu : partager entre processus la limitation des tentatives de connexion
-(AUDIT-SEC-005, lot 10). D'ici là, aucune donnée n'y est écrite.
+Il est gardé pour un usage possible : partager entre processus la limitation des tentatives de connexion
+(AUDIT-SEC-005), si plusieurs instances de l'API sont un jour déployées. Aujourd'hui, aucune donnée n'y est
+écrite.
 
 ## Base de connaissances (RAG, migration 0006)
 

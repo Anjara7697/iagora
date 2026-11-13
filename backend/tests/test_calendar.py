@@ -264,6 +264,7 @@ def test_demo_calendar_is_refused_in_production():
             environment="production",
             calendar_provider="demo",
             jwt_secret_key="x" * 40,
+            connectors_secret_key="k" * 40,
             cors_origins=["https://iagora.example.com"],
         )
 

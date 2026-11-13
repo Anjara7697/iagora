@@ -166,7 +166,10 @@ async def test_advisor_connects_own_zoom(make_client, mongo_db, settings_overrid
     monkeypatch.setattr(zoom_api.zoom_oauth, "exchange_code", fake_exchange)
     monkeypatch.setattr(zoom_api.zoom_oauth, "account_email", fake_email)
     anon = await make_client(None)
-    back = await anon.get(f"{API}/zoom/callback", params={"state": params["state"][0], "code": "c"})
+    query = {"state": params["state"][0], "code": "c"}
+    other = await anon.get(f"{API}/zoom/callback", params=query)
+    assert "zoom=error" in other.headers["location"]  # autre navigateur (AUDIT-SEC-008)
+    back = await advisor.get(f"{API}/zoom/callback", params=query)
     assert back.headers["location"] == f"{CONSOLE}/account?zoom=connected"
     status = (await advisor.get(f"{API}/zoom/me")).json()
     assert status["connected"] and status["account_email"] == "paul@zoom.example"
