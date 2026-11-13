@@ -8,6 +8,8 @@ const report = (dry: boolean) => ({
   existing: 1,
   invalid: [{ row: 4, error: "email : adresse invalide" }],
   columns: { Prénom: "first_name", "E-mail": "email", Remarque: "(ignorée)" },
+  consented: 2,
+  consent_by_column: false,
 });
 
 async function mockApi(page: Page, calls: string[]) {
@@ -98,4 +100,53 @@ test("import CSV : aperçu obligatoire puis import", async ({ page }) => {
   ).toBeVisible();
   expect(calls).toEqual(["preview", "import"]);
   await auditA11y(page, "import CSV");
+});
+
+test("import dans une campagne : consentement compté puis premiers contacts préparés sur place", async ({ page }) => {
+  await mockApi(page, []);
+  let prepared = 0;
+  const salon = { id: 4, name: "Rentrée", status: "active", sources: [{ id: 9, name: "Salon", type: "import" }] };
+  await page.route("**/api/v1/campaigns?**", (route) =>
+    route.fulfill({ json: { items: [salon], total: 1, limit: 200, offset: 0 } }),
+  );
+  await page.route("**/api/v1/campaigns/4", (route) => route.fulfill({ json: salon }));
+  await page.route("**/api/v1/campaigns/4/first-contacts", async (route) => {
+    if (route.request().method() === "POST") prepared += 1;
+    await route.fulfill({
+      json: {
+        campaign_active: true,
+        eligible: prepared ? 0 : 2,
+        queued: route.request().method() === "POST" ? 2 : 0,
+        without_consent: 0,
+        without_email: 0,
+        already_contacted: 0,
+        in_progress: prepared ? 2 : 0,
+        opted_out: 0,
+      },
+    });
+  });
+  await page.goto("/login");
+  await page.getByLabel("Email ou nom").fill("paul");
+  await page.getByLabel("Mot de passe").fill("x");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+  await page.goto("/prospects/import?campaign=4&source=9");
+  await expect(page.getByRole("link", { name: "Retour à la campagne" })).toHaveAttribute("href", "/campaigns/4?tab=prospects");
+  await page.getByLabel("Fichier CSV (2 Mo, 5000 lignes maximum)").setInputFiles({
+    name: "salon.csv", mimeType: "text/csv", buffer: Buffer.from("email;consentement\na@demo.example.com;oui\n"),
+  });
+  await expect(page.getByLabel("Source", { exact: true })).toHaveAttribute("data-value", "9");
+  await page.getByRole("button", { name: "Aperçu", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Aperçu de l’import" }).getByText("avec consentement")).toBeVisible();
+  await page.getByRole("button", { name: "Importer", exact: true }).click();
+  const result = page.getByRole("region", { name: "Résultat de l’import" });
+  const card = result.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("2 personnes de la campagne peuvent recevoir un premier message de l’agent.")).toBeVisible();
+  await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveCount(0);
+  await card.getByRole("button", { name: "Préparer les 2 premiers contacts" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Préparer" }).click();
+  await expect(page.getByText("2 premiers contacts en préparation")).toBeVisible();
+  expect(prepared).toBe(1);
+  await expect(result.getByRole("link", { name: "Voir la campagne" })).toHaveAttribute("href", "/campaigns/4?tab=prospects");
+  await auditA11y(page, "import CSV dans une campagne");
 });

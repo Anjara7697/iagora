@@ -69,10 +69,11 @@ type Calls = {
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; removeConflict?: boolean } = {},
+  opts: { role?: string; removeConflict?: boolean; status?: string } = {},
 ) {
   const calls: Calls = { requests: [], queries: [] };
-  let current = campaign();
+  let current = campaign(opts.status ? { status: opts.status } : {});
+  let prepared = false;
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -187,7 +188,22 @@ async function mockApi(
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
-    else code = 404;
+    else if (path === "/campaigns/1/first-contacts") {
+      if (method === "POST") {
+        calls.requests.push({ method, path, body: null });
+        prepared = true;
+      }
+      body = {
+        campaign_active: current.status === "active",
+        eligible: prepared ? 0 : 2,
+        queued: method === "POST" ? 2 : 0,
+        without_consent: 1,
+        without_email: 0,
+        already_contacted: 0,
+        in_progress: prepared ? 2 : 0,
+        opted_out: 0,
+      };
+    } else code = 404;
     await route.fulfill({ status: code, json: body });
   });
   return calls;
@@ -997,4 +1013,41 @@ test("barre : recherche à gauche, menu du compte au clavier", async ({ page }) 
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await expect(account).toBeFocused();
+});
+
+test("prospects de la campagne : importer une liste et préparer les premiers contacts", async ({ page }) => {
+  const calls = await mockApi(page, { status: "active" });
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("2 personnes de la campagne peuvent recevoir un premier message de l’agent.")).toBeVisible();
+  await expect(card.getByText("1 personne sans consentement (l’agent ne lui écrit pas)")).toBeVisible();
+  await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveAttribute(
+    "href",
+    /\/prospects\/import\?campaign=1&source=\d+$/,
+  );
+  await card.getByRole("button", { name: "Préparer les 2 premiers contacts" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("rien ne part avant votre validation", { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Préparer" }).click();
+  await expect(page.getByText("2 premiers contacts en préparation")).toBeVisible();
+  expect(calls.requests.filter((r) => r.path === "/campaigns/1/first-contacts")).toHaveLength(1);
+  await expect(card.getByText("Personne à aborder pour l’instant.")).toBeVisible();
+  await expect(card.getByText("2 en préparation", { exact: false })).toBeVisible();
+});
+
+test("campagne en brouillon : les premiers contacts attendent son activation", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("Activez la campagne pour préparer les premiers contacts.")).toBeVisible();
+  await expect(card.getByRole("button", { name: /Préparer/ })).toHaveCount(0);
+});
+
+test("observateur : les premiers contacts se consultent sans action", async ({ page }) => {
+  await mockApi(page, { role: "VIEWER", status: "active" });
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("2 personnes de la campagne", { exact: false })).toBeVisible();
+  await expect(card.getByRole("button", { name: /Préparer/ })).toHaveCount(0);
+  await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveCount(0);
 });

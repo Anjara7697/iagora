@@ -15,7 +15,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +38,7 @@ from app.services.agent_events import enqueue_reply
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
+from app.services.send_window import in_send_window
 
 logger = logging.getLogger(__name__)
 MAX_FOLLOW_UP_ERRORS = 3  # erreurs techniques successives avant abandon d'une relance
@@ -148,15 +148,6 @@ async def reply_to_message(
         logger.info("Réponse automatique ignorée (%s) : %s", conversation_id, exc)
     except Exception:
         logger.exception("Réponse automatique en erreur (conversation %s)", conversation_id)
-
-
-def in_send_window(now: datetime, settings: Settings) -> bool:
-    """Jours ouvrés (sauf réglage contraire), de l'heure de début (incluse) à l'heure de fin
-    (exclue), dans le fuseau des Paramètres (décision D-21)."""
-    local = now.astimezone(ZoneInfo(settings.calendar_timezone))
-    return (local.weekday() < 5 or not settings.follow_up_weekdays_only) and (
-        settings.follow_up_window_start_hour <= local.hour < settings.follow_up_window_end_hour
-    )
 
 
 @dataclass

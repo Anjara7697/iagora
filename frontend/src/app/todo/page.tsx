@@ -147,6 +147,12 @@ function Todo() {
           titleRef={queueTitle}
           onNavigate={go}
           onKindChange={setKind}
+          guard={guard}
+          onBatchDone={() => {
+            dirty.current = false;
+            router.replace(`/todo${qs({ kind })}`, { scroll: false });
+            refresh();
+          }}
         />
         <div className={`min-w-0 flex-1 ${selectedId ? "flex" : "hidden lg:flex"}`}>
           {tab === "treated" && selectedTreated ? (

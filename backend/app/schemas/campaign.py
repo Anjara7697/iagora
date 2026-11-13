@@ -110,3 +110,16 @@ class CampaignOverview(BaseModel):
         0, description="Prospects qualifiés ou plus avancés (rendez-vous, candidature, inscrits)"
     )
     converted: int
+
+
+class FirstContactsRead(BaseModel):
+    """Premiers contacts d'une campagne : qui les recevrait, et pourquoi les autres non (D-29)."""
+
+    campaign_active: bool
+    eligible: int = Field(description="Personnes à qui l'agent peut écrire le premier message")
+    queued: int = Field(0, description="Premiers contacts mis en préparation par cette demande")
+    without_consent: int = Field(0, description="Consentement non recueilli : aucun message")
+    without_email: int = 0
+    already_contacted: int = Field(0, description="Déjà en échange ou plus à l'étape Nouveau")
+    in_progress: int = Field(0, description="Premier contact déjà en préparation")
+    opted_out: int = 0

@@ -32,7 +32,30 @@ _SYNONYMS = {
     "profile.city": {"ville", "city"},
     "profile.company": {"entreprise", "societe", "company"},
     "profile.education_level": {"niveau", "niveau d'etudes", "diplome"},
+    "consent": {"consentement", "consent", "opt-in", "optin", "accord", "rgpd"},
 }
+# Colonne « consentement » : une valeur explicite d'accord vaut consentement pour cette ligne ;
+# toute autre valeur (non, vide…) le laisse à recueillir. Sans cette colonne, la case de l'écran
+# d'import s'applique à toutes les lignes.
+_YES = {
+    "oui",
+    "o",
+    "yes",
+    "y",
+    "true",
+    "vrai",
+    "1",
+    "x",
+    "ok",
+    "accepte",
+    "accord",
+    "opt-in",
+    "optin",
+}
+
+
+def consent_value(raw: str | None) -> bool:
+    return _key(raw or "") in {_key(v) for v in _YES}
 
 
 def _key(header: str) -> str:
@@ -98,6 +121,8 @@ async def run_import(
         raise ValidationFailure("Colonne email ou téléphone introuvable dans l'en-tête du fichier")
     await prospects.check_destination(session, None, campaign_id, source_id, target_code)
     report = ImportReport(dry_run=dry_run, total=len(rows), created=0, existing=0, columns=mapping)
+    by_column = "consent" in mapping.values()
+    report.consent_by_column = by_column
     seen: set[str] = set()
     for number, row in enumerate(rows, start=2):  # ligne 1 : en-tête
         fields: dict[str, Any] = {"profile": {}}
@@ -110,14 +135,15 @@ async def run_import(
             else:
                 fields[field] = value
         row_target = fields.pop("target_code", None)
+        row_consent = consent_value(fields.pop("consent", None)) if by_column else consent
         try:
             data = ProspectIngest(
                 **fields,
                 campaign_id=campaign_id,
                 source_id=source_id,
                 target_code=row_target or target_code,
-                consent_granted=True if consent else None,
-                consent_source=consent_source[:100] if consent else None,
+                consent_granted=True if row_consent else None,
+                consent_source=consent_source[:100] if row_consent else None,
             )
         except ValidationError as exc:
             error = exc.errors()[0]
@@ -139,6 +165,7 @@ async def run_import(
                 report.existing += 1
             else:
                 report.created += 1
+            report.consented += 1 if row_consent else 0
             seen.add(identity)
             continue
         try:
@@ -151,4 +178,5 @@ async def run_import(
             report.created += 1
         else:
             report.existing += 1
+        report.consented += 1 if row_consent else 0
     return report

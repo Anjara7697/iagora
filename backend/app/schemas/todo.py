@@ -7,7 +7,14 @@ from app.core.agent_mode import AgentMode
 from app.schemas.conversation import ConversationProspect
 
 TodoKind = Literal[
-    "validation", "escalation", "kb_gap", "incident", "application", "enrollment", "opt_out_check"
+    "validation",
+    "first_contact",
+    "escalation",
+    "kb_gap",
+    "incident",
+    "application",
+    "enrollment",
+    "opt_out_check",
 ]
 Priority = Literal["critical", "high", "medium", "low"]
 
@@ -109,3 +116,19 @@ class OptOutReviewDecision(BaseModel):
     reason: str | None = Field(
         None, max_length=500, description="Obligatoire pour rétablir le consentement (D-20)"
     )
+
+
+class DraftRef(BaseModel):
+    conversation_id: str = Field(max_length=64)
+    message_id: str = Field(max_length=64)
+
+
+class FirstContactApproval(BaseModel):
+    """Premiers contacts relus et validés ensemble (au plus 100, ceux affichés dans la file)."""
+
+    drafts: list[DraftRef] = Field(min_length=1, max_length=100)
+
+
+class BatchResult(BaseModel):
+    approved: int
+    skipped: int = Field(description="Brouillons déjà traités, hors périmètre ou non éligibles")

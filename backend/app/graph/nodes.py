@@ -295,6 +295,9 @@ class WorkflowNodes:
         metadata = dict(state.get("reply_metadata", {}))
         if state["trigger"] == "follow_up":
             metadata["follow_up"] = {"membership_id": ctx.membership_id}
+        if state["trigger"] == "first_contact":
+            # L'agent écrit en premier : envoi étalé et limité à la fenêtre d'envoi.
+            metadata["first_contact"] = True
         try:
             await self.deps.messenger.send(ctx, text, metadata)
         except MessageBlockedError as exc:

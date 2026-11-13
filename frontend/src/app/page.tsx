@@ -39,6 +39,7 @@ const TASK_LABELS: Record<TodoItem["kind"], string> = {
   enrollment: "Confirmer une inscription",
   application: "Vérifier une candidature",
   validation: "Relire une réponse",
+  first_contact: "Relire un premier contact",
   escalation: "Prendre le relais",
   kb_gap: "Compléter une réponse",
   incident: "Résoudre un incident",
@@ -167,17 +168,21 @@ export default function Home() {
       <div {...rise(2, "flex flex-col gap-3")}>
         <Eyebrow>Vue rapide de la file</Eyebrow>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {BUCKETS.map((b) => (
-            <KpiCard
-              key={b.kind}
-              href={`/todo?kind=${b.kind}`}
-              label={b.title}
-              dot={b.dot}
-              value={todo.error ? "—" : (counts[b.kind] ?? 0)}
-              loading={!todo.data && !todo.error}
-              hint={b.hint}
-            />
-          ))}
+          {BUCKETS.map((b) => {
+            // Les premiers contacts (prospection) sont aussi des brouillons à relire.
+            const firstContacts = b.kind === "validation" ? (counts.first_contact ?? 0) : 0;
+            return (
+              <KpiCard
+                key={b.kind}
+                href={firstContacts ? "/todo" : `/todo?kind=${b.kind}`}
+                label={b.title}
+                dot={b.dot}
+                value={todo.error ? "—" : (counts[b.kind] ?? 0) + firstContacts}
+                loading={!todo.data && !todo.error}
+                hint={firstContacts ? `Dont ${firstContacts} premier${firstContacts > 1 ? "s" : ""} contact${firstContacts > 1 ? "s" : ""}` : b.hint}
+              />
+            );
+          })}
         </div>
       </div>
 

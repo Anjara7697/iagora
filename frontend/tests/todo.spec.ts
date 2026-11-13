@@ -981,3 +981,49 @@ test("rétablir le consentement après une opposition ambiguë exige un motif (a
   await expect(page.getByText("Consentement rétabli", { exact: true })).toBeVisible();
   expect(decision).toEqual({ decision: "restore", reason: "Il voulait quitter son école actuelle, pas nous." });
 });
+
+test("premiers contacts : relus dans la file puis validés ensemble après confirmation", async ({ page }) => {
+  await mockApi(page);
+  const first = (n: number) => ({
+    ...draftItem,
+    id: `draft:fc${n}:m${n}`,
+    kind: "first_contact",
+    priority: "medium",
+    conversation_id: `fc${n}`,
+    prospect: { ...prospect, id: 10 + n, first_name: `Invité${n}`, last_name: "Salon", stage: "new" },
+    title: "Premier contact à valider",
+    detail: "L'agent écrit le premier message (prospection)",
+    draft: { ...draftItem.draft, message_id: `m${n}`, content: `Bonjour Invité${n}, merci de votre visite au salon.` },
+  });
+  let pending = [first(1), first(2)];
+  let approved: unknown = null;
+  await page.context().route("**/api/v1/todo?**", (route) =>
+    route.fulfill({
+      json: { items: pending, total: pending.length, limit: 50, offset: 0, counts: { first_contact: pending.length } },
+    }),
+  );
+  await page.context().route("**/api/v1/todo/first-contacts/approve", async (route) => {
+    approved = route.request().postDataJSON();
+    pending = [];
+    await route.fulfill({ json: { approved: 2, skipped: 0 } });
+  });
+  await open(page);
+  await page.goto("/todo?kind=first_contact");
+  const queue = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await expect(queue.getByRole("button", { name: "Premiers contacts (2)" })).toBeVisible();
+  // Relire un message avant : le détail s'ouvre comme pour toute demande.
+  await queue.getByRole("button", { name: /Invité1 Salon/ }).click();
+  await expect(page.getByText("merci de votre visite au salon", { exact: false }).first()).toBeVisible();
+  await queue.getByRole("button", { name: "Valider les 2 premiers contacts affichés" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Chaque message partira tel qu’il est écrit", { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Valider les 2" }).click();
+  await expect(page.getByText("2 premiers contacts validés")).toBeVisible();
+  expect(approved).toEqual({
+    drafts: [
+      { conversation_id: "fc1", message_id: "m1" },
+      { conversation_id: "fc2", message_id: "m2" },
+    ],
+  });
+  await expect(queue.getByText("Rien à traiter pour le moment.")).toBeVisible();
+});
