@@ -186,3 +186,26 @@ valider par le DPO avant un pilote avec de vrais prospects.*
 **Conséquences.** Les lots 6, 7 et 10 et le cloisonnement sont réalisés dans des PR séparées. Tant que le DPO n'a
 pas validé D-17, D-18, D-19, D-24, D-25 et D-26, aucun prospect réel n'est traité en production.
 
+## D-29 — Prospection sortante : premiers contacts après un import
+
+*13 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Les listes importées (salons, webinaires, événements de DATUM) réunissent des personnes qui ont
+accepté d'être recontactées. Le responsable veut qu'elles soient abordées dans le contexte de leur campagne,
+sans préparer chaque premier message à la main.
+
+**Décision.**
+- L'agent n'écrit **en premier** (premier contact) qu'à une personne dont le consentement est **accordé** : case
+  de l'import, colonne « consentement » du fichier (oui / non, ligne par ligne), case d'un formulaire, accord
+  enregistré par un conseiller. Une personne qui écrit d'elle-même reçoit toujours sa réponse ; un désinscrit
+  n'est jamais contacté.
+- Depuis la campagne (onglet Prospects) ou à la fin d'un import, « Préparer les premiers contacts » met en file
+  un premier message pour chaque personne éligible : consentement accordé, adresse email, étape « Nouveau » de
+  cette campagne, jamais contactée. En mode assisté, chacun devient un brouillon « Premier contact » dans
+  « À traiter », validable un par un ou par page après relecture.
+- Les premiers contacts validés partent dans la fenêtre d'envoi des Paramètres, cinq par passage de la boîte
+  (environ 300 par heure), pour ménager sa réputation et ses limites d'envoi.
+
+**À confirmer avec le DPO.** La mention ou la case d'accord du formulaire d'inscription à l'événement : c'est elle
+qui permet de cocher le consentement à l'import.
+

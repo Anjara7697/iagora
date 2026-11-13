@@ -143,7 +143,7 @@ Next.js 15 (App Router, TypeScript), dans `frontend/src/` :
   contrat OpenAPI de l'API (vérifiés en CI) ;
 - `components/` : cadre commun (`AppShell`, `shell/`), composants HeroUI du projet (`ds/`), un dossier par écran.
 
-Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 34).
+Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 35).
 
 La session est un témoin `HttpOnly` posé par l'API, illisible par la page (aucun jeton dans
 `localStorage`). Le simulateur se désactive au build avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false`.

@@ -90,17 +90,29 @@ Content-Type: application/json
 
 ## Import CSV
 
-**Prospects → Importer un CSV** (conseiller ou administrateur) : choisir le fichier, la campagne / source,
-indiquer si les personnes ont consenti, puis **Aperçu** (rien n'est enregistré : lignes à créer, déjà
-connues, invalides avec leur numéro, colonnes reconnues) et **Importer**.
+**Prospects → Importer un CSV**, ou depuis la campagne (**Importer une liste** dans l'onglet Prospects, ou
+**Importer dans cette source** dans l'onglet Sources : campagne et source déjà choisies) — conseiller ou
+administrateur : choisir le fichier, la campagne / source, indiquer si les personnes ont consenti, puis
+**Aperçu** (rien n'est enregistré : lignes à créer, déjà connues, avec consentement, invalides avec leur
+numéro, colonnes reconnues) et **Importer**.
 
 - Colonnes reconnues par leur intitulé : prénom, nom, email / e-mail / courriel, téléphone / mobile,
   programme, ville, entreprise, niveau d'études, identifiant ; les autres sont ignorées. Une colonne email
   ou téléphone est obligatoire.
 - Séparateur `;` ou `,`, encodage UTF-8 ou Windows (export Excel). 2 Mo et 5000 lignes au maximum.
 - Doublons : reconnus dans la base et dans le fichier ; un réimport ne crée aucun doublon.
-- Les prospects importés **ne déclenchent pas l'agent** : personne n'est contacté sans décision d'un
-  conseiller.
+- **Consentement** : la case « Ces personnes ont consenti à être contactées » vaut pour toutes les lignes
+  (inscrits d'un événement qui ont accepté d'être recontactés). Une colonne `consentement` (ou `consent`,
+  `opt-in`, `accord`) décide ligne par ligne : `oui`, `yes`, `x`, `1`, `true`… accordent, toute autre valeur
+  laisse le consentement à recueillir ; la case est alors ignorée. Sans consentement, l'agent n'écrit pas en
+  premier à la personne (décision D-29).
+- Les prospects importés **ne déclenchent pas l'agent** seuls. À la fin d'un import dans une campagne, ou depuis
+  l'onglet Prospects de la campagne, **Préparer les premiers contacts** demande à l'agent un premier message
+  pour chaque personne éligible : consentement accordé, adresse email, étape « Nouveau » de cette campagne
+  (son contexte commercial courant), jamais contactée. L'écran dit combien sont écartées et pourquoi. La
+  campagne doit être active et l'agent hors arrêt d'urgence ; un conseiller ne prépare que les personnes de
+  son périmètre (D-23). En mode assisté, chaque message arrive dans « À traiter » → **Premiers contacts**.
+  API : `GET` et `POST /campaigns/{id}/first-contacts` (au plus 500 par demande).
 
 ## Meta Lead Ads
 

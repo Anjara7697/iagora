@@ -36,6 +36,7 @@ Vue technique : [architecture.md](architecture.md).
 | Email de bout en bout sur une boîte de test : réception, brouillon, validation, envoi | Recette manuelle ([recette-locale.md](recette-locale.md)) |
 | Parcours complet avec Gemini jusqu'à un rendez-vous fictif | Recette locale déclarée par l'auteur ([n8n/README.md](n8n/README.md)) |
 | Meta Lead Ads : configuration chiffrée, webhook signé, mapping formulaire/campagne, déduplication et simulateur local | Tests API et navigateur, [sources-leads.md](sources-leads.md) |
+| Prospection après un import : colonne « consentement », premiers contacts préparés par lot depuis la campagne, validés dans « À traiter », envois étalés (D-29) | Tests API, navigateur et parcours contre le vrai backend, [sources-leads.md](sources-leads.md) |
 
 ### Codé, mais non vérifié en conditions réelles
 

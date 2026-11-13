@@ -187,6 +187,15 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est
     protégé (`useDiscardGuard`).
 
+**Premiers contacts** (`components/campaign/FirstContacts.tsx`, `components/todo/FirstContactBatch.tsx`)
+
+35. **Prospection par lot** : une carte « Premiers contacts » dans l'onglet Prospects de la campagne et à la fin
+    d'un import dit combien de personnes l'agent peut aborder et pourquoi les autres non ; « Préparer » passe
+    par un `ConfirmDialog` qui dit où arrivent les messages (ou, en mode automatique, qu'ils partent sans
+    relecture), puis un Toast avec « Ouvrir À traiter ». Dans « À traiter », le type « Premiers contacts » ajoute
+    « Valider les N premiers contacts affichés » au-dessus de la liste : confirmation qui invite à en relire
+    quelques-uns, protégée par la garde de saisie (règle 21), Toast du résultat.
+
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
 le parcours est capturé avant / après.
 
