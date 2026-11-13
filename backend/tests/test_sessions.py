@@ -50,6 +50,11 @@ def test_session_cookie_is_secure_in_production():
     session_header, oauth_header = response.headers.getlist("set-cookie")
     assert "Secure" in session_header and "SameSite=strict" in session_header
     assert "Secure" in oauth_header and "SameSite=lax" in oauth_header
+    # Instance d'essai servie en HTTPS (`dev`) : témoins `Secure` aussi.
+    dev = Settings(_env_file=None, cors_origins=["https://dev.iagora.example.com"])
+    response = Response()
+    cookies.set_session(response, dev, "jeton")
+    assert "Secure" in response.headers["set-cookie"]
 
 
 async def test_cookie_writes_require_the_csrf_header(make_client):

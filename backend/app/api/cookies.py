@@ -1,8 +1,9 @@
 """Témoins (cookies) posés par l'API : session de la console et parcours OAuth.
 
 - Session (AUDIT-SEC-004) : `HttpOnly` (illisible par le JavaScript de la page), `SameSite=Strict`,
-  `Secure` en production, limité au chemin de l'API. La console et l'API doivent donc être servies
-  sur le même site (même domaine enregistrable), ce que fait le bloc Caddy de `deploiement.md`.
+  `Secure` en production ou derrière HTTPS, limité au chemin de l'API. La console et l'API doivent
+  donc être servies sur le même site (même domaine enregistrable), ce que fait le bloc Caddy de
+  `deploiement.md`.
 - Parcours OAuth (AUDIT-SEC-008) : témoin court en `SameSite=Lax`, seul envoyé au retour de Google
   ou de Zoom (navigation venue d'un autre site). Il lie le lien d'autorisation au navigateur qui
   l'a demandé.
@@ -21,7 +22,10 @@ CSRF_HEADER = "X-IAGORA-CSRF"
 
 
 def _secure(settings: Settings) -> bool:
-    return settings.environment == "production"
+    """`Secure` en production, et dès que la console n'est servie qu'en HTTPS (instance `dev`)."""
+    origins = settings.cors_origins
+    https_only = bool(origins) and all(o.startswith("https://") for o in origins)
+    return settings.environment == "production" or https_only
 
 
 def _path(settings: Settings) -> str:
