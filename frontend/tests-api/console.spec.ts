@@ -105,9 +105,9 @@ test("session : témoin HttpOnly, déconnexion révoquée côté serveur", async
   const ctx = await request.newContext({ extraHTTPHeaders: { Authorization: `Bearer ${session?.value}` } });
   expect((await ctx.get(`${API}/auth/me`)).status()).toBe(401);
 
-  // Revenir sur une page protégée renvoie à la connexion.
+  // Revenir sur une page protégée renvoie à la connexion, qui y ramènera (NAV-03).
   await page.goto("/prospects");
-  await page.waitForURL(/\/login$/);
+  await page.waitForURL(/\/login\?next=%2Fprospects$/);
 });
 
 test("import dans une campagne : colonne consentement et premiers contacts comptés par l'API", async ({ page }) => {
