@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, Field, SelectBox, Notice, TextBox, TextInput } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";

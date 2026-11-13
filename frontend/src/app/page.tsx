@@ -4,7 +4,7 @@ import { Alert, Avatar, Chip } from "@heroui/react";
 import { ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { firstNameOf, useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { LinkButton } from "@/components/ds/controls";
 import {
@@ -22,7 +22,7 @@ import {
 import { reveal } from "@/components/ds/motion";
 import { LevelBadge, Loading } from "@/components/ui";
 import { qs } from "@/lib/api";
-import { FUNNEL, PRIORITIES, STAGES, formatDate, fullName, label } from "@/lib/labels";
+import { FUNNEL, PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, DashboardSummary, Page, TodoItem } from "@/lib/types";
 

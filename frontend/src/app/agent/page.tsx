@@ -3,7 +3,7 @@
 import { Button, toast } from "@heroui/react";
 import { Bot, CircleCheck, CircleSlash, OctagonX, Play } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AGENT_COPY, AgentDot, RESUME, STOP } from "@/components/AgentStatus";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { LinkButton, Tag } from "@/components/ds/controls";

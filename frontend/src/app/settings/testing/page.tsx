@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, FlaskConical, MessagesSquare } from "lucide-react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { LinkButton, Notice, TextLink } from "@/components/ds/controls";
 import { Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";

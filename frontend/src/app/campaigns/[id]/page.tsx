@@ -4,7 +4,7 @@ import { Tabs, toast } from "@heroui/react";
 import { CalendarDays, Megaphone, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import CampaignOverview from "@/components/campaign/CampaignOverview";
 import CampaignProspects from "@/components/campaign/CampaignProspects";
 import { FirstContacts } from "@/components/campaign/FirstContacts";

@@ -9,7 +9,7 @@
 import { toast } from "@heroui/react";
 import { CheckCheck } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn } from "@/components/ds/controls";
 import { api, failure } from "@/lib/api";

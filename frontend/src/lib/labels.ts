@@ -88,6 +88,12 @@ export const CHANNELS: Record<string, string> = {
   linkedin: "LinkedIn",
 };
 
+/** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
+export const firstNameOf = (username: string) => {
+  const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
+  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
+};
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return (parts[0]?.[0] ?? "?").concat(parts[1]?.[0] ?? "").toUpperCase();

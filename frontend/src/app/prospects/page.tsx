@@ -10,7 +10,7 @@ import { Chip } from "@heroui/react";
 import { Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Box } from "@/components/ds/card";
 import { Btn, ErrorText, FilterChip, LinkButton, Notice, Segmented, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";

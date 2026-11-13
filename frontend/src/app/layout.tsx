@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AppShell from "@/components/AppShell";
 import { Providers } from "@/components/ds/Providers";
 import { Toaster } from "@/components/ds/Toaster";
+import { SessionProvider } from "@/lib/session";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./heroui.css";
 
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
-          <AppShell>{children}</AppShell>
+          <SessionProvider>
+            <AppShell>{children}</AppShell>
+          </SessionProvider>
         </Providers>
         <Toaster />
       </body>

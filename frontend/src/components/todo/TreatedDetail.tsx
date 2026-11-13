@@ -5,7 +5,7 @@
 import { toast } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, LinkButton, Tag } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { DemoBadge } from "@/components/ui";

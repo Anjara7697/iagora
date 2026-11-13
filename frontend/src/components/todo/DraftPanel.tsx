@@ -4,7 +4,7 @@
 
 import { Check, Pencil, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, Field, Notice, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";

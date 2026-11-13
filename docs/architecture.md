@@ -142,6 +142,7 @@ Next.js 15 (App Router, TypeScript), dans `frontend/src/` :
 - `lib/api.ts`, `lib/useApi.ts` : appels à l'API (session dans un témoin, en-tête anti-CSRF) ; `lib/api/schema.d.ts` : types générés depuis le
   contrat OpenAPI de l'API (vérifiés en CI) ;
 - `components/` : cadre commun (`AppShell`, `shell/`), composants HeroUI du projet (`ds/`), un dossier par écran.
+- `lib/session/` : session de la console (`SessionProvider`, `useCurrentUser`), adresse de retour après la connexion (`returnPath`) ; `AppShell` n'assure que la mise en page.
 
 Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 35).
 

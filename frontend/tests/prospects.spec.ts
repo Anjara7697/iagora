@@ -97,8 +97,9 @@ async function mockApi(page: Page, role = "ADMIN", record = prospect) {
     await route.fulfill({ status, json: body });
   });
 }
+/** Connexion depuis une page de connexion qui ramène à la liste des prospects (`?next=`). */
 async function login(page: Page) {
-  await page.goto("/login");
+  await page.goto("/login?next=%2Fprospects");
   await page.getByLabel("Email ou nom").fill("conseiller");
   await page.getByLabel("Mot de passe").fill("valid-password");
   await page.getByRole("button", { name: "Se connecter" }).click();
@@ -459,9 +460,9 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
   await logout;
   await expect(page).toHaveURL(/\/login$/);
-  // Session fermée côté serveur : revenir sur une page renvoie à la connexion.
+  // Session fermée côté serveur : revenir sur une page renvoie à la connexion, qui y ramènera.
   await page.goto("/prospects");
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login\?next=%2Fprospects$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),
   ).toBeNull();
@@ -517,14 +518,35 @@ test("observateur : consultation seule sur la fiche", async ({ page }) => {
   await expect(page.getByText("Observateur", { exact: true })).toBeVisible();
 });
 
-test("session expirée : retour à la connexion", async ({ page }) => {
+test("session expirée : retour à la connexion, puis à la page en cours", async ({ page }) => {
   await mockApi(page);
   await login(page);
+  let expired = true;
   await page.route("**/api/v1/prospects/1", (route) =>
-    route.fulfill({ status: 401, json: { detail: "Session expirée" } }),
+    expired ? route.fulfill({ status: 401, json: { detail: "Session expirée" } }) : route.fallback(),
   );
-  await page.goto("/prospects/1");
-  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/prospects/1?tab=journey");
+  await expect(page).toHaveURL(/\/login\?next=%2Fprospects%2F1%3Ftab%3Djourney$/);
+  // La redirection vient de la page elle-même : attendre que la page de connexion soit prête avant de saisir.
+  await page.waitForLoadState("networkidle");
+  expired = false;
+  await page.getByLabel("Email ou nom").fill("conseiller");
+  await page.getByLabel("Mot de passe").fill("valid-password");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page).toHaveURL(/\/prospects\/1\?tab=journey$/);
+  await expect(page.getByRole("heading", { name: "Alice Martin" })).toBeVisible();
+});
+
+test("connexion : arrivée sur l'accueil ; une adresse de retour externe est ignorée", async ({ page }) => {
+  await mockApi(page);
+  for (const next of ["", "?next=https%3A%2F%2Fexemple.com", "?next=%2F%2Fexemple.com%2Fprospects"]) {
+    await page.goto(`/login${next}`);
+    await page.getByLabel("Email ou nom").fill("conseiller");
+    await page.getByLabel("Mot de passe").fill("valid-password");
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL("http://localhost:3100/");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+  }
 });
 
 test("panne de l’API : erreur et nouvelle tentative", async ({ page }) => {

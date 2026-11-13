@@ -9,7 +9,7 @@ import { Alert, Avatar, Button, Dropdown, toast } from "@heroui/react";
 import { Bot, Ellipsis, Hand, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { displayNameOf } from "@/components/shell/AccountMenu";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";

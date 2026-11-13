@@ -12,10 +12,11 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
-import { api, ApiError, forgetLegacyToken, logout } from "@/lib/api";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { canUseSimulator } from "@/lib/access";
+import { useSession } from "@/lib/session";
+import { useWorkQueueCount } from "@/lib/useWorkQueueCount";
 import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
 import AccountMenu from "./shell/AccountMenu";
 import AppNav from "./shell/AppNav";
@@ -24,83 +25,20 @@ import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
 import { ReplyDraftsProvider } from "./ReplyDrafts";
-import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
-import type { User } from "@/lib/types";
 
-const UserContext = createContext<User | null>(null);
-export const useCurrentUser = () => useContext(UserContext);
 const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
 
-/** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
-export const firstNameOf = (username: string) => {
-  const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
-  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
-};
-
-
+/**
+ * Mise en page de la console : menu, barre du haut, zone de l'écran. La session (utilisateur, mot de passe temporaire,
+ * déconnexion) vient de `SessionProvider` ; le compteur de la file, de `useWorkQueueCount`.
+ */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const { user, error, retry, blocked, signOut } = useSession();
   const [navOpen, setNavOpen] = useState(false);
-  const [waiting, setWaiting] = useState<number | null>(null);
+  const waiting = useWorkQueueCount(user, pathname);
   const isLogin = pathname === "/login";
-
-  useEffect(() => {
-    if (isLogin) {
-      setUser(null);
-      return;
-    }
-    let cancelled = false;
-    forgetLegacyToken();
-    setError(null);
-    // Sans session (témoin absent ou expiré), l'API répond 401 et `api` renvoie vers /login.
-    api<User>("/auth/me")
-      .then((value) => {
-        if (!cancelled) setUser(value);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof ApiError ? err.message : "Connexion impossible",
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLogin, router, attempt]);
-
-  // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
-  useEffect(() => {
-    if (!user || user.must_change_password) return;
-    let active = true;
-    let request = 0;
-    const refresh = () => {
-      const current = ++request;
-      api<{ total: number }>("/todo?limit=1")
-        .then((page) => { if (active && current === request) setWaiting(page.total); })
-        .catch(() => { if (active && current === request) setWaiting(null); });
-    };
-    refresh();
-    window.addEventListener(WORK_QUEUE_CHANGED, refresh);
-    return () => {
-      active = false;
-      window.removeEventListener(WORK_QUEUE_CHANGED, refresh);
-    };
-  }, [user, pathname]);
-
-  // Mot de passe temporaire : seul « Mon compte » est accessible tant qu'il n'est pas changé.
   const mustChange = !!user?.must_change_password;
-  const blocked = mustChange && pathname !== "/account";
-  useEffect(() => {
-    if (!blocked) return;
-    router.replace("/account");
-    // Une navigation déjà en cours peut absorber la redirection : on la redemande.
-    const retry = window.setInterval(() => router.replace("/account"), 1000);
-    return () => window.clearInterval(retry);
-  }, [blocked, router]);
 
   // Menu réduit (bureau) : préférence de ce navigateur, sans effet si le stockage est indisponible.
   const [collapsed, setCollapsed] = useState(false);
@@ -130,7 +68,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {error ? (
             <>
               <p className="text-sm text-danger-soft-foreground">{error}</p>
-              <Button variant="tertiary" onPress={() => setAttempt((v) => v + 1)}>
+              <Button variant="tertiary" onPress={retry}>
                 <RefreshCw className="size-4" aria-hidden="true" />
                 Réessayer
               </Button>
@@ -168,8 +106,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <UserContext.Provider value={user}>
-      <ReplyDraftsProvider key={user.id}>
+    <ReplyDraftsProvider key={user.id}>
       <a
         className="fixed top-[-80px] left-3 z-[100] rounded-xl bg-surface px-3 py-2 text-sm font-medium text-foreground shadow-overlay focus:top-3"
         href="#main-content"
@@ -279,10 +216,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               refreshKey={pathname}
               showAgent={!mustChange}
               onLogout={async () => {
-                await logout();
-                setUser(null);
                 setNavOpen(false);
-                router.replace("/login");
+                await signOut();
               }}
             />
           </header>
@@ -304,7 +239,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      </ReplyDraftsProvider>
-    </UserContext.Provider>
+    </ReplyDraftsProvider>
   );
 }
