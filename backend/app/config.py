@@ -143,8 +143,10 @@ class Settings(BaseSettings):
     zoom_client_secret: SecretStr | None = None
     zoom_host_user: str = "me"  # hôte par défaut si le conseiller n'a pas de compte Zoom
 
-    # Clé de chiffrement des identifiants saisis dans la console (connecteurs). Facultative : à
-    # défaut, dérivée de JWT_SECRET_KEY (changer l'une ou l'autre oblige à les ressaisir).
+    # Clé de chiffrement des identifiants saisis dans la console (connecteurs), distincte du secret
+    # JWT (AUDIT-SEC-007). Obligatoire en production ; en développement, à défaut, dérivée de
+    # JWT_SECRET_KEY. Les secrets chiffrés avec l'ancienne clé dérivée restent lisibles (voir
+    # `core/vault.py`) jusqu'à `python -m app.cli rotate-connector-secrets`.
     connectors_secret_key: SecretStr | None = None
 
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
@@ -177,6 +179,14 @@ class Settings(BaseSettings):
         if self.calendar_work_end_hour <= self.calendar_work_start_hour:
             raise ValueError("CALENDAR_WORK_END_HOUR doit être après CALENDAR_WORK_START_HOUR")
         if self.environment == "production":
+            own = (
+                self.connectors_secret_key.get_secret_value() if self.connectors_secret_key else ""
+            )
+            if len(own) < 32 or own == secret:
+                raise ValueError(
+                    "CONNECTORS_SECRET_KEY doit être défini en production (32 caractères minimum, "
+                    "différent de JWT_SECRET_KEY)"
+                )
             if self.debug:
                 raise ValueError("DEBUG doit être désactivé en production")
             for origin in self.cors_origins:

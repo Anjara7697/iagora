@@ -75,7 +75,10 @@ async def test_demo_mode_from_the_console_and_refused_in_production(mongo_db):
     slots = await _calendar(base(), mongo_db, Google()).get_available_slots(3)
     assert len(slots) == 3
     prod = base(
-        environment="production", jwt_secret_key="x" * 40, cors_origins=["https://a.example"]
+        environment="production",
+        jwt_secret_key="x" * 40,
+        connectors_secret_key="k" * 40,
+        cors_origins=["https://a.example"],
     )
     with pytest.raises(CalendarNotConfiguredError, match="démonstration"):
         await _calendar(prod, mongo_db, Google()).get_available_slots(3)

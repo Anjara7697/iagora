@@ -11,6 +11,7 @@ API = "/api/v1"
 PROD = {
     "environment": "production",
     "jwt_secret_key": "x" * 40,
+    "connectors_secret_key": "k" * 40,
     "cors_origins": ["https://console.datum.example"],
 }
 

@@ -62,6 +62,7 @@ async def test_command_refuses_real_prospects_and_production(
         {
             "environment": "production",
             "jwt_secret_key": "x" * 40,
+            "connectors_secret_key": "k" * 40,
             "cors_origins": ["https://iagora.example.com"],
             "email_sandbox_recipients": "moi@gmail.com",
         }
