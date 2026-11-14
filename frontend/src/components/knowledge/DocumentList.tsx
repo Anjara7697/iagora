@@ -54,7 +54,6 @@ export default function DocumentList({
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Rechercher un document" className="w-full sm:w-72">
             <TextInput
-              variant="secondary"
               type="search"
               value={view.q}
               onChange={(e) => onChange({ q: e.target.value })}

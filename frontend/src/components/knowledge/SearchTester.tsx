@@ -72,7 +72,6 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
       <form className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end" onSubmit={run}>
         <Field label="Question du prospect">
           <TextInput
-            variant="secondary"
             placeholder="Ex. Combien de temps dure le programme ?"
             value={query}
             disabled={busy}
@@ -84,7 +83,6 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
         </Field>
         <Field label="Programme du prospect">
           <SelectBox
-            variant="secondary"
             value={target}
             disabled={busy}
             onChange={(e) => {

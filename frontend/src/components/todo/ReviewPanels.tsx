@@ -129,7 +129,6 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 </CheckBox>
                 <Field label="Parcours concerné">
                   <SelectBox
-                    variant="secondary"
                     value={selected ? String(selected.id) : ""}
                     onChange={(e) => setMembershipId(e.target.value)}
                   >
@@ -147,7 +146,6 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 {needsStage && (
                   <Field label="Motif enregistré dans l’historique">
                     <TextBox
-                      variant="secondary"
                       value={reason}
                       maxLength={2000}
                       onChange={(e) => setReason(e.target.value)}
@@ -254,7 +252,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           {eligible.length > 0 && (
             <Field label="Parcours confirmé par la preuve">
               <SelectBox
-                variant="secondary"
                 value={membershipId}
                 onChange={(event) => setMembershipId(event.target.value)}
               >
@@ -269,7 +266,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           )}
           <Field label="Référence de la preuve">
             <TextInput
-              variant="secondary"
               value={reference}
               maxLength={300}
               onChange={(event) => setReference(event.target.value)}
@@ -277,7 +273,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           </Field>
           <Field label="Note facultative">
             <TextBox
-              variant="secondary"
               value={note}
               maxLength={1000}
               onChange={(event) => setNote(event.target.value)}
@@ -371,7 +366,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
                 onConfirm={() => void decide("restore")}
               >
                 <Field label="Motif" hint="10 caractères au moins.">
-                  <TextBox variant="primary" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+                  <TextBox rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
                 </Field>
               </ConfirmDialog>
             ) : (

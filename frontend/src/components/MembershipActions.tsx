@@ -118,7 +118,7 @@ export default function MembershipActions({
             campagne, sur toutes ses sources.
           </p>
           <Field label="Conseiller responsable">
-            <SelectBox variant="primary"
+            <SelectBox
               value={advisor}
               disabled={busy || advisors.loading || !!advisors.error}
               onChange={(e) => setAdvisor(e.target.value)}
@@ -205,7 +205,7 @@ export default function MembershipActions({
           }}
         >
           <Field label="Nouvelle étape">
-            <SelectBox variant="primary"
+            <SelectBox
               value={stage}
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
@@ -220,7 +220,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Motif du changement">
-            <TextBox variant="primary"
+            <TextBox
               value={reason}
               disabled={busy}
               required
@@ -257,7 +257,7 @@ export default function MembershipActions({
             </p>
           </div>
           <Field label="Preuve vérifiée">
-            <SelectBox variant="primary" value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+            <SelectBox value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
               <option value="school_email">Email de confirmation de l’école</option>
               <option value="admissions_system">Système d’admission</option>
               <option value="signed_document">Document signé</option>
@@ -265,7 +265,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Référence de la preuve">
-            <TextInput variant="primary"
+            <TextInput
               value={evidenceReference}
               onChange={(e) => setEvidenceReference(e.target.value)}
               disabled={busy}
@@ -276,7 +276,7 @@ export default function MembershipActions({
             />
           </Field>
           <Field label="Note complémentaire (facultative)">
-            <TextBox variant="primary"
+            <TextBox
               value={evidenceNote}
               onChange={(e) => setEvidenceNote(e.target.value)}
               disabled={busy}

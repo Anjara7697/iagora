@@ -72,7 +72,6 @@ export function DraftPanel({
         {editing ? (
           <TextBox
             aria-label="Texte du brouillon"
-            variant="secondary"
             value={text}
             onChange={(e) => setText(e.target.value)}
             className="min-h-40"
@@ -179,7 +178,6 @@ export function DraftPanel({
       >
         <Field label="Motif du refus" hint="3 caractères minimum." className="pt-3">
           <TextInput
-            variant="secondary"
             autoFocus
             value={reason}
             onChange={(e) => setReason(e.target.value)}

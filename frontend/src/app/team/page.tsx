@@ -105,7 +105,6 @@ function Team() {
           <div className={cx("flex flex-wrap items-end gap-3", reveal(1).className)} style={reveal(1).style}>
             <Field label="Rechercher un membre" className="w-full sm:w-64">
               <TextInput
-                variant="secondary"
                 type="search"
                 value={view.q}
                 placeholder="Nom ou email…"

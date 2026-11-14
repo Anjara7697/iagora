@@ -266,7 +266,6 @@ function ProspectDetail() {
             >
               <Field label="Source du consentement" hint="Par exemple : accord donné par téléphone le 12/10.">
                 <TextInput
-                  variant="primary"
                   value={consentSource}
                   autoComplete="off"
                   onChange={(e) => setConsentSource(e.target.value)}
@@ -278,7 +277,6 @@ function ProspectDetail() {
                   hint="Obligatoire pour lever une désinscription (10 caractères au moins) : par exemple « email du 12/11 où il redemande les dates de rentrée »."
                 >
                   <TextBox
-                    variant="primary"
                     rows={3}
                     maxLength={500}
                     value={consentReason}

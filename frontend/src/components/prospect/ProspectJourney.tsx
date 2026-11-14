@@ -217,7 +217,6 @@ function CampaignAttribution({ id, onDone }: { id: number; onDone: () => void })
       )}
       <Field label="Campagne d’attribution">
         <SelectBox
-          variant="primary"
           value={campaign}
           disabled={busy || campaigns.loading}
           onChange={(e) => {
@@ -234,7 +233,7 @@ function CampaignAttribution({ id, onDone }: { id: number; onDone: () => void })
         </SelectBox>
       </Field>
       <Field label="Source d’attribution">
-        <SelectBox variant="primary" value={source} disabled={busy || !selected} onChange={(e) => setSource(e.target.value)}>
+        <SelectBox value={source} disabled={busy || !selected} onChange={(e) => setSource(e.target.value)}>
           <option value="">Choisir une source</option>
           {selected?.sources?.map((s) => (
             <option key={s.id} value={s.id}>

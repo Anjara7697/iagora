@@ -126,13 +126,13 @@ export function CreateMemberPanel({
             Le nouveau membre reçoit un mot de passe temporaire et choisit le sien à la première connexion.
           </p>
           <Field label="Nom d’utilisateur" hint="3 caractères minimum.">
-            <TextInput variant="primary" value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
+            <TextInput value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
           </Field>
           <Field label="Email" hint="Sert aussi d’identifiant de connexion.">
-            <TextInput variant="primary" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <Field label="Rôle">
-            <SelectBox variant="primary" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            <SelectBox value={role} onChange={(e) => setRole(e.target.value as Role)}>
               {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]} — {ROLE_HELP[r]}
@@ -284,13 +284,13 @@ function MemberForm({
         }}
       >
         <Field label="Nom d’utilisateur">
-          <TextInput variant="primary" value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
+          <TextInput value={username} minLength={3} onChange={(e) => setUsername(e.target.value)} />
         </Field>
         <Field label="Email">
-          <TextInput variant="primary" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Rôle" hint={self ? "Vous ne pouvez pas modifier votre propre rôle." : ROLE_HELP[role]}>
-          <SelectBox variant="primary" value={role} disabled={self} onChange={(e) => setRole(e.target.value as Role)}>
+          <SelectBox value={role} disabled={self} onChange={(e) => setRole(e.target.value as Role)}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABELS[r]}

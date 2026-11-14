@@ -138,7 +138,6 @@ function Prospects() {
             ]}
           />
           <TextInput
-            variant="secondary"
             type="search"
             aria-label="Rechercher"
             placeholder="Nom, email…"

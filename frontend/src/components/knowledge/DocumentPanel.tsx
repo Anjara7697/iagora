@@ -268,7 +268,6 @@ function DocumentEditor({
     >
       <Field label="Titre">
         <TextInput
-          variant="primary"
           value={parts.title}
           maxLength={200}
           placeholder="ex. Programme eBIHAR"
@@ -280,7 +279,7 @@ function DocumentEditor({
       </Field>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Programme" hint="Limite le document à un programme, ou le rend commun à tous.">
-          <SelectBox variant="primary" value={parts.target} onChange={(e) => set({ target: e.target.value })}>
+          <SelectBox value={parts.target} onChange={(e) => set({ target: e.target.value })}>
             <option value="">Tous les programmes</option>
             {Object.entries(TARGETS).map(([code, name]) => (
               <option key={code} value={code}>
@@ -309,7 +308,6 @@ function DocumentEditor({
           }
         >
           <TextInput
-            variant="primary"
             value={slug}
             disabled={locked}
             aria-invalid={taken || (!!slug && !slugValid) || undefined}
@@ -326,7 +324,6 @@ function DocumentEditor({
       </Field>
       <Field label="Contenu" hint="Une section par titre « ## ». Un fait par phrase claire : l’agent cite ces extraits.">
         <TextBox
-          variant="primary"
           value={parts.body}
           onChange={(e) => set({ body: e.target.value })}
           className="min-h-[320px] font-mono text-[13px]/[20px]"

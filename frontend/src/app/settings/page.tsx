@@ -202,7 +202,7 @@ function Settings() {
           <label id="settings-category-label" htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
             Catégorie
           </label>
-          <SelectBox variant="secondary"
+          <SelectBox
             id="settings-category"
             aria-labelledby="settings-category-label"
             value={active}

@@ -150,12 +150,11 @@ export default function CampaignSources({
               <Box as="form" className="gap-3 rounded-lg p-4" aria-label={`Ajouter ${draft.connector.title}`} onSubmit={(e) => { e.preventDefault(); if (draft.name.trim()) void act(() => add(draft)); }}>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Nom de la nouvelle source">
-                    <TextInput variant="secondary" aria-label="Nom de la nouvelle source" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                    <TextInput aria-label="Nom de la nouvelle source" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                   </Field>
                   {draft.connector.id === "meta" && (
                     <Field label="Identifiant du formulaire (facultatif)">
                       <TextInput
-                        variant="secondary"
                         aria-label="Identifiant du formulaire Meta"
                         inputMode="numeric"
                         placeholder="ex. 1234567890"

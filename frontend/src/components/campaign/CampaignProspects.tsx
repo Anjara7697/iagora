@@ -48,7 +48,6 @@ export default function CampaignProspects({
           <SelectBox
             id="campaign-stage"
             aria-labelledby="campaign-stage-label"
-            variant="secondary"
             fullWidth={false}
             className="w-44"
             value={stage}

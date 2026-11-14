@@ -89,6 +89,15 @@
   --level-hot: #f97316;
   --level-very-hot: #c2410c;
   --level-very-hot-foreground: #ffffff;
+  /* Champs (texte, listes, recherche, dates) : une seule apparence, fond de surface et bordure, sans ombre (règle 8). */
+  --field-background: var(--surface);
+  --field-hover: var(--surface);
+  --field-focus: var(--surface);
+  --field-border-width: 1px;
+  --field-border: #d4d4d8;
+  --field-border-hover: #a1a1aa;
+  --field-border-focus: var(--accent);
+  --field-shadow: none;
   --backdrop: rgba(24, 24, 27, 0.4);
   /* Ce qui est posé sur la page (cartes, indicateur d'onglet) : un filet, pas d'ombre. L'ombre est réservée à ce qui
      flotte au-dessus (menus, panneaux, toasts, dialogues : --overlay-shadow). */
@@ -142,6 +151,14 @@
   --level-hot: #fb8a3c;
   --level-very-hot: #f0722f;
   --level-very-hot-foreground: #111113;
+  --field-background: var(--surface);
+  --field-hover: var(--surface);
+  --field-focus: var(--surface);
+  --field-border-width: 1px;
+  --field-border: #3f3f46;
+  --field-border-hover: #71717a;
+  --field-border-focus: var(--accent);
+  --field-shadow: none;
   --backdrop: rgba(0, 0, 0, 0.6);
   --surface-shadow: 0 0 0 1px var(--border);
   --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 14px 28px 0 rgba(0, 0, 0, 0.45);

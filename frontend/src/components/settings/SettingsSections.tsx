@@ -51,7 +51,7 @@ export function AiSection({
           intro="Le modèle rédige les réponses et lit les messages. Si le modèle principal reste indisponible (surcharge, quota) après ses nouveaux essais, la même demande part sur le modèle de secours avant tout transfert au conseiller."
         >
           <Field label="Fournisseur">
-            <SelectBox variant="secondary"
+            <SelectBox
               value={form.llm_provider}
               onChange={(e) =>
                 set(
@@ -65,7 +65,7 @@ export function AiSection({
             </SelectBox>
           </Field>
           <Field label="Modèle principal" note="Ex. gemini-2.5-flash.">
-            <TextInput variant="secondary"
+            <TextInput
               value={form.llm_model}
               onChange={(e) => set("llm_model", e.target.value)}
             />
@@ -74,7 +74,7 @@ export function AiSection({
             label="Modèle de secours (si le principal est saturé)"
             note="Même fournisseur et même clé, ex. gemini-2.5-flash-lite. Vide : aucun secours."
           >
-            <TextInput variant="secondary"
+            <TextInput
               value={form.llm_fallback_model}
               placeholder="gemini-2.5-flash-lite"
               onChange={(e) => set("llm_fallback_model", e.target.value)}
@@ -84,7 +84,7 @@ export function AiSection({
             label={`Clé d’API ${gemini ? "Gemini" : "OpenAI"}`}
             note="Chiffrée sur le serveur, jamais réaffichée. Laisser vide pour conserver la clé actuelle."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="password"
               autoComplete="new-password"
               placeholder={
@@ -101,7 +101,7 @@ export function AiSection({
             label="Créativité (0 = factuel, 1 = libre)"
             note="0,2 à 0,4 recommandé : l’agent ne doit jamais inventer."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               step="0.1"
               min={0}
@@ -176,7 +176,7 @@ export function AgentSection({
           />
           <InfoRow label="Fenêtre d’envoi des relances" note="Heure de début et de fin (heure locale).">
               <div className="flex items-center gap-2">
-                <TextInput variant="secondary"
+                <TextInput
                   aria-label="Relances : à partir de (heure)"
                   type="number"
                   min={0}
@@ -186,7 +186,7 @@ export function AgentSection({
                   className="w-24"
                 />
                 <span className="text-sm text-muted">→</span>
-                <TextInput variant="secondary"
+                <TextInput
                   aria-label="jusqu’à (heure)"
                   type="number"
                   min={1}
@@ -198,7 +198,7 @@ export function AgentSection({
               </div>
           </InfoRow>
           <Field label="Relances maximum sans réponse">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={1}
               max={10}
@@ -219,7 +219,7 @@ export function AgentSection({
             label="Score à partir duquel proposer un rendez-vous"
             note="Prospect qualifié (profil complet) dont le score atteint ce seuil : l’agent propose des créneaux réels."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={1}
               max={100}
@@ -231,7 +231,7 @@ export function AgentSection({
             label="Score jusqu’auquel un prospect est jugé froid"
             note="En dessous, un message neutre est suivi d’un entretien espacé, sans insister. Doit rester sous le seuil de rendez-vous."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={0}
               max={99}
@@ -243,7 +243,7 @@ export function AgentSection({
             label="Confiance minimale de lecture (0,1 à 0,95)"
             note="Si le modèle comprend le message avec moins de confiance, la conversation passe à un conseiller."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               step="0.05"
               min={0.1}
@@ -256,7 +256,7 @@ export function AgentSection({
             label="Termes qui engagent l’école (en plus de la liste intégrée)"
             note="Séparés par des virgules. Une réponse qui les cite sans document validé est bloquée, comme CPF, RNCP ou « éligible »."
           >
-            <TextBox variant="secondary"
+            <TextBox
               rows={2}
               maxLength={1000}
               placeholder="Pass Transition, prise en charge totale"
@@ -283,7 +283,7 @@ export function EmailsSection({
             label="Mention de bas de message (désinscription)"
             note="Ajoutée à chaque email envoyé : le prospect peut répondre STOP."
           >
-            <TextBox variant="secondary"
+            <TextBox
               value={form.email_footer}
               rows={2}
               onChange={(e) => set("email_footer", e.target.value)}
@@ -293,7 +293,7 @@ export function EmailsSection({
             label="Mention « message rédigé avec une IA »"
             note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
           >
-            <TextBox variant="secondary"
+            <TextBox
               value={form.email_ai_notice}
               rows={2}
               minLength={10}
@@ -305,7 +305,7 @@ export function EmailsSection({
             label="Nom affiché en tête d’email"
             note="Remplacé par le logo s’il est renseigné."
           >
-            <TextInput variant="secondary"
+            <TextInput
               value={form.email_brand_name}
               maxLength={80}
               onChange={(e) => set("email_brand_name", e.target.value)}
@@ -322,7 +322,7 @@ export function EmailsSection({
             label="Logo (adresse https, facultatif)"
             note="Image publique hébergée par l’école, hauteur 36 px. Vide : le nom est affiché."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="url"
               placeholder="https://…/logo.png"
               value={form.email_logo_url}
@@ -350,7 +350,7 @@ export function EmailsSection({
             label="Relève de la boîte toutes les (secondes)"
             note="60 secondes conviennent ; la boîte se règle dans Intégrations."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={10}
               max={3600}
@@ -397,7 +397,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             </div>
           </InfoRow>
           <Field label="Début de journée (heure)">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={0}
               max={23}
@@ -406,7 +406,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             />
           </Field>
           <Field label="Fin de journée (heure)">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={1}
               max={24}
@@ -415,7 +415,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             />
           </Field>
           <Field label="Durée d’un rendez-vous (minutes)">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={15}
               max={240}
@@ -428,7 +428,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             label="Délai minimum avant un rendez-vous (heures)"
             note="Évite de proposer un créneau dans l’heure qui vient."
           >
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={0}
               max={240}
@@ -437,7 +437,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             />
           </Field>
           <Field label="Créneaux proposés sur (jours)">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={1}
               max={60}
@@ -446,7 +446,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             />
           </Field>
           <Field label="Marge entre rendez-vous (minutes)">
-            <TextInput variant="secondary"
+            <TextInput
               type="number"
               min={0}
               max={120}
@@ -455,7 +455,7 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             />
           </Field>
           <Field label="Fuseau horaire" note="Ex. Europe/Paris.">
-            <TextInput variant="secondary"
+            <TextInput
               value={form.calendar_timezone}
               onChange={(e) => set("calendar_timezone", e.target.value)}
             />
