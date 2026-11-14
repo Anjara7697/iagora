@@ -274,7 +274,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             </div>
             <div className="flex flex-col gap-3 border-t border-separator px-5 py-4">
               <Field label="Message du prospect">
-                <TextBox variant="secondary"
+                <TextBox
                   value={text}
                   disabled={busy || stopped}
                   onChange={(e) => setText(e.target.value)}

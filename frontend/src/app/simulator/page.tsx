@@ -322,7 +322,7 @@ function Simulator() {
               {campaign && (
                 <div className="flex flex-col gap-4">
                   <Field label="Campagne">
-                    <SelectBox variant="secondary"
+                    <SelectBox
                       value={campaign.id}
                       onChange={(e) => {
                         setCampaignId(Number(e.target.value));
@@ -337,7 +337,7 @@ function Simulator() {
                     </SelectBox>
                   </Field>
                   <Field label="Programme visé">
-                    <SelectBox variant="secondary"
+                    <SelectBox
                       value={targetCode || campaign.targets[0]?.code}
                       onChange={(e) => setTargetCode(e.target.value)}
                     >
@@ -349,7 +349,7 @@ function Simulator() {
                     </SelectBox>
                   </Field>
                   <Field label="Prénom du prospect">
-                    <TextInput variant="secondary" value={name} onChange={(e) => setName(e.target.value)} />
+                    <TextInput value={name} onChange={(e) => setName(e.target.value)} />
                   </Field>
                   <Btn variant="primary" fullWidth disabled={busy} onClick={start}>
                     <UserPlus className="size-4" aria-hidden="true" />
@@ -489,7 +489,7 @@ function Simulator() {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t border-separator px-5 py-4">
-                <TextInput variant="secondary"
+                <TextInput
                   aria-label="Message du prospect"
                   placeholder="Écrivez comme le prospect…"
                   className="min-w-[200px] flex-1"

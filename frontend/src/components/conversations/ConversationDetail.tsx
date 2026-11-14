@@ -360,7 +360,6 @@ export function ConversationDetail({
           </div>
           <TextBox
             aria-label="Votre réponse"
-            variant="secondary"
             placeholder="Écrire une réponse…"
             value={text}
             ref={replyRef}

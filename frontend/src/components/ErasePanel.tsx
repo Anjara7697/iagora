@@ -60,7 +60,6 @@ export function EraseForm({
         hint="Une demande d’effacement garde une empreinte (illisible) de l’adresse pour ne plus jamais recontacter la personne."
       >
         <SelectBox
-          variant="primary"
           value={reason}
           onChange={(e) => setReason(e.target.value as "request" | "other")}
         >
@@ -73,7 +72,6 @@ export function EraseForm({
         hint={`Saisir « ${expected} » pour confirmer.`}
       >
         <TextInput
-          variant="primary"
           value={confirm}
           autoComplete="off"
           onChange={(e) => setConfirm(e.target.value)}

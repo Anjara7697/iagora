@@ -125,7 +125,6 @@ function Inbox() {
             </span>
           </header>
           <TextInput
-            variant="secondary"
             type="search"
             aria-label="Rechercher une conversation"
             placeholder="Nom ou email…"
@@ -146,7 +145,6 @@ function Inbox() {
               onChange={(owner) => filter({ owner })}
             />
             <SelectBox
-              variant="secondary"
               aria-label="Canal"
               className="min-w-[150px] flex-1"
               value={view.channel}

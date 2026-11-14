@@ -99,7 +99,6 @@ export default function CampaignOwnership({
           />
           <Field label="Conseiller responsable de la campagne">
             <SelectBox
-              variant="secondary"
               disabled={busy || advisors.loading || !!advisors.error}
               value={advisor}
               onChange={(e) => {
@@ -147,7 +146,6 @@ export default function CampaignOwnership({
           )}
           <Field label="Prospects déjà présents">
             <SelectBox
-              variant="secondary"
               required
               value={policy}
               disabled={busy}

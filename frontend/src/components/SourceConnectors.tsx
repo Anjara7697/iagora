@@ -203,12 +203,11 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="Nom de la source">
-                    <TextInput variant="secondary" aria-label={`Nom de la source ${i + 1}`} value={s.name} onChange={(e) => patch(i, { name: e.target.value })} />
+                    <TextInput aria-label={`Nom de la source ${i + 1}`} value={s.name} onChange={(e) => patch(i, { name: e.target.value })} />
                   </Field>
                   {s.connector === "meta" && (
                     <Field label="Identifiant du formulaire (facultatif)">
                       <TextInput
-                        variant="secondary"
                         aria-label={`Identifiant du formulaire Meta ${i + 1}`}
                         inputMode="numeric"
                         placeholder="ex. 1234567890"

@@ -24,7 +24,9 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   pour rester lisibles en fond de bouton comme en texte (contraste AA vérifié par axe).
 - **Police mono** réservée au code, aux identifiants et aux valeurs techniques. Dates, compteurs et
   sur-titres sont en police sans-serif avec `tabular-nums`.
-- **Champs, listes, interrupteurs** : apparence HeroUI par défaut, sans surcharge du thème (pas de bordure ajoutée).
+- **Champs** (texte, zone de texte, listes, recherche, dates) : une seule apparence, réglée par les jetons `--field-*`
+  de `heroui.css` (fond de surface, bordure de 1 px plus marquée au survol, couleur d'accent au focus, sans ombre).
+  Ne pas poser de `variant` sur un champ. Interrupteurs et cases : apparence HeroUI par défaut.
 - **Surcouches** : elles acceptent toutes les propriétés du composant HeroUI (`variant`, `size`, `color`…) et
   n'ajoutent que des raccourcis ; ne pas y poser de styles qui changent l'apparence du composant.
 
@@ -79,8 +81,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    `rounded-sm` ou `rounded-full`. Seule exception, décidée pour Conversations : les
    bulles du fil (`ConversationView`) gardent un arrondi de messagerie, plus grand, au coin resserré du côté de
    l'auteur.
-8. **Champs** : `variant="secondary"` sur la page et dans les cartes blanches ; `variant="primary"` dans un
-   panneau latéral (fond gris).
+8. **Champs** : la même apparence partout (sur la page, dans une carte, dans un panneau latéral) : fond de
+   surface et bordure, donnée par le thème ; aucune `variant` à choisir selon le fond.
 9. **Animations** : cascade `reveal(rang)` sur chaque écran (en-tête, alertes et chiffres, puis lignes),
    désactivée quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
    passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
