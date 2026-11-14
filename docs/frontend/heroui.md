@@ -90,6 +90,11 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
    écran (`Screen scroll`), tableaux, menu latéral, résultats de recherche, listes des colonnes (`ListScroll`).
 10. **Couleurs métier** conservées : palette du projet, puces « agent » et « très chaud », niveaux `level-*`.
+    **Pastilles** en quatre familles (`ds/badges.tsx`, `Tag`) : *statut* d'un objet (douce, une couleur sémantique,
+    `Tag`) ; *étape* d'un parcours (douce, couleur de l'agent quand il mène l'échange, orange quand une relance est due,
+    neutre sinon : `StageBadge`) ; *mesure* (score, niveau : texte et jauge sans fond, `ScoreBadge`, `LevelBadge` ;
+    « Très chaud » reste la seule pastille pleine) ; *marque* (« Fictif » : contour, `DemoChip`). Un chiffre clé garde
+    la couleur du texte ; son appréciation (« Bon », « À lancer »…) est une pastille de statut visible à côté.
 
 **Retours et états**
 

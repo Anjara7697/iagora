@@ -1,4 +1,4 @@
-/** Lecture d'un indicateur : couleur du chiffre (bon, moyen, faible) et mot lu par les lecteurs d'écran. */
+/** Lecture d'un indicateur (bon, moyen, faible) : pastille de statut affichée à côté du chiffre. */
 export type KpiBadge = { tone: "success" | "warning" | "danger"; label: string };
 
 /** Pourcentage entier de `part` dans `total` (0 si `total` est nul). */
