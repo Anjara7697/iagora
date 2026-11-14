@@ -596,7 +596,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
   await row.click();
   await expect(page).toHaveURL(/\/prospects\/5\?from=/, { timeout: 15000 });
   // Le retour ramène à la campagne, sur l'onglet et l'étape quittés.
-  await page.getByRole("link", { name: "← Retour à la campagne" }).click();
+  await page.getByRole("link", { name: "Retour à la campagne" }).click();
   await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/, { timeout: 15000 });
   await expect(page.getByRole("tab", { name: "Prospects" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("region", { name: "Prospects de la campagne" }).getByLabel("Étape")).toContainText("Qualifié");
@@ -727,8 +727,8 @@ test("liste : filtres dans l'URL, conservés au retour depuis une fiche", async 
   await expect(page).toHaveURL(/\/campaigns\?status=draft$/);
   await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
   await expect(page).toHaveURL(/\/campaigns\/1\?from=%2Fcampaigns%3Fstatus%3Ddraft$/, { timeout: 15_000 });
-  // Lien « ← Campagnes » : retour à la liste filtrée.
-  await page.getByRole("link", { name: "← Campagnes" }).click();
+  // Lien de retour « Campagnes » : retour à la liste filtrée.
+  await page.getByRole("main").getByRole("link", { name: "Campagnes", exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
   // Retour du navigateur : même résultat, et l'onglet de la fiche est conservé.
@@ -749,7 +749,7 @@ test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à 
   await page.goto("/campaigns/1?tab=inconnu&from=https%3A%2F%2Fexemple.test");
   await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
   // Une URL de retour étrangère n'est jamais suivie.
-  await expect(page.getByRole("link", { name: "← Campagnes" })).toHaveAttribute("href", "/campaigns");
+  await expect(page.getByRole("main").getByRole("link", { name: "Campagnes", exact: true })).toHaveAttribute("href", "/campaigns");
 });
 
 test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {

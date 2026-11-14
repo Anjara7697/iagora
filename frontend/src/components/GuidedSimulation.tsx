@@ -116,7 +116,6 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
       </SimulationNotice>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Banc d’essai · parcours guidé"
         title="De la qualification au rendez-vous"
         subtitle="Vous jouez Camille, titulaire d’un Bac+3 en informatique, qui souhaite devenir data analyst en alternance."
         actions={

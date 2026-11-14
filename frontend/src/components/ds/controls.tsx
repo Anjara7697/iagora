@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
@@ -68,6 +69,25 @@ export function LinkButton({
 } & Omit<ComponentProps<typeof Link>, "href" | "className" | "children">) {
   return (
     <Link href={href} className={buttonVariants({ variant, size, className })} {...rest}>
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Retour à l'écran précédent (NAV-04) : un seul lien de retour dans toute la console, discret, au-dessus de l'en-tête.
+ * La flèche est décorative : le nom du lien est son texte (« Campagnes », « Retour aux résultats »).
+ */
+export function BackLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
+  return (
+    <Link
+      href={href}
+      className={cx(
+        "inline-flex w-fit items-center gap-1.5 rounded-lg type-body-sm font-medium text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus",
+        className,
+      )}
+    >
+      <ArrowLeft className="size-3.5" aria-hidden="true" />
       {children}
     </Link>
   );
@@ -228,7 +248,7 @@ export function ColorChoice({
     <ColorPicker value={value} onChange={(color) => onChange(color.toString("hex").toLowerCase())}>
       <ColorPicker.Trigger aria-label={`${label} : ${value}`} aria-describedby={describedBy}>
         <ColorSwatch size="md" />
-        <span className="font-mono text-body-sm text-foreground">{value}</span>
+        <span className="font-mono type-body-sm text-foreground">{value}</span>
       </ColorPicker.Trigger>
       <ColorPicker.Popover className="flex w-60 flex-col gap-3 p-3">
         <ColorArea aria-label={`${label} : saturation et luminosité`} colorSpace="hsb" xChannel="saturation" yChannel="brightness">
@@ -422,7 +442,7 @@ export function FileInput({
       <Btn variant="secondary" size="sm" onClick={() => input.current?.click()}>
         {buttonLabel}
       </Btn>
-      <span className="min-w-0 truncate text-body-sm text-muted">{file ? file.name : emptyLabel}</span>
+      <span className="min-w-0 truncate type-body-sm text-muted">{file ? file.name : emptyLabel}</span>
     </div>
   );
 }
@@ -455,9 +475,9 @@ export function Check({
         <Checkbox.Control>
           <Checkbox.Indicator />
         </Checkbox.Control>
-        <span className="flex flex-col gap-0.5 text-body text-foreground">
+        <span className="flex flex-col gap-0.5 type-body text-foreground">
           <span>{children}</span>
-          {hint && <span className="text-caption text-muted">{hint}</span>}
+          {hint && <span className="type-caption text-muted">{hint}</span>}
         </span>
       </Checkbox.Content>
     </Checkbox>

@@ -113,7 +113,6 @@ function Todo() {
   return (
     <Screen wide className="gap-4">
       <PageHeader
-        eyebrow="Travail · Décisions"
         title="À traiter"
         subtitle={
           // Sur mobile, un élément ouvert prend la place : la réponse à relire apparaît sans défiler.

@@ -48,8 +48,8 @@ export function Stepper({
                   {done ? <Check className="size-3" aria-label="terminée" /> : <Chip.Label>{i + 1}</Chip.Label>}
                 </Chip>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-body font-medium text-foreground">{step.title}</span>
-                  {step.description && <span className="hidden text-caption text-muted sm:block">{step.description}</span>}
+                  <span className="type-body font-medium text-foreground">{step.title}</span>
+                  {step.description && <span className="hidden type-caption text-muted sm:block">{step.description}</span>}
                 </span>
               </Button>
             </li>

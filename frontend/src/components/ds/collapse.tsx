@@ -43,7 +43,7 @@ export function Collapse({
         <Disclosure.Trigger
           {...(triggerProps as ComponentProps<typeof Disclosure.Trigger>)}
           className={cx(
-            "flex cursor-pointer items-center gap-2 rounded-lg text-left text-body-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus",
+            "flex cursor-pointer items-center gap-2 rounded-lg text-left type-body-sm font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-focus",
             triggerClassName,
           )}
         >

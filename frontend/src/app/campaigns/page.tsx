@@ -90,7 +90,6 @@ function Campaigns() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Pilotage · Campagnes"
         title="Campagnes"
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
         actions={

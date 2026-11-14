@@ -2,12 +2,11 @@
 
 import { Alert, Tabs, toast } from "@heroui/react";
 import { ShieldCheck, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { EraseForm, ErasureResult } from "@/components/ErasePanel";
-import ProspectResultsReturn, { backLinkClass } from "@/components/ProspectResultsReturn";
+import ProspectResultsReturn from "@/components/ProspectResultsReturn";
 import ProspectTaskReturn from "@/components/ProspectTaskReturn";
 import { Drawer } from "@/components/Drawer";
 import ProspectConversation from "@/components/prospect/ProspectConversation";
@@ -16,7 +15,7 @@ import ProspectHeader, { type ProspectAction } from "@/components/prospect/Prosp
 import ProspectJourney from "@/components/prospect/ProspectJourney";
 import ProspectOverview from "@/components/prospect/ProspectOverview";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { Btn, ErrorText, Field, TAB_RADIUS, TextBox, TextInput } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { Screen } from "@/components/ds/layout";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading } from "@/components/ui";
@@ -158,7 +157,7 @@ function ProspectDetail() {
     <Screen>
       <div className="flex flex-col gap-3">
         <ProspectTaskReturn />
-        <Suspense fallback={<Link href="/prospects" className={backLinkClass}>← Tous les prospects</Link>}>
+        <Suspense fallback={<BackLink href="/prospects">Tous les prospects</BackLink>}>
           <ProspectResultsReturn />
         </Suspense>
       </div>
@@ -185,13 +184,13 @@ function ProspectDetail() {
               </Alert.Content>
             </Alert>
           )}
-          <Tabs selectedKey={tab} onSelectionChange={(key) => showTab(key as ProspectTab)}>
-            <Tabs.ListContainer className={TAB_RADIUS.container}>
+          <Tabs variant="secondary" align="start" selectedKey={tab} onSelectionChange={(key) => showTab(key as ProspectTab)}>
+            <Tabs.ListContainer>
               <Tabs.List aria-label="Sections de la fiche prospect">
                 {Object.entries(PROSPECT_TABS).map(([key, title]) => (
-                  <Tabs.Tab key={key} id={key} className={TAB_RADIUS.tab}>
+                  <Tabs.Tab key={key} id={key}>
                     {title}
-                    <Tabs.Indicator className={TAB_RADIUS.indicator} />
+                    <Tabs.Indicator />
                   </Tabs.Tab>
                 ))}
               </Tabs.List>

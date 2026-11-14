@@ -110,7 +110,7 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
               </Kbd>
             </div>
             {items.length === 0 ? (
-              <p className="px-4 py-8 text-center text-body text-muted">Aucun résultat pour « {query} »</p>
+              <p className="px-4 py-8 text-center type-body text-muted">Aucun résultat pour « {query} »</p>
             ) : (
               // Résultats : défilement dans un ScrollShadow (fondu quand il reste des résultats au-dessus ou en dessous).
               <ScrollShadow orientation="vertical" size={SCROLL_SHADOW_SIZE} className="max-h-[360px]">
@@ -140,7 +140,7 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
                 </ListBox>
               </ScrollShadow>
             )}
-            <div className="flex items-center gap-3 border-t border-separator px-4 py-2 text-caption text-muted">
+            <div className="flex items-center gap-3 border-t border-separator px-4 py-2 type-caption text-muted">
               <span>↑↓ pour naviguer</span>
               <span>↵ pour ouvrir</span>
             </div>

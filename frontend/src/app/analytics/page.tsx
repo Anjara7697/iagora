@@ -49,7 +49,6 @@ function AnalyticsScreen() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Pilotage · Analyses"
         title="Analyses"
         subtitle={
           data

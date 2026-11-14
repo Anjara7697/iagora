@@ -172,22 +172,34 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* Échelle de texte (DESIGN_SYSTEM.md §4) : un nom par rôle, à utiliser à la place des tailles en pixels.
-   `text-caption` horodatage, aide, en-tête de colonne · `text-body-sm` lignes de tableau, texte secondaire ·
-   `text-body` texte courant · `text-title-sm` titre de section · `text-title` titre d'écran · `text-display` chiffre clé. */
-@theme {
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1rem;
-  --text-body-sm: 0.8125rem;
-  --text-body-sm--line-height: 1.25rem;
-  --text-body: 0.875rem;
-  --text-body--line-height: 1.25rem;
-  --text-title-sm: 1rem;
-  --text-title-sm--line-height: 1.5rem;
-  --text-title: 1.25rem;
-  --text-title--line-height: 1.75rem;
-  --text-display: 1.75rem;
-  --text-display--line-height: 2.125rem;
+/* Échelle de texte (DESIGN_SYSTEM.md §4) : une classe par rôle, à utiliser à la place des tailles en pixels.
+   `type-caption` horodatage, aide, en-tête de colonne · `type-body-sm` lignes de tableau, texte secondaire ·
+   `type-body` texte courant · `type-title-sm` titre de section · `type-title` titre d'écran · `type-display` chiffre clé.
+   Préfixe `type-` et non `text-` : la fusion de classes de HeroUI (tailwind-variants) prendrait `text-display` pour
+   une couleur et le retirerait dès qu'une couleur de texte le suit (« text-display text-success… »). */
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+@utility type-body-sm {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+@utility type-body {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+@utility type-title-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+@utility type-title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+@utility type-display {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
 }
 
 @theme inline {
@@ -259,6 +271,11 @@
   .card,
   .alert {
     border-radius: var(--radius-lg);
+  }
+  /* Onglets d'une fiche (variante soulignée, règle 3) : chaque onglet à la largeur de son texte, alignés à gauche ;
+     le filet du conteneur reste sur toute la largeur. */
+  .tabs--secondary .tabs__tab {
+    width: auto;
   }
   /* Les alertes ont déjà un fond coloré : ni ombre ni filet. */
   .alert {

@@ -14,8 +14,8 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   et les fenêtres de confirmation gardent leur rayon HeroUI. Ne pas fixer de rayon en pixels.
   Échelle, avec ce rayon de base : `rounded-sm` 2 px, `rounded-lg` 4 px, `rounded-full` ; `xl`, `2xl` et `md` ne
   s'emploient plus.
-- **Texte** : une taille par rôle, déclarée dans `heroui.css` (`@theme`) : `text-caption` (12/16), `text-body-sm`
-  (13/20), `text-body` (14/20), `text-title-sm` (16/24), `text-title` (20/28), `text-display` (28/34). Pas de taille
+- **Texte** : une taille par rôle, déclarée dans `heroui.css` (`@utility`, préfixe `type-` : un nom en `text-` serait retiré par la fusion de classes de HeroUI dès qu'une couleur de texte le suit) : `type-caption` (12/16), `type-body-sm`
+  (13/20), `type-body` (14/20), `type-title-sm` (16/24), `type-title` (20/28), `type-display` (28/34). Pas de taille
   en pixels (`text-[13px]`) ; les écrans passent à cette échelle au fil du lot 2.
 - **Ombres** : seulement pour ce qui flotte (menus, panneaux, toasts, dialogues : `--overlay-shadow`). Ce qui est posé
   sur la page (cartes, indicateur d'onglet) a un filet de 1 px (`--surface-shadow`) ; les alertes n'ont ni l'un ni
@@ -36,14 +36,14 @@ Les écrans importent ces composants, qui enveloppent HeroUI, plutôt que des é
 
 | Fichier | Contenu |
 |---|---|
-| `controls.tsx` | `Btn`, `LinkButton`, `RowButton`, `Segmented`, `FilterChip`, `FilterChipGroup`, `Field`, `TextInput`, `TextBox`, `SelectInput` (liste avec libellé visible), `SelectBox` (liste à interface de `<select>`), `FileInput`, `Check`, `CheckCardGroup`, `Tag`, `Notice`, `ErrorText` (`Alert`), `TAB_RADIUS` |
+| `controls.tsx` | `Btn`, `LinkButton`, `RowButton`, `Segmented`, `FilterChip`, `FilterChipGroup`, `Field`, `TextInput`, `TextBox`, `SelectInput` (liste avec libellé visible), `SelectBox` (liste à interface de `<select>`), `FileInput`, `Check`, `CheckCardGroup`, `Tag`, `Notice`, `ErrorText` (`Alert`), `BackLink` (seul lien de retour de la console), `TAB_RADIUS` |
 | `ConfirmDialog.tsx` | `ConfirmDialog` : `AlertDialog` HeroUI, avec bouton déclencheur ou piloté par `isOpen` |
 | `useDiscardGuard.tsx` | « Abandonner les modifications ? » avant de quitter une saisie, et avertissement à la fermeture de l'onglet |
-| `motion.tsx` | `reveal(rang)` (cascade d'apparition), `CountUp`, `useReducedMotion` |
+| `motion.tsx` | `reveal()` (fondu d'entrée), `CountUp`, `useReducedMotion` |
 | `card.tsx` | `Box` : `Card` HeroUI rendue dans l'élément voulu (`section`, `aside`, `article`, `form`…) |
 | `collapse.tsx` | `Collapse` : zone repliable sur le `Disclosure` HeroUI |
 | `table.tsx` | `DataTable` au-dessus du `Table` HeroUI |
-| `layout.tsx` | `Screen`, `PageHeader`, `Panel`, `KpiCard` / `KpiStrip`, `BarList` (`Meter`), `EmptyPanel`, `ErrorState` (`Alert` danger + « Réessayer ») |
+| `layout.tsx` | `Screen`, `PageHeader` (titre, phrase facultative, actions ; sans sur-titre), `Panel`, `KpiCard` / `KpiStrip`, `BarList` (`Meter`), `EmptyPanel`, `ErrorState` (`Alert` danger + « Réessayer ») |
 | `settings.tsx` | `SettingsCard`, `InfoRow`, `Toggle`, `Stats`, `ActionsBar` |
 | `badges.tsx` | `StageBadge`, `ScoreBadge`, `HeatMeter`, `LevelBadge`, `DemoChip` |
 
@@ -64,7 +64,9 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    plusieurs étapes ; sinon, panneau latéral. Modifier un élément se fait toujours dans un panneau.
 2. **Panneau latéral** : icône du module (la même que dans le menu), sur-titre (« Campagne », « Document »,
    « Modification »), puis titre.
-3. **Onglets** : `Tabs` HeroUI avec `TAB_RADIUS`, l'onglet ouvert dans l'adresse (`?tab=…`).
+3. **Onglets** : sections d'une fiche (prospect, campagne, base de connaissances) en `Tabs` HeroUI soulignés
+   (`variant="secondary" align="start"`), chaque onglet à la largeur de son texte ; l'onglet ouvert dans l'adresse
+   (`?tab=…`). Un choix exclusif court (Pipeline / Table) reste en segments (`Segmented`, `TAB_RADIUS`).
 4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
    Toute la ligne ouvre l'élément (clic et Entrée).
 5. **Barre au-dessus d'un tableau** : recherche et filtres à gauche, compteur à droite (« N éléments », ou
@@ -83,8 +85,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    l'auteur.
 8. **Champs** : la même apparence partout (sur la page, dans une carte, dans un panneau latéral) : fond de
    surface et bordure, donnée par le thème ; aucune `variant` à choisir selon le fond.
-9. **Animations** : cascade `reveal(rang)` sur chaque écran (en-tête, alertes et chiffres, puis lignes),
-   désactivée quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
+9. **Animations** : à l'entrée d'un écran, un fondu de 150 ms (`reveal`), le même pour tous les blocs, sans
+   cascade ni glissement ; désactivé quand l'utilisateur demande moins de mouvement. **Défilement** : toute zone qui défile dans l'écran
    passe par `ScrollShadow` HeroUI (`SCROLL_SHADOW_SIZE`), qui fond le contenu en haut et en bas tant qu'il en reste :
    écran (`Screen scroll`), tableaux, menu latéral, résultats de recherche, listes des colonnes (`ListScroll`).
 10. **Couleurs métier** conservées : palette du projet, puces « agent » et « très chaud », niveaux `level-*`.

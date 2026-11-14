@@ -91,7 +91,6 @@ function Settings() {
     return canUseSimulator(user.role) ? (
       <Screen className="max-w-[960px]">
         <PageHeader
-          eyebrow="Réglages · Outils de test"
           title="Paramètres"
           subtitle="Retrouvez les outils pour essayer l’agent avec des données fictives."
         />
@@ -105,7 +104,7 @@ function Settings() {
   if (!form)
     return (
       <Screen className="max-w-[1200px]">
-        <PageHeader eyebrow="Administration · Paramètres" title="Paramètres" />
+        <PageHeader title="Paramètres" />
         <TestingAccess />
         {loadError ? <ErrorState message={loadError} onRetry={() => void load()} /> : <Skeleton />}
       </Screen>
@@ -182,7 +181,6 @@ function Settings() {
       {discardDialog}
       <PageHeader
         {...reveal(0)}
-        eyebrow="Administration · Paramètres"
         title="Paramètres"
         subtitle={
           <>

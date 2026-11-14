@@ -106,7 +106,6 @@ function Import() {
   return (
     <Screen className="max-w-[1000px]">
       <PageHeader
-        eyebrow="Prospects · Import"
         title="Importer des prospects (CSV)"
         subtitle="Export Excel, liste d’un salon, export LinkedIn… Aucune fiche n’est créée avant la dernière étape, et l’agent n’écrit à personne tant qu’un conseiller ne l’a pas décidé."
         actions={

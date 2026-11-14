@@ -234,7 +234,6 @@ function Simulator() {
       </SimulationNotice>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Tests · Simulateur libre"
         title="Simulateur de prospect"
         subtitle={
           <>

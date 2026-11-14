@@ -1014,7 +1014,7 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
   await page.getByRole("link", { name: "Alice Martin", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("link", { name: "← Retour aux résultats", exact: true }).click();
+  await page.getByRole("link", { name: "Retour aux résultats", exact: true }).click();
   await expect(page).toHaveURL(results);
   await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
@@ -1044,14 +1044,14 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await selectFilter(page, "Campagne", "3");
   const results = page.url();
   await page.locator(".pipeline-card").first().click();
-  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Retour aux résultats" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(results);
   await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   await page.goForward();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await page.getByRole("link", { name: "Retour aux résultats" }).click();
   await expect(page).toHaveURL(results);
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   // Règle 6 : un filtre remplace l'adresse sans entrée d'historique ; « Retour » quitte la liste.
@@ -1059,7 +1059,7 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await expect(page).toHaveURL(/stage=qualified/);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await page.getByRole("link", { name: "Retour aux résultats" }).click();
   await expect(page).toHaveURL(results);
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("inexistant");
@@ -1089,7 +1089,7 @@ test("liens directs : paramètres invalides ignorés et retour limité aux prosp
   await expect(page).toHaveURL(/\/prospects$/);
   for (const from of ["https://example.com", "//example.com", "/prospects/other", "/prospects/../settings"]) {
     await page.goto(`/prospects/1?from=${encodeURIComponent(from)}`);
-    await expect(page.getByRole("link", { name: "← Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
+    await expect(page.getByRole("link", { name: "Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
   }
 });
 
@@ -1106,7 +1106,7 @@ test("fiche : onglet dans l'adresse, retour conservé après actualisation", asy
   await auditA11y(page, "fiche prospect, onglet Décisions");
   await page.reload();
   await expect(page.getByRole("tab", { name: "Décisions de l'agent" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Retour aux résultats" })).toHaveAttribute(
     "href",
     "/prospects?view=table",
   );

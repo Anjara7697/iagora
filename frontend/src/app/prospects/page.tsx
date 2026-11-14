@@ -99,7 +99,6 @@ function Prospects() {
     <Screen>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Travail · Suivi commercial"
         title="Prospects"
         subtitle="Un parcours, des échanges et une prochaine étape pour chaque prospect."
         actions={
