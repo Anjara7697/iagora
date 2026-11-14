@@ -50,7 +50,7 @@ export function DataTable({
         <Table.Content aria-label={label} style={{ minWidth }}>
           <Table.Header>
             {columns.map((c, i) => (
-              <Table.Column key={c.id} id={c.id} isRowHeader={c.rowHeader ?? i === 0} className={cx("text-xs", c.className)}>
+              <Table.Column key={c.id} id={c.id} isRowHeader={c.rowHeader ?? i === 0} className={cx("text-caption", c.className)}>
                 {c.label}
               </Table.Column>
             ))}
@@ -58,7 +58,7 @@ export function DataTable({
           <Table.Body
             renderEmptyState={() =>
               isLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted" role="status">
+                <div className="flex items-center justify-center gap-2 py-8 text-body text-muted" role="status">
                   <Spinner size="sm" />
                   {loadingLabel}
                 </div>

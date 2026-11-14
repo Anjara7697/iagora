@@ -12,6 +12,14 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   de filtre, cartes et alertes (HeroUI : `3xl`) ainsi que les champs (`--field-radius`) : ne pas écrire `rounded-lg`
   sur ces composants. Une classe utilitaire (`rounded-full`…) reste prioritaire. Les pastilles de statut (`Tag`)
   et les fenêtres de confirmation gardent leur rayon HeroUI. Ne pas fixer de rayon en pixels.
+  Échelle, avec ce rayon de base : `rounded-sm` 2 px, `rounded-lg` 4 px, `rounded-full` ; `xl`, `2xl` et `md` ne
+  s'emploient plus.
+- **Texte** : une taille par rôle, déclarée dans `heroui.css` (`@theme`) : `text-caption` (12/16), `text-body-sm`
+  (13/20), `text-body` (14/20), `text-title-sm` (16/24), `text-title` (20/28), `text-display` (28/34). Pas de taille
+  en pixels (`text-[13px]`) ; les écrans passent à cette échelle au fil du lot 2.
+- **Ombres** : seulement pour ce qui flotte (menus, panneaux, toasts, dialogues : `--overlay-shadow`). Ce qui est posé
+  sur la page (cartes, indicateur d'onglet) a un filet de 1 px (`--surface-shadow`) ; les alertes n'ont ni l'un ni
+  l'autre.
 - **Thème sombre** : jetons IAGORA sous `[data-theme="dark"]` ; couleurs pleines vives avec texte foncé dessus,
   pour rester lisibles en fond de bouton comme en texte (contraste AA vérifié par axe).
 - **Police mono** réservée au code, aux identifiants et aux valeurs techniques. Dates, compteurs et
@@ -67,7 +75,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 
 **Apparence**
 
-7. **Arrondis** : rayon `lg` fourni par le thème (voir « Thème »). Seule exception, décidée pour Conversations : les
+7. **Arrondis** : rayon `lg` fourni par le thème (voir « Thème ») ; à écrire soi-même, seulement `rounded-lg`,
+   `rounded-sm` ou `rounded-full`. Seule exception, décidée pour Conversations : les
    bulles du fil (`ConversationView`) gardent un arrondi de messagerie, plus grand, au coin resserré du côté de
    l'auteur.
 8. **Champs** : `variant="secondary"` sur la page et dans les cartes blanches ; `variant="primary"` dans un

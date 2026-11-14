@@ -64,8 +64,11 @@ Changements proposés :
 - Police mono : identifiants et valeurs techniques, comme aujourd'hui.
 - Espacements : pas de 4 px ; 8 entre éléments liés, 16 entre groupes, 24 entre sections, 32 entre zones.
   Marges d'écran : 16 (mobile), 24 (tablette), 28 (bureau).
-- Rayons : `sm` (4 px) pour les pastilles et cases, `lg` (8 px) pour boutons, champs, cartes, panneaux ;
-  `full` pour avatars et points d'état. Les 58 usages de `xl`, `2xl`, `md` rejoignent `lg`.
+- Rayons : `lg` pour boutons, champs, cartes, panneaux ; `sm` pour les petites marques ; `full` pour avatars et
+  points d'état. Les 58 usages de `xl`, `2xl`, `md` rejoignent `lg`. **Correction (13/11/2026, PR 2.1)** : la
+  première version de ce document donnait `lg` = 8 px et `sm` = 4 px. Avec le rayon de base du projet
+  (`--radius: 0.25rem`, « Rayon S » décidé dans `heroui.md`), `lg` vaut 4 px et `sm` 2 px : la taille actuelle est
+  gardée, seuls les rayons dispersés sont ramenés à l'échelle.
 - Bordures : 1 px `--border` pour délimiter un champ ou une carte ; `--separator` entre lignes.
 - Ombres : aucune sur les cartes posées sur la page (bordure seule) ; `--overlay-shadow` pour ce qui flotte
   (menus, panneaux, toasts, dialogues).

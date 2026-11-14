@@ -72,7 +72,7 @@ export function SettingRow({
   const noteId = note ? `${id}-note` : undefined;
   return (
     <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-separator pt-4">
-      <label id={`${id}-label`} htmlFor={id} className="basis-full pt-2 text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">
+      <label id={`${id}-label`} htmlFor={id} className="basis-full pt-2 text-body-sm font-medium text-foreground sm:basis-[220px] sm:shrink-0">
         {label}
       </label>
       <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5">
@@ -82,7 +82,7 @@ export function SettingRow({
           ...(children.type === SelectBox ? { "aria-labelledby": `${id}-label` } : {}),
         } as Record<string, string | undefined>)}
         {note && (
-          <p id={noteId} className="text-xs/[18px] text-muted">
+          <p id={noteId} className="text-caption/[18px] text-muted">
             {note}
           </p>
         )}
@@ -102,9 +102,9 @@ export function Stats({
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4" aria-label={label}>
       {items.map((i) => (
-        <span key={i.caption} className="flex flex-col gap-1 rounded-xl bg-surface-secondary px-4 py-3">
-          <span className="text-xl text-foreground tabular-nums">{i.value}</span>
-          <span className="text-[13px]/[18px] text-muted">{i.caption}</span>
+        <span key={i.caption} className="flex flex-col gap-1 rounded-lg bg-surface-secondary px-4 py-3">
+          <span className="text-title text-foreground tabular-nums">{i.value}</span>
+          <span className="text-body-sm text-muted">{i.caption}</span>
         </span>
       ))}
     </div>
@@ -139,10 +139,10 @@ export function ActionsBar({ children, className }: { children: ReactNode; class
 export function InfoRow({ label, note, children }: { label: ReactNode; note?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-separator pt-4">
-      <span className="basis-full text-[13px] font-medium text-foreground sm:basis-[220px] sm:shrink-0">{label}</span>
-      <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5 text-sm text-foreground">
+      <span className="basis-full text-body-sm font-medium text-foreground sm:basis-[220px] sm:shrink-0">{label}</span>
+      <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5 text-body text-foreground">
         {children}
-        {note && <p className="text-xs/[18px] text-muted">{note}</p>}
+        {note && <p className="text-caption/[18px] text-muted">{note}</p>}
       </div>
     </div>
   );
@@ -151,7 +151,7 @@ export function InfoRow({ label, note, children }: { label: ReactNode; note?: Re
 /** Valeur technique à recopier telle quelle (URI de redirection, hôte…). */
 export function CodeBlock({ children }: { children: ReactNode }) {
   return (
-    <code className="block rounded-xl border border-separator bg-surface-secondary px-3 py-2 font-mono text-[12.5px]/[18px] break-all text-foreground">
+    <code className="block rounded-lg border border-separator bg-surface-secondary px-3 py-2 font-mono text-body-sm break-all text-foreground">
       {children}
     </code>
   );
@@ -183,8 +183,8 @@ export function Toggle({
       <Switch isSelected={checked} onChange={onChange} className={cx("w-full", typeof className === "string" ? className : undefined)} {...rest}>
         <Switch.Content className="flex w-full items-start justify-between gap-6">
           <span className="flex flex-col gap-0.5">
-            <span className="text-[13.5px] font-medium text-foreground">{title}</span>
-            {note && <span className="text-[12.5px]/[18px] font-normal text-muted">{note}</span>}
+            <span className="text-body-sm font-medium text-foreground">{title}</span>
+            {note && <span className="text-body-sm font-normal text-muted">{note}</span>}
           </span>
           <Switch.Control className="mt-0.5 shrink-0">
             <Switch.Thumb />
@@ -217,11 +217,11 @@ export function SecretOnce({
      
       role="status"
       aria-label={label}
-      className="flex flex-col gap-3 rounded-2xl border border-warning/30 bg-warning-soft/50 px-4 py-4"
+      className="flex flex-col gap-3 rounded-lg border border-warning/30 bg-warning-soft/50 px-4 py-4"
     >
-      <span className="text-[13px]/[20px] text-foreground">{intro}</span>
+      <span className="text-body-sm text-foreground">{intro}</span>
       <div className="flex flex-wrap items-center gap-2">
-        <code className="min-w-0 flex-1 rounded-xl border border-separator bg-surface px-3 py-2 font-mono text-[13px] break-all text-foreground">
+        <code className="min-w-0 flex-1 rounded-lg border border-separator bg-surface px-3 py-2 font-mono text-body-sm break-all text-foreground">
           {secret}
         </code>
         <Btn
@@ -239,7 +239,7 @@ export function SecretOnce({
         </Btn>
       </div>
       {children}
-      <span className="text-xs text-warning-soft-foreground">Il ne sera plus affiché : conservez-le maintenant.</span>
+      <span className="text-caption text-warning-soft-foreground">Il ne sera plus affiché : conservez-le maintenant.</span>
       <ActionsBar>
         <Btn size="sm" variant="primary" onClick={onDone}>
           {doneLabel}
@@ -264,14 +264,14 @@ export function ConnectedAccounts({
       {items.map((c) => {
         const name = c.username ?? `#${c.user_id}`;
         return (
-          <li key={c.user_id} className="flex items-center gap-3 rounded-xl bg-surface-secondary px-3 py-2.5">
+          <li key={c.user_id} className="flex items-center gap-3 rounded-lg bg-surface-secondary px-3 py-2.5">
             <span
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-soft-foreground"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-caption font-semibold text-accent-soft-foreground"
               aria-hidden="true"
             >
               {name.replace("#", "").slice(0, 2).toUpperCase()}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col text-[13px]">
+            <span className="flex min-w-0 flex-1 flex-col text-body-sm">
               <strong className="font-semibold text-foreground">{name}</strong>
               <span className="truncate text-muted">
                 {c.account_email ?? fallback} · connecté le {formatDate(c.connected_at ?? null)}
