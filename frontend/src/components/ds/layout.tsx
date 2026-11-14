@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
+import { Alert, Button, Card, Chip, Meter, ScrollShadow, Skeleton } from "@heroui/react";
 import { RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -186,13 +186,6 @@ export function EmptyPanel({
   );
 }
 
-/** Couleurs de texte du chiffre selon le ton (variantes « soft-foreground » du thème : contraste >= 6,5:1 sur blanc). */
-const TONE_TEXT = {
-  success: "text-success-soft-foreground",
-  warning: "text-warning-soft-foreground",
-  danger: "text-danger-soft-foreground",
-} as const;
-
 /** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
   label,
@@ -214,7 +207,7 @@ export function KpiCard({
   pending?: boolean;
   /** Chiffre en cours de chargement : `Skeleton` HeroUI à la place du chiffre et de la précision (taille conservée). */
   loading?: boolean;
-  /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
+  /** Lecture du chiffre (« Bon », « Faible »…) : pastille visible à côté du chiffre, qui reste de la couleur du texte. */
   badge?: KpiBadge;
   className?: string;
   style?: CSSProperties;
@@ -235,13 +228,16 @@ export function KpiCard({
         </>
       ) : (
         <>
-          <Card.Title
-            render={(props) => <span {...props} />}
-            className={cx("type-display tabular-nums", badge && TONE_TEXT[badge.tone])}
-          >
-            {value}
-          </Card.Title>
-          {badge && <span className="sr-only">{badge.label}</span>}
+          <span className="flex flex-wrap items-center gap-2">
+            <Card.Title render={(props) => <span {...props} />} className="type-display tabular-nums">
+              {value}
+            </Card.Title>
+            {badge && (
+              <Chip size="sm" variant="soft" color={badge.tone}>
+                <Chip.Label>{badge.label}</Chip.Label>
+              </Chip>
+            )}
+          </span>
         </>
       )}
       {hint && !loading && <Card.Description>{hint}</Card.Description>}
