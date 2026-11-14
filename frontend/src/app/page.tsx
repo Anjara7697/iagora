@@ -99,7 +99,6 @@ export default function Home() {
 
       <PageHeader
         {...rise(0)}
-        eyebrow="Travail · Aujourd’hui"
         title={`Bonjour ${firstName}`}
         subtitle={
           // Rien plutôt que « … » tant que la file n'est pas chargée (règle 15).

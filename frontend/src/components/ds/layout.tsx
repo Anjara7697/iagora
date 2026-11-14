@@ -76,19 +76,20 @@ export function ListScroll({ children, className }: { children: ReactNode; class
 
 /** Ligne mono en capitales « Groupe · Page ». */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cx("text-caption tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
+  return <span className={cx("type-caption tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
 }
 
-/** En-tête d'écran : sur-titre, titre, sous-titre d'une phrase, actions à droite. */
+/**
+ * En-tête d'écran (UX-10) : titre, puis une phrase facultative, actions à droite. Plus de sur-titre : il répétait le
+ * groupe du menu. Les éléments d'un en-tête plus riche (fiche) passent par `subtitle`.
+ */
 export function PageHeader({
-  eyebrow,
   title,
   subtitle,
   actions,
   className,
   style,
 }: {
-  eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -96,11 +97,10 @@ export function PageHeader({
   style?: CSSProperties;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-3", className)} style={style}>
-      <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
-        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="text-display font-semibold tracking-[-0.02em] text-foreground">{title}</h1>
-        {subtitle && <p className="max-w-[72ch] text-body text-muted">{subtitle}</p>}
+    <header className={cx("flex flex-wrap items-center gap-x-4 gap-y-2", className)} style={style}>
+      <div className="flex min-w-0 flex-1 basis-[280px] flex-col gap-0.5">
+        <h1 className="type-title font-semibold tracking-[-0.01em] text-foreground">{title}</h1>
+        {subtitle && <div className="max-w-[72ch] type-body-sm text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
@@ -157,7 +157,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 
 /** Texte d'absence de contenu, sobre (pour une liste vide dans une carte). */
 export function EmptyText({ children }: { children: ReactNode }) {
-  return <p className="py-2 text-body text-muted">{children}</p>;
+  return <p className="py-2 type-body text-muted">{children}</p>;
 }
 
 /** Écran ou liste vide : pictogramme, ce que c'est, pourquoi c'est vide, l'action suivante. */
@@ -178,8 +178,8 @@ export function EmptyPanel({
         <Icon className="size-5" />
       </span>
       <div className="flex max-w-sm flex-col gap-1">
-        <h2 className="text-title-sm font-semibold text-foreground">{title}</h2>
-        {description && <span className="text-body text-muted">{description}</span>}
+        <h2 className="type-title-sm font-semibold text-foreground">{title}</h2>
+        {description && <span className="type-body text-muted">{description}</span>}
       </div>
       {action}
     </div>
@@ -237,7 +237,7 @@ export function KpiCard({
         <>
           <Card.Title
             render={(props) => <span {...props} />}
-            className={cx("text-display tabular-nums", badge && TONE_TEXT[badge.tone])}
+            className={cx("type-display tabular-nums", badge && TONE_TEXT[badge.tone])}
           >
             {value}
           </Card.Title>
@@ -310,7 +310,7 @@ export function BarList({
       {rows.map((r) => (
         <div
           key={r.key}
-          className="grid items-center gap-3 text-body"
+          className="grid items-center gap-3 type-body"
           style={{ gridTemplateColumns: `${labelWidth}px minmax(0,1fr) 40px` }}
         >
           <span className="flex min-w-0 items-center gap-2 text-foreground">{r.label}</span>
@@ -319,7 +319,7 @@ export function BarList({
               <Meter.Fill className={r.fill} />
             </Meter.Track>
           </Meter>
-          <span className="text-right text-body-sm text-foreground tabular-nums">{r.value}</span>
+          <span className="text-right type-body-sm text-foreground tabular-nums">{r.value}</span>
         </div>
       ))}
     </div>

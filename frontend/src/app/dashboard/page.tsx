@@ -73,7 +73,6 @@ function Dashboard() {
       )}
       <PageHeader
         {...reveal(0)}
-        eyebrow="Pilotage · Tableau de bord"
         title="Tableau de bord"
         subtitle={
           data

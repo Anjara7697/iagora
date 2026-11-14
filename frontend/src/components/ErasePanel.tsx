@@ -95,7 +95,6 @@ export function ErasureResult({ report }: { report: ErasureReport }) {
   return (
     <Screen className="max-w-[960px]">
       <PageHeader
-        eyebrow="Données personnelles"
         title="Prospect effacé"
         subtitle="La fiche n’existe plus dans IAGORA. Il reste deux choses à faire à la main, hors de l’application."
         actions={

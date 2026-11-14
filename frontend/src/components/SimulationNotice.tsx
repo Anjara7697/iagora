@@ -1,6 +1,6 @@
 import { FlaskConical } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { BackLink } from "./ds/controls";
 
 /** Bandeau des écrans de test : retour à « Tests et démonstration » et rappel des données fictives. */
 export default function SimulationNotice({
@@ -10,12 +10,7 @@ export default function SimulationNotice({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <Link
-        className="w-fit rounded text-sm font-medium text-link underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-        href="/settings/testing"
-      >
-        ← Tests et démonstration
-      </Link>
+      <BackLink href="/settings/testing">Tests et démonstration</BackLink>
       <div
         className="flex items-start gap-3 rounded-2xl border border-dashed border-agent/40 bg-agent-soft/60 px-4 py-3"
         role="note"

@@ -111,7 +111,6 @@ export default function AgentPage() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Intelligence · Agent"
         title="Agent"
         subtitle="État de l’agent commercial, ce qu’il fait et son activité. Les réglages restent dans Paramètres."
         actions={

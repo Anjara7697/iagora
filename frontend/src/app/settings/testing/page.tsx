@@ -2,7 +2,7 @@
 
 import { ArrowRight, FlaskConical, MessagesSquare } from "lucide-react";
 import { useCurrentUser } from "@/lib/session";
-import { LinkButton, Notice, TextLink } from "@/components/ds/controls";
+import { BackLink, LinkButton, Notice } from "@/components/ds/controls";
 import { Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { canUseSimulator } from "@/lib/access";
@@ -24,12 +24,9 @@ export default function TestingPage() {
     );
   return (
     <Screen className="max-w-[960px]">
-      <TextLink href="/settings" className="w-fit text-sm">
-        ← Paramètres
-      </TextLink>
+      <BackLink href="/settings">Paramètres</BackLink>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Paramètres · Outils de test"
         title="Tests et démonstration"
         subtitle="Préparez une démonstration ou vérifiez le comportement de l’agent avant de reprendre vos échanges."
       />

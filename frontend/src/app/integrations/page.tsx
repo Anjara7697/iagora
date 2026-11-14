@@ -157,7 +157,6 @@ function Catalog() {
       {discardDialog}
       <PageHeader
         {...reveal(0)}
-        eyebrow="Administration · Intégrations"
         title="Intégrations"
         subtitle="Reliez votre messagerie, les agendas et les sources de prospects. Les identifiants sont chiffrés sur le serveur et ne sont jamais réaffichés."
       />

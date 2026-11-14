@@ -79,7 +79,6 @@ function Appointments() {
     <Screen scroll className="max-w-[1100px]">
       <div {...reveal(0)}>
         <PageHeader
-          eyebrow="Travail · Suivi des rendez-vous"
           title="Rendez-vous"
           subtitle="Retrouvez les rendez-vous enregistrés et préparez vos échanges."
           actions={

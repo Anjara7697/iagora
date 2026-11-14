@@ -7,7 +7,7 @@ import CampaignForm, {
   type CampaignValues,
 } from "@/components/CampaignForm";
 import { useCurrentUser } from "@/lib/session";
-import { TextLink } from "@/components/ds/controls";
+import { BackLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { Loading } from "@/components/ui";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
@@ -33,7 +33,7 @@ export default function NewCampaignPage() {
     return (
       <Screen className="max-w-[960px]">
         <PageHeader title="Nouvelle campagne" subtitle="La création de campagnes est réservée aux administrateurs." />
-        <TextLink href="/campaigns" className="w-fit">← Retour aux campagnes</TextLink>
+        <BackLink href="/campaigns">Retour aux campagnes</BackLink>
       </Screen>
     );
   }
@@ -73,7 +73,7 @@ export default function NewCampaignPage() {
 
   return (
     <Screen className="max-w-[960px]" scroll>
-      <PageHeader eyebrow="Pilotage · Campagnes" title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
+      <PageHeader title="Nouvelle campagne" subtitle="Nom, période, programmes et sources : l’agent répondra aux personnes que la campagne amène." />
       <Loading loading={targets.loading} error={targets.error} onRetry={targets.reload} />
       {targets.data && (
         <CampaignForm

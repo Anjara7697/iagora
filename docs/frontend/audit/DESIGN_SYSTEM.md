@@ -52,12 +52,12 @@ Changements proposés :
 
 | Nom | Taille / interligne | Usage |
 |---|---|---|
-| `text-caption` | 12 / 16 | horodatage, aide, en-tête de colonne |
-| `text-body-sm` | 13 / 20 | lignes de tableau, texte secondaire |
-| `text-body` | 14 / 20 | texte courant, champs, boutons |
-| `text-title-sm` | 16 / 24 | titre de section, de panneau |
-| `text-title` | 20 / 28 | titre d'écran |
-| `text-display` | 28 / 34 | chiffre clé, connexion |
+| `type-caption` | 12 / 16 | horodatage, aide, en-tête de colonne |
+| `type-body-sm` | 13 / 20 | lignes de tableau, texte secondaire |
+| `type-body` | 14 / 20 | texte courant, champs, boutons |
+| `type-title-sm` | 16 / 24 | titre de section, de panneau |
+| `type-title` | 20 / 28 | titre d'écran |
+| `type-display` | 28 / 34 | chiffre clé, connexion |
 
 - Poids : 400 (texte), 500 (libellés, boutons), 600 (titres). Pas de capitales espacées, sauf en-têtes de
   colonne.
@@ -84,7 +84,7 @@ Changements proposés :
 | Choix exclusif court | segments, largeur du contenu, jamais étirés | `Tabs` (`Segmented`) | étirés sur les fiches |
 | Onglets de fiche | soulignés, alignés à gauche, onglet dans l'adresse | `Tabs` | conteneur plein |
 | Filtres | un périmètre en segments, le reste dans « Filtres · N », filtres actifs en puces retirables | `ToggleButton`, `Popover` ou panneau, `TagGroup` | cinq variantes |
-| Tableau | lignes de 44 px, en-têtes en `text-caption`, tri natif, ligne cliquable, pagination abrégée | `Table`, `Pagination` | sans tri ; toutes les pages listées |
+| Tableau | lignes de 44 px, en-têtes en `type-caption`, tri natif, ligne cliquable, pagination abrégée | `Table`, `Pagination` | sans tri ; toutes les pages listées |
 | Panneau latéral | une seule implémentation, 480 ou 640 px, pied collant pour les actions | `Drawer` | deux implémentations |
 | Dialogue | confirmation qui dit l'effet | `AlertDialog` | conforme |
 | Menu d'actions | « … » à droite, actions destructives en dernier | `Dropdown` | conforme |

@@ -11,7 +11,7 @@ import { FirstContacts } from "@/components/campaign/FirstContacts";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
-import { Btn, ErrorText, LinkButton, TAB_RADIUS, Tag, TextLink, type Tone } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, LinkButton, Tag, type Tone } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
@@ -91,15 +91,12 @@ function CampaignDetail() {
 
   return (
     <Screen scroll>
-      <TextLink href={view.from ?? "/campaigns"} className="w-fit text-sm">
-        ← Campagnes
-      </TextLink>
+      <BackLink href={view.from ?? "/campaigns"}>Campagnes</BackLink>
       <Loading loading={campaign.loading} error={campaign.error} onRetry={campaign.reload} />
       {c && (
         <>
           <PageHeader
             {...reveal(0)}
-            eyebrow="Pilotage · Campagne"
             title={c.name}
             subtitle={
               <span className="flex flex-col gap-2">
@@ -176,13 +173,13 @@ function CampaignDetail() {
           )}
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
-          <Tabs selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
-            <Tabs.ListContainer className={TAB_RADIUS.container}>
+          <Tabs variant="secondary" align="start" selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
+            <Tabs.ListContainer>
               <Tabs.List aria-label="Sections de la campagne">
                 {Object.entries(CAMPAIGN_TABS).map(([key, title]) => (
-                  <Tabs.Tab key={key} id={key} className={TAB_RADIUS.tab}>
+                  <Tabs.Tab key={key} id={key}>
                     {title}
-                    <Tabs.Indicator className={TAB_RADIUS.indicator} />
+                    <Tabs.Indicator />
                   </Tabs.Tab>
                 ))}
               </Tabs.List>

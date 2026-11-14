@@ -18,14 +18,14 @@ export function useReducedMotion() {
 }
 
 /**
- * Apparition d'un bloc à l'entrée de la page : fondu et léger glissement vers le haut, décalé selon son rang.
- * À répartir sur `className` et `style` du composant : `<KpiCard {...reveal(2)} />`.
+ * Apparition à l'entrée de l'écran (UI-10) : un fondu de 150 ms, le même pour tous les blocs, sans décalage ni
+ * glissement (l'ancienne cascade retardait la lecture du dernier bloc de près d'une seconde à chaque visite).
+ * Le rang est gardé dans la signature pour ne pas toucher les écrans. Désactivé quand l'utilisateur demande moins
+ * de mouvement (`heroui.css`).
  */
-export function reveal(index: number, step = 55): { className: string; style: CSSProperties } {
-  return {
-    className: "animate-in fade-in slide-in-from-bottom-2 duration-[400ms] fill-mode-backwards",
-    style: { animationDelay: `${Math.min(index, 12) * step}ms` },
-  };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function reveal(index = 0, step = 0): { className: string; style: CSSProperties } {
+  return { className: "animate-in fade-in duration-150", style: {} };
 }
 
 /** Nombre qui monte jusqu'à sa valeur (et suit ses changements). Affiche la valeur finale si les animations sont réduites. */

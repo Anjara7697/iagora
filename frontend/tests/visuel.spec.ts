@@ -48,3 +48,14 @@ for (const screen of SCREENS) {
     await auditA11y(page, screen.name);
   });
 }
+
+test("chiffres clés : une valeur colorée garde la taille des chiffres", async ({ page }) => {
+  await page.clock.setFixedTime(NOW);
+  await mockConsole(page);
+  await page.goto("/campaigns");
+  const values = page.getByRole("region", { name: "Chiffres clés" }).locator(".card__title");
+  await expect(values).toHaveCount(4);
+  // La taille de l'échelle (type-display) ne doit pas être retirée par la fusion des classes quand une couleur s'ajoute.
+  for (const size of await values.evaluateAll((els) => els.map((el) => getComputedStyle(el).fontSize)))
+    expect(size).toBe("28px");
+});

@@ -84,7 +84,6 @@ function Team() {
     <Screen className="max-w-[1100px]">
       <PageHeader
         {...reveal(0)}
-        eyebrow="Administration · Équipe"
         title="Équipe"
         subtitle="Les conseillers s’ajoutent ici, sans passer par le serveur. Chaque nouveau membre reçoit un mot de passe temporaire et choisit le sien à la première connexion."
         actions={

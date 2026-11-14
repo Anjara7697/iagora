@@ -90,7 +90,6 @@ function Inbox() {
   return (
     <Screen wide className="gap-4">
       <PageHeader
-        eyebrow="Travail · Boîte de réception"
         title="Conversations"
         subtitle={
           // Sur mobile, une conversation ouverte prend la place.
