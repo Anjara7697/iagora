@@ -45,7 +45,7 @@ for (const screen of SCREENS) {
     expect(overflow, "défilement horizontal de la page").toBeLessThanOrEqual(0);
 
     await expect(page).toHaveScreenshot(`${screen.name}.png`, { fullPage: true });
-    await auditA11y(page, screen.name);
+    await auditA11y(page, screen.name, [], { strict: true });
   });
 }
 

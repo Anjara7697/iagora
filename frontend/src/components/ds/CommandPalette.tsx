@@ -30,7 +30,6 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
   // Touche affichée selon le système (lue après le rendu serveur pour éviter un écart d'hydratation).
   const [mac, setMac] = useState(false);
   useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)), []);
-  const shortcut = mac ? "⌘ K" : "Ctrl K";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,11 +74,15 @@ export function CommandPalette({ commands }: { commands: Command[] }) {
         variant="tertiary"
         className="w-10 justify-center gap-2 px-0 font-normal text-muted md:w-full md:justify-start md:px-3"
         onPress={() => setOpen(true)}
-        aria-label={`Rechercher un prospect, une page ou une action (${shortcut})`}
+        aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
       >
         <Search className="size-4 shrink-0" aria-hidden="true" />
-        <span className="hidden md:inline xl:hidden">Rechercher…</span>
-        <span className="hidden xl:inline">Rechercher un prospect, une page…</span>
+        {/* Nom accessible tiré du texte visible (WCAG 2.5.3) : « Rechercher un prospect, une page », dont seule la
+            partie qui tient est affichée (rien sur mobile, « Rechercher… » sur tablette, tout sur grand écran). */}
+        <span className="max-md:sr-only">
+          Rechercher<span className="max-xl:sr-only"> un prospect, une page</span>
+          <span aria-hidden="true">…</span>
+        </span>
         <span className="hidden flex-1 md:block" />
         <Kbd variant="light" aria-hidden="true" className="hidden md:inline-flex">
           {mac ? <Kbd.Abbr keyValue="command" /> : <Kbd.Content>Ctrl</Kbd.Content>}

@@ -2,6 +2,7 @@
 
 import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { pageList } from "@/lib/pagination";
 import { SCROLL_SHADOW_SIZE, cx } from "./layout";
 
 export type DataColumn = {
@@ -128,13 +129,19 @@ export function TablePagination({
             Précédent
           </Pagination.Previous>
         </Pagination.Item>
-        {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-          <Pagination.Item key={p}>
-            <Pagination.Link isActive={p === page} aria-label={`Page ${p}`} onPress={() => onChange(p)}>
-              {p}
-            </Pagination.Link>
-          </Pagination.Item>
-        ))}
+        {pageList(page, pages).map((p, i) =>
+          p === null ? (
+            <Pagination.Item key={`gap-${i}`}>
+              <Pagination.Ellipsis />
+            </Pagination.Item>
+          ) : (
+            <Pagination.Item key={p}>
+              <Pagination.Link isActive={p === page} aria-label={`Page ${p}`} onPress={() => onChange(p)}>
+                {p}
+              </Pagination.Link>
+            </Pagination.Item>
+          ),
+        )}
         <Pagination.Item>
           <Pagination.Next isDisabled={page >= pages} onPress={() => onChange(page + 1)}>
             Suivant

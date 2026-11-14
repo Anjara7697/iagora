@@ -218,7 +218,7 @@ un écran connu de la console, jamais une adresse externe).
     « Valider les N premiers contacts affichés » au-dessus de la liste : confirmation qui invite à en relire
     quelques-uns, protégée par la garde de saisie (règle 21), Toast du résultat.
 
-**Vérification** : chaque nouvel état a son test Playwright et son audit axe (aucune violation grave), et
+**Vérification** : chaque nouvel état a son test Playwright et son audit axe (WCAG 2.2 A et AA, aucune violation grave ou critique ; sur les écrans des captures de référence, aucune violation modérée ni écart aux bonnes pratiques axe), et
 le parcours est capturé avant / après.
 
 ## Tests

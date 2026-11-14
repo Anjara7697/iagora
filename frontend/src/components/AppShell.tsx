@@ -197,16 +197,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href="/todo"
                   variant="tertiary"
                   className="h-9 shrink-0 gap-2 px-3"
-                  aria-label={waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
                 >
                   <span className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`} aria-hidden="true" />
+                  {/* Nom accessible = texte visible (WCAG 2.5.3) ; sur mobile, « à traiter » reste lu sans être affiché. */}
                   {waiting > 0 ? (
-                    <>
+                    <span>
                       {waiting}
-                      <span className="hidden sm:inline">à traiter</span>
-                    </>
+                      <span className="max-sm:sr-only"> à traiter</span>
+                    </span>
                   ) : (
-                    <span className="hidden sm:inline">Rien à traiter</span>
+                    <span className="max-sm:sr-only">Rien à traiter</span>
                   )}
                 </LinkButton>
               )

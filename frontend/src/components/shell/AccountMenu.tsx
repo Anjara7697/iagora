@@ -59,9 +59,10 @@ export default function AccountMenu({
         <Button
           variant="ghost"
           className="h-10 shrink-0 gap-2 px-1.5 sm:px-2"
-          aria-label={`Menu du compte : ${name}, ${ROLE_LABELS[user.role]}${mode ? ` — agent : ${AGENT_COPY[mode].short.toLowerCase()}` : ""}`}
         >
-          <span className="relative inline-flex">
+          {/* Nom accessible tiré du contenu (WCAG 2.5.3) : nom et rôle (lus aussi sur mobile, où ils ne sont pas
+              affichés), puis ce que le bouton ouvre et l'état de l'agent, lus seulement. */}
+          <span className="relative inline-flex" aria-hidden="true">
             <Avatar size="sm" variant="soft" color="accent">
               <Avatar.Fallback>{initialsOf(user.username)}</Avatar.Fallback>
             </Avatar>
@@ -71,9 +72,13 @@ export default function AccountMenu({
               </span>
             )}
           </span>
-          <span className="hidden flex-col items-start leading-tight sm:flex">
+          <span className="flex-col items-start leading-tight max-sm:sr-only sm:flex">
             <span className="text-sm font-medium text-foreground">{name}</span>
+            <span className="sr-only"> </span>
             <span className="text-xs font-normal text-muted">{ROLE_LABELS[user.role]}</span>
+          </span>
+          <span className="sr-only">
+            {` — Menu du compte${mode ? ` — agent : ${AGENT_COPY[mode].short.toLowerCase()}` : ""}`}
           </span>
           <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden="true" />
         </Button>
