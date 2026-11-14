@@ -47,7 +47,7 @@ Les écrans importent ces composants, qui enveloppent HeroUI, plutôt que des é
 | `settings.tsx` | `SettingsCard`, `InfoRow`, `Toggle`, `Stats`, `ActionsBar` |
 | `badges.tsx` | `StageBadge`, `ScoreBadge`, `HeatMeter`, `LevelBadge`, `DemoChip` |
 
-Le panneau latéral est `components/Drawer.tsx` ; l'état d'une page dans l'adresse passe par `lib/url.ts`
+Le panneau latéral est `components/Drawer.tsx`, sur le `Drawer` HeroUI (focus, inertie de la page, Échap et voile gérés par React Aria) ; l'état d'une page dans l'adresse passe par `lib/url.ts`
 (`replaceUrl`) et un module par parcours (`lib/campaignNav.ts`, `lib/knowledgeNav.ts`).
 
 Éléments HTML natifs conservés : listes de définitions `dl`, listes `ul`/`li` sémantiques,
