@@ -93,7 +93,8 @@ export function ProspectPipeline({
                       p.phone ||
                       "Coordonnées non renseignées"}
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  {/* Alignées en haut : une pastille à côté d'un rattachement sur deux lignes garde sa hauteur (UI-05). */}
+                  <div className="flex flex-wrap items-start gap-1.5">
                     {memberships(p)
                       .filter((m) =>
                         column.stages.includes(m.conversion_stage),

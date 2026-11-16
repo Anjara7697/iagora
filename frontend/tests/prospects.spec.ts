@@ -1218,3 +1218,59 @@ test("recherche : une seule requête une fois la frappe arrêtée", async ({ pag
   await page.waitForTimeout(500);
   expect(searched.filter((q) => q !== "")).toEqual(["alice"]);
 });
+
+test("vue par défaut selon la largeur : pipeline sur grand écran, lignes lisibles en mobile", { tag: "@mobile" }, async ({ page }) => {
+  await mockApi(page);
+  const lists: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects" && url.searchParams.get("limit") !== "1") lists.push(url.searchParams.get("limit") ?? "");
+  });
+  await login(page);
+  const narrow = (page.viewportSize()?.width ?? 1280) < 640;
+  if (!narrow) {
+    // Grand écran : le pipeline, sans choix inscrit dans l'adresse.
+    await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("region", { name: /Pipeline des prospects/ })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/prospects");
+  }
+  // Moins de 1024 px : la table ; moins de 640 px, en lignes à deux niveaux (UX-03, UX-04).
+  await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
+  const rows = page.getByRole("list", { name: "Prospects et rattachements aux campagnes" });
+  const alice = rows.getByRole("link", { name: "Alice Martin", exact: true });
+  await expect(alice).toBeVisible();
+  // L'état et le parcours sont lisibles sans défilement horizontal.
+  const row = rows.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Alice Martin", exact: true }) });
+  await expect(row.getByText("Accordé", { exact: true })).toBeInViewport();
+  await expect(row.getByText("Qualifié", { exact: true }).first()).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  // La taille de page suit la vue, sans requête perdue à l'ouverture.
+  expect(lists.at(-1)).toBe("25");
+  expect(lists.filter((limit) => limit === "100")).toHaveLength(narrow ? 0 : 1);
+  await expect(page).toHaveURL(/\/prospects$/);
+  // Un choix explicite reste prioritaire.
+  await page.getByRole("tab", { name: "Pipeline", exact: true }).click();
+  await expect(page).toHaveURL(/view=pipeline/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
+  await auditA11y(page, "prospects mobile");
+});
+
+test("« N sur M » : le total sans filtre est lu une fois", async ({ page }) => {
+  await mockApi(page);
+  let totals = 0;
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects" && url.search === "?limit=1") totals += 1;
+  });
+  await login(page);
+  await page.getByLabel("Rechercher", { exact: true }).fill("Alice");
+  await expect(page.getByRole("status").filter({ hasText: / sur / })).toBeVisible();
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
+  await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("");
+  await page.getByLabel("Rechercher", { exact: true }).fill("Martin");
+  await expect(page.getByRole("status").filter({ hasText: / sur / })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(totals).toBe(1);
+});

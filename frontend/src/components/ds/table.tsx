@@ -1,6 +1,7 @@
 "use client";
 
 import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
+import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { pageList } from "@/lib/pagination";
 import { SCROLL_SHADOW_SIZE, cx } from "./layout";
@@ -74,6 +75,53 @@ export function DataTable({
       </ScrollShadow>
       {footer && <Table.Footer>{footer}</Table.Footer>}
     </Table>
+  );
+}
+
+/**
+ * Sous 640 px, une liste de lignes à deux niveaux remplace le tableau (règle 4, UX-04) : nom et état sur la
+ * première ligne, détails en dessous ; toute la ligne est un lien. Mêmes données que les colonnes du tableau.
+ */
+export function CompactList({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <ul aria-label={label} className="flex flex-col divide-y divide-separator overflow-hidden rounded-lg bg-surface shadow-surface">
+      {children}
+    </ul>
+  );
+}
+
+export function CompactRow({
+  href,
+  leading,
+  title,
+  aside,
+  children,
+}: {
+  href: string;
+  leading?: ReactNode;
+  /** Nom de la ligne : c'est le lien, étendu à toute la ligne. */
+  title: ReactNode;
+  /** État à droite du nom (statut, consentement). */
+  aside?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    // Le lien porte le nom seul (WCAG 2.5.3) ; son pseudo-élément couvre la ligne, cliquable partout.
+    <li className="relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-secondary has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus has-[a:focus-visible]:ring-inset">
+      {leading}
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-start gap-2">
+          <Link
+            href={href}
+            className="min-w-0 flex-1 type-body font-semibold break-words text-foreground outline-none after:absolute after:inset-0 after:content-['']"
+          >
+            {title}
+          </Link>
+          <span className="flex shrink-0 flex-wrap justify-end gap-1.5">{aside}</span>
+        </div>
+        {children}
+      </div>
+    </li>
   );
 }
 
