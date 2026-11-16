@@ -258,5 +258,5 @@ Contenu, risques et critères d'acceptation : sections « Lot 3 » à « Lot 7 �
 | 3 — À traiter | fusionné : [#199](https://github.com/Anjara7697/iagora/pull/199), [#200](https://github.com/Anjara7697/iagora/pull/200) |
 | 4 — Listes et tableaux | fusionné : 4.1 Prospects ([#201](https://github.com/Anjara7697/iagora/pull/201)), 4.2 Campagnes ([#202](https://github.com/Anjara7697/iagora/pull/202)), 4.3 Conversations ([#203](https://github.com/Anjara7697/iagora/pull/203)), 4.4 Équipe ([#204](https://github.com/Anjara7697/iagora/pull/204)), 4.5 Base de connaissances ([#205](https://github.com/Anjara7697/iagora/pull/205)) ; tri et sélection (UX-12) reportés : l'API des listes n'a pas de paramètre de tri |
 | 5 — Aujourd'hui | fusionné : [#207](https://github.com/Anjara7697/iagora/pull/207) |
-| 6 — Administration | fusionné : 6.1 Intégrations ([#214](https://github.com/Anjara7697/iagora/pull/214)), 6.2 Paramètres ([#215](https://github.com/Anjara7697/iagora/pull/215)) ; en cours : 6.3 (entrée Simulateur dans le menu, Compte sur `PageHeader`). Reporté : libellés des champs dans les erreurs 422 du serveur |
-| 7 | à faire |
+| 6 — Administration | fusionné : [#214](https://github.com/Anjara7697/iagora/pull/214), [#215](https://github.com/Anjara7697/iagora/pull/215), [#216](https://github.com/Anjara7697/iagora/pull/216). Reporté : libellés des champs dans les erreurs 422 du serveur |
+| 7 — Assainissement | en cours : 7.1 (exports morts et internes, doublons, typage) ; puis 7.2 (dossiers par domaine), 7.3 (types dérivés du schéma) |
