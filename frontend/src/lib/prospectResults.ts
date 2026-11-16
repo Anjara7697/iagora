@@ -10,6 +10,8 @@ const positiveId = (value: string | null) =>
     ? value
     : "";
 
+export type ProspectView = "" | "table" | "pipeline";
+
 /** Only supported list settings are carried between the results and a profile. */
 export function readProspectResults(query: Query) {
   const campaign = positiveId(query.get("campaign"));
@@ -26,7 +28,8 @@ export function readProspectResults(query: Query) {
     channelFilter: option(query, "channel", CHANNELS),
     consentFilter: option(query, "consent_status", CONSENT),
     mine: query.get("mine") === "true",
-    view: query.get("view") === "table" ? ("table" as const) : ("pipeline" as const),
+    // Vue choisie ; vide : selon la largeur (pipeline à partir de 1024 px, table en dessous, UX-03).
+    view: (query.get("view") === "table" || query.get("view") === "pipeline" ? query.get("view") : "") as ProspectView,
     offset:
       Number.isSafeInteger(offset) && offset >= 0 && offset <= 2147483647
         ? offset
@@ -49,7 +52,7 @@ export function prospectResultsHref(state: ProspectResults) {
     channel: state.channelFilter,
     consent_status: state.consentFilter,
     mine: state.mine ? "true" : "",
-    view: state.view === "table" ? "table" : "",
+    view: state.view,
     offset: state.offset ? String(state.offset) : "",
   };
   for (const [key, value] of Object.entries(values)) {

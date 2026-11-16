@@ -1,10 +1,14 @@
 "use client";
 
-/** Vue « Table » de la liste des prospects : une ligne par prospect, toute la ligne ouvre la fiche. */
+/**
+ * Vue « Table » de la liste des prospects : une ligne par prospect, toute la ligne ouvre la fiche. Sous 640 px,
+ * des lignes à deux niveaux (nom et consentement, puis coordonnées et parcours).
+ */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataTable, Table } from "@/components/ds/table";
+import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
+import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
 import { formatDate, fullName } from "@/lib/labels";
 import type { Membership, Prospect } from "@/lib/types";
@@ -20,6 +24,38 @@ export function ProspectTable({
   profileHref: (id: number) => string;
 }) {
   const router = useRouter();
+  if (useMediaQuery(NARROW))
+    return (
+      <CompactList label="Prospects et rattachements aux campagnes">
+        {items.map((p) => (
+          <CompactRow
+            key={p.id}
+            href={profileHref(p.id)}
+            leading={<ProspectAvatar prospect={p} />}
+            title={fullName(p)}
+            aside={
+              <>
+                <DemoBadge email={p.email} />
+                <ConsentTag status={p.consent_status} />
+              </>
+            }
+          >
+            <span className="type-caption break-all text-muted">{p.email || p.phone || "—"}</span>
+            {memberships(p).length ? (
+              memberships(p).map((m) => (
+                <span key={m.id} className="flex flex-wrap items-center gap-1.5">
+                  <StageBadge stage={m.conversion_stage} />
+                  <ScoreBadge total={m.total_score} level={level(m.total_score)} />
+                  <span className="min-w-0 truncate type-caption text-muted">{m.campaign_name ?? "Campagne"}</span>
+                </span>
+              ))
+            ) : (
+              <span className="type-caption text-muted">Sans campagne</span>
+            )}
+          </CompactRow>
+        ))}
+      </CompactList>
+    );
   return (
     <DataTable
       label="Prospects et rattachements aux campagnes"

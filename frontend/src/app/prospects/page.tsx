@@ -6,13 +6,13 @@
  * panneau de filtres sont dans `components/prospects/`.
  */
 
-import { Chip } from "@heroui/react";
-import { Download, SearchX, SlidersHorizontal, Upload, X } from "lucide-react";
+import { Download, SearchX, Upload } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Box } from "@/components/ds/card";
 import { Btn, ErrorText, FilterChip, LinkButton, Notice, Segmented, TextInput } from "@/components/ds/controls";
+import { type ActiveFilter, FiltersButton, ListToolbar, countLabel } from "@/components/ds/toolbar";
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
@@ -28,14 +28,19 @@ import type { Campaign, Page, Prospect } from "@/lib/types";
 import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { WIDE, useMediaQuery } from "@/lib/useMediaQuery";
 
 function Prospects() {
   const params = useSearchParams();
   const state = readProspectResults(params);
   const {
     q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
-    levelFilter, channelFilter, consentFilter, mine, sourceFilter, view,
+    levelFilter, channelFilter, consentFilter, mine, sourceFilter,
   } = state;
+  // Vue choisie, sinon selon la largeur (UX-03) : pipeline à partir de 1024 px, table en dessous. Inconnue avant
+  // l'hydratation : rien n'est demandé tant qu'elle ne l'est pas (la taille de page en dépend).
+  const wide = useMediaQuery(WIDE);
+  const view = state.view || (wide === null ? null : wide ? "pipeline" : "table");
   // File « À attribuer » : réservée à l'administrateur (et visible de l'observateur) ; un conseiller
   // ne voit que les prospects de ses campagnes (décision D-23).
   const user = useCurrentUser();
@@ -61,27 +66,33 @@ function Prospects() {
     campaigns.data?.items.find((c) => String(c.id) === campaign)?.sources?.find((s) => String(s.id) === id)?.name ?? `Source ${id}`;
   // Filtres du panneau ; chacun actif s'affiche en puce retirable sous la barre.
   const panelFilters = [
-    { title: "Étape", value: stage, text: label(STAGES, stage), clear: () => update({ stage: "" }) },
-    { title: "Campagne", value: campaign, text: campaignName(campaign), clear: () => update({ campaign: "", sourceFilter: "" }) },
-    { title: "Source", value: sourceFilter, text: sourceName(sourceFilter), clear: () => update({ sourceFilter: "" }) },
-    { title: "Programme", value: targetCode, text: label(TARGETS, targetCode), clear: () => update({ targetCode: "" }) },
-    { title: "Intérêt", value: levelFilter, text: label(LEVELS, levelFilter), clear: () => update({ levelFilter: "" }) },
-    { title: "Canal", value: channelFilter, text: label(CHANNELS, channelFilter), clear: () => update({ channelFilter: "" }) },
-    { title: "Consentement", value: consentFilter, text: label(CONSENT, consentFilter), clear: () => update({ consentFilter: "" }) },
+    { name: "Étape", value: stage, text: label(STAGES, stage), clear: () => update({ stage: "" }) },
+    { name: "Campagne", value: campaign, text: campaignName(campaign), clear: () => update({ campaign: "", sourceFilter: "" }) },
+    { name: "Source", value: sourceFilter, text: sourceName(sourceFilter), clear: () => update({ sourceFilter: "" }) },
+    { name: "Programme", value: targetCode, text: label(TARGETS, targetCode), clear: () => update({ targetCode: "" }) },
+    { name: "Intérêt", value: levelFilter, text: label(LEVELS, levelFilter), clear: () => update({ levelFilter: "" }) },
+    { name: "Canal", value: channelFilter, text: label(CHANNELS, channelFilter), clear: () => update({ channelFilter: "" }) },
+    { name: "Consentement", value: consentFilter, text: label(CONSENT, consentFilter), clear: () => update({ consentFilter: "" }) },
   ];
-  const activePanel = panelFilters.filter((f) => f.value);
-  const panelCount = activePanel.length + (hideDemo ? 1 : 0);
+  const active: ActiveFilter[] = [
+    ...panelFilters.filter((f) => f.value).map((f) => ({ name: f.name, text: `${f.name} : ${f.text}`, clear: f.clear })),
+    ...(hideDemo ? [{ name: "Prospects fictifs", text: "Prospects fictifs masqués", clear: () => update({ hideDemo: false }) }] : []),
+  ];
+  const panelCount = active.length;
   const filtered = !!(q || mine || pendingCampaign || panelCount);
   // Recherche envoyée une fois la frappe arrêtée (DATA-01) ; le champ et l'adresse suivent la saisie sans délai.
   const searched = useDebouncedValue(q);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    `/prospects${qs({ q: searched, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
+    view && `/prospects${qs({ q: searched, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
     { keepPrevious: true },
   );
-  // Total sans filtre, pour « N sur M » (règle 5).
-  const all = useApi<Page<Prospect>>(filtered ? "/prospects?limit=1" : null);
+  // Total sans filtre, pour « N sur M » (règle 5) : demandé au premier filtre, puis gardé (DATA-03) au lieu d'être
+  // redemandé chaque fois qu'un filtre revient après « Réinitialiser ».
+  const [needsAll, setNeedsAll] = useState(false);
+  if (filtered && !needsAll) setNeedsAll(true);
+  const all = useApi<Page<Prospect>>(needsAll ? "/prospects?limit=1" : null);
   function reset() {
-    update({ ...readProspectResults(new URLSearchParams()), view });
+    update({ ...readProspectResults(new URLSearchParams()), view: state.view });
   }
   async function exportCsv() {
     setExportError(null);
@@ -121,80 +132,48 @@ function Prospects() {
       />
       {exportError && <ErrorText>{exportError}</ErrorText>}
       {/* Barre au-dessus des résultats (règle 5) : vue, recherche et filtres à gauche, compteur à droite. */}
-      <section
-        className={`flex flex-col gap-2 ${reveal(1).className}`}
-        style={reveal(1).style}
-        aria-label="Affichage et filtres des prospects"
+      <ListToolbar
+        {...reveal(1)}
+        label="Affichage et filtres des prospects"
+        count={data ? countLabel(data.total, "prospect", filtered ? all.data?.total : null) : ""}
+        filters={active}
+        filtered={filtered}
+        onReset={reset}
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <Segmented
-            label="Affichage des prospects"
-            value={view}
-            onChange={(v) => update({ view: v })}
-            options={[
-              { value: "pipeline", text: "Pipeline" },
-              { value: "table", text: "Table" },
-            ]}
-          />
-          <TextInput
-            type="search"
-            aria-label="Rechercher"
-            placeholder="Nom, email…"
-            className="w-full sm:w-64"
-            fullWidth={false}
-            value={q}
-            onChange={(e) => update({ q: e.target.value })}
-          />
-          {canWrite && (
-            <FilterChip className="rounded-lg" pressed={mine} onClick={() => update({ mine: !mine })}>
-              Mes prospects
-            </FilterChip>
-          )}
-          {seesPending && (
-            <FilterChip
-              className="rounded-lg"
-              pressed={pendingCampaign}
-              onClick={() => update({ pendingCampaign: !pendingCampaign, campaign: "", sourceFilter: "", stage: "" })}
-            >
-              À attribuer{pending.data ? ` (${pending.data.total})` : ""}
-            </FilterChip>
-          )}
-          <Btn variant="secondary" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}>
-            <SlidersHorizontal className="size-4" aria-hidden="true" />
-            Filtres
-            {panelCount > 0 && (
-              <Chip size="sm" color="accent" variant="primary" aria-label={`${panelCount} actif${panelCount > 1 ? "s" : ""}`}>
-                <Chip.Label>{panelCount}</Chip.Label>
-              </Chip>
-            )}
-          </Btn>
-          <span className="flex-1" />
-          <span className="type-body-sm text-muted tabular-nums" role="status">
-            {data
-              ? `${data.total} prospect${data.total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
-              : ""}
-          </span>
-        </div>
-        {(panelCount > 0 || filtered) && (
-          <div className="flex flex-wrap items-center gap-2" aria-label="Filtres actifs">
-            {activePanel.map((f) => (
-              <Btn key={f.title} size="sm" variant="tertiary" aria-label={`Retirer le filtre ${f.title}`} onClick={f.clear}>
-                {f.title} : {f.text}
-                <X className="size-3.5 text-muted" aria-hidden="true" />
-              </Btn>
-            ))}
-            {hideDemo && (
-              <Btn size="sm" variant="tertiary" aria-label="Retirer le filtre Prospects fictifs" onClick={() => update({ hideDemo: false })}>
-                Prospects fictifs masqués
-                <X className="size-3.5 text-muted" aria-hidden="true" />
-              </Btn>
-            )}
-            <Btn size="sm" variant="ghost" className="text-link" onClick={reset}>
-              Réinitialiser
-            </Btn>
-          </div>
+        <Segmented
+          label="Affichage des prospects"
+          value={view ?? ""}
+          onChange={(v) => update({ view: v as "table" | "pipeline" })}
+          options={[
+            { value: "pipeline", text: "Pipeline" },
+            { value: "table", text: "Table" },
+          ]}
+        />
+        <TextInput
+          type="search"
+          aria-label="Rechercher"
+          placeholder="Nom, email…"
+          className="w-full sm:w-64"
+          fullWidth={false}
+          value={q}
+          onChange={(e) => update({ q: e.target.value })}
+        />
+        {canWrite && (
+          <FilterChip className="rounded-lg" pressed={mine} onClick={() => update({ mine: !mine })}>
+            Mes prospects
+          </FilterChip>
         )}
-      </section>
+        {seesPending && (
+          <FilterChip
+            className="rounded-lg"
+            pressed={pendingCampaign}
+            onClick={() => update({ pendingCampaign: !pendingCampaign, campaign: "", sourceFilter: "", stage: "" })}
+          >
+            À attribuer{pending.data ? ` (${pending.data.total})` : ""}
+          </FilterChip>
+        )}
+        <FiltersButton count={panelCount} onPress={() => setFiltersOpen(true)} />
+      </ListToolbar>
       {pendingCampaign && (
         <Notice tone="warning">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche pour les attribuer ; l’agent attend cette
@@ -211,7 +190,7 @@ function Prospects() {
         panelCount={panelCount}
       />
       {/* Pendant une mise à jour (recherche, filtre), la liste précédente reste affichée. */}
-      <Loading loading={loading && !data} error={error} onRetry={reload} shape="rows" />
+      <Loading loading={(loading || !view) && !data} error={error} onRetry={reload} shape="rows" />
       {data && (
         <div className={`flex flex-col gap-6 ${reveal(2).className}`} style={reveal(2).style}>
           {data.items.length === 0 ? (

@@ -54,13 +54,19 @@ describe("Prospects", () => {
     assert.equal(prospectResultsHref(state), href);
   });
 
+  test("liste : le pipeline choisi reste dans l'adresse, sans choix la vue suit la largeur", () => {
+    assert.equal(prospectResultsHref(readProspectResults(query("?view=pipeline"))), "/prospects?view=pipeline");
+    assert.equal(readProspectResults(query("")).view, "");
+    assert.equal(prospectResultsHref(readProspectResults(query(""))), "/prospects");
+  });
+
   test("valeurs invalides ramenées au défaut", () => {
     const state = readProspectResults(query("?stage=xx&campaign=-1&source=9&offset=-5&view=kanban&level=brulant"));
     assert.equal(state.stage, "");
     assert.equal(state.campaign, "");
     assert.equal(state.sourceFilter, "", "une source n'a de sens qu'avec une campagne");
     assert.equal(state.offset, 0);
-    assert.equal(state.view, "pipeline");
+    assert.equal(state.view, "", "vue inconnue : choisie selon la largeur");
     assert.equal(state.levelFilter, "");
   });
 
