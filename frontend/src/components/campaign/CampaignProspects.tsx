@@ -42,7 +42,7 @@ export default function CampaignProspects({
       {/* Barre au-dessus du tableau (règle des parcours) : filtre à gauche, compteur à droite. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex items-center gap-2">
-          <label id="campaign-stage-label" htmlFor="campaign-stage" className="text-[13px] text-muted">
+          <label id="campaign-stage-label" htmlFor="campaign-stage" className="type-body-sm text-muted">
             Étape
           </label>
           <SelectBox
@@ -61,7 +61,7 @@ export default function CampaignProspects({
             ))}
           </SelectBox>
         </span>
-        <span className="text-[13px] text-muted tabular-nums" role="status">
+        <span className="type-body-sm text-muted tabular-nums" role="status">
           {list.data
             ? `${total} prospect${total > 1 ? "s" : ""}${stage ? `${all.data ? ` sur ${all.data.total}` : ""} à l’étape « ${label(STAGES, stage)} »` : ""}`
             : ""}
@@ -98,7 +98,7 @@ export default function CampaignProspects({
                 <Table.Cell>
                   <span className="flex items-center gap-3">
                     <span
-                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-semibold text-foreground"
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary type-caption font-semibold text-foreground"
                       aria-hidden="true"
                     >
                       {initialsOf(name)}
@@ -108,7 +108,7 @@ export default function CampaignProspects({
                         {name}
                         <DemoBadge email={p.email} />
                       </span>
-                      {p.email && <span className="text-xs text-muted">{p.email}</span>}
+                      {p.email && <span className="type-caption text-muted">{p.email}</span>}
                     </span>
                   </span>
                 </Table.Cell>

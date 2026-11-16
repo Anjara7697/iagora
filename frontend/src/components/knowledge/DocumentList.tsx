@@ -76,7 +76,7 @@ export default function DocumentList({
               onChange={() => onChange({ status: view.status ? "" : "reindex" })}
             />
           )}
-          <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+          <span className="ml-auto type-body-sm text-muted tabular-nums" role="status">
             {isLoading ? "" : `${shown.length} document${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${documents.length}` : ""}`}
           </span>
         </div>
@@ -130,8 +130,8 @@ export default function DocumentList({
               <span className="flex items-start gap-2.5">
                 <FileText className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="flex min-w-0 flex-col gap-0.5">
-                  <strong className="text-sm font-medium text-foreground">{d.title}</strong>
-                  <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                  <strong className="type-body font-medium text-foreground">{d.title}</strong>
+                  <span className="flex flex-wrap items-center gap-2 type-caption text-muted">
                     {d.slug}
                     {d.is_demo && <DemoChip />}
                   </span>
@@ -140,7 +140,7 @@ export default function DocumentList({
             </Table.Cell>
             <Table.Cell className="whitespace-nowrap text-muted">{d.target_code ? label(TARGETS, d.target_code) : "Tous"}</Table.Cell>
             <Table.Cell className="text-right tabular-nums">{d.chunks}</Table.Cell>
-            <Table.Cell className="text-xs whitespace-nowrap text-muted tabular-nums">{formatDate(d.updated_at)}</Table.Cell>
+            <Table.Cell className="type-caption whitespace-nowrap text-muted tabular-nums">{formatDate(d.updated_at)}</Table.Cell>
             <Table.Cell>
               <Tag tone={d.needs_reindex ? "warning" : "success"}>{d.needs_reindex ? "À recalculer" : "À jour"}</Tag>
             </Table.Cell>
@@ -149,7 +149,7 @@ export default function DocumentList({
       </DataTable>
 
       {documents.some((d) => d.is_demo) && (
-        <p className="text-xs/[18px] text-muted">
+        <p className="type-caption leading-4.5 text-muted">
           Les documents « Fictif » sont des données de démonstration : ils ne sont jamais utilisés en production.
         </p>
       )}

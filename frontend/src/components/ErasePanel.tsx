@@ -112,7 +112,7 @@ export function ErasureResult({ report }: { report: ErasureReport }) {
             { value: report.appointments, caption: "rendez-vous" },
           ]}
         />
-        <p className="text-[13px] text-muted">
+        <p className="type-body-sm text-muted">
           {report.suppressed
             ? "Une empreinte illisible de son adresse est conservée : un import ou un nouveau message ne la fera pas recontacter."
             : "Aucune empreinte n’est conservée : si la personne se manifeste à nouveau, une nouvelle fiche sera créée."}
@@ -123,7 +123,7 @@ export function ErasureResult({ report }: { report: ErasureReport }) {
         label="À supprimer à la main"
         intro="IAGORA n’efface pas ce qui se trouve hors de l’application."
       >
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-foreground">
+        <ul className="flex list-disc flex-col gap-2 pl-5 type-body text-foreground">
           <li>
             Les emails de cette personne dans la boîte de l’école (dossier
             surveillé et envoyés).

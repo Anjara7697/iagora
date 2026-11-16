@@ -167,7 +167,7 @@ function Campaigns() {
             )
           }
         />
-        <span className="text-[13px] text-muted tabular-nums" role="status">
+        <span className="type-body-sm text-muted tabular-nums" role="status">
           {list.data
             ? `${total} campagne${total > 1 ? "s" : ""}${filtered && allCount.data ? ` sur ${allCount.data.total}` : ""}`
             : ""}

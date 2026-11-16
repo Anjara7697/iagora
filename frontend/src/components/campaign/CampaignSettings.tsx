@@ -28,7 +28,7 @@ export default function CampaignSettings({
   const changed = codes.length !== initial.length || codes.some((c) => !initial.includes(c));
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted">{canEdit ? "Responsable et programmes visés. Le statut se change dans l’en-tête." : "Consultation seule : réservé aux administrateurs."}</p>
+      <p className="type-body text-muted">{canEdit ? "Responsable et programmes visés. Le statut se change dans l’en-tête." : "Consultation seule : réservé aux administrateurs."}</p>
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <CampaignOwnership key={`${campaign.id}:${campaign.responsible_advisor_id}`} campaign={campaign} onDone={onOwnerDone} />
         <Panel title="Programmes visés" label="Programmes visés">
@@ -57,7 +57,7 @@ export default function CampaignSettings({
                   {label(TARGETS, t.code)}
                 </Tag>
               ))}
-              {campaign.targets.length === 0 && <span className="text-sm text-muted">Aucun programme.</span>}
+              {campaign.targets.length === 0 && <span className="type-body text-muted">Aucun programme.</span>}
             </div>
           )}
         </Panel>

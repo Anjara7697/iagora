@@ -187,12 +187,12 @@ export function MetaLeadSettings({
         <div className="flex flex-col gap-1">
           <Eyebrow>Source de leads · Facebook et Instagram</Eyebrow>
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="flex-1 text-base font-semibold text-foreground">Meta Lead Ads</h2>
+            <h2 className="flex-1 type-title-sm font-semibold text-foreground">Meta Lead Ads</h2>
             <StatePill tone={tone}>{status}</StatePill>
           </div>
         </div>
       )}
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Reçoit les formulaires instantanés Meta, évite les doublons et range
         chaque prospect dans la campagne choisie. Les secrets sont chiffrés et
         ne sont jamais réaffichés.
@@ -237,17 +237,17 @@ export function MetaLeadSettings({
 
       <div className="flex flex-col gap-3 border-t border-separator pt-4">
         <div className="flex flex-col gap-0.5">
-          <h3 className="text-sm font-semibold text-foreground">Correspondance des formulaires</h3>
-          <p className="text-xs/[18px] text-muted">
+          <h3 className="type-body font-semibold text-foreground">Correspondance des formulaires</h3>
+          <p className="type-caption leading-4.5 text-muted">
             Un identifiant de formulaire Meta correspond à une seule source de
             campagne IAGORA.
           </p>
         </div>
         {cfg.mappings.map((mapping) => (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-separator px-4 py-3" key={mapping.form_id}>
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-separator px-4 py-3" key={mapping.form_id}>
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <strong className="text-sm font-semibold text-foreground">{mapping.form_name}</strong>
-              <span className="text-xs text-muted">
+              <strong className="type-body font-semibold text-foreground">{mapping.form_name}</strong>
+              <span className="type-caption text-muted">
                 Formulaire <code className="rounded bg-surface-tertiary px-1 font-mono">{mapping.form_id}</code> · campagne #{mapping.campaign_id} · source #{mapping.source_id}
               </span>
             </span>
@@ -278,7 +278,7 @@ export function MetaLeadSettings({
             </Btn>
           </div>
         ))}
-        <div className="flex flex-col gap-3 rounded-xl bg-surface-secondary p-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-surface-secondary p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <TextInput
               aria-label="Identifiant du formulaire Meta"
@@ -325,7 +325,7 @@ export function MetaLeadSettings({
           { value: cfg.queued ?? 0, caption: "en attente" },
         ]}
       />
-      <p className="text-xs/[18px] text-muted">
+      <p className="type-caption leading-4.5 text-muted">
         Dernier événement : {formatDate(cfg.last_event_at)} · dernier succès :{" "}
         {formatDate(cfg.last_success_at)}
       </p>

@@ -182,7 +182,7 @@ function Catalog() {
           options={FILTERS.map(([id, text]) => ({ value: id, text }))}
           onChange={(value) => updateUrl({ f: value === "all" ? null : value })}
         />
-        <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+        <span className="ml-auto type-body-sm text-muted tabular-nums" role="status">
           {`${shown.length} connecteur${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${CONNECTORS.length}` : ""}`}
         </span>
       </div>
@@ -251,17 +251,17 @@ function Catalog() {
                   >
                     <div className="flex items-start gap-3">
                       <span
-                        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-xl [&_svg]:size-5 ${v.configured && !c.soon ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-secondary text-foreground"}`}
+                        className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg [&_svg]:size-5 ${v.configured && !c.soon ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-secondary text-foreground"}`}
                         aria-hidden="true"
                       >
                         <ConnectorIcon name={c.icon} />
                       </span>
-                      <h3 className="min-w-0 flex-1 pt-0.5 text-[15px] font-semibold text-foreground">{c.name}</h3>
+                      <h3 className="min-w-0 flex-1 pt-0.5 type-title-sm font-semibold text-foreground">{c.name}</h3>
                       <Pill view={v} />
                     </div>
-                    <p className="flex-1 text-[13px]/[20px] text-muted">{c.description}</p>
+                    <p className="flex-1 type-body-sm text-muted">{c.description}</p>
                     <div className="flex items-center gap-3 border-t border-separator pt-3">
-                      <span className="min-w-0 flex-1 truncate text-xs text-muted">{v.meta ?? " "}</span>
+                      <span className="min-w-0 flex-1 truncate type-caption text-muted">{v.meta ?? " "}</span>
                       {c.href ? (
                         <LinkButton href={c.href} size="sm" variant="outline" aria-label={`${cta} ${c.name}`}>
                           {cta}
@@ -315,7 +315,7 @@ function Catalog() {
         {open?.soon && (
           <div className="flex flex-col gap-3">
             {SOON_TEXT[open.id]?.map((line) => (
-              <p key={line} className="rounded-xl bg-surface-secondary px-4 py-3 text-sm text-foreground">
+              <p key={line} className="rounded-lg bg-surface-secondary px-4 py-3 type-body text-foreground">
                 {line}
               </p>
             ))}

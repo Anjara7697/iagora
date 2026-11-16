@@ -117,9 +117,9 @@ export function EmailConnector({
         </Tabs.ListContainer>
         <Tabs.Panel id="overview" className="pt-4" shouldForceMount hidden={tab !== "overview"}>
       <section aria-label="Messagerie" className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 rounded-2xl bg-surface-secondary px-4 py-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-surface-secondary px-4 py-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="flex-1 text-[13px] text-muted">Dernier test de la boîte</span>
+            <span className="flex-1 type-body-sm text-muted">Dernier test de la boîte</span>
             <StatePill tone={testTone}>{testLabel}</StatePill>
           </div>
           <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="État de la messagerie">
@@ -130,7 +130,7 @@ export function EmailConnector({
                 [s.send_enabled, s.send_enabled ? "Envoi activé" : "Envoi désactivé"],
               ] as const
             ).map(([on, text]) => (
-              <li key={text} className="flex items-center gap-2 text-[13px] text-foreground">
+              <li key={text} className="flex items-center gap-2 type-body-sm text-foreground">
                 <span className={cx("size-2 rounded-full", on ? "bg-success" : "bg-muted/40")} aria-hidden="true" />
                 {text}
               </li>
@@ -163,7 +163,7 @@ export function EmailConnector({
             </Btn>
           )}
         </ActionsBar>
-        <p className="text-xs/[18px] text-muted">
+        <p className="type-caption leading-4.5 text-muted">
           Ces actions utilisent la boîte enregistrée. Pour essayer des
           modifications avant de les appliquer, utilisez « Tester ces paramètres
           » dans l’onglet Configuration.
@@ -180,14 +180,14 @@ export function EmailConnector({
         {s.last_error && <ErrorText>Dernière erreur : {s.last_error}</ErrorText>}
         <InfoRow label="Réception">
           <span>
-            Relève IMAP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.imap_host}</code> · dernière relève{" "}
+            Relève IMAP <code className="rounded bg-surface-tertiary px-1 font-mono type-body-sm">{s.imap_host}</code> · dernière relève{" "}
             {formatDate(s.last_run_at)}
           </span>
         </InfoRow>
         <InfoRow label="Envoi">
           <span className="inline-flex flex-wrap items-center gap-1">
             <Mail className="size-3.5 text-muted" aria-hidden="true" />
-            SMTP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.smtp_host}</code> · boîte {s.sender ?? "-"}
+            SMTP <code className="rounded bg-surface-tertiary px-1 font-mono type-body-sm">{s.smtp_host}</code> · boîte {s.sender ?? "-"}
           </span>
         </InfoRow>
         <InfoRow

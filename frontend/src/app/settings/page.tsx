@@ -197,7 +197,7 @@ function Settings() {
         style={reveal(1).style}
       >
         <div className="flex flex-col gap-1.5 lg:hidden">
-          <label id="settings-category-label" htmlFor="settings-category" className="text-[13px] font-medium text-foreground">
+          <label id="settings-category-label" htmlFor="settings-category" className="type-body-sm font-medium text-foreground">
             Catégorie
           </label>
           <SelectBox
@@ -229,14 +229,14 @@ function Settings() {
                 scroll={false}
                 aria-current={on ? "page" : undefined}
                 className={cx(
-                  "flex items-start gap-3 rounded-xl px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
+                  "flex items-start gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
                   on ? "bg-surface shadow-surface" : "hover:bg-default/60",
                 )}
               >
                 <Icon className={cx("mt-0.5 size-4 shrink-0", on ? "text-accent" : "text-muted")} aria-hidden="true" />
                 <span className="flex flex-col">
-                  <span className={cx("text-sm font-medium", on ? "text-foreground" : "text-foreground/90")}>{s.label}</span>
-                  <small className="text-xs text-muted">{s.hint}</small>
+                  <span className={cx("type-body font-medium", on ? "text-foreground" : "text-foreground/90")}>{s.label}</span>
+                  <small className="type-caption text-muted">{s.hint}</small>
                 </span>
               </Link>
             );
@@ -263,7 +263,7 @@ function Settings() {
 
           <AppointmentsSection {...sectionProps} hidden={active !== "rdv"} />
 
-          <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-2xl border border-separator bg-surface/95 px-4 py-3 shadow-overlay backdrop-blur">
+          <div className="sticky bottom-3 z-10 flex flex-col gap-2 rounded-lg border border-separator bg-surface/95 px-4 py-3 shadow-overlay backdrop-blur">
             <ActionsBar>
               <Btn variant="primary" onClick={save} disabled={busy !== null}>
                 Enregistrer les paramètres
@@ -283,7 +283,7 @@ function Settings() {
                 />
               )}
               {dirty && (
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning-soft-foreground">
+                <span className="inline-flex items-center gap-1.5 type-caption font-medium text-warning-soft-foreground">
                   <span className="size-1.5 rounded-full bg-warning" aria-hidden="true" />
                   Modifications non enregistrées
                 </span>

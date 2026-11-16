@@ -169,7 +169,7 @@ function Prospects() {
             )}
           </Btn>
           <span className="flex-1" />
-          <span className="text-[13px] text-muted tabular-nums" role="status">
+          <span className="type-body-sm text-muted tabular-nums" role="status">
             {data
               ? `${data.total} prospect${data.total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
               : ""}

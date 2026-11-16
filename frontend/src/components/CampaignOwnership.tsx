@@ -42,18 +42,18 @@ export default function CampaignOwnership({
     >
       <div className="flex flex-col gap-1">
         <Eyebrow>Affectation</Eyebrow>
-        <h2 className="text-base font-semibold text-foreground">Responsable de campagne</h2>
+        <h2 className="type-title-sm font-semibold text-foreground">Responsable de campagne</h2>
       </div>
       <div className="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
         <span
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-soft-foreground"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft type-caption font-semibold text-accent-soft-foreground"
           aria-hidden="true"
         >
           {c.responsible_advisor_id ? initialsOf(current) : <UserRound className="size-4" />}
         </span>
-        <strong className="text-sm font-semibold text-foreground">{current}</strong>
+        <strong className="type-body font-semibold text-foreground">{current}</strong>
       </div>
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Les nouveaux prospects suivent le responsable de la campagne. Une
         exception individuelle reste possible depuis leur fiche.
       </p>
@@ -121,7 +121,7 @@ export default function CampaignOwnership({
             </SelectBox>
           </Field>
           {advisors.data && advisors.data.total > 50 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            <div className="flex flex-wrap items-center gap-2 type-body text-muted">
               <Btn
                 size="sm"
                 disabled={busy || advisors.loading || offset === 0}
@@ -129,7 +129,7 @@ export default function CampaignOwnership({
               >
                 Conseillers précédents
               </Btn>
-              <span className="text-xs tabular-nums">
+              <span className="type-caption tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>
@@ -163,14 +163,14 @@ export default function CampaignOwnership({
             </SelectBox>
           </Field>
           {policy === "transfer_inherited" && (
-            <p className="rounded-lg bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
+            <p className="rounded-lg bg-accent-soft px-4 py-3 type-body-sm text-accent-soft-foreground">
               Les exceptions individuelles sont conservées. Les autres prospects
               suivront le nouveau responsable
               {advisor ? "." : " et deviendront non affectés."}
             </p>
           )}
           {policy === "keep" && (
-            <p className="rounded-lg bg-accent-soft px-4 py-3 text-[13px]/[20px] text-accent-soft-foreground">
+            <p className="rounded-lg bg-accent-soft px-4 py-3 type-body-sm text-accent-soft-foreground">
               Les affectations actuelles deviennent des exceptions, y compris
               les prospects sans conseiller. Seuls les nouveaux prospects sans
               exception suivront le nouveau responsable.

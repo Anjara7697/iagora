@@ -119,7 +119,7 @@ function Team() {
                 ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({ value: r as RoleFilter, text: ROLE_LABELS[r] })),
               ]}
             />
-            <span className="ml-auto text-[13px] text-muted tabular-nums" role="status">
+            <span className="ml-auto type-body-sm text-muted tabular-nums" role="status">
               {members.data
                 ? `${shown.length} membre${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${all.length}` : ""} · ${active} actif${active > 1 ? "s" : ""}`
                 : ""}
@@ -180,7 +180,7 @@ function Team() {
                     <span className="flex items-center gap-3">
                       <span
                         className={cx(
-                          "inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold",
+                          "inline-flex size-9 shrink-0 items-center justify-center rounded-full type-body-sm font-semibold",
                           m.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
                         )}
                         aria-hidden="true"
@@ -188,11 +188,11 @@ function Team() {
                         {initials(m.username)}
                       </span>
                       <span className="flex min-w-0 flex-col">
-                        <strong className="text-sm font-semibold text-foreground">
+                        <strong className="type-body font-semibold text-foreground">
                           {m.username}
                           {m.id === user?.id && <span className="font-normal text-muted"> · vous</span>}
                         </strong>
-                        <span className="text-[13px] text-muted">{m.email}</span>
+                        <span className="type-body-sm text-muted">{m.email}</span>
                       </span>
                     </span>
                   </Table.Cell>
@@ -200,7 +200,7 @@ function Team() {
                   <Table.Cell>
                     <Tag tone={state.tone}>{state.label}</Tag>
                   </Table.Cell>
-                  <Table.Cell className="text-xs whitespace-nowrap text-muted tabular-nums">
+                  <Table.Cell className="type-caption whitespace-nowrap text-muted tabular-nums">
                     {formatDate(m.created_at ?? null)}
                   </Table.Cell>
                 </Table.Row>

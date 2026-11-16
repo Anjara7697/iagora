@@ -72,19 +72,19 @@ export function FirstContacts({ campaign, showImport = true }: { campaign: Campa
     <Box as="section" aria-label="Premiers contacts" className="gap-3 p-4">
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h3 className="text-sm font-semibold text-foreground">Premiers contacts</h3>
+          <h3 className="type-body font-semibold text-foreground">Premiers contacts</h3>
           {!p && !plan.error ? (
-            <Skeleton className="h-4 w-64 rounded-md" />
+            <Skeleton className="h-4 w-64 rounded-lg" />
           ) : (
             p && (
-              <p className="text-[13px] text-muted" role="status">
+              <p className="type-body-sm text-muted" role="status">
                 {n
                   ? `${plural(n, "personne")} de la campagne peu${n > 1 ? "vent" : "t"} recevoir un premier message de l’agent.`
                   : "Personne à aborder pour l’instant."}
               </p>
             )
           )}
-          {excluded.length > 0 && <p className="text-xs text-muted">{excluded.join(" · ")}</p>}
+          {excluded.length > 0 && <p className="type-caption text-muted">{excluded.join(" · ")}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {showImport && canWrite && (

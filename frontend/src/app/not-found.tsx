@@ -14,8 +14,8 @@ export default function NotFound() {
           <MapPinOff className="size-5" />
         </span>
         <div className="flex max-w-sm flex-col gap-1">
-          <h1 className="text-base font-semibold text-foreground">Page introuvable</h1>
-          <p className="text-sm text-muted">
+          <h1 className="type-title-sm font-semibold text-foreground">Page introuvable</h1>
+          <p className="type-body text-muted">
             Cette adresse ne correspond à aucun écran de la console. Elle a peut-être été mal recopiée.
           </p>
         </div>

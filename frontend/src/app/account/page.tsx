@@ -51,21 +51,21 @@ export default function AccountPage() {
     <Screen className="max-w-[960px]">
       <header className="flex flex-wrap items-center gap-4">
         <span
-          className="inline-flex size-16 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-xl font-semibold text-accent-soft-foreground"
+          className="inline-flex size-16 shrink-0 items-center justify-center rounded-lg bg-accent-soft type-title font-semibold text-accent-soft-foreground"
           aria-hidden="true"
         >
           {initials(user.username)}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="text-xs tracking-[0.06em] text-muted uppercase">Mon compte</span>
-          <h1 className="text-[28px]/[34px] font-semibold tracking-[-0.02em] text-foreground">{user.username}</h1>
-          <p className="text-sm text-muted">
+          <span className="type-caption tracking-[0.06em] text-muted uppercase">Mon compte</span>
+          <h1 className="type-display font-semibold tracking-[-0.02em] text-foreground">{user.username}</h1>
+          <p className="type-body text-muted">
             {user.email} · {ROLE_LABELS[user.role]}
           </p>
         </div>
       </header>
       {user.must_change_password && (
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
+        <p className="rounded-lg bg-warning-soft px-4 py-3 type-body text-warning-soft-foreground" role="alert">
           Votre mot de passe est temporaire : choisissez le vôtre pour accéder
           à la console.
         </p>

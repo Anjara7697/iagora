@@ -60,7 +60,7 @@ export default function ProspectHeader({
       </Avatar>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <Eyebrow>Fiche prospect · #{p.id}</Eyebrow>
-        <h1 className="text-[28px]/[34px] font-semibold tracking-[-0.02em] text-foreground">{fullName(p)}</h1>
+        <h1 className="type-display font-semibold tracking-[-0.02em] text-foreground">{fullName(p)}</h1>
         <div className="flex flex-wrap items-center gap-1.5">
           <DemoBadge email={p.email} />
           <Tag tone={consentTone}>{label(CONSENT, p.consent_status)}</Tag>

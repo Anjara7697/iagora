@@ -35,7 +35,7 @@ export default function InteractionHistory({ id }: { id: number }) {
   return (
     <Box as="section" className="gap-0 p-0" aria-label="Historique des interactions">
       <div className="flex min-h-14 items-center border-b border-separator px-5 py-3">
-        <h2 className="text-base font-semibold text-foreground">Interactions</h2>
+        <h2 className="type-title-sm font-semibold text-foreground">Interactions</h2>
       </div>
       <div className="flex flex-col gap-3 px-5 py-4">
         <Loading
@@ -44,7 +44,7 @@ export default function InteractionHistory({ id }: { id: number }) {
           onRetry={history.reload}
         />
         {history.data?.total === 0 && (
-          <p className="text-sm text-muted">Aucune interaction enregistrée.</p>
+          <p className="type-body text-muted">Aucune interaction enregistrée.</p>
         )}
         <ul className="flex flex-col">
           {history.data?.items.map((item) => (
@@ -54,13 +54,13 @@ export default function InteractionHistory({ id }: { id: number }) {
                 aria-hidden="true"
               />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-[13px] text-muted">
+                <p className="type-body-sm text-muted">
                   <strong className="font-semibold text-foreground">{TYPES[item.type] ?? item.type}</strong> ·{" "}
                   {formatDate(item.created_at)} ·{" "}
                   {item.direction === "inbound" ? "Entrant" : "Sortant"}
                 </p>
                 {item.content && (
-                  <p className="text-sm whitespace-pre-wrap text-foreground">{item.content}</p>
+                  <p className="type-body whitespace-pre-wrap text-foreground">{item.content}</p>
                 )}
                 {item.conversation_ref && (
                   <TextLink
@@ -84,7 +84,7 @@ export default function InteractionHistory({ id }: { id: number }) {
             >
               Interactions précédentes
             </Btn>
-            <span className="text-xs text-muted tabular-nums">
+            <span className="type-caption text-muted tabular-nums">
               {history.data.total === 0 ? 0 : offset + 1}–
               {Math.min(offset + LIMIT, history.data.total)} /{" "}
               {history.data.total}

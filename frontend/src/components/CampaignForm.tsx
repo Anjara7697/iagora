@@ -147,7 +147,7 @@ export default function CampaignForm({
             />
             {targets.length > 1 && (
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-muted" role="status">
+                <span className="type-caption text-muted" role="status">
                   {v.target_codes.length} sur {targets.length} sélectionné{v.target_codes.length > 1 ? "s" : ""}
                 </span>
                 <Btn
@@ -169,7 +169,7 @@ export default function CampaignForm({
           <SourceConnectors value={v.sources} onChange={(sources) => set("sources", sources)} />
 
           {steps && (
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-lg bg-surface-secondary p-3 text-[13px]" aria-label="Récapitulatif">
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-lg bg-surface-secondary p-3 type-body-sm" aria-label="Récapitulatif">
               <dt className="text-muted">Campagne</dt>
               <dd className="font-medium text-foreground">{v.name.trim() || "—"}</dd>
               <dt className="text-muted">Statut</dt>

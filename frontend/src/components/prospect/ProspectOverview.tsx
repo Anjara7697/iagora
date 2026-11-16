@@ -58,30 +58,30 @@ export default function ProspectOverview({
               >
                 <Sparkles className="size-3.5" />
               </span>
-              <span className="text-xs font-medium text-agent-soft-foreground">Prochaine action recommandée</span>
+              <span className="type-caption font-medium text-agent-soft-foreground">Prochaine action recommandée</span>
             </div>
             {p.consent_status === "opted_out" ? (
               <>
-                <h2 className="text-base font-semibold text-foreground">Respecter la désinscription</h2>
-                <p className="text-sm text-foreground/85">Aucun message ne peut être envoyé à ce prospect.</p>
+                <h2 className="type-title-sm font-semibold text-foreground">Respecter la désinscription</h2>
+                <p className="type-body text-foreground/85">Aucun message ne peut être envoyé à ce prospect.</p>
               </>
             ) : (
               <>
-                <h2 className="text-base font-semibold text-foreground">
+                <h2 className="type-title-sm font-semibold text-foreground">
                   {recommendation ??
                     (p.campaigns.length === 0
                       ? "Attribuer une campagne et une source"
                       : "Consulter le parcours du prospect")}
                 </h2>
                 {conv?.handoff?.summary ? (
-                  <p className="text-sm text-foreground/85">{conv.handoff.summary}</p>
+                  <p className="type-body text-foreground/85">{conv.handoff.summary}</p>
                 ) : lastRun?.reason ? (
-                  <p className="text-sm text-foreground/85">{lastRun.reason}</p>
+                  <p className="type-body text-foreground/85">{lastRun.reason}</p>
                 ) : (
-                  <p className="text-sm text-muted">Aucune recommandation de l’agent enregistrée pour l’instant.</p>
+                  <p className="type-body text-muted">Aucune recommandation de l’agent enregistrée pour l’instant.</p>
                 )}
                 {lastRun && !conv?.handoff && (
-                  <p className="text-xs text-muted">Dernière décision enregistrée le {formatDate(lastRun.started_at)}.</p>
+                  <p className="type-caption text-muted">Dernière décision enregistrée le {formatDate(lastRun.started_at)}.</p>
                 )}
                 {p.campaigns.length === 0 && canWrite && (
                   <div>
@@ -104,8 +104,8 @@ export default function ProspectOverview({
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               {Object.entries(p.profile).map(([k, v]) => (
                 <div key={k} className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted">{PROFILE_FIELDS[k] ?? k}</dt>
-                  <dd className="text-sm break-words text-foreground">
+                  <dt className="type-caption text-muted">{PROFILE_FIELDS[k] ?? k}</dt>
+                  <dd className="type-body break-words text-foreground">
                     {typeof v === "object" && v !== null ? JSON.stringify(v) : String(v)}
                   </dd>
                 </div>
@@ -122,19 +122,19 @@ export default function ProspectOverview({
               ["Canal de l’échange", conv ? label(CHANNELS, conv.channel) : "Non renseigné"],
             ].map(([k, v]) => (
               <div key={k} className="grid grid-cols-[140px_minmax(0,1fr)] gap-3">
-                <dt className="text-[13px] text-muted">{k}</dt>
-                <dd className="text-sm break-words text-foreground">{v}</dd>
+                <dt className="type-body-sm text-muted">{k}</dt>
+                <dd className="type-body break-words text-foreground">{v}</dd>
               </div>
             ))}
           </dl>
           <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary p-4">
             <Eyebrow>Consentement</Eyebrow>
-            <p className="text-sm text-foreground">
+            <p className="type-body text-foreground">
               {label(CONSENT, p.consent_status)}
               {p.consent_source ? ` · ${p.consent_source}` : ""}
             </p>
             {canWrite && (
-              <p className="text-xs text-muted">Pour le modifier : menu « Autres actions » en haut de la fiche.</p>
+              <p className="type-caption text-muted">Pour le modifier : menu « Autres actions » en haut de la fiche.</p>
             )}
           </div>
         </Panel>

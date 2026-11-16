@@ -133,8 +133,8 @@ function Knowledge() {
           {status.data && (
             <Collapse
               title="Réglages techniques de la recherche"
-              className="card card--default gap-0 rounded-lg px-5 py-4 text-[13px]"
-              triggerClassName="w-full text-sm"
+              className="card card--default gap-0 rounded-lg px-5 py-4 type-body-sm"
+              triggerClassName="w-full type-body"
             >
               <p className="mt-2 text-muted">Ces informations expliquent comment les extraits sont sélectionnés.</p>
               <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5">

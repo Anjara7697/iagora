@@ -107,7 +107,7 @@ function CampaignDetail() {
                     {formatPeriod(c.start_date, c.end_date)}
                   </span>
                 </span>
-                <span className="text-sm text-muted">{label(CAMPAIGN_STATUS_EFFECT, c.status)}</span>
+                <span className="type-body text-muted">{label(CAMPAIGN_STATUS_EFFECT, c.status)}</span>
                 {c.description && <span>{c.description}</span>}
               </span>
             }

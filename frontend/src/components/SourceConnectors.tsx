@@ -130,7 +130,7 @@ export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { on
   const states = useConnectorStates();
   return (
     <section aria-label="Connecteurs disponibles" className="flex flex-col gap-3">
-      {title && <h3 className="text-[13px] font-medium text-foreground">{title}</h3>}
+      {title && <h3 className="type-body-sm font-medium text-foreground">{title}</h3>}
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CONNECTORS.map((c) => {
           const state = states[c.id];
@@ -138,7 +138,7 @@ export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { on
             <Box as="li" key={c.id} className="gap-3 rounded-lg p-4" aria-label={c.title}>
               <div className="flex items-center gap-3">
                 <SourceAvatar platform={c.platform} name={c.title} />
-                <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{c.title}</span>
+                <span className="min-w-0 flex-1 type-body font-semibold text-foreground">{c.title}</span>
                 {state && (
                   <Chip size="sm" variant="soft" color={state.tone}>
                     <Chip.Label>{state.label}</Chip.Label>
@@ -151,7 +151,7 @@ export function ConnectorCatalogue({ onAdd, title = "Ajouter une source" }: { on
                   <Plus className="size-4" aria-hidden="true" />
                   Ajouter
                 </Button>
-                {state?.link && <TextLink href={state.link.href} className="text-xs">{state.link.text}</TextLink>}
+                {state?.link && <TextLink href={state.link.href} className="type-caption">{state.link.text}</TextLink>}
               </div>
             </Box>
           );
@@ -176,11 +176,11 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
       <ConnectorCatalogue onAdd={add} />
 
       <section aria-label="Sources de cette campagne" className="flex flex-col gap-3">
-        <h3 className="text-[13px] font-medium text-foreground">
+        <h3 className="type-body-sm font-medium text-foreground">
           Sources de cette campagne <span className="font-normal text-muted">({value.length})</span>
         </h3>
         {value.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center type-body text-muted">
             Aucune source pour l’instant. Vous pourrez en ajouter plus tard depuis la fiche de la campagne.
           </p>
         )}
@@ -192,7 +192,7 @@ export default function SourceConnectors({ value, onChange }: { value: SourceDra
               <Box as="li" key={i} className="gap-3 rounded-lg p-4" aria-label={`Source ${i + 1} : ${connector.title}`}>
                 <div className="flex items-center gap-3">
                   <SourceAvatar platform={s.platform} name={connector.title} />
-                  <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{connector.title}</span>
+                  <span className="min-w-0 flex-1 type-body font-semibold text-foreground">{connector.title}</span>
                   <Chip size="sm" variant="soft" color={state.tone}>
                     <Chip.Label>{state.label}</Chip.Label>
                   </Chip>

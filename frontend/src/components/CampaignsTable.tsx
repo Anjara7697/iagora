@@ -52,9 +52,9 @@ export default function CampaignsTable({
           <Table.Row key={c.id} id={c.id} href={`/campaigns/${c.id}${linkSuffix}`} className={row.className} style={row.style}>
             <Table.Cell>
               <span className="flex min-w-0 flex-col gap-0.5">
-                <strong className="text-sm font-semibold text-foreground">{c.name}</strong>
-                <span className="text-xs text-muted">Responsable : {c.responsible_advisor_name ?? "Non affecté"}</span>
-                <span className="text-xs text-muted">
+                <strong className="type-body font-semibold text-foreground">{c.name}</strong>
+                <span className="type-caption text-muted">Responsable : {c.responsible_advisor_name ?? "Non affecté"}</span>
+                <span className="type-caption text-muted">
                   {c.targets.map((t) => label(TARGETS, t.code)).join(", ") || "Aucun programme"}
                   {c.start_date || c.end_date ? ` · ${formatPeriod(c.start_date, c.end_date)}` : ""}
                 </span>
@@ -66,7 +66,7 @@ export default function CampaignsTable({
             <Table.Cell>
               <span className="flex items-center gap-2">
                 <SourceAvatars sources={c.sources} />
-                <span className="text-[13px] text-muted">
+                <span className="type-body-sm text-muted">
                   {c.sources.length} source{c.sources.length > 1 ? "s" : ""}
                 </span>
               </span>

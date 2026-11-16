@@ -62,13 +62,13 @@ export function TodoDetail({
 
       <Box as="div" {...revealed(1, "gap-2 p-5")}>
         <span className="sr-only">La demande à examiner</span>
-        <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+        <h3 className="type-body font-semibold text-foreground">{item.title}</h3>
         {item.detail && (
-          <blockquote className="rounded-lg border-l-2 border-border bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
+          <blockquote className="rounded-lg border-l-2 border-border bg-surface-secondary px-4 py-3 type-body whitespace-pre-wrap text-foreground">
             « {item.detail} »
           </blockquote>
         )}
-        <span className="text-xs text-muted">
+        <span className="type-caption text-muted">
           {label(CHANNELS, item.channel)} · {formatDate(item.created_at)}
         </span>
       </Box>
@@ -88,9 +88,9 @@ export function TodoDetail({
                 <span className="inline-flex size-6 items-center justify-center rounded-lg bg-agent text-agent-foreground" aria-hidden="true">
                   <Sparkles className="size-3.5" />
                 </span>
-                <span className="text-xs font-medium text-agent-soft-foreground">Prochaine action recommandée</span>
+                <span className="type-caption font-medium text-agent-soft-foreground">Prochaine action recommandée</span>
               </div>
-              <h3 className="text-base font-semibold text-foreground">{rec.action}</h3>
+              <h3 className="type-title-sm font-semibold text-foreground">{rec.action}</h3>
               {(() => {
                 // Recommandation et fiche de transfert se recoupent souvent : on
                 // n'affiche qu'une fois le texte le plus complet.
@@ -101,9 +101,9 @@ export function TodoDetail({
                   summary && !summary.includes(reason) && !reason.includes(summary);
                 return (
                   <>
-                    {merged && <p className="text-sm text-foreground/85">{merged}</p>}
+                    {merged && <p className="type-body text-foreground/85">{merged}</p>}
                     {extra && item.handoff && (
-                      <p className="text-sm text-foreground/85">
+                      <p className="type-body text-foreground/85">
                         <span className="text-muted">
                           {label(HANDOFF_REASONS, item.handoff.reason)} :
                         </span>{" "}
@@ -118,7 +118,7 @@ export function TodoDetail({
                   Risque : {label(RISKS, rec.risk).toLowerCase()}
                 </Tag>
                 {rec.sources.length === 0 && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning-soft-foreground">
+                  <span className="inline-flex items-center gap-1.5 type-caption font-medium text-warning-soft-foreground">
                     <AlertTriangle className="size-3.5" aria-hidden="true" />
                     Aucune source de la base de connaissances.
                   </span>
@@ -135,14 +135,14 @@ export function TodoDetail({
                   {rec.sources.length > 0 ? (
                     <ul className="flex flex-col gap-1.5">
                       {rec.sources.map((s) => (
-                        <li key={s} className="flex items-start gap-2 text-sm text-foreground">
+                        <li key={s} className="flex items-start gap-2 type-body text-foreground">
                           <BookOpen className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden="true" />
                           {s}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-muted">Aucune source disponible.</p>
+                    <p className="type-body text-muted">Aucune source disponible.</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">

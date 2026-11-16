@@ -14,9 +14,12 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   et les fenêtres de confirmation gardent leur rayon HeroUI. Ne pas fixer de rayon en pixels.
   Échelle, avec ce rayon de base : `rounded-sm` 2 px, `rounded-lg` 4 px, `rounded-full` ; `xl`, `2xl` et `md` ne
   s'emploient plus.
-- **Texte** : une taille par rôle, déclarée dans `heroui.css` (`@utility`, préfixe `type-` : un nom en `text-` serait retiré par la fusion de classes de HeroUI dès qu'une couleur de texte le suit) : `type-caption` (12/16), `type-body-sm`
-  (13/20), `type-body` (14/20), `type-title-sm` (16/24), `type-title` (20/28), `type-display` (28/34). Pas de taille
-  en pixels (`text-[13px]`) ; les écrans passent à cette échelle au fil du lot 2.
+- **Texte** : une taille par rôle, déclarée dans `heroui.css` (`@utility`, préfixe `type-` : un nom en `text-` serait
+  retiré par la fusion de classes de HeroUI dès qu'une couleur de texte le suit) : `type-caption` (12/16), `type-body-sm`
+  (13/20), `type-body` (14/20), `type-title-sm` (16/24), `type-title` (20/28), `type-display` (28/34). Un autre
+  interligne s'écrit à côté (`type-caption leading-4.5`), jamais accolé (`type-caption/[18px]` n'existe pas). Pas de
+  taille en pixels ; seule exception, l'accroche du panneau de marque de la connexion (`text-5xl`). Un test unitaire
+  (`tests-unit/styles.test.ts`) refuse les tailles en pixels, les interlignes accolés et les rayons hors échelle.
 - **Ombres** : seulement pour ce qui flotte (menus, panneaux, toasts, dialogues : `--overlay-shadow`). Ce qui est posé
   sur la page (cartes, indicateur d'onglet) a un filet de 1 px (`--surface-shadow`) ; les alertes n'ont ni l'un ni
   l'autre.

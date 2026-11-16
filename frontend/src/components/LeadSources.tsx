@@ -84,17 +84,17 @@ export function LeadSources({
     >
       {!embedded && (
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-semibold text-foreground">Formulaire du site et outils (n8n…)</h2>
+          <h2 className="flex-1 type-title-sm font-semibold text-foreground">Formulaire du site et outils (n8n…)</h2>
           <StatePill tone={active.length ? "ok" : "off"}>
             {active.length ? `${active.length} jeton(s) actif(s)` : "Aucun jeton"}
           </StatePill>
         </div>
       )}
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Un jeton permet à un formulaire ou à un outil d’envoyer des prospects
         vers la campagne choisie, sans compte utilisateur. Il ne donne accès à
         rien d’autre. Pour un fichier :{" "}
-        <TextLink href="/prospects/import" className="text-[13px]">importer un CSV</TextLink>.
+        <TextLink href="/prospects/import" className="type-body-sm">importer un CSV</TextLink>.
       </p>
       {created?.token && (
         <SecretOnce
@@ -108,7 +108,7 @@ export function LeadSources({
           doneLabel="J’ai copié le jeton"
           onDone={() => setCreated(null)}
         >
-          <pre className="overflow-x-auto rounded-xl bg-foreground px-4 py-3 font-mono text-[12px]/[18px] text-background">{`curl -X POST ${API_URL}/leads \\
+          <pre className="overflow-x-auto rounded-lg bg-foreground px-4 py-3 font-mono type-caption text-background">{`curl -X POST ${API_URL}/leads \\
   -H "Authorization: Bearer ${created.token}" \\
   -H "Content-Type: application/json" \\
   -d '{"first_name":"Inès","email":"ines@exemple.fr","message":"Je veux des infos","consent":true}'`}</pre>
@@ -138,13 +138,13 @@ export function LeadSources({
         <div aria-label="Jetons de service" role="list" className="flex flex-col gap-2">
           {tokens.map((t) => (
             <div
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-separator px-4 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-separator px-4 py-3"
               role="listitem"
               key={t.id}
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <strong className="text-sm font-semibold text-foreground">{t.name}</strong>
-                <span className="text-xs text-muted">
+                <strong className="type-body font-semibold text-foreground">{t.name}</strong>
+                <span className="type-caption text-muted">
                   <code className="rounded bg-surface-tertiary px-1 font-mono">{t.hint}</code> · créé le {formatDate(t.created_at)} ·
                   dernier envoi {formatDate(t.last_used_at)}
                 </span>

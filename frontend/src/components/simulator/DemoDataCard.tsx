@@ -20,10 +20,10 @@ export function DemoDataCard({
   return (
     <Box as="section" className="gap-3 p-5" aria-label="Données fictives">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-muted" aria-hidden="true">
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-secondary text-muted" aria-hidden="true">
           <Database className="size-4" />
         </span>
-        <span className="min-w-[180px] flex-1 text-[13px]/[20px] text-muted" role="status">
+        <span className="min-w-[180px] flex-1 type-body-sm text-muted" role="status">
           Données fictives en base
           {counts && (
             <>

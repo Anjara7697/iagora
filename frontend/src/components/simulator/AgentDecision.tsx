@@ -28,10 +28,10 @@ export function AgentDecision({
     <Box as="aside" className="gap-4 p-5" aria-label="Décision de l'agent">
       <div className="flex items-center gap-2">
         <Sparkles className="size-4 text-agent" aria-hidden="true" />
-        <h3 className="text-base font-semibold text-foreground">Décision de l&apos;agent</h3>
+        <h3 className="type-title-sm font-semibold text-foreground">Décision de l&apos;agent</h3>
       </div>
       {!current && (
-        <p className="text-[13px] text-muted">
+        <p className="type-body-sm text-muted">
           La décision apparaîtra après le premier message.
         </p>
       )}
@@ -51,7 +51,7 @@ export function AgentDecision({
             </div>
           )}
           <RunView run={current} />
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 text-[13px]">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-t border-separator pt-4 type-body-sm">
             <dt className="text-muted">Intérêt / adéquation</dt>
             <dd className="text-foreground tabular-nums">
               {current.scores.interest ?? "-"} /{" "}

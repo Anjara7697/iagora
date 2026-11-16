@@ -32,7 +32,7 @@ export default function AppNav({
             {collapsed ? (
               index > 0 && <span className="mx-2 mb-1 border-t border-separator" aria-hidden="true" />
             ) : (
-              <p className="px-2 pb-1 text-xs tracking-[0.06em] text-muted uppercase">{group.name}</p>
+              <p className="px-2 pb-1 type-caption tracking-[0.06em] text-muted uppercase">{group.name}</p>
             )}
             {group.items.map((item) => {
               if (!item.href) return null;
@@ -49,7 +49,7 @@ export default function AppNav({
                     aria-current={active ? "page" : undefined}
                     aria-label={collapsed ? `${item.label}${count ? `, ${count} en attente` : ""}` : undefined}
                     onPress={onNavigate}
-                    className={`relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2 text-sm font-normal no-underline transition-colors duration-150 hover:no-underline ${
+                    className={`relative flex h-9 w-full items-center gap-2.5 rounded-lg px-2 type-body font-normal no-underline transition-colors duration-150 hover:no-underline ${
                       collapsed ? "justify-center" : ""
                     } ${active ? "bg-accent-soft font-medium text-accent-soft-foreground" : "text-foreground hover:bg-surface-secondary"}`}
                   >
@@ -77,7 +77,7 @@ export default function AppNav({
         {!collapsed && UPCOMING.length > 0 && (
           <Disclosure className="border-t border-separator pt-2">
             <Disclosure.Heading>
-              <Disclosure.Trigger className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 text-sm text-muted outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus">
+              <Disclosure.Trigger className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-2 type-body text-muted outline-none hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus">
                 <span className="flex-1 text-left">À venir</span>
                 <Chip size="sm" variant="soft">
                   <Chip.Label>{UPCOMING.length}</Chip.Label>
@@ -91,10 +91,10 @@ export default function AppNav({
               <Disclosure.Body>
                 <ul aria-label="Écrans prévus, pas encore disponibles" className="flex flex-col gap-0.5 py-1">
                   {UPCOMING.map((item) => (
-                    <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 text-sm text-muted">
+                    <li key={item.label} className="flex h-8 items-center gap-2.5 px-2 type-body text-muted">
                       <CircleDashed className="size-4" aria-hidden="true" />
                       <span>{item.label}</span>
-                      <span className="ms-auto text-[11px]" aria-hidden="true">
+                      <span className="ms-auto type-caption" aria-hidden="true">
                         Bientôt
                       </span>
                     </li>

@@ -32,14 +32,14 @@ export function Skeleton({ shape = "lines" }: { shape?: SkeletonShape }) {
           className={
             shape === "lines"
               ? "flex"
-              : "flex items-center gap-3 rounded-xl bg-surface p-4 shadow-surface"
+              : "flex items-center gap-3 rounded-lg bg-surface p-4 shadow-surface"
           }
         >
           {shape === "rows" && <HeroSkeleton className="size-8 shrink-0 rounded-full" />}
           <span className="flex flex-1 flex-col gap-2">
-            <HeroSkeleton className={`h-3 rounded-md ${shape === "lines" ? (i === count - 1 ? "w-2/5" : "w-4/5") : "w-3/5"}`} />
-            {shape !== "lines" && <HeroSkeleton className="h-2.5 w-2/5 rounded-md" />}
-            {shape === "cards" && <HeroSkeleton className="h-6 w-1/4 rounded-md" />}
+            <HeroSkeleton className={`h-3 rounded-lg ${shape === "lines" ? (i === count - 1 ? "w-2/5" : "w-4/5") : "w-3/5"}`} />
+            {shape !== "lines" && <HeroSkeleton className="h-2.5 w-2/5 rounded-lg" />}
+            {shape === "cards" && <HeroSkeleton className="h-6 w-1/4 rounded-lg" />}
           </span>
         </div>
       ))}
@@ -93,7 +93,7 @@ export function Pager({
         <ChevronLeft className="size-4" aria-hidden="true" />
         Précédent
       </Btn>
-      <span className="text-[13px] text-muted tabular-nums">
+      <span className="type-body-sm text-muted tabular-nums">
         {from}-{to} sur {total}
       </span>
       <Btn size="sm" variant="ghost" disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>

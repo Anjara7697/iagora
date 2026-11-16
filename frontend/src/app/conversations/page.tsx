@@ -116,8 +116,8 @@ function Inbox() {
           className={`w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:w-[360px] lg:overflow-hidden lg:pb-2 ${selectedId ? "hidden" : "flex"} ${queue.className}`}
         >
           <header className="flex items-baseline gap-2">
-            <h2 className="flex-1 text-base font-semibold text-foreground">Boîte de réception</h2>
-            <span className="text-[13px] text-muted tabular-nums" role="status">
+            <h2 className="flex-1 type-title-sm font-semibold text-foreground">Boîte de réception</h2>
+            <span className="type-body-sm text-muted tabular-nums" role="status">
               {list.data
                 ? `${total} conversation${total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
                 : ""}
@@ -164,7 +164,7 @@ function Inbox() {
           />
           {list.data && items.length === 0 && (
             <div className="flex flex-col items-start gap-2 px-2 py-3">
-              <p className="text-[13px] text-muted">
+              <p className="type-body-sm text-muted">
                 {filtered ? "Aucune conversation ne correspond à ces filtres." : "Aucune conversation pour le moment."}
               </p>
               {filtered && (

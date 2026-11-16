@@ -131,7 +131,7 @@ function AnalyticsScreen() {
               {data && data.reject_reasons.length > 0 && (
                 <ul className="flex flex-col divide-y divide-separator">
                   {data.reject_reasons.map((r) => (
-                    <li key={r.reason} className="flex items-start gap-3 py-2.5 text-sm first:pt-0 last:pb-0">
+                    <li key={r.reason} className="flex items-start gap-3 py-2.5 type-body first:pt-0 last:pb-0">
                       <span className="min-w-0 flex-1 break-words text-foreground">{r.reason}</span>
                       <span className="text-muted tabular-nums">× {r.count}</span>
                     </li>
@@ -152,7 +152,7 @@ function AnalyticsScreen() {
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate">{s.label}</span>
                         {i > 0 && (
-                          <span className="text-xs text-muted tabular-nums">
+                          <span className="type-caption text-muted tabular-nums">
                             {share(s.count, data.funnel[i - 1].count)} de l’étape précédente
                           </span>
                         )}
@@ -164,7 +164,7 @@ function AnalyticsScreen() {
               )}
             </Panel>
           </div>
-          <p className="text-xs text-muted">
+          <p className="type-caption text-muted">
             Délai : du premier message du prospect à la première réponse réellement envoyée (validation comprise) ;
             la rédaction de l’agent s’arrête au premier message qu’il a rédigé. Couverture : questions lues par l’agent
             auxquelles il a pu répondre avec un extrait validé, sans transfert « question hors base ». Confiance :
