@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.auto import email_loop, follow_up_loop, meta_resume_loop, reply_queue_loop
 from app.agents.runtime import ensure_run_indexes
+from app.api.cookies import CSRF_HEADER
 from app.api.errors import register_error_handlers
 from app.api.router import api_router
 from app.config import Settings, get_settings
@@ -16,6 +17,7 @@ from app.core.http_guard import HttpGuard
 from app.core.logging import configure_logging
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine
+from app.services import retention, service_tokens
 from app.services.conversations import ensure_indexes
 
 logger = logging.getLogger(__name__)
@@ -33,25 +35,48 @@ def require_explicit_environment(settings: Settings) -> None:
         )
 
 
+def background_workers(settings: Settings) -> list[str]:
+    """Boucles de fond à lancer dans ce processus (AUDIT-ARCH-002)."""
+    if not settings.background_workers_enabled:
+        return []
+    names: list[str] = []
+    if settings.agent_auto_reply:
+        names.append("reply-queue")
+    if settings.follow_up_worker_enabled:
+        names.append("follow-up-worker")
+    # Toujours lancées hors tests : elles ne font rien tant que la boîte ou Meta ne sont pas
+    # configurés et activés (console Intégrations ou `.env`), et suivent les changements sans
+    # redémarrage.
+    if settings.environment != "test":
+        names += ["email-worker", "meta-resume"]
+    return names
+
+
+_LOOPS = {
+    "reply-queue": reply_queue_loop,
+    "follow-up-worker": follow_up_loop,
+    "email-worker": email_loop,
+    "meta-resume": meta_resume_loop,
+}
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     require_explicit_environment(get_settings())
     try:
         await ensure_indexes(get_mongo_db())
         await ensure_run_indexes(get_mongo_db())
+        await service_tokens.ensure_indexes(get_mongo_db())
+        await retention.ensure_retention(get_mongo_db(), get_settings())
     except Exception:  # MongoDB pas encore prêt : l'API démarre, /health/ready signalera l'état
         logger.exception("Création des index MongoDB impossible au démarrage")
-    workers: list[asyncio.Task[None]] = []
     settings = get_settings()
-    if settings.agent_auto_reply:
-        workers.append(asyncio.create_task(reply_queue_loop(settings), name="reply-queue"))
-    if settings.follow_up_worker_enabled:
-        workers.append(asyncio.create_task(follow_up_loop(settings), name="follow-up-worker"))
-    # Toujours démarrée : elle ne fait rien tant que la boîte n'est pas configurée et activée
-    # (console Intégrations ou `.env`), et prend les changements en compte sans redémarrage.
-    if settings.environment != "test":
-        workers.append(asyncio.create_task(email_loop(settings), name="email-worker"))
-        workers.append(asyncio.create_task(meta_resume_loop(settings), name="meta-resume"))
+    workers = [
+        asyncio.create_task(_LOOPS[name](settings), name=name)
+        for name in background_workers(settings)
+    ]
+    if not workers:
+        logger.info("Aucune boucle de fond dans ce processus (HTTP seulement)")
     yield
     for worker in workers:
         worker.cancel()
@@ -79,7 +104,9 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", CSRF_HEADER],
+        # Témoin de session de la console (AUDIT-SEC-004) : origines explicites seulement.
+        allow_credentials=True,
     )
     # Ajouté en dernier, donc le plus à l'extérieur : en-têtes aussi sur les réponses CORS et
     # les erreurs.

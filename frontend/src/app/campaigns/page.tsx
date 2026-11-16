@@ -3,12 +3,13 @@
 import { Megaphone, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, type ReactNode } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import CampaignsTable from "@/components/CampaignsTable";
 import { Btn, FilterChip, FilterChipGroup, LinkButton } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, KpiStrip, PageHeader, Screen } from "@/components/ds/layout";
 import { CountUp, reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
+import { ListToolbar, countLabel } from "@/components/ds/toolbar";
 import { qs } from "@/lib/api";
 import { campaignListHref, readCampaignList, replaceUrl, type CampaignList } from "@/lib/campaignNav";
 import { RATE_THRESHOLDS, percent, rateBadge } from "@/lib/kpi";
@@ -16,7 +17,8 @@ import { label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
 
-const PAGE_SIZE = 6;
+/** Vingt campagnes par page : l'écran en montre autant (UX-13). */
+const PAGE_SIZE = 20;
 
 const STATUS_FILTERS = [
   { value: "", text: "Toutes" },
@@ -90,7 +92,6 @@ function Campaigns() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Pilotage · Campagnes"
         title="Campagnes"
         subtitle="Une campagne regroupe une ou plusieurs sources ; l’agent répond individuellement aux personnes qu’elle amène."
         actions={
@@ -152,8 +153,12 @@ function Campaigns() {
       {/* Une seule alerte par panne : si la liste échoue aussi, son « Réessayer » recharge les chiffres. */}
       {kpiError && !list.error && <ErrorState message={`Chiffres clés indisponibles : ${kpiError.message}`} onRetry={retryKpis} />}
 
-      {/* Barre au-dessus du tableau (règle des parcours) : filtres à gauche, compteur à droite. */}
-      <div style={reveal(5).style} className={`flex flex-wrap items-center justify-between gap-3 ${reveal(5).className}`}>
+      {/* Barre au-dessus du tableau (règle 5) : statut et « Mes campagnes » à gauche, compteur à droite. */}
+      <ListToolbar
+        {...reveal(5)}
+        label="Filtres des campagnes"
+        count={list.data ? countLabel(total, "campagne", filtered ? allCount.data?.total : null) : ""}
+      >
         <FilterChipGroup
           label="Statut"
           options={STATUS_FILTERS}
@@ -168,12 +173,7 @@ function Campaigns() {
             )
           }
         />
-        <span className="text-[13px] text-muted tabular-nums" role="status">
-          {list.data
-            ? `${total} campagne${total > 1 ? "s" : ""}${filtered && allCount.data ? ` sur ${allCount.data.total}` : ""}`
-            : ""}
-        </span>
-      </div>
+      </ListToolbar>
 
       {list.error ? (
         <ErrorState

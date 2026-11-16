@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, false
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -51,3 +51,8 @@ class ConsentEvent(CreatedAtMixin, Base):
     )
     source: Mapped[str] = mapped_column(String(100))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Motif et preuve d'une levée de désinscription, et son auteur (décision D-20).
+    reason: Mapped[str | None] = mapped_column(Text)
+    actor_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL", name="fk_consent_events_actor_user_id")
+    )

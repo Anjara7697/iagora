@@ -13,7 +13,7 @@ export default function RunView({ run }: { run: AgentRun }) {
         <span className="inline-flex size-6 items-center justify-center rounded-lg bg-agent-soft text-agent" aria-hidden="true">
           <Sparkles className="size-3.5" />
         </span>
-        <strong className="text-sm font-semibold text-foreground">{label(ACTIONS, run.action)}</strong>
+        <strong className="type-body font-semibold text-foreground">{label(ACTIONS, run.action)}</strong>
         {run.handoff_reason && (
           <Tag tone="warning">{label(HANDOFF_REASONS, run.handoff_reason)}</Tag>
         )}
@@ -22,19 +22,19 @@ export default function RunView({ run }: { run: AgentRun }) {
           <ScoreBadge total={run.scores.total} level={run.scores.level} />
         )}
       </div>
-      <p className="text-[13px] text-muted">{run.reason}</p>
+      <p className="type-body-sm text-muted">{run.reason}</p>
       <Collapse
   title={`Trace (${run.trace.length} étapes)`}
   triggerClassName="w-fit"
 >
         <ol className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4">
           {run.trace.map((t, i) => (
-            <li key={i} className="text-[13px] text-foreground">
-              <code className="rounded bg-surface-secondary px-1.5 py-0.5 font-mono text-xs">{t.node}</code> {t.summary}
+            <li key={i} className="type-body-sm text-foreground">
+              <code className="rounded bg-surface-secondary px-1.5 py-0.5 font-mono type-caption">{t.node}</code> {t.summary}
             </li>
           ))}
         </ol>
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 type-caption text-muted">
           Modèle : {run.llm.provider}/{run.llm.model}
         </p>
 </Collapse>

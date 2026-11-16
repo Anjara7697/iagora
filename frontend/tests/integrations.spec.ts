@@ -59,6 +59,7 @@ async function mockApi(
     status?: unknown;
     check?: unknown;
     saved?: unknown[];
+    tokens?: unknown[];
     meta?: Partial<typeof meta> & { queued?: number; replayable?: number };
   } = {},
 ) {
@@ -125,7 +126,11 @@ async function mockApi(
           token: "iag_abcdefSECRET",
         };
         code = 201;
-      } else body = [];
+      } else body = opts.tokens ?? [];
+    } else if (path.startsWith("/integrations/tokens/") && request.method() === "DELETE") {
+      opts.saved?.push({ revoked: path.split("/").pop() });
+      await route.fulfill({ status: 204, body: "" });
+      return;
     } else if (path === "/integrations/meta") {
       if (request.method() === "PUT") {
         const sent = request.postDataJSON();
@@ -362,7 +367,7 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
   await card.getByRole("button", { name: "Ajouter cette correspondance" }).click();
   await card.getByLabel("Activer la réception des leads Meta").press("Space");
   await card.getByRole("button", { name: "Enregistrer Meta" }).click();
-  await expect(card.getByText("Configuration Meta enregistrée.")).toBeVisible();
+  await expect(page.getByText("Configuration Meta enregistrée")).toBeVisible();
   expect(saved[0]).toMatchObject({
     meta: {
       app_id: "app-123",
@@ -374,7 +379,7 @@ test("configure Meta, associe un formulaire et simule un lead", async ({ page })
     },
   });
   await card.getByRole("button", { name: "Créer un lead fictif" }).click();
-  await expect(card.getByText("Lead fictif reçu")).toBeVisible();
+  await expect(page.getByText("Lead fictif reçu")).toBeVisible();
   await expect(
     card.getByRole("link", { name: "Ouvrir le prospect test" }),
   ).toHaveAttribute("href", "/prospects/42");
@@ -437,14 +442,20 @@ test("lancer un passage demande confirmation quand l'envoi est activé", async (
   });
   await open(page);
   await openConnector(page, "Messagerie email");
-  page.once("dialog", (dialog) => void dialog.dismiss());
+  // Règle 19 : ConfirmDialog, plus de confirmation native du navigateur.
   await page
     .getByRole("button", { name: "Lancer un passage maintenant" })
     .click();
+  const confirm = page.getByRole("alertdialog", { name: "Lancer un passage maintenant ?" });
+  await expect(confirm).toContainText("vrais emails aux prospects");
+  await confirm.getByRole("button", { name: "Annuler" }).click();
   expect(calls).toHaveLength(0);
-  page.once("dialog", (dialog) => void dialog.accept());
   await page
     .getByRole("button", { name: "Lancer un passage maintenant" })
+    .click();
+  await page
+    .getByRole("alertdialog", { name: "Lancer un passage maintenant ?" })
+    .getByRole("button", { name: "Lancer le passage" })
     .click();
   await expect(page.getByText("0 reçu(s), 0 envoyé(s)")).toBeVisible();
 });
@@ -458,8 +469,9 @@ test("tester la connexion affiche IMAP et SMTP", async ({ page }) => {
   await page
     .getByRole("button", { name: "Tester la boîte enregistrée" })
     .click();
-  await expect(page.getByText("✗ IMAP : identifiants refusés")).toBeVisible();
-  await expect(page.getByText("✓ connecté")).toBeVisible();
+  await expect(page.getByRole("alert", { name: "Résultat du test" })).toContainText(
+    "Boîte injoignable : IMAP IMAP : identifiants refusés · SMTP connecté",
+  );
   expect(calls).toEqual(["/integrations/email/check"]);
 });
 
@@ -525,10 +537,10 @@ test("configurer une boîte depuis la console : détection, test, dossier, enreg
   await form.getByRole("button", { name: "Tester ces paramètres" }).click();
   await expect(
     form.getByLabel("Résultat du test des paramètres"),
-  ).toContainText("IMAP : ✓ connecté");
+  ).toContainText("Connexion réussie : IMAP et SMTP connectés.");
   await choose(form.getByLabel("Dossier surveillé"), { label: "Programmé" });
   await form.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(form.getByText(/Boîte enregistrée/)).toBeVisible();
+  await expect(page.getByText("Boîte enregistrée", { exact: true })).toBeVisible();
   expect(saved).toHaveLength(1);
   expect(saved[0]).toMatchObject({
     address: "contact@ecole.example",
@@ -557,7 +569,7 @@ test("brancher Google Agenda : mode, application OAuth et agenda par défaut", a
   await card.getByLabel("Code secret du client").fill("secret-123");
   await choose(card.getByLabel("Agenda par défaut (prospect sans conseiller)"), { label: "paul" });
   await card.getByRole("button", { name: "Enregistrer l’agenda" }).click();
-  await expect(card.getByText(/Agenda enregistré/)).toBeVisible();
+  await expect(page.getByText(/Agenda enregistré/)).toBeVisible();
   expect(saved).toContainEqual({
     calendar: {
       provider: "google",
@@ -582,7 +594,7 @@ test("brancher le compte Zoom de l'école", async ({ page }) => {
     .getByLabel("Hôte par défaut (email Zoom, ou « me »)")
     .fill("hote@ecole.fr");
   await card.getByRole("button", { name: "Enregistrer Zoom" }).click();
-  await expect(card.getByText(/Zoom enregistré/)).toBeVisible();
+  await expect(page.getByText(/Zoom enregistré/)).toBeVisible();
   expect(saved).toContainEqual({
     zoom: {
       mode: "account",
@@ -673,7 +685,7 @@ test("serveurs sur mobile : test périmé retiré et ports enregistrés", async 
   );
   await form.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect(
-    form.getByText("Boîte enregistrée", { exact: false }),
+    page.getByText("Boîte enregistrée", { exact: true }),
   ).toBeVisible();
   expect(saved).toContainEqual(
     expect.objectContaining({
@@ -745,11 +757,11 @@ test("les paramètres de messagerie peuvent être rechargés après une erreur",
   await open(page);
   await openConnector(page, "Messagerie email", "Configuration");
   await expect(
-    page.getByRole("alert").filter({ hasText: "Paramètres indisponibles" }),
+    page.getByRole("alert").filter({ hasText: "Chargement des paramètres de la boîte impossible : Paramètres indisponibles" }),
   ).toBeVisible();
   ready = true;
   await page
-    .getByRole("button", { name: "Réessayer les paramètres", exact: true })
+    .getByRole("button", { name: "Réessayer", exact: true })
     .click();
   const form = page.getByRole("region", {
     name: "Paramètres de la boîte email",
@@ -774,8 +786,84 @@ test("Meta : les leads en attente sont affichés et les échecs se rejouent", as
   const card = drawer.getByRole("region", { name: "Meta Lead Ads" });
   await expect(card.getByText("en attente")).toBeVisible();
   await card.getByRole("button", { name: "Rejouer les leads en échec (2)" }).click();
-  await expect(card.getByText("2 lead(s) en échec remis en traitement.")).toBeVisible();
+  await expect(page.getByText("2 leads en échec remis en traitement.")).toBeVisible();
   await expect.poll(() => saved).toContainEqual({ metaReplay: true });
   // Plus rien à rejouer : le bouton disparaît.
   await expect(card.getByRole("button", { name: /Rejouer les leads en échec/ })).toHaveCount(0);
+});
+
+test("recherche et filtre dans l'adresse, compteur et retour à tous les connecteurs", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  await expect(page.getByRole("status").filter({ hasText: "7 connecteurs" })).toBeVisible();
+  await page.getByRole("tab", { name: "À configurer", exact: true }).click();
+  await expect(page).toHaveURL(/f=todo/);
+  await expect(page.getByRole("status").filter({ hasText: "4 connecteurs sur 7" })).toBeVisible();
+  await page.getByLabel("Rechercher un connecteur").fill("introuvable");
+  await expect(page).toHaveURL(/q=introuvable/);
+  await page.getByRole("button", { name: "Afficher tous les connecteurs" }).click();
+  await expect(page.getByRole("article")).toHaveCount(7);
+  await expect(page).toHaveURL(/\/integrations$/);
+  // Un lien direct rouvre la même vue.
+  await page.goto("/integrations?f=soon");
+  await expect(page.getByRole("article")).toHaveCount(1);
+});
+
+test("fermer un panneau modifié demande confirmation", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  const drawer = await openConnector(page, "Zoom");
+  await choose(drawer.getByLabel("Mode"), "account");
+  await drawer.getByLabel("Account ID").fill("acc-1");
+  await drawer.getByRole("button", { name: "Fermer" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(drawer.getByLabel("Account ID")).toHaveValue("acc-1");
+  await drawer.getByRole("button", { name: "Fermer" }).click();
+  await page.getByRole("alertdialog", { name: "Abandonner les modifications ?" }).getByRole("button", { name: "Abandonner" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page).not.toHaveURL(/c=zoom/);
+  // Sans modification, le panneau se ferme directement.
+  const again = await openConnector(page, "Zoom");
+  await again.getByRole("button", { name: "Fermer" }).click();
+  await expect(again).toHaveCount(0);
+});
+
+test("révoquer un jeton demande confirmation", async ({ page }) => {
+  const saved: unknown[] = [];
+  await mockApi(page, {
+    saved,
+    tokens: [
+      {
+        id: "t9",
+        name: "Formulaire du site",
+        hint: "iag_9…",
+        channel: "web_form",
+        target_code: null,
+        created_at: "2026-10-01T10:00:00Z",
+        last_used_at: null,
+        revoked_at: null,
+      },
+    ],
+  });
+  await open(page);
+  const drawer = await openConnector(page, "Formulaire du site et outils");
+  await drawer.getByRole("button", { name: "Révoquer" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Révoquer « Formulaire du site » ?" });
+  await confirm.getByRole("button", { name: "Annuler" }).click();
+  expect(saved).toEqual([]);
+  await drawer.getByRole("button", { name: "Révoquer" }).click();
+  await page.getByRole("alertdialog", { name: "Révoquer « Formulaire du site » ?" }).getByRole("button", { name: "Révoquer" }).click();
+  await expect(page.getByText("Jeton révoqué")).toBeVisible();
+  expect(saved).toEqual([{ revoked: "t9" }]);
+  await auditA11y(page, "intégrations (jetons)");
+});
+
+test("l'onglet de la messagerie est dans l'adresse", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  const drawer = await openConnector(page, "Messagerie email", "Configuration");
+  await expect(page).toHaveURL(/c=email&tab=config/);
+  await page.reload();
+  await expect(drawer.getByLabel("Adresse de la boîte")).toBeVisible();
 });

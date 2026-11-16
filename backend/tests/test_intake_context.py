@@ -245,11 +245,16 @@ async def test_no_channel_is_invented_for_an_incomplete_entry(client, enabled, m
     assert history[0]["content"] == "Bonjour"  # conservé en attendant un canal déclaré
 
 
-async def test_advisor_can_attribute_without_creating_a_campaign(client, make_client):
+async def test_only_an_admin_attributes_a_pending_prospect(client, make_client):
+    """Décision D-23 : la file « À attribuer » est réservée à l'administrateur ; un conseiller
+    ne voit pas ces prospects (introuvables pour lui)."""
     pid = (await receive(client)).json()["prospect"]["id"]
     link = await campaign(client)
     advisor = await make_client(UserRole.ADVISOR)
-    r = await advisor.post(f"{API}/prospects/{pid}/campaigns", json=link)
+    assert (await advisor.post(f"{API}/prospects/{pid}/campaigns", json=link)).status_code == 404
+    pending = await advisor.get(f"{API}/prospects?pending_campaign=true")
+    assert pending.json()["total"] == 0
+    r = await client.post(f"{API}/prospects/{pid}/campaigns", json=link)
     assert r.status_code == 200 and len(r.json()["campaigns"]) == 1
 
 

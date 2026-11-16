@@ -1,10 +1,14 @@
 "use client";
 
-/** Vue « Table » de la liste des prospects : une ligne par prospect, toute la ligne ouvre la fiche. */
+/**
+ * Vue « Table » de la liste des prospects : une ligne par prospect, toute la ligne ouvre la fiche. Sous 640 px,
+ * des lignes à deux niveaux (nom et consentement, puis coordonnées et parcours).
+ */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataTable, Table } from "@/components/ds/table";
+import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
+import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
 import { formatDate, fullName } from "@/lib/labels";
 import type { Membership, Prospect } from "@/lib/types";
@@ -20,6 +24,38 @@ export function ProspectTable({
   profileHref: (id: number) => string;
 }) {
   const router = useRouter();
+  if (useMediaQuery(NARROW))
+    return (
+      <CompactList label="Prospects et rattachements aux campagnes">
+        {items.map((p) => (
+          <CompactRow
+            key={p.id}
+            href={profileHref(p.id)}
+            leading={<ProspectAvatar prospect={p} />}
+            title={fullName(p)}
+            aside={
+              <>
+                <DemoBadge email={p.email} />
+                <ConsentTag status={p.consent_status} />
+              </>
+            }
+          >
+            <span className="type-caption break-all text-muted">{p.email || p.phone || "—"}</span>
+            {memberships(p).length ? (
+              memberships(p).map((m) => (
+                <span key={m.id} className="flex flex-wrap items-center gap-1.5">
+                  <StageBadge stage={m.conversion_stage} />
+                  <ScoreBadge total={m.total_score} level={level(m.total_score)} />
+                  <span className="min-w-0 truncate type-caption text-muted">{m.campaign_name ?? "Campagne"}</span>
+                </span>
+              ))
+            ) : (
+              <span className="type-caption text-muted">Sans campagne</span>
+            )}
+          </CompactRow>
+        ))}
+      </CompactList>
+    );
   return (
     <DataTable
       label="Prospects et rattachements aux campagnes"
@@ -44,7 +80,7 @@ export function ProspectTable({
                   </Link>
                   <DemoBadge email={p.email} />
                 </span>
-                <span className="text-xs text-muted">
+                <span className="type-caption text-muted">
                   {p.email || p.phone || "—"}
                 </span>
               </div>
@@ -55,7 +91,7 @@ export function ProspectTable({
               <div className="flex flex-col gap-1.5">
                 {memberships(p).map((m) => (
                   <div key={m.id} className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="type-caption font-medium text-foreground">
                       {m.campaign_name ?? "Campagne"}
                     </span>
                     <span className="flex flex-wrap gap-1.5">
@@ -69,13 +105,13 @@ export function ProspectTable({
                 ))}
                   </div>
                 ) : (
-                  <span className="text-[13px] text-muted">Sans campagne</span>
+                  <span className="type-body-sm text-muted">Sans campagne</span>
                 )}
               </Table.Cell>
               <Table.Cell>
                 <ConsentTag status={p.consent_status} />
               </Table.Cell>
-              <Table.Cell className="text-xs text-muted tabular-nums">
+              <Table.Cell className="type-caption text-muted tabular-nums">
                 {formatDate(p.created_at)}
               </Table.Cell>
             </Table.Row>

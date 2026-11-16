@@ -250,8 +250,19 @@ test("les filtres sont transmis à l'API", async ({ page }) => {
   const calls = await mockApi(page);
   await open(page);
   await page.getByRole("button", { name: "En attente", exact: true }).click();
-  await page.getByRole("button", { name: "Moi", exact: true }).click();
-  await choose(page.getByLabel("Canal"), "facebook");
+  // Responsable et canal sont dans « Filtres » (UX-11).
+  await page.getByRole("button", { name: /^Filtres/ }).click();
+  const filters = page.getByRole("dialog", { name: "Filtres" });
+  await filters.getByRole("button", { name: "Moi", exact: true }).click();
+  await choose(filters.getByLabel("Canal"), "facebook");
+  await expect(filters).toBeVisible();
+  // La liste du canal fermée, le focus revient dans la fenêtre : Échap la ferme alors.
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(filters).toBeHidden();
+  await expect(page.getByRole("button", { name: /^Filtres/ })).toContainText("2");
+  await expect(page.getByRole("button", { name: "Retirer le filtre Responsable" })).toHaveText("Responsable : Moi");
+  await expect(page.getByRole("button", { name: "Retirer le filtre Canal" })).toHaveText("Canal : Messenger");
   await page.getByLabel("Rechercher une conversation").fill("marie");
   await expect
     .poll(() => new URLSearchParams(calls.listQueries.at(-1)).get("q"))
@@ -272,8 +283,15 @@ test("les filtres sont transmis à l'API", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Rechercher une conversation")).toHaveValue("marie");
   await expect(page.getByRole("button", { name: "En attente", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "Moi", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Afficher tout" }).click();
+  await expect(page.getByRole("button", { name: "Retirer le filtre Responsable" })).toBeVisible();
+  await page.getByRole("button", { name: /^Filtres/ }).click();
+  await expect(filters.getByRole("button", { name: "Moi", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  // Une puce retire son seul filtre.
+  await page.getByRole("button", { name: "Retirer le filtre Canal" }).click();
+  await expect(page).not.toHaveURL(/channel=/);
+  await expect(page).toHaveURL(/owner=me/);
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
   await expect(page).toHaveURL(/\/conversations$/);
   await expect(page.getByRole("complementary", { name: "Liste des conversations" }).getByRole("status")).toHaveText("1 conversation");
 });
@@ -767,4 +785,20 @@ test("bureau : seule la liste défile, recherche, filtres et pagination restent 
   await expect(page.getByRole("button", { name: "Suivant" })).toBeInViewport();
   await expect(list.getByRole("button", { name: /Prospect 1\b/ })).not.toBeInViewport();
   await auditA11y(page, "conversations, liste longue");
+});
+
+test("mobile : la première conversation apparaît dans le premier écran", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Liste des conversations" });
+  const first = list.getByRole("listitem").first();
+  await expect(first).toBeVisible();
+  // Recherche et statut au-dessus, le reste dans « Filtres » : la liste commence dans la moitié haute.
+  const box = await first.boundingBox();
+  expect(box!.y).toBeLessThan(844 / 2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  await page.getByRole("button", { name: /^Filtres/ }).click();
+  await expect(page.getByRole("dialog", { name: "Filtres" })).toBeInViewport();
+  await auditA11y(page, "conversations, filtres ouverts");
 });

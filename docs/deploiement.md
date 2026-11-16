@@ -45,10 +45,17 @@ chmod 600 deploy/.env
 ```
 
 Renseigner `deploy/.env` (chaque secret : `openssl rand -hex 32`) :
-`IAGORA_PROJECT`, `ENVIRONMENT`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `NEXT_PUBLIC_API_URL`,
-`NEXT_PUBLIC_ENABLE_SIMULATOR`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `GEMINI_API_KEY`,
+`IAGORA_PROJECT`, `ENVIRONMENT`, `CORS_ORIGINS`, `JWT_SECRET_KEY`, `CONNECTORS_SECRET_KEY`,
+`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ENABLE_SIMULATOR`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `GEMINI_API_KEY`,
 `IAGORA_API_PORT`, `IAGORA_WEB_PORT`. **Ce fichier ne va jamais dans Git.** Sans `ENVIRONMENT`, l'API
-refuse de démarrer : indiquer `production`, ou `development` pour une instance d'essai.
+refuse de démarrer : indiquer `production`, ou `development` pour une instance d'essai. En production,
+`CONNECTORS_SECRET_KEY` est obligatoire (32 caractères minimum, différent de `JWT_SECRET_KEY`) et se
+conserve dans le coffre de mots de passe avec les secrets de sauvegarde : sans elle, les identifiants des
+connecteurs restaurés sont illisibles.
+
+La console et l'API doivent être servies **sur le même site** (même domaine, comme le bloc Caddy
+ci-dessous, ou deux sous-domaines du même domaine) : la session est un témoin `HttpOnly; SameSite=Strict`
+posé par l'API, que le navigateur n'envoie pas d'un site à un autre.
 
 Premier démarrage :
 
@@ -148,19 +155,56 @@ curl -s -o /dev/null -w "%{http_code}\n" https://iagora.neosolve.info/docs      
 
 Puis se connecter à la console, créer une campagne, vérifier **le mode assisté** (réglage par défaut).
 
-## 6. Sauvegardes
+## 6. Sauvegardes et alertes
 
-`deploy/backup.sh` sauvegarde PostgreSQL (`pg_dump`) et MongoDB (`mongodump`) dans `/var/backups/iagora`
-(14 jours, et au plus `BACKUP_KEEP_MAX` = 30 de chaque sorte, sauvegardes d'avant déploiement
-comprises). À planifier :
+### Sauvegarde quotidienne
+
+`deploy/backup.sh` sauvegarde PostgreSQL (`pg_dump`) et MongoDB (`mongodump`) dans `BACKUP_DIR`
+(`/var/backups/iagora` par défaut), puis en envoie une **copie chiffrée hors serveur** si `BACKUP_REMOTE` est
+renseigné. Conservation (décision D-19) : 7 jours sur le serveur (au plus `BACKUP_KEEP_MAX` = 30 de chaque
+sorte, sauvegardes d'avant déploiement comprises), 30 jours hors serveur. Le script est aussi lancé avant
+chaque mise à jour. À planifier :
 
 ```cron
 15 3 * * * /srv/iagora-prod/deploy/backup.sh >> /var/log/iagora-backup.log 2>&1
 ```
 
-Le script est aussi lancé avant chaque mise à jour. **Copier régulièrement les sauvegardes hors du
-serveur** (une sauvegarde sur la même machine ne protège pas d'une perte du disque).
-Test de restauration à faire **avant** d'avoir des données réelles :
+### Copie chiffrée vers un stockage S3 (D-13)
+
+À faire une fois sur le serveur, par le responsable (les clés ne passent jamais par Git ni par la console) :
+
+1. Créer un bucket S3 privé (Scaleway, OVH, Backblaze B2…) et une clé d'accès limitée à ce bucket.
+2. Installer `rclone` (`sudo apt install rclone`), puis `rclone config` :
+   - un remote `iagora-s3` de type `s3` (fournisseur, clé, région, bucket) ;
+   - un remote `iagora-crypt` de type `crypt` qui pointe vers `iagora-s3:<bucket>/iagora`, avec un mot de
+     passe et un sel générés (`openssl rand -hex 32`). **Les conserver dans le coffre de mots de passe de
+     DATUM** : sans eux, les copies sont illisibles.
+3. Dans `deploy/.env` : `BACKUP_REMOTE=iagora-crypt:prod` (et `iagora-crypt:dev` sur `dev`).
+
+Le script refuse d'envoyer vers un remote qui n'est pas de type `crypt` : aucune sauvegarde ne part en clair.
+
+### Alertes (D-14)
+
+- **Sauvegarde** : créer un contrôle sur [Healthchecks.io](https://healthchecks.io) (période 1 jour, grâce
+  2 heures, alerte par email au responsable), puis `HEALTHCHECK_URL=https://hc-ping.com/<uuid>` dans
+  `deploy/.env`. Le script signale le début, la réussite ou l'échec ; une sauvegarde absente déclenche aussi
+  l'alerte.
+- **API** : créer une sonde HTTP sur [UptimeRobot](https://uptimerobot.com) vers
+  `https://iagora.neosolve.info/api/v1/health/ready` (toutes les 5 minutes, alerte par email). Faire de même
+  pour `dev` si utile.
+
+### Test de restauration
+
+À faire **avant** d'avoir des données réelles, puis après chaque changement de la procédure. Il restaure dans
+des conteneurs jetables et ne touche pas aux bases en service :
+
+```bash
+deploy/restore-test.sh             # dernière sauvegarde locale
+deploy/restore-test.sh --remote    # dernière copie hors serveur (téléchargée et déchiffrée)
+```
+
+Il affiche le nombre de prospects, campagnes, comptes, conversations et décisions restaurés. Restauration
+réelle (DESTRUCTIF, après confirmation) :
 
 ```bash
 deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups/iagora/mongo-AAAAMMJJ-HHMMSS.archive.gz
@@ -169,9 +213,44 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 ## 7. Mise à jour et retour arrière
 
 - Mise à jour : `deploy/deploy.sh <branche>`.
+- Passage au lot 10 (sessions et accès), une seule fois par environnement :
+  1. avant le déploiement, ajouter `CONNECTORS_SECRET_KEY` dans `deploy/.env` (`openssl rand -hex 32`) ;
+     en production, l'API refuse de démarrer sans elle ;
+  2. déployer : les utilisateurs se reconnectent une fois (la session passe dans un témoin `HttpOnly`) ;
+  3. rechiffrer les identifiants des connecteurs avec la nouvelle clé :
+
+     ```bash
+     docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+       python -m app.cli rotate-connector-secrets
+     ```
+
+     Avant cette commande, les anciens identifiants restent lisibles (ancienne clé dérivée du secret JWT) ;
+     après, le secret JWT peut changer sans les perdre.
 - Retour arrière du **code** : `git checkout <commit précédent> && deploy/deploy.sh <branche>` (le script
   affiche l'ancien commit). Une migration appliquée n'est pas défaite automatiquement : en cas de
   migration problématique, restaurer la sauvegarde faite juste avant (`deploy/restore.sh`).
+
+## 7 bis. Repartir d'une instance d'essai vide (`dev`, décision D-30)
+
+Pour une démonstration ou une recette « propre », sur `dev` uniquement (la commande est refusée en
+production) :
+
+```bash
+cd /srv/iagora-dev
+deploy/backup.sh                                   # sauvegarde juste avant
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+  python -m app.cli reset-dev-data                 # aperçu : ce qui serait effacé
+docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec iagora-api \
+  python -m app.cli reset-dev-data --apply         # efface
+```
+
+Effacé : prospects et tout ce qui en dépend (échanges, scores, étapes, relances, rendez-vous, consentements,
+liste d'opposition), campagnes et sources, base de connaissances, conversations, décisions et file de l'agent,
+événements Meta reçus. Conservé : comptes, Paramètres, boîte email, agenda, Zoom, Meta, clés chiffrées,
+connexions des conseillers et jetons de service. Les formulaires Meta et les jetons rattachés à une campagne
+effacée perdent leur destination : la commande le signale. Ensuite : recréer les campagnes, importer les
+documents de la base de connaissances (`rag.md`), puis rattacher de nouveau les formulaires. Les emails déjà
+lus dans la boîte ne sont pas relus.
 
 ## 8. Points de vigilance
 
@@ -183,6 +262,21 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 - La CI valide la construction des deux images et la syntaxe du compose ; elle ne déploie rien.
 - Vérifié sur `dev` : construction des images, migrations, démarrage, HTTPS derrière Caddy, déploiement
   automatique par GitHub Actions. Non vérifié : quotas Gemini en usage réel, restauration d'une sauvegarde
-  (à tester avant des données réelles), environnement de production.
+  (`deploy/restore-test.sh`, à lancer avant des données réelles), environnement de production.
+- Mode automatique : refusé par l'API en production (décision D-16) ; chaque réponse y est validée.
+
+## 9. Check-list avant le pilote en production (D-15)
+
+Le pilote avec de vrais prospects se fait sur une instance `prod` séparée de `dev`. Avant le premier prospect :
+
+- [ ] `ENVIRONMENT=production` dans `deploy/.env` (simulateur coupé, documents fictifs exclus, mode
+      automatique refusé) ;
+- [ ] clé Gemini **payante** et accord de sous-traitance inscrit au registre (D-25, à valider par le DPO) ;
+- [ ] durées de conservation validées par le DPO (D-17 à D-19) et purge planifiée ([effacement-rgpd.md](effacement-rgpd.md)) ;
+- [ ] copie chiffrée hors serveur configurée et `deploy/restore-test.sh --remote` réussi ;
+- [ ] alertes Healthchecks.io et UptimeRobot reçues lors d'un essai (couper un instant l'API, sauter une sauvegarde) ;
+- [ ] documents officiels importés dans la base de connaissances et `kb-eval` relancé ([rag.md](rag.md)) ;
+- [ ] `eval-agent --live` passé avec le vrai modèle ([agent-testing.md](agent-testing.md)) ;
+- [ ] boîte email définitive recettée ([recette-locale.md](recette-locale.md)).
 - Un déploiement reconstruit les images puis redémarre l'API pendant environ une minute (relève mail et
   relances reprennent ensuite sans perte) : éviter de fusionner pendant une démonstration.

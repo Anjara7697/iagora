@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, fie
 
 from app.config import get_settings
 from app.core import phones
+from app.core.demo import is_demo_email
 from app.models.enums import ConsentStatus, ConversionStage, InterestLevel
-from app.services.demo import is_demo_email
 
 
 def normalize_phone(value: str | None) -> str | None:
@@ -125,6 +125,9 @@ class ProspectIngestResult(BaseModel):
 class ConsentRequest(BaseModel):
     source: str = Field(max_length=100)
     channel: str | None = None
+    reason: str | None = Field(
+        None, max_length=500, description="Obligatoire pour lever une désinscription (D-20)"
+    )
 
 
 class OptOutRequest(BaseModel):

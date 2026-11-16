@@ -12,10 +12,11 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, useContext, useEffect, useState } from "react";
-import { api, ApiError, getToken, setToken } from "@/lib/api";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { canUseSimulator } from "@/lib/access";
+import { useSession } from "@/lib/session";
+import { useWorkQueueCount } from "@/lib/useWorkQueueCount";
 import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
 import AccountMenu from "./shell/AccountMenu";
 import AppNav from "./shell/AppNav";
@@ -24,85 +25,20 @@ import { LinkButton } from "./ds/controls";
 import { Brand } from "./ds/Brand";
 import { CommandPalette, type Command } from "./ds/CommandPalette";
 import { ReplyDraftsProvider } from "./ReplyDrafts";
-import { WORK_QUEUE_CHANGED } from "@/lib/workQueue";
-import type { User } from "@/lib/types";
 
-const UserContext = createContext<User | null>(null);
-export const useCurrentUser = () => useContext(UserContext);
 const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
 
-/** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
-export const firstNameOf = (username: string) => {
-  const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
-  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
-};
-
-
+/**
+ * Mise en page de la console : menu, barre du haut, zone de l'écran. La session (utilisateur, mot de passe temporaire,
+ * déconnexion) vient de `SessionProvider` ; le compteur de la file, de `useWorkQueueCount`.
+ */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const { user, error, retry, blocked, signOut } = useSession();
   const [navOpen, setNavOpen] = useState(false);
-  const [waiting, setWaiting] = useState<number | null>(null);
+  const waiting = useWorkQueueCount(user, pathname);
   const isLogin = pathname === "/login";
-
-  useEffect(() => {
-    if (isLogin) {
-      setUser(null);
-      return;
-    }
-    let cancelled = false;
-    if (!getToken()) {
-      router.replace("/login");
-      return;
-    }
-    setError(null);
-    api<User>("/auth/me")
-      .then((value) => {
-        if (!cancelled) setUser(value);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof ApiError ? err.message : "Connexion impossible",
-          );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLogin, router, attempt]);
-
-  // Nombre d'éléments à traiter (badge du menu) : brouillons, transferts, incidents.
-  useEffect(() => {
-    if (!user || user.must_change_password) return;
-    let active = true;
-    let request = 0;
-    const refresh = () => {
-      const current = ++request;
-      api<{ total: number }>("/todo?limit=1")
-        .then((page) => { if (active && current === request) setWaiting(page.total); })
-        .catch(() => { if (active && current === request) setWaiting(null); });
-    };
-    refresh();
-    window.addEventListener(WORK_QUEUE_CHANGED, refresh);
-    return () => {
-      active = false;
-      window.removeEventListener(WORK_QUEUE_CHANGED, refresh);
-    };
-  }, [user, pathname]);
-
-  // Mot de passe temporaire : seul « Mon compte » est accessible tant qu'il n'est pas changé.
   const mustChange = !!user?.must_change_password;
-  const blocked = mustChange && pathname !== "/account";
-  useEffect(() => {
-    if (!blocked) return;
-    router.replace("/account");
-    // Une navigation déjà en cours peut absorber la redirection : on la redemande.
-    const retry = window.setInterval(() => router.replace("/account"), 1000);
-    return () => window.clearInterval(retry);
-  }, [blocked, router]);
 
   // Menu réduit (bureau) : préférence de ce navigateur, sans effet si le stockage est indisponible.
   const [collapsed, setCollapsed] = useState(false);
@@ -131,14 +67,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Brand />
           {error ? (
             <>
-              <p className="text-sm text-danger-soft-foreground">{error}</p>
-              <Button variant="tertiary" onPress={() => setAttempt((v) => v + 1)}>
+              <p className="type-body text-danger-soft-foreground">{error}</p>
+              <Button variant="tertiary" onPress={retry}>
                 <RefreshCw className="size-4" aria-hidden="true" />
                 Réessayer
               </Button>
             </>
           ) : (
-            <span className="flex items-center gap-2 text-sm text-muted">
+            <span className="flex items-center gap-2 type-body text-muted">
               <Spinner size="sm" />
               Chargement de votre espace…
             </span>
@@ -170,10 +106,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <UserContext.Provider value={user}>
-      <ReplyDraftsProvider key={user.id}>
+    <ReplyDraftsProvider key={user.id}>
       <a
-        className="fixed top-[-80px] left-3 z-[100] rounded-xl bg-surface px-3 py-2 text-sm font-medium text-foreground shadow-overlay focus:top-3"
+        className="fixed top-[-80px] left-3 z-[100] rounded-lg bg-surface px-3 py-2 type-body font-medium text-foreground shadow-overlay focus:top-3"
         href="#main-content"
       >
         Aller au contenu
@@ -187,7 +122,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         >
           {/* Marque et bouton de réduction en haut du menu (le bas reste libre pour le défilement). */}
           <div className={`flex items-center gap-2 pt-2 pb-3 ${collapsed ? "flex-col" : "justify-between pl-2"}`}>
-            <Link href="/" className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            <Link href="/" className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-focus">
               <Brand compact={collapsed} />
             </Link>
             <Tooltip delay={200} closeDelay={0}>
@@ -216,7 +151,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Drawer.Content placement="left" className="w-[280px] max-w-[85vw]">
             <Drawer.Dialog aria-label="Menu" className="flex h-full flex-col gap-3 p-3">
               <Drawer.Header className="flex flex-row items-center justify-between gap-2 px-2 pt-2 pb-1">
-                <Link href="/" onClick={() => setNavOpen(false)} className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                <Link href="/" onClick={() => setNavOpen(false)} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-focus">
                   <Brand />
                 </Link>
                 <Drawer.CloseTrigger aria-label="Fermer le menu" />
@@ -262,16 +197,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href="/todo"
                   variant="tertiary"
                   className="h-9 shrink-0 gap-2 px-3"
-                  aria-label={waiting > 0 ? `${waiting} à traiter` : "Rien à traiter"}
                 >
                   <span className={`size-2 rounded-full ${waiting > 0 ? "bg-warning" : "bg-success"}`} aria-hidden="true" />
+                  {/* Nom accessible = texte visible (WCAG 2.5.3) ; sur mobile, « à traiter » reste lu sans être affiché. */}
                   {waiting > 0 ? (
-                    <>
+                    <span>
                       {waiting}
-                      <span className="hidden sm:inline">à traiter</span>
-                    </>
+                      <span className="max-sm:sr-only"> à traiter</span>
+                    </span>
                   ) : (
-                    <span className="hidden sm:inline">Rien à traiter</span>
+                    <span className="max-sm:sr-only">Rien à traiter</span>
                   )}
                 </LinkButton>
               )
@@ -280,11 +215,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               user={user}
               refreshKey={pathname}
               showAgent={!mustChange}
-              onLogout={() => {
-                setToken(null);
-                setUser(null);
+              onLogout={async () => {
                 setNavOpen(false);
-                router.replace("/login");
+                await signOut();
               }}
             />
           </header>
@@ -293,7 +226,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             className="min-w-0 flex-1 px-4 pt-5 pb-12 min-[601px]:px-6 min-[601px]:pt-7 min-[601px]:pb-16 lg:px-7"
           >
             {blocked ? (
-              <p className="mx-auto max-w-[560px] rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="status">
+              <p className="mx-auto max-w-[560px] rounded-lg bg-warning-soft px-4 py-3 type-body text-warning-soft-foreground" role="status">
                 Votre mot de passe est temporaire : changez-le dans{" "}
                 <Link href="/account" className="font-medium underline">
                   Mon compte
@@ -306,7 +239,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      </ReplyDraftsProvider>
-    </UserContext.Provider>
+    </ReplyDraftsProvider>
   );
 }

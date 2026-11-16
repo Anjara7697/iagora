@@ -45,14 +45,29 @@ Le rapport affiché après l'effacement le rappelle :
 
 ## Durée de conservation
 
-Aucune durée n'est décidée : c'est une décision de DATUM (voir [conformite-rgpd.md](conformite-rgpd.md) §4).
-La commande suivante permet de l'appliquer quand elle le sera ; **rien ne se lance automatiquement** :
+Durées retenues (décisions D-17 à D-19 de [decisions.md](decisions.md), **à valider par le DPO**) :
+
+| Donnée | Durée | Application |
+|---|---|---|
+| Prospect non inscrit, sans activité | 3 ans (1 095 jours) | `purge-inactive`, planifiée chaque semaine (ci-dessous) |
+| Décisions de l'agent (`agent_runs`) | 12 mois | Index TTL MongoDB (`AGENT_RUNS_RETENTION_DAYS`) |
+| Entrées terminées de la file de l'agent (`agent_events`) | 30 jours | Index TTL MongoDB (`AGENT_EVENTS_RETENTION_DAYS`) |
+| Sauvegardes | 7 jours sur le serveur, 30 jours hors serveur | `deploy/backup.sh` |
+
+« Sans activité » = aucun échange ni modification de la fiche depuis la durée choisie : c'est un peu plus
+prudent que « dernier message du prospect » (une fiche modifiée récemment est gardée).
 
 ```bash
 # Aperçu : numéros de fiche et dernière activité, jamais de nom ni d'adresse
-docker compose exec backend python -m app.cli purge-inactive --older-than-days 730
+docker compose exec backend python -m app.cli purge-inactive --older-than-days 1095
 # Effacement réel (motif « retention »)
-docker compose exec backend python -m app.cli purge-inactive --older-than-days 730 --apply
+docker compose exec backend python -m app.cli purge-inactive --older-than-days 1095 --apply
+```
+
+Planification sur le serveur de production (lundi 4 h 30), une fois la durée validée par le DPO :
+
+```cron
+30 4 * * 1 cd /srv/iagora-prod && docker compose -f deploy/compose.prod.yml --env-file deploy/.env exec -T iagora-api python -m app.cli purge-inactive --older-than-days 1095 --apply >> /var/log/iagora-purge.log 2>&1
 ```
 
 Sont concernés les prospects sans aucun échange ni modification depuis N jours (minimum 30), **sans
@@ -63,6 +78,6 @@ rendez-vous à venir ni relance programmée**. Les prospects **convertis** sont 
 
 - Pas d'export des données d'une personne (droit d'accès / portabilité) : seul l'export CSV de la liste
   existe.
-- Pas de planification de la purge (cron) ni d'alerte avant échéance.
+- Pas d'alerte avant l'échéance d'une fiche (elle est effacée à la purge hebdomadaire qui suit).
 - L'effacement d'un prospect ne retire pas ses éventuelles mentions dans le texte libre des notes d'un
   autre prospect ou dans des documents de la base de connaissances.

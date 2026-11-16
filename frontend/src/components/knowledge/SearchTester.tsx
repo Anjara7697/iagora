@@ -60,7 +60,7 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
 
   return (
     <Panel title="Tester une question" label="Tester une question" bodyClassName="gap-4 px-5 py-4">
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Vérifiez quelles sources l’agent peut utiliser avant de répondre à un
         prospect. Les extraits trop peu pertinents sont écartés.
       </p>
@@ -72,7 +72,6 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
       <form className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_16rem_auto] md:items-end" onSubmit={run}>
         <Field label="Question du prospect">
           <TextInput
-            variant="secondary"
             placeholder="Ex. Combien de temps dure le programme ?"
             value={query}
             disabled={busy}
@@ -84,7 +83,6 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
         </Field>
         <Field label="Programme du prospect">
           <SelectBox
-            variant="secondary"
             value={target}
             disabled={busy}
             onChange={(e) => {
@@ -118,7 +116,7 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
         </EmptyText>
       )}
       {result && result.results.length > 0 && (
-        <p className="text-[13px] text-muted" role="status">
+        <p className="type-body-sm text-muted" role="status">
           {result.results.length} extrait{result.results.length > 1 ? "s" : ""} trouvé{result.results.length > 1 ? "s" : ""} ·{" "}
           {result.results.filter((h) => h.retained).length} retenu{result.results.filter((h) => h.retained).length > 1 ? "s" : ""}{" "}
           (seuil de pertinence {score(result.threshold)})
@@ -134,17 +132,17 @@ export default function SearchTester({ status }: { status: KnowledgeStatus }) {
               className={`flex flex-col gap-2 rounded-lg border px-4 py-3 ${hit.retained ? "border-success/30 bg-success-soft/40" : "border-separator bg-surface-secondary/60"}`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <strong className="min-w-0 flex-1 text-sm font-semibold break-words text-foreground">{hit.source}</strong>
+                <strong className="min-w-0 flex-1 type-body font-semibold break-words text-foreground">{hit.source}</strong>
                 <Tag tone={hit.retained ? "success" : "neutral"}>
                   {hit.retained ? "Retenu" : "Écarté (sous le seuil)"}
                 </Tag>
-                <span className="text-xs text-muted tabular-nums">
+                <span className="type-caption text-muted tabular-nums">
                   <span className="sr-only">Pertinence </span>
                   {score(hit.score)}
                 </span>
               </div>
               <ScoreBar score={hit.score} threshold={result.threshold} retained={hit.retained} />
-              <p className="text-[13px]/[20px] text-muted">{hit.text}</p>
+              <p className="type-body-sm text-muted">{hit.text}</p>
             </li>
           ))}
         </ul>

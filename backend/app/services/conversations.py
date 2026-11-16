@@ -38,7 +38,6 @@ from app.schemas.conversation import (
     MessageRead,
 )
 from app.services import follow_ups, references
-from app.services import inbound as inbound_service
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
@@ -285,6 +284,10 @@ async def add_message(
     if created and data.role is SenderType.PROSPECT and not evidence_only:
         await follow_ups.cancel_pending(session, doc["prospect_id"])  # il répond : plus de relance
     if data.role is SenderType.PROSPECT and not message.get("inbound_processed"):
+        # Import différé : `inbound` s'appuie sur ce module (opposition à confirmer) ;
+        # l'importer en tête créerait un cycle d'imports au démarrage (AUDIT-ARCH-001).
+        from app.services import inbound as inbound_service
+
         # Centralisé ici : premier message, ajout, email et rejeu après une panne SQL/Mongo.
         # Un rejeu utilise le texte conservé et ne remplace pas un nouveau brouillon.
         await inbound_service.on_prospect_message(

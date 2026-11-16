@@ -3,11 +3,12 @@ from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, params, status
+from fastapi import Depends, HTTPException, Request, params, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import EmptyKnowledgeBase
+from app.api.cookies import CSRF_HEADER, SESSION_COOKIE
 from app.config import Settings, get_settings
 from app.core.security import decode_access_claims, password_stamp
 from app.database.clients import get_mongo_db
@@ -21,6 +22,8 @@ from app.integrations.knowledge.factory import create_knowledge_base
 from app.integrations.llm.factory import create_language_model
 from app.models import User
 from app.models.enums import UserRole
+from app.services import auth_sessions
+from app.services import scope as scope_service
 
 DbSession = Annotated[AsyncSession, Depends(get_session)]
 MongoDb = Annotated[Any, Depends(get_mongo_db)]  # AsyncIOMotorDatabase
@@ -37,33 +40,98 @@ async def get_runtime_settings(
 
 SettingsDep = Annotated[Settings, Depends(get_runtime_settings)]
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# `auto_error=False` : sans en-tête `Authorization`, le jeton est lu dans le témoin de session.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 _UNAUTHORIZED = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
     detail="Authentification requise",
     headers={"WWW-Authenticate": "Bearer"},
 )
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def request_token(request: Request, bearer: str | None) -> tuple[str | None, bool]:
+    """(jeton, lu dans le témoin ?). L'en-tête `Authorization` (scripts, n8n) l'emporte."""
+    if bearer:
+        return bearer, False
+    cookie = request.cookies.get(SESSION_COOKIE)
+    return (cookie, True) if cookie else (None, False)
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)], session: DbSession, settings: SettingsDep
+    request: Request,
+    bearer: Annotated[str | None, Depends(oauth2_scheme)],
+    session: DbSession,
+    settings: SettingsDep,
 ) -> User:
     """Utilisateur du jeton. Le rôle est relu en base à chaque requête : une désactivation
     ou un changement de rôle prend effet immédiatement."""
+    token, from_cookie = request_token(request, bearer)
+    if not token:
+        raise _UNAUTHORIZED
+    # Écriture authentifiée par le témoin : l'en-tête anti-CSRF est exigé (AUDIT-SEC-004).
+    if from_cookie and request.method not in _SAFE_METHODS and not request.headers.get(CSRF_HEADER):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Requête refusée (origine)")
     claims = decode_access_claims(token, settings)
     if claims is None:
         raise _UNAUTHORIZED
-    user = await session.get(User, claims[0])
+    user = await session.get(User, claims.user_id)
     if user is None or not user.is_active:
         raise _UNAUTHORIZED
     # Jeton émis avant un changement de mot de passe : session révoquée.
-    if claims[1] != password_stamp(user.password_changed_at):
+    if claims.password_stamp != password_stamp(user.password_changed_at):
+        raise _UNAUTHORIZED
+    # Session fermée par une déconnexion (AUDIT-SEC-009).
+    if not await auth_sessions.is_active(session, claims.session_id, user.id):
         raise _UNAUTHORIZED
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_scope(user: CurrentUser) -> "scope_service.Scope":
+    """Périmètre de visibilité des prospects de l'utilisateur (décision D-23)."""
+    return scope_service.for_user(user)
+
+
+CurrentScope = Annotated["scope_service.Scope", Depends(get_scope)]
+
+
+async def check_prospect_visible(prospect_id: int, session: DbSession, scope: CurrentScope) -> None:
+    """À placer sur toute route `/{prospect_id}` : 404 hors du périmètre du conseiller."""
+    await scope_service.ensure_visible(session, scope, prospect_id)
+
+
+async def check_conversation_visible(
+    conversation_id: str, session: DbSession, db: MongoDb, scope: CurrentScope
+) -> None:
+    """À placer sur toute route `/conversations/{conversation_id}` (même règle)."""
+    if not scope.restricted:
+        return
+    from app.services import conversations
+
+    doc = await conversations.get_doc(db, conversation_id)
+    await scope_service.ensure_visible(session, scope, int(doc["prospect_id"]))
+
+
+async def check_membership_visible(
+    membership_id: int, session: DbSession, scope: CurrentScope
+) -> None:
+    """À placer sur toute route `/campaign-prospects/{membership_id}` (même règle)."""
+    if not scope.restricted:
+        return
+    from app.models import CampaignProspect
+
+    membership = await session.get(CampaignProspect, membership_id)
+    if membership is not None:  # inexistant : la route répond elle-même 404
+        await scope_service.ensure_visible(session, scope, membership.prospect_id)
+
+
+VISIBLE_PROSPECT = Depends(check_prospect_visible)
+VISIBLE_MEMBERSHIP = Depends(check_membership_visible)
+VISIBLE_CONVERSATION = Depends(check_conversation_visible)
 
 
 def require_roles(*roles: UserRole) -> params.Depends:

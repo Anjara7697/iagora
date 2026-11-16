@@ -28,7 +28,9 @@ from app.schemas.dashboard import (
     ScheduledFollowUp,
 )
 from app.services import agent_settings, commercial_context, conversations
+from app.services import scope as scope_service
 from app.services.demo import demo_filter
+from app.services.scope import EVERYTHING, Scope
 
 _DONE = (ConversionStage.LOST, ConversionStage.CONVERTED)
 
@@ -38,7 +40,9 @@ def _name(p: Prospect) -> str:
     return full or p.email or f"Prospect {p.id}"
 
 
-async def hot_prospects(session: AsyncSession, limit: int = 5) -> list[HotProspect]:
+async def hot_prospects(
+    session: AsyncSession, limit: int = 5, scope: Scope = EVERYTHING
+) -> list[HotProspect]:
     rows = await session.execute(
         select(Prospect, CampaignProspect, Campaign.id, Campaign.name)
         .join(CampaignProspect, CampaignProspect.prospect_id == Prospect.id)
@@ -46,6 +50,7 @@ async def hot_prospects(session: AsyncSession, limit: int = 5) -> list[HotProspe
         .join(Campaign, Campaign.id == CampaignSource.campaign_id)
         .where(
             ~demo_filter(),
+            scope_service.condition(scope),
             Prospect.consent_status != ConsentStatus.OPTED_OUT,
             CampaignProspect.conversion_stage.notin_(_DONE),
             CampaignProspect.total_score > 0,
@@ -76,20 +81,23 @@ async def hot_prospects(session: AsyncSession, limit: int = 5) -> list[HotProspe
     return out
 
 
-async def agent_activity(session: AsyncSession, db: Any, hours: int = 24) -> AgentActivity:
+async def agent_activity(
+    session: AsyncSession, db: Any, hours: int = 24, scope: Scope = EVERYTHING
+) -> AgentActivity:
     since = datetime.now(UTC) - timedelta(hours=hours)
     demo_ids = list(await session.scalars(select(Prospect.id).where(demo_filter())))
-    base: dict[str, Any] = {"started_at": {"$gte": since}}
-    if demo_ids:
-        base["prospect_id"] = {"$nin": demo_ids}
+    who = scope_service.mongo_match(await scope_service.prospect_ids(session, scope), demo_ids)
+    base: dict[str, Any] = {"started_at": {"$gte": since}, **who}
     runs = await db["agent_runs"].find(base).to_list(None)
     analysed = {r["prospect_id"] for r in runs if r.get("status") == "completed"}
     escalations = sum(1 for r in runs if r.get("handoff_reason"))
     errors = sum(1 for r in runs if r.get("status") == "error")
 
-    match: dict[str, Any] = {"messages.created_at": {"$gte": since}, "messages.role": "agent"}
-    if demo_ids:
-        match["prospect_id"] = {"$nin": demo_ids}
+    match: dict[str, Any] = {
+        "messages.created_at": {"$gte": since},
+        "messages.role": "agent",
+        **who,
+    }
     drafts = sent_validated = sent_direct = 0
     async for doc in db[conversations.COLLECTION].find(match):
         for m in doc.get("messages", []):
@@ -118,11 +126,12 @@ async def agent_activity(session: AsyncSession, db: Any, hours: int = 24) -> Age
 
 
 async def scheduled_follow_ups(
-    session: AsyncSession, limit: int = 5
+    session: AsyncSession, limit: int = 5, scope: Scope = EVERYTHING
 ) -> tuple[list[ScheduledFollowUp], int]:
     where = (
         FollowUp.status == FollowUpStatus.SCHEDULED,
         ~demo_filter(),
+        scope_service.condition(scope),
     )
     total = (
         await session.scalar(
@@ -153,7 +162,9 @@ async def scheduled_follow_ups(
     return items, int(total)
 
 
-async def funnel(session: AsyncSession, days: int = 30) -> tuple[dict[str, int], int]:
+async def funnel(
+    session: AsyncSession, days: int = 30, scope: Scope = EVERYTHING
+) -> tuple[dict[str, int], int]:
     since = datetime.now(UTC) - timedelta(days=days)
     rows = await session.execute(
         select(CampaignProspect.conversion_stage, func.count())
@@ -161,6 +172,7 @@ async def funnel(session: AsyncSession, days: int = 30) -> tuple[dict[str, int],
         .where(
             CampaignProspect.first_seen_at >= since,
             ~demo_filter(),
+            scope_service.condition(scope),
             CampaignProspect.id.in_(commercial_context.latest_ids()),
         )
         .group_by(CampaignProspect.conversion_stage)
@@ -169,13 +181,13 @@ async def funnel(session: AsyncSession, days: int = 30) -> tuple[dict[str, int],
     return by_stage, sum(by_stage.values())
 
 
-async def summary(session: AsyncSession, db: Any) -> DashboardSummary:
-    follow_ups, follow_ups_total = await scheduled_follow_ups(session)
-    by_stage, leads = await funnel(session)
+async def summary(session: AsyncSession, db: Any, scope: Scope = EVERYTHING) -> DashboardSummary:
+    follow_ups, follow_ups_total = await scheduled_follow_ups(session, scope=scope)
+    by_stage, leads = await funnel(session, scope=scope)
     return DashboardSummary(
         agent_mode=(await agent_settings.get_mode(db)).value,
-        hot_prospects=await hot_prospects(session),
-        activity=await agent_activity(session, db),
+        hot_prospects=await hot_prospects(session, scope=scope),
+        activity=await agent_activity(session, db, scope=scope),
         follow_ups=follow_ups,
         follow_ups_total=follow_ups_total,
         funnel_days=30,
@@ -205,7 +217,9 @@ FUNNEL_STEPS = (
 NOT_SET = "Non renseigné"
 
 
-async def overview(session: AsyncSession, days: int) -> DashboardOverview:
+async def overview(
+    session: AsyncSession, days: int, scope: Scope = EVERYTHING
+) -> DashboardOverview:
     """Prospects arrivés dans la période (rattachement le plus récent de chacun), avec l'étape la
     plus avancée qu'ils ont atteinte et leur répartition par programme et par source."""
     since = datetime.now(UTC) - timedelta(days=days)
@@ -226,6 +240,7 @@ async def overview(session: AsyncSession, days: int) -> DashboardOverview:
             .where(
                 CampaignProspect.first_seen_at >= since,
                 ~demo_filter(),
+                scope_service.condition(scope),
                 CampaignProspect.id.in_(commercial_context.latest_ids()),
             )
         )

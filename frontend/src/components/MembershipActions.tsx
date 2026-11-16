@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, Field, SelectBox, Notice, TextBox, TextInput } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
@@ -79,7 +79,7 @@ export default function MembershipActions({
     }
   }
 
-  const formClass = "flex flex-col gap-3 rounded-xl border border-separator p-4";
+  const formClass = "flex flex-col gap-3 rounded-lg border border-separator p-4";
   return (
     <section
      
@@ -87,10 +87,10 @@ export default function MembershipActions({
       aria-label={`Suivi du parcours ${m.id}`}
     >
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm text-foreground">
+        <p className="type-body text-foreground">
           Conseiller affecté : <strong className="font-semibold">{currentName}</strong>
         </p>
-        <p className="text-xs text-muted">
+        <p className="type-caption text-muted">
           {m.assignment_is_override
             ? "Exception individuelle à la règle de campagne."
             : "Affectation selon la règle de campagne."}
@@ -113,12 +113,12 @@ export default function MembershipActions({
             );
           }}
         >
-          <p className="text-xs text-muted">
+          <p className="type-caption text-muted">
             Une modification ici crée une exception pour ce prospect dans cette
             campagne, sur toutes ses sources.
           </p>
           <Field label="Conseiller responsable">
-            <SelectBox variant="primary"
+            <SelectBox
               value={advisor}
               disabled={busy || advisors.loading || !!advisors.error}
               onChange={(e) => setAdvisor(e.target.value)}
@@ -147,7 +147,7 @@ export default function MembershipActions({
               >
                 Conseillers précédents
               </Btn>
-              <span className="text-xs text-muted tabular-nums">
+              <span className="type-caption text-muted tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>
@@ -205,7 +205,7 @@ export default function MembershipActions({
           }}
         >
           <Field label="Nouvelle étape">
-            <SelectBox variant="primary"
+            <SelectBox
               value={stage}
               disabled={busy}
               onChange={(e) => setStage(e.target.value)}
@@ -220,7 +220,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Motif du changement">
-            <TextBox variant="primary"
+            <TextBox
               value={reason}
               disabled={busy}
               required
@@ -250,14 +250,14 @@ export default function MembershipActions({
           }}
         >
           <div className="flex flex-col gap-1">
-            <h3 className="text-sm font-semibold text-foreground">Confirmer l’inscription</h3>
-            <p className="text-xs text-muted">
+            <h3 className="type-body font-semibold text-foreground">Confirmer l’inscription</h3>
+            <p className="type-caption text-muted">
               Vérifiez la confirmation de l’école avant de passer ce parcours à « Converti ».
               La déclaration du candidat ou son dossier ne suffisent pas.
             </p>
           </div>
           <Field label="Preuve vérifiée">
-            <SelectBox variant="primary" value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
+            <SelectBox value={evidenceType} disabled={busy} onChange={(e) => setEvidenceType(e.target.value)}>
               <option value="school_email">Email de confirmation de l’école</option>
               <option value="admissions_system">Système d’admission</option>
               <option value="signed_document">Document signé</option>
@@ -265,7 +265,7 @@ export default function MembershipActions({
             </SelectBox>
           </Field>
           <Field label="Référence de la preuve">
-            <TextInput variant="primary"
+            <TextInput
               value={evidenceReference}
               onChange={(e) => setEvidenceReference(e.target.value)}
               disabled={busy}
@@ -276,7 +276,7 @@ export default function MembershipActions({
             />
           </Field>
           <Field label="Note complémentaire (facultative)">
-            <TextBox variant="primary"
+            <TextBox
               value={evidenceNote}
               onChange={(e) => setEvidenceNote(e.target.value)}
               disabled={busy}

@@ -268,7 +268,7 @@ type Calls = { posts: { path: string; method: string; body: unknown }[] };
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; mode?: string } = {},
+  opts: { role?: string; mode?: string; truncated?: boolean } = {},
 ) {
   const calls: Calls = { posts: [] };
   let items = [draftItem, gapItem];
@@ -293,9 +293,9 @@ async function mockApi(
       const rows = items.filter((i) => !kind || i.kind === kind);
       const counts: Record<string, number> = {};
       for (const i of items) counts[i.kind] = (counts[i.kind] ?? 0) + 1;
-      body = { items: rows, total: rows.length, limit: 100, offset: 0, counts };
+      body = { items: rows, total: rows.length, limit: 100, offset: 0, counts, truncated: !!opts.truncated };
     } else if (path === "/todo/treated")
-      body = { items: decisions, total: decisions.length, hours: 24 };
+      body = { items: decisions, total: decisions.length, hours: 24, truncated: !!opts.truncated };
     else if (path === "/agent/mode" && request.method() === "GET")
       body = { mode };
     else if (path === "/agent/mode") {
@@ -378,6 +378,7 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(list.getByText("Marie Dupont")).toBeVisible();
   await expect(list.getByText("Ahmed Belkacem")).toBeVisible();
   await expect(page.getByRole("button", { name: "Tout (2)" })).toBeVisible();
+  await expect(list.getByText(/Liste incomplète/)).toHaveCount(0);
   await expect(page.getByLabel("2 en attente")).toBeVisible();
 
   await page.getByRole("button", { name: "Réponses à compléter (1)" }).click();
@@ -389,12 +390,12 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
   const evidence = detail.getByRole("region", { name: "Éléments pour décider" });
   const draft = detail.getByRole("region", { name: "Brouillon de l'agent" });
-  // Les éléments pour décider précèdent le brouillon.
-  const draftNode = await draft.elementHandle();
+  // La décision passe avant les éléments qui l'éclairent (UX-01) : le brouillon précède la recommandation.
+  const evidenceNode = await evidence.elementHandle();
   expect(
-    await evidence.evaluate(
+    await draft.evaluate(
       (el, node) => Boolean(node && el.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING),
-      draftNode,
+      evidenceNode,
     ),
   ).toBe(true);
   await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
@@ -407,6 +408,16 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(
     detail.getByText("Bonjour Marie, le financement est possible."),
   ).toBeVisible();
+});
+
+test("liste tronquée par l'API : le conseiller sait que des demandes manquent", async ({ page }) => {
+  await mockApi(page, { truncated: true });
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await expect(list.getByText("Marie Dupont")).toBeVisible();
+  await expect(list.getByText(/Liste incomplète : seules les conversations les plus récentes sont lues/)).toBeVisible();
+  await page.getByRole("tab", { name: /Traités 24 h/ }).click();
+  await expect(list.getByText(/Liste incomplète : seules les conversations les plus récentes sont affichées/)).toBeVisible();
 });
 
 test("mobile : risque élevé et absence de sources visibles sans déplier les détails", async ({ page }) => {
@@ -946,3 +957,197 @@ for (const role of ["ADVISOR", "ADMIN"] as const) {
     await auditA11y(page, `à traiter, opposition à vérifier (${role})`);
   });
 }
+
+test("rétablir le consentement après une opposition ambiguë exige un motif (administrateur)", async ({ page }) => {
+  await mockApi(page, { role: "ADMIN" });
+  await page.route("**/api/v1/todo?**", (route) =>
+    route.fulfill({
+      json: { items: [optOutItem], total: 1, limit: 50, offset: 0, counts: { opt_out_check: 1 } },
+    }),
+  );
+  let decision: unknown = null;
+  await page.route("**/api/v1/conversations/c9/opt-out-review", async (route) => {
+    decision = route.request().postDataJSON();
+    await route.fulfill({ json: { status: "restored" } });
+  });
+  await open(page);
+  await page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("button", { name: /Noé Martin/ }).click();
+  await page.getByRole("button", { name: "Non, rétablir le consentement" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Rétablir le consentement ?" });
+  const confirm = dialog.getByRole("button", { name: "Rétablir le consentement" });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByLabel("Motif").fill("Il voulait quitter son école actuelle, pas nous.");
+  await confirm.click();
+  await expect(page.getByText("Consentement rétabli", { exact: true })).toBeVisible();
+  expect(decision).toEqual({ decision: "restore", reason: "Il voulait quitter son école actuelle, pas nous." });
+});
+
+test("premiers contacts : relus dans la file puis validés ensemble après confirmation", async ({ page }) => {
+  await mockApi(page);
+  const first = (n: number) => ({
+    ...draftItem,
+    id: `draft:fc${n}:m${n}`,
+    kind: "first_contact",
+    priority: "medium",
+    conversation_id: `fc${n}`,
+    prospect: { ...prospect, id: 10 + n, first_name: `Invité${n}`, last_name: "Salon", stage: "new" },
+    title: "Premier contact à valider",
+    detail: "L'agent écrit le premier message (prospection)",
+    draft: { ...draftItem.draft, message_id: `m${n}`, content: `Bonjour Invité${n}, merci de votre visite au salon.` },
+  });
+  let pending = [first(1), first(2)];
+  let approved: unknown = null;
+  await page.context().route("**/api/v1/todo?**", (route) =>
+    route.fulfill({
+      json: { items: pending, total: pending.length, limit: 50, offset: 0, counts: { first_contact: pending.length } },
+    }),
+  );
+  await page.context().route("**/api/v1/todo/first-contacts/approve", async (route) => {
+    approved = route.request().postDataJSON();
+    pending = [];
+    await route.fulfill({ json: { approved: 2, skipped: 0 } });
+  });
+  await open(page);
+  await page.goto("/todo?kind=first_contact");
+  const queue = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await expect(queue.getByRole("button", { name: "Premiers contacts (2)" })).toBeVisible();
+  // Relire un message avant : le détail s'ouvre comme pour toute demande.
+  await queue.getByRole("button", { name: /Invité1 Salon/ }).click();
+  await expect(page.getByText("merci de votre visite au salon", { exact: false }).first()).toBeVisible();
+  await queue.getByRole("button", { name: "Valider les 2 premiers contacts affichés" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Chaque message partira tel qu’il est écrit", { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Valider les 2" }).click();
+  await expect(page.getByText("2 premiers contacts validés")).toBeVisible();
+  expect(approved).toEqual({
+    drafts: [
+      { conversation_id: "fc1", message_id: "m1" },
+      { conversation_id: "fc2", message_id: "m2" },
+    ],
+  });
+  await expect(queue.getByText("Rien à traiter pour le moment.")).toBeVisible();
+});
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }])
+  test(`brouillon : « Valider la réponse » visible sans défiler en ${viewport.width} × ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await open(page);
+    await page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("button", { name: /Marie Dupont/ }).click();
+    const validate = page.getByRole("region", { name: "Brouillon de l'agent" }).getByRole("button", { name: "Valider la réponse", exact: true });
+    await expect(validate).toBeVisible();
+    // Dans la fenêtre dès l'ouverture, sans défilement de la page.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(validate).toBeInViewport({ ratio: 1 });
+  });
+
+test("clavier : une file de trois brouillons se traite sans souris", async ({ page }) => {
+  const calls = await mockApi(page);
+  const drafts = (["Marie", "Ahmed", "Lina"] as const).map((first_name, n) => ({
+    ...draftItem,
+    id: `draft:k${n}:m${n}`,
+    conversation_id: `k${n}`,
+    prospect: { ...prospect, id: 10 + n, first_name, last_name: "Clavier" },
+    created_at: new Date(Date.now() - (n + 1) * 3600_000).toISOString(),
+    draft: { ...draftItem.draft, message_id: `m${n}`, content: `Bonjour ${first_name}, voici la réponse.` },
+  }));
+  let items = [...drafts];
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    if (path === "/todo") {
+      const counts = { validation: items.length };
+      return route.fulfill({ json: { items, total: items.length, limit: 100, offset: 0, counts, truncated: false } });
+    }
+    const approve = path.match(/^\/conversations\/(k\d)\/drafts\/(m\d)\/approve$/);
+    if (approve) {
+      calls.posts.push({ path, method: request.method(), body: request.postDataJSON() });
+      items = items.filter((i) => i.conversation_id !== approve[1]);
+      return route.fulfill({ json: { status: "approved" } });
+    }
+    return route.fallback();
+  });
+  await open(page);
+  const detail = (name: string) => page.getByRole("heading", { name, exact: true });
+  const validate = page.getByRole("button", { name: "Valider la réponse", exact: true });
+
+  // J ouvre le premier élément, puis le suivant ; K revient au précédent. Le titre reçoit le focus.
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByText("Marie Clavier")).toBeVisible();
+  await page.keyboard.press("j");
+  await expect(detail("Marie Clavier")).toBeFocused();
+  await expect(validate).toHaveAttribute("aria-keyshortcuts", "Control+Enter");
+  await page.keyboard.press("j");
+  await expect(detail("Ahmed Clavier")).toBeFocused();
+  await page.keyboard.press("k");
+  await expect(detail("Marie Clavier")).toBeFocused();
+
+  // Ctrl Entrée valide ; l'élément suivant s'ouvre.
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Réponse validée", { exact: true })).toBeVisible();
+  await expect(detail("Ahmed Clavier")).toBeFocused();
+
+  // M ouvre la modification, le texte reçoit le focus : les touches y écrivent sans rien déclencher.
+  await page.keyboard.press("m");
+  const text = page.getByLabel("Texte du brouillon");
+  await expect(text).toBeFocused();
+  await text.press("ControlOrMeta+a");
+  await page.keyboard.type("Bonjour Ahmed, version relue jk");
+  await page.keyboard.press("Control+Enter");
+  await expect(text).toHaveValue("Bonjour Ahmed, version relue jk");
+  await expect(detail("Ahmed Clavier")).toBeVisible();
+  expect(calls.posts).toHaveLength(1);
+  // Hors du champ, Ctrl Entrée valide la version modifiée.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Valider la version modifiée" })).toBeFocused();
+  await page.keyboard.press("Control+Enter");
+  await expect(detail("Lina Clavier")).toBeFocused();
+
+  // Une confirmation ouverte neutralise les raccourcis.
+  await page.getByRole("button", { name: "Refuser le brouillon" }).focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("alertdialog", { name: "Refuser le brouillon ?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler" }).focus();
+  const url = page.url();
+  for (const key of ["j", "k", "m"]) await page.keyboard.press(key);
+  await expect(dialog).toBeVisible();
+  expect(page.url()).toBe(url);
+  await expect(page.getByLabel("Texte du brouillon")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeHidden();
+  expect(calls.posts).toHaveLength(2);
+
+  // Le dernier : la file est vide, son titre reçoit le focus.
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Votre file est à jour.")).toBeVisible();
+  expect(calls.posts.map((c) => c.body)).toEqual([
+    { content: null },
+    { content: "Bonjour Ahmed, version relue jk" },
+    { content: null },
+  ]);
+});
+
+test("clavier : les raccourcis de la file figurent dans la palette", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByText("Marie Dupont")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Rechercher/ })).toHaveAttribute("aria-keyshortcuts", "Control+K");
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Recherche rapide" });
+  // La touche ne part pas vers la page pendant la saisie dans la palette.
+  await page.keyboard.type("suivant");
+  await expect(palette.getByRole("option", { name: /Élément suivant de la file/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(palette).toBeHidden();
+  await expect(page).toHaveURL(/id=draft%3Ac1%3Am1/);
+  await expect(page.getByRole("heading", { name: "Marie Dupont", exact: true })).toBeFocused();
+  // L'infobulle du bouton donne la touche.
+  await page.getByRole("heading", { name: "Marie Dupont", exact: true }).click();
+  await page.getByRole("button", { name: "Valider la réponse", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText(/Valider la réponse\s*Ctrl/);
+  // Avec un brouillon ouvert, valider et modifier s'y ajoutent.
+  await page.mouse.move(0, 0);
+  await page.keyboard.press("Control+k");
+  await expect(palette.getByRole("option", { name: /Valider la réponse/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /Modifier la réponse/ })).toBeVisible();
+});

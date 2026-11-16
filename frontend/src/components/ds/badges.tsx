@@ -1,12 +1,16 @@
 "use client";
 
 import { Chip } from "@heroui/react";
-import { CircleDot, FlaskConical } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { LEVELS, STAGES, label } from "@/lib/labels";
 
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** Qui agit ensuite : neutre (rien n'a commencé), agent, rendez-vous, terminé, à relancer, désinscrit. */
+/**
+ * Familles de pastilles (DESIGN_SYSTEM.md §6, règle 10) : statut (douce, une couleur sémantique), étape (douce, agent
+ * ou neutre), mesure (texte et jauge, sans fond ; « Très chaud », seule pastille pleine), marque (contour).
+ * Étape : couleur de l'agent quand c'est lui qui mène l'échange, orange quand une relance est due, neutre sinon.
+ */
 type Tone = "neutral" | "muted" | "agent" | "accent" | "success" | "warning" | "danger";
 const STAGE_TONE: Record<string, Tone> = {
   new: "neutral",
@@ -14,11 +18,11 @@ const STAGE_TONE: Record<string, Tone> = {
   contacted: "neutral",
   in_conversation: "agent",
   qualified: "agent",
-  meeting_proposed: "accent",
-  meeting_scheduled: "accent",
-  meeting_done: "success",
-  applied: "success",
-  converted: "success",
+  meeting_proposed: "neutral",
+  meeting_scheduled: "neutral",
+  meeting_done: "neutral",
+  applied: "neutral",
+  converted: "neutral",
   to_follow_up: "warning",
   lost: "muted",
 };
@@ -32,12 +36,11 @@ const TONE_CHIP: Record<Tone, { color: "default" | "accent" | "success" | "warni
   danger: { color: "danger" },
 };
 
-/** Étape du parcours d'un prospect (puce douce colorée selon qui agit ensuite). */
+/** Étape du parcours d'un prospect (famille « étape »). */
 export function StageBadge({ stage }: { stage: string }) {
   const tone = TONE_CHIP[STAGE_TONE[stage] ?? "neutral"];
   return (
     <Chip size="sm" variant="soft" color={tone.color} className={tone.className}>
-      <CircleDot className="size-3" aria-hidden="true" />
       <Chip.Label>{label(STAGES, stage)}</Chip.Label>
     </Chip>
   );
@@ -76,46 +79,62 @@ export function HeatMeter({ level, onFill }: { level: string; onFill?: boolean }
   );
 }
 
+/** « Très chaud » : seule pastille pleine de l'échelle d'intérêt. */
+function VeryHot({ children }: { children: React.ReactNode }) {
+  return (
+    <Chip size="sm" variant="primary" color="default" className="chip--very-hot">
+      {children}
+    </Chip>
+  );
+}
+
+/** Mesure sans fond (famille « mesure ») : le texte et la jauge suffisent. */
+const MEASURE = "inline-flex items-center gap-1.5 whitespace-nowrap type-caption font-medium text-foreground";
+
 /** Niveau d'intérêt seul (sans score), avec sa jauge. Jamais rouge : le rouge signale un blocage. */
 export function LevelBadge({ level }: { level: string }) {
-  const veryHot = level === "very_hot";
+  if (level === "very_hot")
+    return (
+      <VeryHot>
+        <HeatMeter level={level} onFill />
+        <Chip.Label>{label(LEVELS, level)}</Chip.Label>
+      </VeryHot>
+    );
   return (
-    <Chip
-      size="sm"
-      variant={veryHot ? "primary" : "soft"}
-      color="default"
-      className={veryHot ? "chip--very-hot" : undefined}
-    >
-      <HeatMeter level={level} onFill={veryHot} />
-      <Chip.Label>{label(LEVELS, level)}</Chip.Label>
-    </Chip>
+    <span className={MEASURE}>
+      <HeatMeter level={level} />
+      {label(LEVELS, level)}
+    </span>
   );
 }
 
-/** Score commercial, en chiffres mono, suivi du niveau d'intérêt quand il est connu. */
+/** Score commercial en chiffres tabulaires, suivi du niveau d'intérêt quand il est connu. */
 export function ScoreBadge({ total, level }: { total: number; level?: string | null }) {
-  const veryHot = level === "very_hot";
+  if (level === "very_hot")
+    return (
+      <VeryHot>
+        <span className="tabular-nums">{total}</span>
+        <HeatMeter level={level} onFill />
+        <Chip.Label>{label(LEVELS, level)}</Chip.Label>
+      </VeryHot>
+    );
   return (
-    <Chip
-      size="sm"
-      variant={veryHot ? "primary" : "soft"}
-      color="default"
-      className={veryHot ? "chip--very-hot" : undefined}
-    >
+    <span className={MEASURE}>
       <span className="tabular-nums">{total}</span>
-      {level && <HeatMeter level={level} onFill={veryHot} />}
-      {level && <Chip.Label>{label(LEVELS, level)}</Chip.Label>}
-    </Chip>
+      {level && <HeatMeter level={level} />}
+      {level && <span className="font-normal text-muted">{label(LEVELS, level)}</span>}
+    </span>
   );
 }
 
-/** Prospect fictif : aucun message réel ne lui est envoyé. */
+/** Prospect fictif : aucun message réel ne lui est envoyé (famille « marque » : contour). */
 export function DemoChip() {
   return (
     <Chip
       size="sm"
-      variant="soft"
-      color="warning"
+      variant="tertiary"
+      color="default"
+      className="border border-border text-muted"
       title="Prospect fictif : aucun message réel ne lui est envoyé"
     >
       <FlaskConical className="size-3" aria-hidden="true" />

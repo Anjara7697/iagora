@@ -5,7 +5,7 @@
 import { toast } from "@heroui/react";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, LinkButton, Tag } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { DemoBadge } from "@/components/ui";
@@ -68,7 +68,7 @@ export function TreatedDetail({
               {item.decision === "approved" ? "Validé" : "Refusé"}
               {item.edited ? " (modifié)" : ""}
             </Tag>
-            <span className="text-xs text-muted">{formatDate(item.decided_at)}</span>
+            <span className="type-caption text-muted">{formatDate(item.decided_at)}</span>
           </>
         }
         action={
@@ -81,7 +81,7 @@ export function TreatedDetail({
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex flex-1 flex-col gap-1">
             <Eyebrow>État d’envoi</Eyebrow>
-            <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <h3 className="flex items-center gap-2 type-title-sm font-semibold text-foreground">
               <span
                 className={`size-2 rounded-full ${
                   EXECUTION_TONE[item.execution] === "success"
@@ -102,10 +102,10 @@ export function TreatedDetail({
             {refreshing ? "Actualisation…" : "Actualiser l’état"}
           </Btn>
         </div>
-        <p className="text-sm text-foreground">{EXECUTION_HELP[item.execution]}</p>
-        {item.reason && <p className="text-sm text-foreground">Motif du refus : {item.reason}</p>}
+        <p className="type-body text-foreground">{EXECUTION_HELP[item.execution]}</p>
+        {item.reason && <p className="type-body text-foreground">Motif du refus : {item.reason}</p>}
         {item.execution_detail && (
-          <p className="rounded-lg bg-surface-secondary px-3 py-2 text-xs text-muted">{item.execution_detail}</p>
+          <p className="rounded-lg bg-surface-secondary px-3 py-2 type-caption text-muted">{item.execution_detail}</p>
         )}
         {canRetry && (
           <div>
@@ -118,9 +118,9 @@ export function TreatedDetail({
       </Box>
       <Box as="section" aria-label="Message traité" {...revealed(2, "gap-0 overflow-hidden p-0")}>
         <header className="border-b border-separator px-5 py-3.5">
-          <strong className="text-sm font-semibold text-foreground">Message — {label(CHANNELS, item.channel)}</strong>
+          <strong className="type-body font-semibold text-foreground">Message — {label(CHANNELS, item.channel)}</strong>
         </header>
-        <div className="px-5 py-4 text-sm/6 whitespace-pre-wrap text-foreground">{item.content}</div>
+        <div className="px-5 py-4 type-body leading-6 whitespace-pre-wrap text-foreground">{item.content}</div>
       </Box>
     </section>
   );

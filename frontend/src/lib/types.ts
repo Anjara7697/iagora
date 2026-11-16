@@ -232,6 +232,7 @@ export type AgentMode = "assisted" | "auto" | "manual";
 
 export type TodoKind =
   | "validation"
+  | "first_contact"
   | "escalation"
   | "kb_gap"
   | "incident"
@@ -271,6 +272,8 @@ export type TodoItem = {
 
 export type TodoPage = Page<TodoItem> & {
   counts: Partial<Record<TodoKind, number>>;
+  /** Vrai si seules les conversations les plus récentes ont été lues : la liste est incomplète. */
+  truncated?: boolean;
 };
 
 export type KnowledgeStatus = {
@@ -378,6 +381,7 @@ export type TreatedPage = {
   items: TreatedItem[];
   total: number;
   hours: number;
+  truncated?: boolean;
 };
 
 export type EmailConfig = {
@@ -479,6 +483,11 @@ export type RuntimeSettings = {
   follow_up_window_end_hour: number;
   follow_up_weekdays_only: boolean;
   follow_up_max_per_silence: number;
+  /** Seuils de décision de l'agent (décision D-27). */
+  agent_meeting_min_score: number;
+  agent_nurture_max_score: number;
+  agent_min_confidence: number;
+  agent_extra_terms: string;
   email_footer: string;
   email_ai_notice: string;
   email_brand_name: string;
@@ -536,7 +545,24 @@ export type ImportReport = {
   existing: number;
   invalid: { row: number; error: string }[];
   columns: Record<string, string>;
+  /** Lignes valides enregistrées avec consentement (colonne « consentement » ou case de l'écran). */
+  consented: number;
+  consent_by_column: boolean;
 };
+
+/** Premiers contacts d'une campagne (décision D-29) : qui les recevrait, et pourquoi les autres non. */
+export type FirstContacts = {
+  campaign_active: boolean;
+  eligible: number;
+  queued: number;
+  without_consent: number;
+  without_email: number;
+  already_contacted: number;
+  in_progress: number;
+  opted_out: number;
+};
+
+export type BatchResult = { approved: number; skipped: number };
 
 export type Appointment = {
   id: number;

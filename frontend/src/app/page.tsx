@@ -4,7 +4,7 @@ import { Alert, Avatar, Chip } from "@heroui/react";
 import { ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { firstNameOf, useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { LinkButton } from "@/components/ds/controls";
 import {
@@ -22,7 +22,7 @@ import {
 import { reveal } from "@/components/ds/motion";
 import { LevelBadge, Loading } from "@/components/ui";
 import { qs } from "@/lib/api";
-import { FUNNEL, PRIORITIES, STAGES, formatDate, fullName, label } from "@/lib/labels";
+import { FUNNEL, PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, DashboardSummary, Page, TodoItem } from "@/lib/types";
 
@@ -39,6 +39,7 @@ const TASK_LABELS: Record<TodoItem["kind"], string> = {
   enrollment: "Confirmer une inscription",
   application: "Vérifier une candidature",
   validation: "Relire une réponse",
+  first_contact: "Relire un premier contact",
   escalation: "Prendre le relais",
   kb_gap: "Compléter une réponse",
   incident: "Résoudre un incident",
@@ -98,7 +99,6 @@ export default function Home() {
 
       <PageHeader
         {...rise(0)}
-        eyebrow="Travail · Aujourd’hui"
         title={`Bonjour ${firstName}`}
         subtitle={
           // Rien plutôt que « … » tant que la file n'est pas chargée (règle 15).
@@ -131,7 +131,7 @@ export default function Home() {
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <Eyebrow>{waiting > 0 ? "Prochaine action" : "File à jour"}</Eyebrow>
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="type-title-sm font-semibold text-foreground">
                 {next
                   ? TASK_LABELS[next.kind]
                   : waiting > 0
@@ -139,7 +139,7 @@ export default function Home() {
                     : "Aucune action urgente pour le moment"}
               </h2>
               {next ? (
-                <p className="text-sm text-muted">
+                <p className="type-body text-muted">
                   <span className="font-medium text-foreground">
                     {next.prospect ? fullName(next.prospect) : next.title}
                   </span>
@@ -147,7 +147,7 @@ export default function Home() {
                   {next.detail ? ` · ${next.detail}` : ""}
                 </p>
               ) : (
-                <p className="text-sm text-muted">
+                <p className="type-body text-muted">
                   {waiting > 0
                     ? "Ouvrez la file pour commencer par l’élément le plus prioritaire."
                     : "L’agent continue de surveiller les nouveaux échanges et incidents."}
@@ -167,17 +167,21 @@ export default function Home() {
       <div {...rise(2, "flex flex-col gap-3")}>
         <Eyebrow>Vue rapide de la file</Eyebrow>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {BUCKETS.map((b) => (
-            <KpiCard
-              key={b.kind}
-              href={`/todo?kind=${b.kind}`}
-              label={b.title}
-              dot={b.dot}
-              value={todo.error ? "—" : (counts[b.kind] ?? 0)}
-              loading={!todo.data && !todo.error}
-              hint={b.hint}
-            />
-          ))}
+          {BUCKETS.map((b) => {
+            // Les premiers contacts (prospection) sont aussi des brouillons à relire.
+            const firstContacts = b.kind === "validation" ? (counts.first_contact ?? 0) : 0;
+            return (
+              <KpiCard
+                key={b.kind}
+                href={firstContacts ? "/todo" : `/todo?kind=${b.kind}`}
+                label={b.title}
+                dot={b.dot}
+                value={todo.error ? "—" : (counts[b.kind] ?? 0) + firstContacts}
+                loading={!todo.data && !todo.error}
+                hint={firstContacts ? `Dont ${firstContacts} premier${firstContacts > 1 ? "s" : ""} contact${firstContacts > 1 ? "s" : ""}` : b.hint}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -207,18 +211,18 @@ export default function Home() {
                 const date = day(a.start_at);
                 return (
                   <div key={a.id} className="flex flex-wrap items-center gap-3 border-b border-separator px-5 py-3.5 last:border-b-0">
-                    <span className="flex w-28 shrink-0 flex-col text-[13px] tabular-nums">
+                    <span className="flex w-28 shrink-0 flex-col type-body-sm tabular-nums">
                       <time dateTime={a.start_at} className="font-medium text-foreground">
                         {hour(a.start_at)} – {hour(a.end_at)}
                       </time>
-                      <span className="text-xs text-muted first-letter:uppercase">
+                      <span className="type-caption text-muted first-letter:uppercase">
                         {date === today ? "Aujourd’hui" : date.replace(/ \d{4}$/, "")}
                       </span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-1">
                       <Link
                         href={`/prospects/${a.prospect.id}`}
-                        className="truncate rounded text-sm font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                        className="truncate rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         {name}
                       </Link>
@@ -231,7 +235,7 @@ export default function Home() {
                 );
               })}
             {appointments.data && appointments.data.total > appointments.data.items.length && (
-              <p className="border-t border-separator px-5 py-3 text-[13px] text-muted">
+              <p className="border-t border-separator px-5 py-3 type-body-sm text-muted">
                 + {appointments.data.total - appointments.data.items.length} autre(s) rendez-vous à venir.
               </p>
             )}
@@ -263,10 +267,10 @@ export default function Home() {
                 </Avatar>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="flex flex-wrap items-center gap-2">
-                    <strong className="text-sm font-medium text-foreground">{p.name}</strong>
+                    <strong className="type-body font-medium text-foreground">{p.name}</strong>
                     {p.level && <LevelBadge level={p.level} />}
                   </span>
-                  <span className="text-xs text-muted">
+                  <span className="type-caption text-muted">
                     {label(STAGES, p.stage)} · score {p.total_score}
                     {p.campaign_name ? ` · ${p.campaign_name}` : ""}
                   </span>
@@ -291,22 +295,22 @@ export default function Home() {
                   <span className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/prospects/${f.prospect_id}`}
-                      className="rounded text-sm font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                      className="rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       <strong className="font-medium">{f.prospect_name}</strong>
                     </Link>
                     <span className="flex-1" />
-                    <span className="text-xs text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
+                    <span className="type-caption text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
                   </span>
-                  {f.reason && <span className="text-[13px] text-foreground">{f.reason}</span>}
-                  <span className="text-xs text-muted">
+                  {f.reason && <span className="type-body-sm text-foreground">{f.reason}</span>}
+                  <span className="type-caption text-muted">
                     Annulée si le prospect répond, se désinscrit ou est transféré.
                   </span>
                 </span>
               </div>
             ))}
             {s && s.follow_ups_total > s.follow_ups.length && (
-              <p className="border-t border-separator px-5 py-3 text-[13px] text-muted">
+              <p className="border-t border-separator px-5 py-3 type-body-sm text-muted">
                 + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s) programmée(s).
               </p>
             )}
@@ -336,8 +340,8 @@ export default function Home() {
                   [s.activity.errors, "erreurs techniques"],
                 ].map(([value, text]) => (
                   <div key={String(text)} className="flex flex-col-reverse gap-1">
-                    <dt className="text-[13px]/[18px] text-muted">{text}</dt>
-                    <dd className="text-2xl text-foreground tabular-nums">{value}</dd>
+                    <dt className="type-body-sm text-muted">{text}</dt>
+                    <dd className="type-title text-foreground tabular-nums">{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -362,7 +366,7 @@ export default function Home() {
           {s && s.leads === 0 && <EmptyText>Aucun prospect sur la période.</EmptyText>}
           {s && s.leads > 0 && (
             <div className="flex flex-col gap-4">
-              <p className="text-[13px] text-muted">
+              <p className="type-body-sm text-muted">
                 <strong className="font-medium text-foreground">{s.leads}</strong> prospects arrivés sur la
                 période. Répartition par étape actuelle.
               </p>

@@ -276,3 +276,18 @@ test("accueil : prochains rendez-vous, lien visio et accès à la liste complèt
   expect(queries.at(-1)?.get("advisor_id")).toBe("1");
   await auditA11y(page, "accueil, prochains rendez-vous");
 });
+
+test("accueil : la file n'est lue qu'une fois au chargement (barre du haut et page)", async ({ page }) => {
+  await mockApi(page);
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/api/v1/todo") && url.search === "?limit=1") reads.push(url.search);
+  });
+  // Chargement isolé (session déjà ouverte côté API simulée) : seules ses requêtes sont comptées.
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "5 à traiter" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Relire une réponse" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(reads).toHaveLength(1);
+});

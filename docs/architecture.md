@@ -13,8 +13,9 @@ depuis une console Next.js.
 flowchart LR
   subgraph Sources
     E["Email IMAP"]
-    F["API REST /prospects, /conversations"]
-    L["LinkedIn, Meta (non branchés)"]
+    F["API REST /prospects, /leads (jetons de service)"]
+    M["Meta Lead Ads (webhook)"]
+    L["LinkedIn (non branché)"]
   end
   subgraph Backend["Backend FastAPI (un processus)"]
     R["Réception : services/inbound, intake"]
@@ -34,6 +35,7 @@ flowchart LR
   UI["Console Next.js"]
   E --> W --> R
   F --> R
+  M --> R
   L -.-> R
   R --> Q --> G
   G <--> LLM
@@ -49,15 +51,20 @@ flowchart LR
 | Dossier | Rôle | Dépend de |
 |---|---|---|
 | `app/api/v1/` | Routes HTTP, validation des entrées, droits | `services`, `schemas` |
-| `app/services/` | Logique métier : prospects, conversations, scoring, relances, email, brouillons… | `models`, `database`, `integrations` |
+| `app/services/` | Logique métier : prospects, conversations, scoring, relances, email, brouillons… | `models`, `database`, `integrations`, `core`, `graph/ports.py` ; jamais `agents` ni `api` |
 | `app/graph/` | Workflow de l'agent : état, nœuds, règles de décision, consignes | **uniquement** `graph/ports.py` |
 | `app/agents/` | Exécution du workflow (verrou, trace), passerelle vers les données, tâches de fond | `graph`, `services` |
 | `app/integrations/` | Adaptateurs vers l'extérieur : LLM, embeddings, email, agenda, base de connaissances | SDK et bibliothèques |
-| `app/models/`, `app/schemas/` | Tables SQLAlchemy, schémas Pydantic | — |
+| `app/models/`, `app/schemas/` | Tables SQLAlchemy, schémas Pydantic | `core` ; jamais `services` |
+| `app/core/`, `app/database/` | Valeurs et outils partagés (modes de l'agent, marque des données fictives, sécurité, noms des collections MongoDB, connexions) | rien au-dessus d'eux |
 | `app/devtools/` | Données fictives, simulateur, scénarios de recette (jamais en production) | tout |
 
 Règle d'architecture (NF-01, NF-02, rappelée dans `AGENTS.md`) : `app/graph` et `app/agents` n'importent
 **aucun** SDK de plateforme. Tout passe par les ports.
+
+Ces sens de dépendance sont vérifiés par les tests : `tests/test_agent_workflow.py` (aucun SDK dans
+`app/graph`) et `tests/test_architecture.py` (pas d'import vers une couche supérieure, pas de cycle d'imports entre
+services).
 
 ## Ports et adaptateurs
 
@@ -102,9 +109,12 @@ Lancées au démarrage de l'API (`app/main.py`), dans le **même processus** :
 | `reply_queue_loop` | Traite les demandes `agent_events` (50 par passage, toutes les 10 s) | `AGENT_AUTO_REPLY` |
 | `follow_up_loop` | Exécute les relances échues dans la fenêtre d'envoi | `FOLLOW_UP_WORKER_ENABLED`, `FOLLOW_UP_INTERVAL_SECONDS` |
 | `email_loop` | Relève la boîte et envoie les messages validés | Console « Intégrations » ou `EMAIL_*`, `EMAIL_POLL_SECONDS` |
+| `meta_resume_loop` | Reprend les leads Meta restés en attente ou en échec | Console « Intégrations » (Meta) |
 
 Un **bail MongoDB** (`services/lease.py`) garantit qu'une seule instance exécute chaque boucle et chaque
-conversation. Recommandation actuelle : un seul processus API (`--workers 1`).
+conversation ; un verrou local par conversation s'y ajoute (libéré après usage). Recommandation actuelle : un seul
+processus API (`--workers 1`). Un éventuel second processus qui ne servirait que le HTTP se lance avec
+`BACKGROUND_WORKERS_ENABLED=false` (aucune boucle).
 
 ## Données
 
@@ -112,33 +122,50 @@ conversation. Recommandation actuelle : un seul processus API (`--workers 1`).
 |---|---|---|
 | PostgreSQL 16 + pgvector | Prospects, consentements, campagnes, sources, rattachements, scores, étapes, relances, rendez-vous, comptes, base de connaissances et ses vecteurs | Données reliées, contraintes d'unicité, transactions, recherche vectorielle |
 | MongoDB | Conversations (messages embarqués), exécutions de l'agent, réglages globaux, baux, file `agent_events` | Documents qui grossissent, schéma souple, opérations atomiques |
-| Redis | Déclaré dans `docker-compose.yml`, utilisé seulement par le contrôle de santé | Prévu pour un compteur partagé ; absent du compose de production |
+| Redis | Déclaré dans `docker-compose.yml`, utilisé seulement par le contrôle de santé | Prévu pour la limitation des connexions partagée (lot 10) ; absent de la production ([database/README.md](database/README.md)) |
 
 Le contenu d'un message n'existe qu'à un endroit (MongoDB) ; PostgreSQL garde un journal `interactions`
 avec une référence `conversation_ref`. Il n'y a pas de transaction entre les deux bases : les opérations
 sont idempotentes et un rejeu répare un journal manquant. Voir [database/README.md](database/README.md).
 
-Migrations : Alembic (`backend/alembic/versions/`, 0001 à 0009), appliquées au démarrage en Docker.
+Migrations : Alembic (`backend/alembic/versions/`, 0001 à 0013), appliquées au démarrage en Docker. La CI vérifie
+aussi la descente complète puis la remontée.
 
 ## Frontend
 
 Next.js 15 (App Router, TypeScript), dans `frontend/src/` :
 
-- `app/` : une route par écran (`/`, `/todo`, `/conversations`, `/prospects`, `/campaigns`, `/knowledge`,
-  `/integrations`, `/simulator`, `/login`) ;
-- `lib/api.ts`, `lib/useApi.ts` : appels à l'API avec le jeton ;
-- `components/` : cadre commun (`AppShell`), vues de conversation, trace de l'agent, formulaires.
+- `app/` : une route par écran : Aujourd'hui (`/`), À traiter (`/todo`), Conversations, Rendez-vous
+  (`/appointments`), Prospects (liste, fiche, import CSV), Campagnes (liste, fiche, création), Tableau de bord
+  (`/dashboard`), Analyses (`/analytics`), Agent, Base de connaissances, Équipe (`/team`), Intégrations, Paramètres
+  (et `/settings/testing`), Simulateur, Mon compte (`/account`), connexion ;
+- `lib/api.ts`, `lib/useApi.ts` : appels à l'API (session dans un témoin, en-tête anti-CSRF) ; `lib/api/schema.d.ts` : types générés depuis le
+  contrat OpenAPI de l'API (vérifiés en CI) ;
+- `components/` : cadre commun (`AppShell`, `shell/`), composants HeroUI du projet (`ds/`), un dossier par écran.
+- `lib/session/` : session de la console (`SessionProvider`, `useCurrentUser`), adresse de retour après la connexion (`returnPath`) ; `AppShell` n'assure que la mise en page.
+- Lectures de l'API : `useApi` passe par `lib/sharedGet.ts` (une requête pour plusieurs composants qui lisent la même adresse en même temps, abandon quand plus personne ne l'attend) ; `api()` limite une lecture à 30 s, jamais une écriture ; les recherches qui interrogent l'API attendent la fin de la frappe (`useDebouncedValue`).
 
-Le jeton est conservé dans `localStorage` (à remplacer par un cookie `HttpOnly` avant une exposition
-publique). Le simulateur se désactive au build avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false`.
+Règles de présentation des écrans : [frontend/heroui.md](frontend/heroui.md) (règles des parcours 1 à 35).
+
+La session est un témoin `HttpOnly` posé par l'API, illisible par la page (aucun jeton dans
+`localStorage`). Le simulateur se désactive au build avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false`.
 
 ## Sécurité
 
 - Authentification JWT, mots de passe argon2, rôles ADMIN / ADVISOR / VIEWER relus en base à chaque requête.
-- Limitation des connexions : 5 échecs en 15 minutes par adresse et identifiant (en mémoire).
-- En `ENVIRONMENT=production`, l'application refuse de démarrer avec un secret JWT faible, `DEBUG` actif
-  ou un CORS ouvert ; `/docs` et `/openapi.json` sont coupés ; les outils de démo sont refusés.
-- Les identifiants saisis dans la console (boîte email) sont chiffrés avec `CONNECTORS_SECRET_KEY`.
+- Session de la console (lot 10) : jeton dans un témoin `HttpOnly; SameSite=Strict` (`Secure` en
+  production et derrière HTTPS), en-tête `X-IAGORA-CSRF` exigé sur les écritures authentifiées par ce témoin. Chaque
+  connexion ouvre une session en base (`auth_sessions`) ; la déconnexion la révoque côté serveur. Les
+  scripts et n8n gardent l'en-tête `Authorization: Bearer`.
+- Limitation des connexions (en mémoire, 15 minutes) : 5 échecs par adresse et identifiant, 20 par
+  identifiant toutes adresses, 50 par adresse ; chaque blocage est journalisé (empreinte de l'identifiant).
+- Connexion Google et Zoom : l'état OAuth est lié au navigateur qui a demandé le lien (témoin court) ; un
+  lien ouvert ailleurs est refusé.
+- En `ENVIRONMENT=production`, l'application refuse de démarrer avec un secret JWT faible, sans
+  `CONNECTORS_SECRET_KEY` dédiée, avec `DEBUG` actif ou un CORS ouvert ; `/docs` et `/openapi.json` sont
+  coupés ; les outils de démo sont refusés.
+- Les identifiants saisis dans la console (connecteurs, clé du modèle) sont chiffrés avec
+  `CONNECTORS_SECRET_KEY` ; `rotate-connector-secrets` les rechiffre après un changement de clé.
 
 ## Configuration et environnements
 
@@ -154,8 +181,11 @@ Détails : [deploiement.md](deploiement.md).
 
 ## Qualité
 
-- Backend : `ruff`, `mypy` strict, `pytest` (≈ 390 tests, couverture minimale 70 %), sur SQLite et
+- Backend : `ruff`, `mypy` strict, `pytest` (plus de 730 tests, couverture minimale 70 %), sur SQLite et
   mongomock en local, sur PostgreSQL et MongoDB réels en CI.
-- Frontend : ESLint, `tsc`, build, tests Playwright avec API simulée.
+- Frontend : ESLint, `tsc`, build, plus de 200 tests Playwright avec API simulée (et audit d'accessibilité axe),
+  plus un parcours contre le vrai backend (tâche CI `e2e-api`).
+- Dépendances : Dependabot (une PR groupée par écosystème chaque lundi, vers `dev`) et tâche CI `audit`
+  (`pip-audit`, `npm audit`), non bloquante pour l'instant.
 - Workflow n8n : tests hors ligne (`node --test tools/n8n/prospect.test.mjs`).
 - CI : `.github/workflows/ci.yml` ; déploiement de `dev` : `.github/workflows/deploy-dev.yml`.

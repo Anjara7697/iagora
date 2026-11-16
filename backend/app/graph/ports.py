@@ -41,6 +41,9 @@ class CalendarError(Exception):
     """Agenda indisponible ou réservation impossible."""
 
 
+CALENDAR_NOT_CONFIGURED = "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+
+
 class CalendarNotConfiguredError(CalendarError):
     """Aucun agenda branché : ce n'est pas une panne, la demande de rendez-vous est transférée."""
 
@@ -89,6 +92,8 @@ class Slot:
     id: str
     start: datetime
     end: datetime
+    # Fuseau des Paramètres (rendez-vous) dans lequel le créneau est annoncé (décision D-21).
+    timezone: str = "Europe/Paris"
 
 
 @dataclass(frozen=True)
@@ -134,6 +139,9 @@ class ProspectContext:
     email: str | None = None
     phone: str | None = None
     advisor_email: str | None = None  # agenda du conseiller attribué (rendez-vous)
+    # Prospect fictif (@demo.example.com) : seul à pouvoir recevoir des extraits des documents
+    # fictifs de démonstration (AUDIT-AI-002).
+    is_demo: bool = False
 
 
 @dataclass(frozen=True)
@@ -236,8 +244,24 @@ class KnowledgeBase(Protocol):
     """Base de connaissances validée, par programme (RAG, §9.4)."""
 
     async def search(
-        self, query: str, target_code: str | None, limit: int = 4
-    ) -> list[Passage]: ...
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
+        """`include_demo` : autoriser les documents fictifs (prospect fictif seulement)."""
+        ...
+
+
+@dataclass(frozen=True)
+class PolicyTuning:
+    """Seuils de décision réglables par l'administrateur dans Paramètres (décision D-27).
+
+    Les valeurs par défaut sont celles du cahier des charges ; les règles elles-mêmes restent dans
+    `policy.py`. `extra_terms` : termes qui engagent l'école, ajoutés à la liste du code (jamais
+    retirés) : toute réponse qui les cite sans source est bloquée (NF-10)."""
+
+    propose_meeting_min_score: int = 50
+    nurture_max_score: int = 24
+    min_confidence: float = 0.5
+    extra_terms: tuple[str, ...] = ()
 
 
 @dataclass
@@ -247,3 +271,4 @@ class Deps:
     messenger: Messenger
     calendar: Calendar
     knowledge: KnowledgeBase
+    tuning: PolicyTuning = field(default_factory=PolicyTuning)

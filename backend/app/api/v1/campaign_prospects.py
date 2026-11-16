@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.dependencies import ANY_ROLE, CAN_WRITE, CurrentUser, DbSession
+from app.api.dependencies import ANY_ROLE, CAN_WRITE, VISIBLE_MEMBERSHIP, CurrentUser, DbSession
 from app.models.enums import UserRole
 from app.schemas.pipeline import (
     EnrollmentConfirmation,
@@ -13,7 +13,9 @@ from app.schemas.pipeline import (
 from app.schemas.prospect import CampaignMembershipRead
 from app.services import pipeline, scoring
 
-router = APIRouter(prefix="/campaign-prospects", tags=["pipeline"], dependencies=[ANY_ROLE])
+router = APIRouter(
+    prefix="/campaign-prospects", tags=["pipeline"], dependencies=[ANY_ROLE, VISIBLE_MEMBERSHIP]
+)
 
 
 @router.post(

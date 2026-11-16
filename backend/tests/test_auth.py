@@ -67,6 +67,16 @@ async def test_role_matrix(make_client):
         assert (await c.get(f"{API}/campaigns")).status_code == 200
     # écriture commerciale : ADMIN et ADVISOR, pas VIEWER
     assert (await viewer.post(f"{API}/prospects", json=lead)).status_code == 403
+    # Décision D-23 : le conseiller agit sur les prospects de ses campagnes.
+    from .test_campaigns_api import _create
+
+    camp = (await _create(admin, name="Rôles")).json()
+    advisor_id = (await advisor.get(f"{API}/auth/me")).json()["id"]
+    await admin.put(
+        f"{API}/campaigns/{camp['id']}/responsible",
+        json={"advisor_id": advisor_id, "existing_prospects": "transfer_inherited"},
+    )
+    lead |= {"campaign_id": camp["id"], "source_id": camp["sources"][0]["id"]}
     created = await advisor.post(f"{API}/prospects", json=lead)
     assert created.status_code == 201
     pid = created.json()["prospect"]["id"]
@@ -177,6 +187,7 @@ def test_production_requires_real_jwt_secret():
         _env_file=None,
         environment="production",
         jwt_secret_key="x" * 40,
+        connectors_secret_key="k" * 40,
         cors_origins=["https://console.datum.example"],
     )
     assert ok.environment == "production"

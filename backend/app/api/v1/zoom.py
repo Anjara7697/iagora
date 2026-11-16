@@ -9,8 +9,9 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
+from app.api import cookies
 from app.api.dependencies import ADMIN_ONLY, ANY_ROLE, CurrentUser, DbSession, MongoDb, SettingsDep
-from app.api.v1.calendar import safe_return
+from app.api.v1.calendar import OTHER_BROWSER, safe_return
 from app.graph.ports import CalendarError
 from app.integrations.calendar import zoom_oauth
 from app.models import User
@@ -92,14 +93,25 @@ async def my_zoom(settings: SettingsDep, db: MongoDb, user: CurrentUser) -> MyZo
 
 @router.post("/connect", response_model=ConnectOut)
 async def connect_zoom(
-    payload: ConnectIn, request: Request, settings: SettingsDep, db: MongoDb, user: CurrentUser
+    payload: ConnectIn,
+    request: Request,
+    response: Response,
+    settings: SettingsDep,
+    db: MongoDb,
+    user: CurrentUser,
 ) -> ConnectOut:
     z = await zoom_config.setup(db, settings)
     if not (z.mode == "advisor" and z.client_id and z.client_secret):
         raise HTTPException(409, detail="La connexion Zoom par conseiller n'est pas activée")
+    nonce, browser = calendar_config.browser_nonce()
     state = calendar_config.make_state(
-        settings, user.id, safe_return(settings, payload.return_to), zoom_config.STATE_PURPOSE
+        settings,
+        user.id,
+        safe_return(settings, payload.return_to),
+        zoom_config.STATE_PURPOSE,
+        browser,
     )
+    cookies.set_oauth(response, settings, zoom_config.STATE_PURPOSE, nonce)
     return ConnectOut(url=zoom_oauth.authorization_url(z.client_id, _redirect_uri(request), state))
 
 
@@ -126,13 +138,19 @@ async def zoom_callback(
     parsed = calendar_config.read_state(settings, state, zoom_config.STATE_PURPOSE)
     if parsed is None:
         raise HTTPException(400, detail="Lien de connexion expiré ou invalide : recommencez")
-    user_id, return_to = parsed
+    user_id, return_to = parsed.user_id, parsed.return_to
     target = safe_return(settings, return_to)
 
     def back(result: str, detail: str | None = None) -> RedirectResponse:
         query = {"zoom": result, **({"detail": detail} if detail else {})}
-        return RedirectResponse(f"{target}?{urlencode(query)}", status_code=303)
+        redirect = RedirectResponse(f"{target}?{urlencode(query)}", status_code=303)
+        cookies.clear_oauth(redirect, settings, zoom_config.STATE_PURPOSE)
+        return redirect
 
+    cookie = request.cookies.get(cookies.oauth_name(zoom_config.STATE_PURPOSE))
+    if not calendar_config.same_browser(parsed, cookie):
+        logger.warning("Retour Zoom refusé (autre navigateur) pour l'utilisateur %s", user_id)
+        return back("error", OTHER_BROWSER)
     if error or not code:
         return back("refused", error or "aucun code")
     z = await zoom_config.setup(db, settings)

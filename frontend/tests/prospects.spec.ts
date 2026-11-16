@@ -36,21 +36,33 @@ const pageOf = (items: unknown[], total = items.length, offset = 0) => ({
 });
 
 async function mockApi(page: Page, role = "ADMIN", record = prospect) {
+  // Session simulée comme le témoin HttpOnly de l'API : ouverte à la connexion, fermée à la
+  // déconnexion, jamais lisible par la page.
+  let signedIn = false;
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace("/api/v1", "");
+    const request = route.request();
     let body: unknown;
     let status = 200;
     if (path === "/auth/login") {
-      const form = new URLSearchParams(route.request().postData() || "");
+      const form = new URLSearchParams(request.postData() || "");
       status = form.get("password") === "valid-password" ? 200 : 401;
+      signedIn = status === 200;
       body =
         status === 200
           ? { access_token: "test-session" }
           : { detail: "Identifiants invalides" };
-    } else if (!route.request().headers().authorization) {
+    } else if (path === "/auth/logout") {
+      signedIn = false;
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    } else if (!signedIn) {
       status = 401;
       body = { detail: "Authentification requise" };
+    } else if (request.method() !== "GET" && !request.headers()["x-iagora-csrf"]) {
+      status = 403;
+      body = { detail: "Requête refusée (origine)" };
     } else if (path === "/auth/me")
       body = {
         id: 1,
@@ -85,8 +97,9 @@ async function mockApi(page: Page, role = "ADMIN", record = prospect) {
     await route.fulfill({ status, json: body });
   });
 }
+/** Connexion depuis une page de connexion qui ramène à la liste des prospects (`?next=`). */
 async function login(page: Page) {
-  await page.goto("/login");
+  await page.goto("/login?next=%2Fprospects");
   await page.getByLabel("Email ou nom").fill("conseiller");
   await page.getByLabel("Mot de passe").fill("valid-password");
   await page.getByRole("button", { name: "Se connecter" }).click();
@@ -434,9 +447,22 @@ test("connexion, pipeline multirattachement, table, fiche et déconnexion", asyn
   await expect(
     page.getByRole("button", { name: "Lancer l'agent" }),
   ).toBeEnabled();
+  // Jeton laissé par une version précédente de la console : effacé au chargement (AUDIT-SEC-004).
+  await page.evaluate(() => localStorage.setItem("iagora.token", "ancien-jeton"));
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("iagora.token")))
+    .toBeNull();
+  const logout = page.waitForRequest(
+    (r) => r.url().endsWith("/auth/logout") && r.method() === "POST",
+  );
   await page.getByRole("button", { name: /Menu du compte/ }).click();
   await page.getByRole("dialog", { name: "Menu du compte" }).getByRole("button", { name: "Déconnexion" }).click();
+  await logout;
   await expect(page).toHaveURL(/\/login$/);
+  // Session fermée côté serveur : revenir sur une page renvoie à la connexion, qui y ramènera.
+  await page.goto("/prospects");
+  await expect(page).toHaveURL(/\/login\?next=%2Fprospects$/);
   expect(
     await page.evaluate(() => localStorage.getItem("iagora.token")),
   ).toBeNull();
@@ -492,14 +518,35 @@ test("observateur : consultation seule sur la fiche", async ({ page }) => {
   await expect(page.getByText("Observateur", { exact: true })).toBeVisible();
 });
 
-test("session expirée : retour à la connexion", async ({ page }) => {
+test("session expirée : retour à la connexion, puis à la page en cours", async ({ page }) => {
   await mockApi(page);
   await login(page);
+  let expired = true;
   await page.route("**/api/v1/prospects/1", (route) =>
-    route.fulfill({ status: 401, json: { detail: "Session expirée" } }),
+    expired ? route.fulfill({ status: 401, json: { detail: "Session expirée" } }) : route.fallback(),
   );
-  await page.goto("/prospects/1");
-  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/prospects/1?tab=journey");
+  await expect(page).toHaveURL(/\/login\?next=%2Fprospects%2F1%3Ftab%3Djourney$/);
+  // La redirection vient de la page elle-même : attendre que la page de connexion soit prête avant de saisir.
+  await page.waitForLoadState("networkidle");
+  expired = false;
+  await page.getByLabel("Email ou nom").fill("conseiller");
+  await page.getByLabel("Mot de passe").fill("valid-password");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page).toHaveURL(/\/prospects\/1\?tab=journey$/);
+  await expect(page.getByRole("heading", { name: "Alice Martin" })).toBeVisible();
+});
+
+test("connexion : arrivée sur l'accueil ; une adresse de retour externe est ignorée", async ({ page }) => {
+  await mockApi(page);
+  for (const next of ["", "?next=https%3A%2F%2Fexemple.com", "?next=%2F%2Fexemple.com%2Fprospects"]) {
+    await page.goto(`/login${next}`);
+    await page.getByLabel("Email ou nom").fill("conseiller");
+    await page.getByLabel("Mot de passe").fill("valid-password");
+    await page.getByRole("button", { name: "Se connecter" }).click();
+    await expect(page).toHaveURL("http://localhost:3100/");
+    await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+  }
 });
 
 test("panne de l’API : erreur et nouvelle tentative", async ({ page }) => {
@@ -895,6 +942,18 @@ test("attribution : choisir explicitement campagne et source, puis quitter la fi
   ).toBeVisible();
 });
 
+test("conseiller : pas de file À attribuer (réservée à l'administrateur)", async ({ page }) => {
+  await mockApi(page, "ADVISOR");
+  const requests: string[] = [];
+  page.on("request", (request) => requests.push(request.url()));
+  await login(page);
+  await page.goto("/prospects");
+  await expect(page.getByRole("button", { name: "Mes prospects" })).toBeVisible();
+  // Décision D-23 : un conseiller ne voit que les prospects de ses campagnes.
+  await expect(page.getByRole("button", { name: /^À attribuer/ })).toHaveCount(0);
+  expect(requests.some((u) => u.includes("pending_campaign=true"))).toBe(false);
+});
+
 test("observateur : file À attribuer accessible, attribution interdite", async ({
   page,
 }) => {
@@ -955,7 +1014,7 @@ test("résultats : filtres, table et page conservés après fiche, actualisation
   await page.getByRole("link", { name: "Alice Martin", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("link", { name: "← Retour aux résultats", exact: true }).click();
+  await page.getByRole("link", { name: "Retour aux résultats", exact: true }).click();
   await expect(page).toHaveURL(results);
   await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
@@ -985,14 +1044,14 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await selectFilter(page, "Campagne", "3");
   const results = page.url();
   await page.locator(".pipeline-card").first().click();
-  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Retour aux résultats" })).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(results);
   await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   await page.goForward();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await page.getByRole("link", { name: "Retour aux résultats" }).click();
   await expect(page).toHaveURL(results);
   await expect(activeFilter(page, "Campagne")).toContainText("eBIHAR");
   // Règle 6 : un filtre remplace l'adresse sans entrée d'historique ; « Retour » quitte la liste.
@@ -1000,7 +1059,7 @@ test("navigation : retour navigateur, pipeline et recherche d’en-tête sur une
   await expect(page).toHaveURL(/stage=qualified/);
   await page.goBack();
   await expect(page.getByRole("heading", { name: "Alice Martin", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "← Retour aux résultats" }).click();
+  await page.getByRole("link", { name: "Retour aux résultats" }).click();
   await expect(page).toHaveURL(results);
   await page.getByRole("button", { name: /Rechercher un prospect, une page/ }).click();
   await page.getByRole("dialog", { name: "Recherche rapide" }).getByRole("searchbox").fill("inexistant");
@@ -1030,7 +1089,7 @@ test("liens directs : paramètres invalides ignorés et retour limité aux prosp
   await expect(page).toHaveURL(/\/prospects$/);
   for (const from of ["https://example.com", "//example.com", "/prospects/other", "/prospects/../settings"]) {
     await page.goto(`/prospects/1?from=${encodeURIComponent(from)}`);
-    await expect(page.getByRole("link", { name: "← Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
+    await expect(page.getByRole("link", { name: "Tous les prospects", exact: true })).toHaveAttribute("href", "/prospects");
   }
 });
 
@@ -1047,7 +1106,7 @@ test("fiche : onglet dans l'adresse, retour conservé après actualisation", asy
   await auditA11y(page, "fiche prospect, onglet Décisions");
   await page.reload();
   await expect(page.getByRole("tab", { name: "Décisions de l'agent" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("link", { name: "← Retour aux résultats" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Retour aux résultats" })).toHaveAttribute(
     "href",
     "/prospects?view=table",
   );
@@ -1109,4 +1168,109 @@ test("fiche : consentement saisi dans un panneau, saisie protégée", async ({ p
   await expect(page.getByText("Consentement enregistré.")).toBeVisible();
   await expect(panel).toHaveCount(0);
   expect(posts).toEqual([{ source: "accord donné par téléphone le 12/10", channel: "email" }]);
+});
+
+test("lever une désinscription exige un motif écrit (administrateur)", async ({ page }) => {
+  await mockApi(page, "ADMIN", { ...prospect, consent_status: "opted_out" });
+  const posts: unknown[] = [];
+  await page.route("**/api/v1/prospects/1/consent", async (route) => {
+    posts.push(route.request().postDataJSON());
+    await route.fulfill({ json: { ...prospect } });
+  });
+  await login(page);
+  await page.goto("/prospects/1");
+  await page.getByRole("button", { name: "Autres actions" }).click();
+  await page.getByRole("menuitem", { name: "Lever la désinscription (administrateur)" }).click();
+  const panel = page.getByRole("dialog", { name: "Lever la désinscription" });
+  const save = panel.getByRole("button", { name: "Enregistrer le consentement" });
+  await panel.getByLabel("Source du consentement").fill("appel téléphonique");
+  // Décision D-20 : sans motif (10 caractères au moins), la levée est impossible.
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Motif et preuve").fill("court");
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Motif et preuve").fill("Email du 12/11 où il redemande les dates de rentrée.");
+  await auditA11y(page, "fiche prospect, levée de désinscription");
+  await save.click();
+  await expect(page.getByText("Consentement enregistré.")).toBeVisible();
+  expect(posts).toEqual([
+    {
+      source: "appel téléphonique",
+      channel: "email",
+      reason: "Email du 12/11 où il redemande les dates de rentrée.",
+    },
+  ]);
+});
+
+test("recherche : une seule requête une fois la frappe arrêtée", async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const searched: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/api/v1/prospects") && url.searchParams.has("q")) searched.push(url.searchParams.get("q") ?? "");
+  });
+  const search = page.getByRole("searchbox", { name: "Rechercher" });
+  await search.pressSequentially("alice", { delay: 40 });
+  // Le champ et l'adresse suivent la saisie sans délai.
+  await expect(search).toHaveValue("alice");
+  await expect(page).toHaveURL(/q=alice/);
+  await expect(page.getByRole("status").filter({ hasText: /prospect/ })).toHaveText("26 prospects sur 26");
+  await page.waitForTimeout(500);
+  expect(searched.filter((q) => q !== "")).toEqual(["alice"]);
+});
+
+test("vue par défaut selon la largeur : pipeline sur grand écran, lignes lisibles en mobile", { tag: "@mobile" }, async ({ page }) => {
+  await mockApi(page);
+  const lists: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects" && url.searchParams.get("limit") !== "1") lists.push(url.searchParams.get("limit") ?? "");
+  });
+  await login(page);
+  const narrow = (page.viewportSize()?.width ?? 1280) < 640;
+  if (!narrow) {
+    // Grand écran : le pipeline, sans choix inscrit dans l'adresse.
+    await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("region", { name: /Pipeline des prospects/ })).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/prospects");
+  }
+  // Moins de 1024 px : la table ; moins de 640 px, en lignes à deux niveaux (UX-03, UX-04).
+  await expect(page.getByRole("tab", { name: "Table", exact: true })).toHaveAttribute("aria-selected", "true");
+  const rows = page.getByRole("list", { name: "Prospects et rattachements aux campagnes" });
+  const alice = rows.getByRole("link", { name: "Alice Martin", exact: true });
+  await expect(alice).toBeVisible();
+  // L'état et le parcours sont lisibles sans défilement horizontal.
+  const row = rows.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Alice Martin", exact: true }) });
+  await expect(row.getByText("Accordé", { exact: true })).toBeInViewport();
+  await expect(row.getByText("Qualifié", { exact: true }).first()).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  // La taille de page suit la vue, sans requête perdue à l'ouverture.
+  expect(lists.at(-1)).toBe("25");
+  expect(lists.filter((limit) => limit === "100")).toHaveLength(narrow ? 0 : 1);
+  await expect(page).toHaveURL(/\/prospects$/);
+  // Un choix explicite reste prioritaire.
+  await page.getByRole("tab", { name: "Pipeline", exact: true }).click();
+  await expect(page).toHaveURL(/view=pipeline/);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Pipeline", exact: true })).toHaveAttribute("aria-selected", "true");
+  await auditA11y(page, "prospects mobile");
+});
+
+test("« N sur M » : le total sans filtre est lu une fois", async ({ page }) => {
+  await mockApi(page);
+  let totals = 0;
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects" && url.search === "?limit=1") totals += 1;
+  });
+  await login(page);
+  await page.getByLabel("Rechercher", { exact: true }).fill("Alice");
+  await expect(page.getByRole("status").filter({ hasText: / sur / })).toBeVisible();
+  await page.getByRole("button", { name: "Réinitialiser", exact: true }).click();
+  await expect(page.getByLabel("Rechercher", { exact: true })).toHaveValue("");
+  await page.getByLabel("Rechercher", { exact: true }).fill("Martin");
+  await expect(page.getByRole("status").filter({ hasText: / sur / })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  expect(totals).toBe(1);
 });

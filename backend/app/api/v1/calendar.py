@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
+from app.api import cookies
 from app.api.dependencies import (
     ADMIN_ONLY,
     ANY_ROLE,
@@ -36,6 +37,9 @@ admin_router = APIRouter(prefix="/integrations", tags=["calendar"], dependencies
 router = APIRouter(prefix="/calendar", tags=["calendar"], dependencies=[ANY_ROLE])
 callback_router = APIRouter(prefix="/calendar", tags=["calendar"])
 CALLBACK = "google_calendar_callback"
+OTHER_BROWSER = (
+    "le lien a été ouvert dans un autre navigateur : relancez la connexion depuis votre compte"
+)
 
 
 def _redirect_uri(request: Request) -> str:
@@ -122,7 +126,12 @@ async def my_calendar(settings: SettingsDep, db: MongoDb, user: CurrentUser) -> 
 
 @router.post("/google/connect", response_model=ConnectOut)
 async def connect(
-    payload: ConnectIn, request: Request, settings: SettingsDep, db: MongoDb, user: CurrentUser
+    payload: ConnectIn,
+    request: Request,
+    response: Response,
+    settings: SettingsDep,
+    db: MongoDb,
+    user: CurrentUser,
 ) -> ConnectOut:
     """Adresse Google où envoyer le conseiller pour autoriser l'accès à son agenda."""
     cfg = await calendar_config.setup(db, settings)
@@ -130,7 +139,11 @@ async def connect(
         raise HTTPException(
             409, detail="Google Agenda n'est pas encore branché par l'administrateur"
         )
-    state = calendar_config.make_state(settings, user.id, safe_return(settings, payload.return_to))
+    nonce, browser = calendar_config.browser_nonce()
+    state = calendar_config.make_state(
+        settings, user.id, safe_return(settings, payload.return_to), browser=browser
+    )
+    cookies.set_oauth(response, settings, calendar_config.STATE_PURPOSE, nonce)
     return ConnectOut(
         url=google_oauth.authorization_url(
             cfg.client_id, _redirect_uri(request), state, login_hint=user.email
@@ -148,7 +161,7 @@ async def disconnect(settings: SettingsDep, db: MongoDb, user: CurrentUser) -> R
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# --- Retour de Google (navigateur, sans jeton IAGORA : l'état signé fait foi) --------------------
+# --- Retour de Google (navigateur, sans jeton IAGORA : l'état signé et le témoin font foi) -------
 
 
 @callback_router.get("/google/callback", name=CALLBACK)
@@ -163,13 +176,19 @@ async def google_callback(
     parsed = calendar_config.read_state(settings, state)
     if parsed is None:
         raise HTTPException(400, detail="Lien de connexion expiré ou invalide : recommencez")
-    user_id, return_to = parsed
+    user_id, return_to = parsed.user_id, parsed.return_to
     target = safe_return(settings, return_to)
 
     def back(result: str, detail: str | None = None) -> RedirectResponse:
         query = {"calendar": result, **({"detail": detail} if detail else {})}
-        return RedirectResponse(f"{target}?{urlencode(query)}", status_code=303)
+        redirect = RedirectResponse(f"{target}?{urlencode(query)}", status_code=303)
+        cookies.clear_oauth(redirect, settings, calendar_config.STATE_PURPOSE)
+        return redirect
 
+    cookie = request.cookies.get(cookies.oauth_name(calendar_config.STATE_PURPOSE))
+    if not calendar_config.same_browser(parsed, cookie):
+        logger.warning("Retour Google refusé (autre navigateur) pour l'utilisateur %s", user_id)
+        return back("error", OTHER_BROWSER)
     if error or not code:
         return back("refused", error or "aucun code")
     cfg = await calendar_config.setup(db, settings)

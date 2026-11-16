@@ -3,7 +3,7 @@
 import { Button, toast } from "@heroui/react";
 import { Bot, CircleCheck, CircleSlash, OctagonX, Play } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AGENT_COPY, AgentDot, RESUME, STOP } from "@/components/AgentStatus";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { LinkButton, Tag } from "@/components/ds/controls";
@@ -111,7 +111,6 @@ export default function AgentPage() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Intelligence · Agent"
         title="Agent"
         subtitle="État de l’agent commercial, ce qu’il fait et son activité. Les réglages restent dans Paramètres."
         actions={
@@ -134,10 +133,10 @@ export default function AgentPage() {
                   <AgentDot mode={current} />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className={cx("text-base font-semibold", AGENT_COPY[current].tone)}>{AGENT_COPY[current].short}</p>
-                  <p className="text-sm text-foreground">{AGENT_COPY[current].text}</p>
+                  <p className={cx("type-title-sm font-semibold", AGENT_COPY[current].tone)}>{AGENT_COPY[current].short}</p>
+                  <p className="type-body text-foreground">{AGENT_COPY[current].text}</p>
                   {mode.data?.updated_at && (
-                    <p className="text-xs text-muted">Mode changé le {formatDate(mode.data.updated_at)}.</p>
+                    <p className="type-caption text-muted">Mode changé le {formatDate(mode.data.updated_at)}.</p>
                   )}
                 </div>
               </div>
@@ -153,7 +152,7 @@ export default function AgentPage() {
                     Reprendre en mode assisté
                   </Button>
                 ))}
-              {readOnly && <p className="text-[13px] text-muted">Votre accès observateur permet de consulter l’état.</p>}
+              {readOnly && <p className="type-body-sm text-muted">Votre accès observateur permet de consulter l’état.</p>}
             </>
           )}
         </Panel>
@@ -169,11 +168,11 @@ export default function AgentPage() {
                   <Bot className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+                  <span className="flex flex-wrap items-center gap-2 type-body font-medium text-foreground">
                     {m.title}
                     {m.mode === current && <Tag tone="success">Actif</Tag>}
                   </span>
-                  <span className="text-[13px] text-muted">{m.text}</span>
+                  <span className="type-body-sm text-muted">{m.text}</span>
                 </div>
               </li>
             ))}
@@ -183,7 +182,7 @@ export default function AgentPage() {
 
       <div className={cx("grid grid-cols-1 items-start gap-6 lg:grid-cols-2", reveal(2).className)} style={reveal(2).style}>
         <Panel label="Ce que fait l’agent" title="Ce que fait l’agent" bodyClassName="gap-3 px-5 py-4">
-          <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-foreground">
+          <ul className="flex list-disc flex-col gap-1.5 pl-5 type-body text-foreground">
             <li>Lit chaque message entrant, qualifie le prospect et met à jour son score et son étape.</li>
             <li>Répond uniquement à partir de la base de connaissances validée ; sans extrait, il transfère au conseiller.</li>
             <li>N’invente jamais de prix, de date, de condition ni de disponibilité : une réponse non vérifiable est bloquée.</li>
@@ -192,7 +191,7 @@ export default function AgentPage() {
             <li>Respecte immédiatement une demande de désinscription.</li>
           </ul>
           {settings.data && (
-            <dl className="grid grid-cols-1 gap-2 rounded-lg bg-surface-secondary p-4 text-[13px] sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-2 rounded-lg bg-surface-secondary p-4 type-body-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted">Réponse automatique aux nouveaux messages</dt>
                 <dd className="text-foreground">{settings.data.agent_auto_reply ? "Activée" : "Désactivée"}</dd>
@@ -226,8 +225,8 @@ export default function AgentPage() {
                 ] as const
               ).map(([value, text]) => (
                 <div key={text} className="flex flex-col-reverse gap-1">
-                  <dt className="text-[13px]/[18px] text-muted">{text}</dt>
-                  <dd className="text-2xl text-foreground tabular-nums">{value}</dd>
+                  <dt className="type-body-sm text-muted">{text}</dt>
+                  <dd className="type-title text-foreground tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -249,15 +248,15 @@ export default function AgentPage() {
         >
           <Loading loading={email.loading || calendar.loading || zoom.loading || meta.loading} error={null} />
           {[email, calendar, zoom, meta].some((r) => r.error) && (
-            <p className="py-2 text-[13px] text-muted">Certaines intégrations n’ont pas pu être lues : voir la page Intégrations.</p>
+            <p className="py-2 type-body-sm text-muted">Certaines intégrations n’ont pas pu être lues : voir la page Intégrations.</p>
           )}
           {integrations.length === 0 && !email.loading && <EmptyText>Aucune intégration lue.</EmptyText>}
           <ul className="flex flex-col divide-y divide-separator">
             {integrations.map((i) => (
               <li key={i.key} className="flex flex-wrap items-center gap-3 py-3">
-                <span className="w-36 text-sm font-medium text-foreground">{i.name}</span>
+                <span className="w-36 type-body font-medium text-foreground">{i.name}</span>
                 <Tag tone={TAG[i.tone]}>{STATE[i.tone]}</Tag>
-                <span className="min-w-0 flex-1 text-[13px] break-words text-muted">{i.text}</span>
+                <span className="min-w-0 flex-1 type-body-sm break-words text-muted">{i.text}</span>
               </li>
             ))}
           </ul>

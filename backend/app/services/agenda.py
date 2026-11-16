@@ -16,9 +16,9 @@ from typing import Any
 
 import httpx
 
-from app.agents.defaults import NOT_CONFIGURED
 from app.config import Settings
 from app.graph.ports import (
+    CALENDAR_NOT_CONFIGURED,
     BookedMeeting,
     Calendar,
     CalendarError,
@@ -123,7 +123,7 @@ class ConsoleCalendar:
                 raise CalendarNotConfiguredError("Agenda de démonstration interdit en production")
             return DemoCalendar(settings)
         if cfg.provider != "google":
-            raise CalendarNotConfiguredError(NOT_CONFIGURED)
+            raise CalendarNotConfiguredError(CALENDAR_NOT_CONFIGURED)
         zoom = await self._zoom_for(db, advisor_id)
         if cfg.source == "env":  # compte de service du .env
             return GoogleZoomCalendar(settings, GoogleCalendarClient(settings, self._http), zoom)

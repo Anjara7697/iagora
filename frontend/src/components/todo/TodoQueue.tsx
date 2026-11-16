@@ -3,7 +3,7 @@
 /** File de travail d'« À traiter » : onglets, filtres, liste des éléments et pagination. */
 
 import { useState } from "react";
-import { FilterChip, FilterChipGroup, Segmented, Tag, RowButton } from "@/components/ds/controls";
+import { FilterChip, FilterChipGroup, Notice, Segmented, Tag, RowButton } from "@/components/ds/controls";
 import { Loading } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { CHANNELS, PRIORITIES, formatDate, fullName, label, relativeTime, EXECUTION } from "@/lib/labels";
@@ -13,6 +13,7 @@ import { Box } from "@/components/ds/card";
 import { ListScroll } from "@/components/ds/layout";
 import { TablePagination } from "@/components/ds/table";
 import type { RefObject } from "react";
+import { FirstContactBatch } from "@/components/todo/FirstContactBatch";
 import { KindFilter, revealed, PAGE_SIZE, TASK_LABELS, KIND_ORDER, itemName, KIND_TONE, PRIORITY_TONE, EXECUTION_TONE, PersonMark } from "@/components/todo/shared";
 
 function Row({
@@ -31,17 +32,17 @@ function Row({
         <PersonMark name={name} incident={item.kind === "incident"} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-baseline gap-2">
-            <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
-            <span className="shrink-0 text-xs text-muted">{relativeTime(item.created_at)}</span>
+            <strong className="min-w-0 flex-1 truncate type-body font-semibold text-foreground">{name}</strong>
+            <span className="shrink-0 type-caption text-muted">{relativeTime(item.created_at)}</span>
           </span>
-          <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          <span className="flex flex-wrap items-center gap-1.5 type-caption text-muted">
             <Tag tone={KIND_TONE[item.kind]}>{TASK_LABELS[item.kind]}</Tag>
             <Tag tone={PRIORITY_TONE[item.priority] ?? "neutral"}>
               {label(PRIORITIES, item.priority)}
             </Tag>
             <span>{label(CHANNELS, item.channel)}</span>
           </span>
-          <span className="line-clamp-2 text-[13px]/[18px] text-foreground/80">
+          <span className="line-clamp-2 type-body-sm text-foreground/80">
             {item.detail ? `« ${item.detail} »` : item.title}
           </span>
         </span>
@@ -69,6 +70,8 @@ export function TodoQueue({
   titleRef: queueTitle,
   onNavigate: go,
   onKindChange: setKind,
+  guard,
+  onBatchDone,
 }: {
   tab: "todo" | "treated";
   kind: KindFilter;
@@ -82,6 +85,10 @@ export function TodoQueue({
   titleRef: RefObject<HTMLHeadingElement | null>;
   onNavigate: (url: string) => void;
   onKindChange: (kind: KindFilter) => void;
+  /** Protège une saisie en cours dans le détail avant une action de la file. */
+  guard: (action: () => void) => void;
+  /** Après une validation groupée des premiers contacts : la file et les compteurs se rechargent. */
+  onBatchDone: () => void;
 }) {
   const [showAllKinds, setShowAllKinds] = useState(false);
   const total = knownTotal ?? 0;
@@ -97,10 +104,10 @@ export function TodoQueue({
       )}
     >
       <header className="flex items-baseline gap-2">
-        <h2 ref={queueTitle} tabIndex={-1} className="flex-1 text-base font-semibold text-foreground outline-none">
+        <h2 ref={queueTitle} tabIndex={-1} className="flex-1 type-title-sm font-semibold text-foreground outline-none">
           Votre file de travail
         </h2>
-        <span className="text-[13px] text-muted tabular-nums" role="status">
+        <span className="type-body-sm text-muted tabular-nums" role="status">
           {tab === "treated"
             ? treated.data
               ? `${treated.data.total} décision${treated.data.total > 1 ? "s" : ""} sur 24 h`
@@ -123,8 +130,11 @@ export function TodoQueue({
       {tab === "treated" ? (
         <>
           <Loading loading={treated.loading && !treated.data} error={treated.error} onRetry={treated.reload} />
+          {treated.data?.truncated && (
+            <Notice tone="warning">Liste incomplète : seules les conversations les plus récentes sont affichées.</Notice>
+          )}
           {treated.data && treatedItems.length === 0 && (
-            <p className="px-2 py-3 text-[13px] text-muted">
+            <p className="px-2 py-3 type-body-sm text-muted">
               Rien de traité pour l’instant. Chaque élément traité vient ici avec sa trace : qui a agi, quand, et ce
               qui est parti.
             </p>
@@ -144,8 +154,8 @@ export function TodoQueue({
                         <PersonMark name={name} />
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
                           <span className="flex items-baseline gap-2">
-                            <strong className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{name}</strong>
-                            <span className="shrink-0 text-xs text-muted">{formatDate(t.decided_at)}</span>
+                            <strong className="min-w-0 flex-1 truncate type-body font-semibold text-foreground">{name}</strong>
+                            <span className="shrink-0 type-caption text-muted">{formatDate(t.decided_at)}</span>
                           </span>
                           <span className="flex flex-wrap gap-1.5">
                             <Tag tone={t.decision === "approved" ? "success" : "neutral"}>
@@ -188,9 +198,17 @@ export function TodoQueue({
               )
             }
           />
+          {kind === "first_contact" && <FirstContactBatch items={items} guard={guard} onDone={onBatchDone} />}
           <Loading loading={list.loading} error={list.error} onRetry={list.reload} shape="rows" />
+          {list.data?.truncated && (
+            // AUDIT-DATA-005 : au-delà du volume lu par l'API, les demandes les plus anciennes manquent.
+            <Notice tone="warning">
+              Liste incomplète : seules les conversations les plus récentes sont lues. Traitez les demandes affichées
+              pour voir les suivantes.
+            </Notice>
+          )}
           {list.data && items.length === 0 && (
-            <p className="px-2 py-3 text-[13px] text-muted">Rien à traiter pour le moment.</p>
+            <p className="px-2 py-3 type-body-sm text-muted">Rien à traiter pour le moment.</p>
           )}
           {items.length > 0 && (
             <ListScroll>

@@ -135,6 +135,33 @@ def test_cold_prospect_is_nurtured_hot_one_gets_a_meeting():
     assert policy.decide(mid).action is Action.CONTINUE_CONVERSATION
 
 
+def test_thresholds_come_from_the_settings():
+    """Décision D-27 : l'administrateur règle les seuils ; les règles restent les mêmes."""
+    from app.graph.ports import PolicyTuning
+
+    lower = PolicyTuning(propose_meeting_min_score=30, nurture_max_score=5, min_confidence=0.8)
+    warm = state(Qualification(intent="interested"), total=35, missing=[])
+    assert policy.decide(warm).action is Action.CONTINUE_CONVERSATION  # défaut : 50
+    assert policy.decide(warm, lower).action is Action.PROPOSE_MEETING
+    cold = state(Qualification(intent="other"), total=10)
+    assert policy.decide(cold).action is Action.NURTURE  # défaut : 24
+    assert policy.decide(cold, lower).action is Action.CONTINUE_CONVERSATION
+    unsure = state(Qualification(intent="question", confidence=0.6), total=30)
+    assert policy.decide(unsure).action is Action.CONTINUE_CONVERSATION  # défaut : 0,5
+    assert policy.decide(unsure, lower).action is Action.HUMAN_HANDOFF
+
+
+def test_terms_added_by_the_admin_are_checked_like_the_built_in_ones():
+    reply = "Cette formation est éligible au Pass Transition."
+    assert policy.ungrounded_claims(reply, []) == ["eligible"]
+    added = policy.ungrounded_claims(reply, [], extra_terms=("Pass Transition",))
+    assert added == ["eligible", "pass transition"]
+    sourced = ["Le Pass Transition finance la formation (document validé)."]
+    assert policy.ungrounded_claims(reply, sourced, extra_terms=("pass transition",)) == [
+        "eligible"
+    ]
+
+
 def test_explicit_meeting_request_and_refusal():
     q = Qualification(intent="meeting_request")
     assert policy.decide(state(q, total=5)).action is Action.PROPOSE_MEETING
@@ -266,6 +293,18 @@ def test_slot_formatting_uses_paris_time():
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"
 
 
+def test_slot_formatting_follows_the_configured_timezone():
+    """Décision D-21 : le fuseau des Paramètres s'applique et il est nommé au prospect."""
+    from dataclasses import replace
+
+    from app.graph.prompts import zone_label
+
+    slot = replace(make_slots(1)[0], timezone="America/Martinique")  # UTC-4
+    assert format_slot(slot) == "lundi 1 mars à 9h00"
+    assert zone_label("Europe/Paris") == "heure de Paris"
+    assert zone_label("America/Port_of_Spain") == "heure de Port of Spain"
+
+
 # --- Priorité de la demande de rendez-vous (écart relevé en recette avec le vrai modèle) ---
 
 
@@ -351,3 +390,25 @@ def test_the_conversation_justifies_facts_never_prices_or_conditions():
     ) == ["2000 euros", "eligible", "cpf"]
     kb = ["Le Master eBIHAR est éligible au CPF."]
     assert policy.ungrounded_claims("Le Master est éligible au CPF.", kb) == []
+
+
+def test_amounts_written_differently_from_the_source_are_recognised():
+    """Une source « 7 000 euros » justifie « 7000 € », « 7.000 € » ou « 7 000 EUR », jamais un
+    autre montant (documents réels de DATUM : montants écrits en toutes lettres de la devise)."""
+    sources = [
+        "Le master coûte 7 000 euros par an, 4 500 euros pour un client. Remise de 10 pour cent."
+    ]
+    for reply in (
+        "Il coûte 7000 € par an.",
+        "Il coûte 7.000 € par an.",
+        "Il coûte 7 000 EUR.",
+        "Prix réduit : 4500€.",
+        "Remise de 10 %.",
+    ):
+        assert policy.ungrounded_claims(reply, sources) == [], reply
+    for reply, claim in (
+        ("Il coûte 6500 € par an.", "6500 €"),
+        ("Il coûte 700 €.", "700 €"),
+        ("Il coûte 70 000 €.", "70 000 €"),
+    ):
+        assert policy.ungrounded_claims(reply, sources) == [claim], reply

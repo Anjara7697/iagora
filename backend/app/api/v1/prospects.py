@@ -9,7 +9,9 @@ from app.api.dependencies import (
     ADMIN_ONLY,
     ANY_ROLE,
     CAN_WRITE,
+    VISIBLE_PROSPECT,
     CalendarDep,
+    CurrentScope,
     CurrentUser,
     DbSession,
     KnowledgeDep,
@@ -116,6 +118,7 @@ async def ingest_prospect(
 @router.get("", response_model=Page[ProspectDetail])
 async def list_prospects(
     session: DbSession,
+    scope: CurrentScope,
     pending_campaign: bool = False,
     q: str | None = None,
     campaign_id: int | None = None,
@@ -136,7 +139,7 @@ async def list_prospects(
     """Liste paginée ; chaque prospect porte ses rattachements (étape, scores)."""
     items, total = await service.list_prospects(
         session, q=q, campaign_id=campaign_id, stage=stage, advisor_id=advisor_id,
-        limit=limit, offset=offset, demo=demo, pending_campaign=pending_campaign,
+        limit=limit, offset=offset, demo=demo, pending_campaign=pending_campaign, scope=scope,
         target_code=target_code, source_id=source_id, channel=channel,
         level=level.value if level else None,
         consent_status=consent_status.value if consent_status else None,
@@ -178,6 +181,7 @@ def _csv_cell(value: object) -> str:
 @router.get("/export", dependencies=[CAN_WRITE])
 async def export_prospects(
     session: DbSession,
+    scope: CurrentScope,
     pending_campaign: bool = False,
     q: str | None = None,
     campaign_id: int | None = None,
@@ -197,7 +201,7 @@ async def export_prospects(
         level=level.value if level else None,
         consent_status=consent_status.value if consent_status else None,
         target_code=target_code, source_id=source_id, channel=channel, demo=demo,
-        pending_campaign=pending_campaign,
+        pending_campaign=pending_campaign, scope=scope,
     )  # fmt: skip
     memberships = await service.get_memberships_for(session, [p.id for p in items])
     labels = await service.campaign_labels(
@@ -242,19 +246,25 @@ async def export_prospects(
     )
 
 
-@router.get("/{prospect_id}", response_model=ProspectDetail)
+@router.get("/{prospect_id}", response_model=ProspectDetail, dependencies=[VISIBLE_PROSPECT])
 async def get_prospect(prospect_id: int, session: DbSession) -> ProspectDetail:
     return await _detail(session, await service.get_prospect(session, prospect_id))
 
 
-@router.patch("/{prospect_id}", response_model=ProspectDetail, dependencies=[CAN_WRITE])
+@router.patch(
+    "/{prospect_id}", response_model=ProspectDetail, dependencies=[CAN_WRITE, VISIBLE_PROSPECT]
+)
 async def update_prospect(
     prospect_id: int, payload: ProspectUpdate, session: DbSession
 ) -> ProspectDetail:
     return await _detail(session, await service.update_prospect(session, prospect_id, payload))
 
 
-@router.post("/{prospect_id}/opt-out", response_model=ProspectDetail, dependencies=[CAN_WRITE])
+@router.post(
+    "/{prospect_id}/opt-out",
+    response_model=ProspectDetail,
+    dependencies=[CAN_WRITE, VISIBLE_PROSPECT],
+)
 async def opt_out(
     prospect_id: int, payload: OptOutRequest, session: DbSession, db: MongoDb
 ) -> ProspectDetail:
@@ -266,7 +276,11 @@ async def opt_out(
     return await _detail(session, prospect)
 
 
-@router.post("/{prospect_id}/consent", response_model=ProspectDetail, dependencies=[CAN_WRITE])
+@router.post(
+    "/{prospect_id}/consent",
+    response_model=ProspectDetail,
+    dependencies=[CAN_WRITE, VISIBLE_PROSPECT],
+)
 async def grant_consent(
     prospect_id: int, payload: ConsentRequest, session: DbSession, user: CurrentUser
 ) -> ProspectDetail:
@@ -277,7 +291,14 @@ async def grant_consent(
             status.HTTP_403_FORBIDDEN,
             detail="Seul un administrateur peut lever une désinscription",
         )
-    prospect = await service.grant_consent(session, prospect_id, payload.source, payload.channel)
+    prospect = await service.grant_consent(
+        session,
+        prospect_id,
+        payload.source,
+        payload.channel,
+        reason=payload.reason,
+        actor_id=user.id,
+    )
     return await _detail(session, prospect)
 
 
@@ -309,7 +330,7 @@ async def erase_prospect(
     "/{prospect_id}/interactions",
     response_model=InteractionRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[CAN_WRITE],
+    dependencies=[CAN_WRITE, VISIBLE_PROSPECT],
 )
 async def create_interaction(
     prospect_id: int,
@@ -349,7 +370,11 @@ async def create_interaction(
     return InteractionRead.model_validate(interaction)
 
 
-@router.get("/{prospect_id}/interactions", response_model=Page[InteractionRead])
+@router.get(
+    "/{prospect_id}/interactions",
+    response_model=Page[InteractionRead],
+    dependencies=[VISIBLE_PROSPECT],
+)
 async def list_interactions(
     prospect_id: int,
     session: DbSession,
@@ -365,7 +390,11 @@ async def list_interactions(
     )
 
 
-@router.post("/{prospect_id}/campaigns", response_model=ProspectDetail, dependencies=[CAN_WRITE])
+@router.post(
+    "/{prospect_id}/campaigns",
+    response_model=ProspectDetail,
+    dependencies=[CAN_WRITE, VISIBLE_PROSPECT],
+)
 async def attribute_campaign(
     prospect_id: int,
     payload: CampaignAttribution,

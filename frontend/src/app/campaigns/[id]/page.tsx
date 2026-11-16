@@ -4,13 +4,14 @@ import { Tabs, toast } from "@heroui/react";
 import { CalendarDays, Megaphone, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import CampaignOverview from "@/components/campaign/CampaignOverview";
 import CampaignProspects from "@/components/campaign/CampaignProspects";
+import { FirstContacts } from "@/components/campaign/FirstContacts";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
-import { Btn, ErrorText, LinkButton, TAB_RADIUS, Tag, TextLink, type Tone } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, LinkButton, Tag, type Tone } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
@@ -90,15 +91,12 @@ function CampaignDetail() {
 
   return (
     <Screen scroll>
-      <TextLink href={view.from ?? "/campaigns"} className="w-fit text-sm">
-        ← Campagnes
-      </TextLink>
+      <BackLink href={view.from ?? "/campaigns"}>Campagnes</BackLink>
       <Loading loading={campaign.loading} error={campaign.error} onRetry={campaign.reload} />
       {c && (
         <>
           <PageHeader
             {...reveal(0)}
-            eyebrow="Pilotage · Campagne"
             title={c.name}
             subtitle={
               <span className="flex flex-col gap-2">
@@ -109,7 +107,7 @@ function CampaignDetail() {
                     {formatPeriod(c.start_date, c.end_date)}
                   </span>
                 </span>
-                <span className="text-sm text-muted">{label(CAMPAIGN_STATUS_EFFECT, c.status)}</span>
+                <span className="type-body text-muted">{label(CAMPAIGN_STATUS_EFFECT, c.status)}</span>
                 {c.description && <span>{c.description}</span>}
               </span>
             }
@@ -175,13 +173,13 @@ function CampaignDetail() {
           )}
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
-          <Tabs selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
-            <Tabs.ListContainer className={TAB_RADIUS.container}>
+          <Tabs variant="secondary" align="start" selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
+            <Tabs.ListContainer>
               <Tabs.List aria-label="Sections de la campagne">
                 {Object.entries(CAMPAIGN_TABS).map(([key, title]) => (
-                  <Tabs.Tab key={key} id={key} className={TAB_RADIUS.tab}>
+                  <Tabs.Tab key={key} id={key}>
                     {title}
-                    <Tabs.Indicator className={TAB_RADIUS.indicator} />
+                    <Tabs.Indicator />
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
@@ -190,7 +188,8 @@ function CampaignDetail() {
               {stats.error && <ErrorState message={`Statistiques indisponibles : ${stats.error.message}`} onRetry={stats.reload} />}
               {stats.data && <CampaignOverview stats={stats.data} />}
             </Tabs.Panel>
-            <Tabs.Panel id="prospects" className="pt-4">
+            <Tabs.Panel id="prospects" className="flex flex-col gap-4 pt-4">
+              <FirstContacts campaign={c} />
               <CampaignProspects
                 campaign={c}
                 stage={view.stage}

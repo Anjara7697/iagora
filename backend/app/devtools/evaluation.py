@@ -132,7 +132,9 @@ class LexicalKnowledge:
     def __init__(self, entries: list[_Entry] | None = None) -> None:
         self.entries = _demo_corpus() if entries is None else entries
 
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
         wanted = _tokens(query)
         if not wanted:
             return []
@@ -158,7 +160,9 @@ class RecordingKnowledge:
         self.inner = inner
         self.returned: list[Passage] = []
 
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
         found = await self.inner.search(query, target_code, limit)
         self.returned.extend(found)
         return found

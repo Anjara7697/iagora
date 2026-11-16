@@ -378,10 +378,10 @@ test("recherche, documents communs et remise à zéro sur mobile", async ({
     .getByRole("button", { name: "Documents communs", exact: true })
     .click();
   await expect(
-    library.getByRole("row", { name: /Programme eBIHAR/ }),
+    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
   ).toHaveCount(0);
   await expect(
-    library.getByRole("row", { name: /Charte de référence/ }),
+    library.getByRole("button", { name: "Charte de référence", exact: true }),
   ).toBeVisible();
   await page.getByLabel("Rechercher un document").fill("introuvable");
   await expect(
@@ -391,16 +391,24 @@ test("recherche, documents communs et remise à zéro sur mobile", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Afficher tous les documents" }).click();
   await expect(
-    library.getByRole("row", { name: /Programme eBIHAR/ }),
+    library.getByRole("button", { name: "Programme eBIHAR", exact: true }),
   ).toBeVisible();
   await expect(
-    library.getByRole("row", { name: /Charte de référence/ }),
+    library.getByRole("button", { name: "Charte de référence", exact: true }),
   ).toBeVisible();
+  // Sous 640 px, lignes à deux niveaux : le statut se lit sans défilement horizontal (UX-04).
+  const charte = library.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Charte de référence", exact: true }) });
+  await expect(charte.getByText("À jour", { exact: true })).toBeInViewport();
+  await expect(charte.getByText(/^Tous les programmes · 6 extraits/)).toBeInViewport();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  // La ligne ouvre le document dans le panneau.
+  await library.getByRole("button", { name: "Programme eBIHAR", exact: true }).click();
+  await expect(page).toHaveURL(/doc=ebihar/);
+  await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
 });
 
 test("sans service configuré, ajout bloqué et lecture préservée", async ({

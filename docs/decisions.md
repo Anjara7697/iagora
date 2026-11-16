@@ -155,3 +155,68 @@ tant qu'ils ne sont pas accordés.
 que le code. Notion porte l'accueil du projet, le suivi des tâches et le guide utilisateur.
 
 **Conséquences.** En cas de désaccord, `docs/` fait foi.
+
+## D-13 à D-28 — Décisions du 12 novembre 2026 (fin de la feuille de route d'audit)
+
+*12 novembre 2026 · Adoptées par le responsable du projet. Celles marquées **DPO** sont des propositions à faire
+valider par le DPO avant un pilote avec de vrais prospects.*
+
+**Contexte.** La feuille de route issue de l'audit ([audit/reports/MODERNIZATION_ROADMAP.md](audit/reports/MODERNIZATION_ROADMAP.md)
+§5) attendait ces arbitrages pour les lots 6, 7 et 10 et pour plusieurs règles métier.
+
+| N° | Sujet | Décision | Mise en œuvre |
+|---|---|---|---|
+| D-13 | Sauvegardes hors serveur | Copie chiffrée vers un stockage objet S3 (Scaleway, OVH, Backblaze B2…) avec `rclone` ; l'accès et la clé de chiffrement sont configurés sur le serveur par le responsable, jamais dans Git | Lot 6 |
+| D-14 | Alertes | Healthchecks.io (sauvegarde manquante ou en échec) et UptimeRobot (API injoignable), alertes par email | Lot 6 |
+| D-15 | Environnement du pilote | Une instance `prod` séparée (`ENVIRONMENT=production`, simulateur coupé, documents fictifs exclus) ; `dev` reste l'instance d'essai | Lot 6, `deploiement.md` |
+| D-16 | Mode automatique | Refusé en production pendant le pilote : chaque réponse est validée par un conseiller | Lot 6 |
+| D-17 | **DPO** Conservation des prospects | Effacement automatique 3 ans après le dernier contact venant du prospect, purge planifiée chaque semaine | Lot 7 |
+| D-18 | **DPO** Traces techniques | Décisions de l'agent (`agent_runs`) gardées 12 mois ; événements déjà traités (`agent_events`) 30 jours | Lot 7 |
+| D-19 | **DPO** Rétention des sauvegardes | 7 jours sur le serveur, 30 jours hors serveur : un prospect effacé disparaît de toutes les copies en 30 jours au plus | Lot 6 |
+| D-20 | Rétablir un consentement | Réservé à l'administrateur (déjà le cas) avec un **motif obligatoire** (preuve écrite, ex. « email du 12/11 ») enregistré dans `consent_events` | Règles métier |
+| D-21 | Fuseau horaire | Le fuseau des Paramètres (Europe/Paris par défaut) s'applique partout (créneaux, relances) et l'heure proposée au prospect le précise | Règles métier (BIZ-003) |
+| D-22 | Conseiller qui quitte l'équipe | Un conseiller désactivé compte comme « non affecté » : le rendez-vous va au responsable de campagne, sinon à l'agenda par défaut, sinon transfert | Règles métier (BIZ-002) |
+| D-23 | Visibilité des prospects | Cloisonnement : un conseiller voit les prospects des campagnes dont il est responsable et ceux qui lui sont affectés ; la file « À attribuer » est réservée à l'administrateur ; administrateur et observateur voient tout. Filtrage côté serveur | Cloisonnement (SEC-006) |
+| D-24 | **DPO** Personne effacée qui réécrit | Confirmé : sa fiche est recréée en consentement retiré ; un conseiller peut lui répondre, l'agent ne la relance jamais sans nouvel accord | Existant |
+| D-25 | Modèle de langage | Clé Gemini **payante** obligatoire avant tout prospect réel (données non réutilisées) et accord de sous-traitance inscrit au registre (**DPO**) | Check-list de mise en production |
+| D-26 | **DPO** Base légale des leads Meta | Consentement coché dans le formulaire Meta ; sans lui, le lead est créé sans consentement et l'agent ne lui écrit pas avant confirmation par un conseiller | Règles métier |
+| D-27 | Seuils et termes sensibles | Réglables par l'administrateur dans Paramètres (bornés, valeurs actuelles par défaut) ; les valeurs restent à confirmer par DATUM | Seuils réglables |
+| D-28 | Sessions et accès | Lot 10 fait avant la soutenance, en dernier et dans une PR à part ; double authentification des administrateurs reportée (évolution) ; documents officiels de la base de connaissances fournis et importés par le responsable | Lot 10, `rag.md` |
+
+**Conséquences.** Les lots 6, 7 et 10 et le cloisonnement sont réalisés dans des PR séparées. Tant que le DPO n'a
+pas validé D-17, D-18, D-19, D-24, D-25 et D-26, aucun prospect réel n'est traité en production.
+
+## D-29 — Prospection sortante : premiers contacts après un import
+
+*13 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Les listes importées (salons, webinaires, événements de DATUM) réunissent des personnes qui ont
+accepté d'être recontactées. Le responsable veut qu'elles soient abordées dans le contexte de leur campagne,
+sans préparer chaque premier message à la main.
+
+**Décision.**
+- L'agent n'écrit **en premier** (premier contact) qu'à une personne dont le consentement est **accordé** : case
+  de l'import, colonne « consentement » du fichier (oui / non, ligne par ligne), case d'un formulaire, accord
+  enregistré par un conseiller. Une personne qui écrit d'elle-même reçoit toujours sa réponse ; un désinscrit
+  n'est jamais contacté.
+- Depuis la campagne (onglet Prospects) ou à la fin d'un import, « Préparer les premiers contacts » met en file
+  un premier message pour chaque personne éligible : consentement accordé, adresse email, étape « Nouveau » de
+  cette campagne, jamais contactée. En mode assisté, chacun devient un brouillon « Premier contact » dans
+  « À traiter », validable un par un ou par page après relecture.
+- Les premiers contacts validés partent dans la fenêtre d'envoi des Paramètres, cinq par passage de la boîte
+  (environ 300 par heure), pour ménager sa réputation et ses limites d'envoi.
+
+**À confirmer avec le DPO.** La mention ou la case d'accord du formulaire d'inscription à l'événement : c'est elle
+qui permet de cocher le consentement à l'import.
+
+## D-30 — Remise à zéro des données d'une instance d'essai
+
+*13 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Avant une réunion ou une démonstration, `dev` doit repartir d'une console vide (prospects,
+campagnes, base de connaissances), sans perdre comptes, connecteurs ni réglages.
+
+**Décision.** Commande `python -m app.cli reset-dev-data` : aperçu par défaut, effacement avec `--apply`,
+refusée en production, sauvegarde faite juste avant par le responsable (`deploiement.md` §7 bis). C'est un outil
+d'exploitation de l'instance d'essai, qui ne contient que des données de test : il efface toutes ses données
+métier, pas seulement les fiches en `@demo.example.com`.

@@ -4,6 +4,7 @@ Tous les modèles sont importés ici pour être enregistrés dans `Base.metadata
 """
 
 from app.models.appointment import Appointment
+from app.models.auth_session import AuthSession
 from app.models.campaign import Campaign, CampaignSource, CampaignTarget, Source, Target
 from app.models.channel import Channel, ConsentEvent, ProspectChannel
 from app.models.conversation import Interaction
@@ -16,6 +17,7 @@ from app.models.user import User
 
 __all__ = [
     "Appointment",
+    "AuthSession",
     "Campaign",
     "CampaignProspect",
     "CampaignSource",

@@ -73,7 +73,6 @@ function Dashboard() {
       )}
       <PageHeader
         {...reveal(0)}
-        eyebrow="Pilotage · Tableau de bord"
         title="Tableau de bord"
         subtitle={
           data
@@ -129,7 +128,7 @@ function Dashboard() {
                         <span className="flex min-w-0 flex-col">
                           <span className="truncate">{s.label}</span>
                           {i > 0 && (
-                            <span className="text-xs text-muted tabular-nums">
+                            <span className="type-caption text-muted tabular-nums">
                               {share(s.count, data.funnel[i - 1].count)} de l’étape précédente
                             </span>
                           )}
@@ -138,7 +137,7 @@ function Dashboard() {
                       value: s.count,
                     }))}
                   />
-                  <p className="text-xs text-muted">
+                  <p className="type-caption text-muted">
                     Étape atteinte au moins une fois : un prospect perdu après un rendez-vous reste compté dans
                     « Rendez-vous planifiés ».
                   </p>

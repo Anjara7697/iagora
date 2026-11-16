@@ -197,7 +197,7 @@ class WorkflowNodes:
         }
 
     async def decide_next_action(self, state: SalesAgentState) -> Update:
-        decision: Decision = policy.decide(state)
+        decision: Decision = policy.decide(state, self.deps.tuning)
         return {
             "decision": decision,
             "trace": _t("decide_next_action", f"{decision.action.value} : {decision.reason}"),
@@ -213,7 +213,10 @@ class WorkflowNodes:
         q = state.get("qualification")
 
         query = text if text.strip() else (ctx.campaign_name or "")
-        passages: list[Passage] = await self.deps.knowledge.search(query, state.get("target_code"))
+        # Les documents fictifs ne servent qu'aux prospects fictifs, quel que soit l'environnement.
+        passages: list[Passage] = await self.deps.knowledge.search(
+            query, state.get("target_code"), include_demo=ctx.is_demo
+        )
         asks_catalogue = q is not None and q.asks_catalogue
         if q is not None and q.intent == "question" and not passages and not asks_catalogue:
             # F-20 / NF-10 : question hors base de connaissances -> on ne devine pas.
@@ -237,14 +240,19 @@ class WorkflowNodes:
 
         try:
             reply = (await self.deps.llm.generate(system, messages)).strip()
-            claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
+            extra = self.deps.tuning.extra_terms
+            claims = policy.ungrounded_claims(
+                reply, sources, conversation=conversation, extra_terms=extra
+            )
             if claims:  # un seul nouvel essai, plus strict
                 reply = (
                     await self.deps.llm.generate(
                         system + prompts.strict_retry_note(claims), messages
                     )
                 ).strip()
-                claims = policy.ungrounded_claims(reply, sources, conversation=conversation)
+                claims = policy.ungrounded_claims(
+                    reply, sources, conversation=conversation, extra_terms=extra
+                )
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {
@@ -287,6 +295,9 @@ class WorkflowNodes:
         metadata = dict(state.get("reply_metadata", {}))
         if state["trigger"] == "follow_up":
             metadata["follow_up"] = {"membership_id": ctx.membership_id}
+        if state["trigger"] == "first_contact":
+            # L'agent écrit en premier : envoi étalé et limité à la fenêtre d'envoi.
+            metadata["first_contact"] = True
         try:
             await self.deps.messenger.send(ctx, text, metadata)
         except MessageBlockedError as exc:
@@ -355,15 +366,22 @@ class WorkflowNodes:
         ctx = state["ctx"]
         slots = state["slots"]
         lines = "\n".join(f"{i}. {prompts.format_slot(s)}" for i, s in enumerate(slots, start=1))
+        zone = prompts.zone_label(slots[0].timezone) if slots else ""
         text = (
-            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles pour échanger avec un "
-            f"conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui vous "
-            "convient."
+            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles ({zone}) pour échanger avec "
+            f"un conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui "
+            "vous convient."
         )
         metadata = {
             "mode": "meeting_proposal",
             "proposed_slots": [
-                {"id": s.id, "start": s.start.isoformat(), "end": s.end.isoformat()} for s in slots
+                {
+                    "id": s.id,
+                    "start": s.start.isoformat(),
+                    "end": s.end.isoformat(),
+                    "timezone": s.timezone,
+                }
+                for s in slots
             ],
         }
         return {
@@ -394,7 +412,10 @@ class WorkflowNodes:
         appointment_id = await self.deps.gateway.create_appointment(
             ctx.prospect_id, ctx.advisor_id, meeting
         )
-        text = f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)}."
+        text = (
+            f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)} "
+            f"({prompts.zone_label(slot.timezone)})."
+        )
         if meeting.meeting_url:
             text += f"\nLien de connexion : {meeting.meeting_url}"
         return {
@@ -464,14 +485,13 @@ class WorkflowNodes:
             update["reply_text"] = None
         return update
 
-    @staticmethod
-    def _reason_from_decision(state: SalesAgentState) -> str:
+    def _reason_from_decision(self, state: SalesAgentState) -> str:
         if state.get("llm_failed"):
             return "llm_indisponible"
         if state.get("risk_alerts"):
             return "situation_sensible"
         q = state.get("qualification")
-        if q is not None and q.confidence < policy.MIN_CONFIDENCE:
+        if q is not None and q.confidence < self.deps.tuning.min_confidence:
             return "incertitude"
         return "demande_conseiller"
 

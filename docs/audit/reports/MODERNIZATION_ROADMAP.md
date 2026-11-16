@@ -94,7 +94,7 @@ au §2). Complexité S / M / L / XL. Le risque de régression (Rég.) est estim�
 | DATA-006 | Données | P3 | DATABASE §5 | — | 8 | S | nulle | `downgrade base` en CI |
 | QA-004 | QA | P3 | QA §5 | — | 8 | S | nulle | projet mobile Playwright |
 | QA-003 | QA | P3 | QA §5 | — | 8 | S | nulle | si la logique pure grossit |
-| FE-001 | Frontend | P3 | FRONTEND §5 | — | 9 | S | faible | e2e : avertissement avant de quitter |
+| FE-001 | Frontend | P3 | FRONTEND §5 (revu) | — | 9 | S | faible | e2e : sortie par le menu confirmée |
 | FE-002 | Frontend | P3 | FRONTEND §6 | — | 9 | M | moyen (écrans admin) | règles 1–30, axe, e2e |
 | FE-003 | Frontend | P3 | FRONTEND §5 | — | 9 | S | faible | thème clair / sombre |
 | DATA-005 | Données | P3 | DATABASE §5 | — | 9 | S | faible | indicateur « liste tronquée » |
@@ -214,10 +214,13 @@ typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
 - Acceptation : renommer un champ casse la CI.
 
 **Lot 9 — Confort des conseillers (S/M, P3).**
-- Périmètre : protection des saisies (FE-001) ; écrans d'administration revus avec les règles 1 à 30 (FE-002) ;
+- Périmètre : protection des saisies étendue au menu latéral et à Paramètres (FE-001, constat revu : la
+  protection existait déjà sur les autres parcours) ; écrans d'administration revus avec les règles 1 à 30 (FE-002) ;
   jetons de couleur (FE-003) ; liste « À faire » tronquée signalée (DATA-005).
 
-**Lot 10 — Sessions et accès (M, P2, avant d'ouvrir à plus d'utilisateurs).**
+**Lot 10 — Sessions et accès (M, P2, avant d'ouvrir à plus d'utilisateurs).** Fait le 13/11/2026 : voir
+SECURITY_AUDIT (statuts de SEC-004, SEC-005, SEC-007, SEC-008, SEC-009) et `docs/deploiement.md` §7 pour la
+mise en place sur un environnement existant.
 - Périmètre : cookie `HttpOnly` (SEC-004), limite de connexion par identifiant (SEC-005), révocation (SEC-009),
   état OAuth (SEC-008), clé de chiffrement dédiée (SEC-007).
 - Risque : le plus élevé des lots, car il touche la connexion. Le faire hors période de soutenance.
@@ -235,6 +238,11 @@ typecheck, build, e2e) et la suite `eval-agent` quand l'agent est touché.
 Les lots 5 et 8 à 11 peuvent suivre sans bloquer une démonstration en mode assisté.
 
 ## 5. Décisions humaines requises
+
+> **12 novembre 2026** : toutes ces décisions ont été prises par le responsable du projet, voir
+> [decisions.md](../../decisions.md) D-13 à D-28. Celles qui relèvent du DPO y sont marquées comme propositions à
+> faire valider avant un pilote réel. Restent hors décision : les documents officiels (fournis par DATUM) et la
+> double authentification (reportée).
 
 | Décision | Qui | Débloque |
 |---|---|---|

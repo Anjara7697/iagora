@@ -19,8 +19,8 @@ La console est complète : toutes les entrées de navigation mènent à un écra
 Pas de P0 ni de P1. Les points à traiter :
 - les **quatre écrans d'administration** (Paramètres, Équipe, Intégrations, Simulateur) n'ont pas été repris avec
   les règles 1 à 30 (FE-002) ;
-- **aucune protection contre la perte d'une saisie** en cours, par exemple un brouillon modifié dans « À traiter »
-  (FE-001) ;
+- une saisie en cours pouvait être perdue en quittant l'écran **par le menu latéral**, et Paramètres n'avait
+  aucune protection (FE-001, constat revu le 12/11/2026 : la protection existait déjà sur les autres parcours) ;
 - deux points déjà décrits ailleurs : le jeton de connexion dans `localStorage` (SEC-004) et le contrat d'API
   recopié à la main (ARCH-003).
 
@@ -36,19 +36,19 @@ tâche `frontend` réussie.
 | Écran | Route | États chargement / vide / erreur (lus dans le code) | Rôles | Règles 1–30 appliquées | Risque principal |
 |---|---|---|---|---|---|
 | Aujourd'hui | `/` | oui | tous | oui | — |
-| À traiter | `/todo` | oui | écriture pour conseiller et admin | oui | perte d'un brouillon modifié (FE-001) |
+| À traiter | `/todo` | oui | écriture pour conseiller et admin | oui | sortie par le menu latéral (FE-001) |
 | Conversations | `/conversations` | oui | idem | oui | idem |
 | Prospects, fiche | `/prospects`, `/prospects/[id]` | oui | idem | oui | — |
 | Import CSV | `/prospects/import` | à vérifier | écriture | à vérifier | — |
 | Campagnes, détail | `/campaigns`, `/campaigns/[id]` | oui | idem | oui | page la plus lourde (352 ko) |
 | Rendez-vous | `/appointments` | oui | tous | oui (écart 26 décidé) | — |
-| Base de connaissances | `/knowledge` | oui | admin pour écrire | oui | perte d'une saisie (FE-001) |
+| Base de connaissances | `/knowledge` | oui | admin pour écrire | oui | sortie par le menu latéral (FE-001) |
 | Tableau de bord, Analyses | `/dashboard`, `/analytics` | oui | tous | oui | — |
 | Agent | `/agent` | oui | admin pour modifier | oui | — |
-| Paramètres | `/settings` | indicateur « non enregistré » ; reste à vérifier | admin | **non revu** | FE-002 |
-| Équipe | `/team` | à vérifier | admin | **non revu** | FE-002 |
-| Intégrations | `/integrations` | états de test présents ; reste à vérifier | admin | **non revu** | FE-002 |
-| Simulateur | `/simulator` | à vérifier | admin et conseillers autorisés | **non revu** | FE-002 |
+| Paramètres | `/settings` | oui (revu le 12/11/2026) | admin | oui (règle 31 : écarts 3 et 21 décidés) | — |
+| Équipe | `/team` | oui (revu le 12/11/2026) | admin | oui (règle 32) | — |
+| Intégrations | `/integrations` | oui (revu le 12/11/2026) | admin | oui (règle 33 : écarts 2 et 4 décidés) | — |
+| Simulateur | `/simulator` | oui (revu le 12/11/2026) | admin et conseillers autorisés | oui (règle 34) | — |
 | Compte, connexion | `/account`, `/login` | à vérifier | tous | à vérifier | couleurs en dur (FE-003) |
 
 ## 4. Points positifs à préserver
@@ -69,16 +69,18 @@ tâche `frontend` réussie.
 
 ## 5. Constats techniques
 
-### AUDIT-FE-001 — Aucune protection contre la perte d'une saisie
+### AUDIT-FE-001 — Saisie perdue en quittant l'écran par le menu (constat revu)
+- Statut : **revu le 12/11/2026**. Le constat initial (« aucun `beforeunload` ni garde de navigation ») était
+  faux : la recherche avait été tronquée. Le hook `components/ds/useDiscardGuard.tsx` existait déjà et protégeait
+  le brouillon (À traiter, Conversations), la fiche prospect, les campagnes et l'éditeur de connaissances :
+  avertissement à la fermeture de l'onglet et confirmation avant les actions de la page.
+- Écart réel :
+  - les liens du menu latéral et de l'en-tête n'étaient pas interceptés ;
+  - Paramètres (dont la boîte email) n'avait aucune protection, seulement l'indicateur « non enregistré ».
 - Catégorie : prévention d'erreur
 - Criticité : P3
-- Confiance : Confirmé (absence dans le code) ; impact Probable
-- Preuve : aucun `beforeunload` ni garde de navigation dans `src/` ; seul Paramètres signale les modifications
-  non enregistrées (`components/TestingAccess.tsx:12-29`).
-- Scénario : un conseiller réécrit un brouillon dans « À traiter », clique sur une autre conversation ou ferme
-  l'onglet : le texte est perdu sans avertissement.
-- Recommandation : un hook commun `useUnsavedChanges(dirty)` qui avertit avant de quitter (onglet et navigation
-  interne) ; l'appliquer au brouillon, à l'éditeur de connaissances et aux formulaires d'administration.
+- Correction (lot 9) : le hook intercepte aussi les liens internes vers un autre écran ; Paramètres et la boîte
+  email l'utilisent ; test e2e « quitter Paramètres par le menu… ».
 - Complexité : S
 
 ### AUDIT-FE-003 — Couleurs en dur hors des jetons du thème
@@ -96,6 +98,10 @@ Liés : jeton dans `localStorage` (SEC-004) ; Next.js 15.5.27 vulnérable (SEC-0
 ## 6. Constats UX
 
 ### AUDIT-FE-002 — Écrans d'administration non revus avec les règles des parcours
+- Statut : **traité le 12/11/2026** (lot 9) : Paramètres, Équipe, Intégrations et Simulateur revus, écarts décidés
+  inscrits dans `docs/frontend/heroui.md` (règles 31 à 34). Les deux plus gros écrans sont découpés (lot 11) :
+  sections de Paramètres dans `components/settings/SettingsSections.tsx`, colonne de décision, données fictives
+  et messages types du Simulateur dans `components/simulator/`.
 - Catégorie : cohérence
 - Criticité : P3
 - Confiance : Probable (non vérifié visuellement)

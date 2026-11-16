@@ -4,8 +4,9 @@
 
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { Btn, Check as CheckBox, ErrorText, Field, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Loading } from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { formatDate, label, STAGES } from "@/lib/labels";
@@ -35,8 +36,8 @@ function ReviewCard({ label: aria, title, intro, children }: { label: string; ti
   return (
     <Box as="section" className="gap-4 p-5" aria-label={aria}>
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {intro && <p className="text-[13px] text-muted">{intro}</p>}
+        <h3 className="type-title-sm font-semibold text-foreground">{title}</h3>
+        {intro && <p className="type-body-sm text-muted">{intro}</p>}
       </div>
       {children}
     </Box>
@@ -128,7 +129,6 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 </CheckBox>
                 <Field label="Parcours concerné">
                   <SelectBox
-                    variant="secondary"
                     value={selected ? String(selected.id) : ""}
                     onChange={(e) => setMembershipId(e.target.value)}
                   >
@@ -146,7 +146,6 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                 {needsStage && (
                   <Field label="Motif enregistré dans l’historique">
                     <TextBox
-                      variant="secondary"
                       value={reason}
                       maxLength={2000}
                       onChange={(e) => setReason(e.target.value)}
@@ -169,7 +168,7 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                       ? "Passer à « Candidature déposée » et terminer"
                       : "Terminer la vérification"}
                 </Btn>
-                <span className="text-[13px] text-muted">
+                <span className="type-body-sm text-muted">
                   {checked
                     ? "La demande quittera la file."
                     : "Cochez le contrôle du dossier pour continuer."}
@@ -253,7 +252,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           {eligible.length > 0 && (
             <Field label="Parcours confirmé par la preuve">
               <SelectBox
-                variant="secondary"
                 value={membershipId}
                 onChange={(event) => setMembershipId(event.target.value)}
               >
@@ -268,7 +266,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           )}
           <Field label="Référence de la preuve">
             <TextInput
-              variant="secondary"
               value={reference}
               maxLength={300}
               onChange={(event) => setReference(event.target.value)}
@@ -276,7 +273,6 @@ export function EnrollmentReview({ item, onDone, onDirtyChange }: PanelProps) {
           </Field>
           <Field label="Note facultative">
             <TextBox
-              variant="secondary"
               value={note}
               maxLength={1000}
               onChange={(event) => setNote(event.target.value)}
@@ -310,6 +306,8 @@ export function OptOutReview({ item, onDone }: PanelProps) {
   const user = useCurrentUser();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Rétablir exige un motif écrit (décision D-20).
+  const [reason, setReason] = useState("");
 
   async function decide(decision: "confirm" | "restore") {
     setBusy(true);
@@ -317,7 +315,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
     try {
       await api(`/conversations/${item.conversation_id}/opt-out-review`, {
         method: "POST",
-        body: { decision },
+        body: decision === "restore" ? { decision, reason: reason.trim() } : { decision },
       });
       notifyWorkQueueChanged();
       onDone(
@@ -332,7 +330,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
             },
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Décision impossible");
+      setError(`Décision impossible${err instanceof ApiError ? ` : ${err.message}` : "."}`);
     } finally {
       setBusy(false);
     }
@@ -354,11 +352,25 @@ export function OptOutReview({ item, onDone }: PanelProps) {
               Oui, confirmer l’opposition
             </Btn>
             {user?.role === "ADMIN" ? (
-              <Btn variant="outline" disabled={busy} onClick={() => void decide("restore")}>
-                Non, rétablir le consentement
-              </Btn>
+              <ConfirmDialog
+                trigger={
+                  <Btn variant="outline" disabled={busy}>
+                    Non, rétablir le consentement
+                  </Btn>
+                }
+                title="Rétablir le consentement ?"
+                description="Le prospect pourra de nouveau être contacté. Indiquez ce qui le justifie : le motif est conservé avec votre nom."
+                confirmLabel="Rétablir le consentement"
+                status="warning"
+                confirmDisabled={reason.trim().length < 10}
+                onConfirm={() => void decide("restore")}
+              >
+                <Field label="Motif" hint="10 caractères au moins.">
+                  <TextBox rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+                </Field>
+              </ConfirmDialog>
             ) : (
-              <span className="text-xs text-muted">Seul un administrateur peut rétablir le consentement.</span>
+              <span className="type-caption text-muted">Seul un administrateur peut rétablir le consentement.</span>
             )}
           </div>
         </>

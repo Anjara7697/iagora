@@ -1,0 +1,50 @@
+# Mises à jour des dépendances (AUDIT-OPS-004) : une PR groupée par écosystème, chaque lundi, vers dev.
+# Chaque PR passe la CI complète et se relit comme les autres ; rien n'est mergé automatiquement.
+# Python : les versions figées (requirements*.lock.txt) sont générées par scripts/lock-deps.sh ;
+# si l'étape « Versions figées à jour » échoue sur une PR Dependabot, relancer le script sur la
+# branche de la PR plutôt que de corriger le fichier à la main.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      python:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      images:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

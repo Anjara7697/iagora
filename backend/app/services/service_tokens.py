@@ -16,6 +16,11 @@ RATE_PER_MINUTE = 60
 _hits: dict[str, list[float]] = {}
 
 
+async def ensure_indexes(db: Any) -> None:
+    """Recherche d'un jeton par empreinte : index unique (AUDIT-DATA-009)."""
+    await db[COLLECTION].create_index("hash", unique=True)
+
+
 def _digest(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 

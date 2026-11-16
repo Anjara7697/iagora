@@ -65,8 +65,10 @@ vérifient sa présence dans l'email envoyé (texte et HTML) et son absence sur 
   traces, ses rendez-vous et ses relances. Seule une trace sans donnée lisible est gardée, plus l'empreinte
   de l'adresse pour une personne désinscrite ou ayant demandé l'effacement. Reste à la main : emails de la
   boîte, événements Google / Zoom, sauvegardes. Procédure : [effacement-rgpd.md](effacement-rgpd.md).
-- **Durée de conservation** : l'outil existe (`purge-inactive`, aperçu par défaut), pas la décision.
-  Aucune purge automatique : DATUM doit fixer la durée (§4).
+- **Durée de conservation** : proposée le 12/11 (3 ans sans activité pour un prospect, 12 mois pour les
+  traces de l'agent, 30 jours pour la file terminée et les copies de sauvegarde) et appliquée : index TTL
+  pour les traces, `purge-inactive` planifiée chaque semaine. **À valider par le DPO** avant un pilote réel
+  ([effacement-rgpd.md](effacement-rgpd.md)).
 - `reset-prospect` reste un outil de recette, réservé aux adresses de test et refusé en production.
 
 ### 3.3 Authentification des emails
@@ -78,18 +80,19 @@ voulu. Les pièces jointes ne sont pas lues.
 
 | Sujet | État actuel | À décider |
 |---|---|---|
-| Premier contact avec un consentement « inconnu » | Autorisé | Base légale (intérêt légitime ? consentement ?) selon le canal |
-| Durée de conservation | Illimitée (la commande `purge-inactive` est prête, non planifiée) | Durée pour un prospect inactif, pour les conversations, pour les traces ; puis planification |
+| Premier contact avec un consentement « inconnu » | La personne qui écrit (email, formulaire avec message) reçoit sa réponse. L'agent n'écrit **en premier** qu'avec un consentement accordé : case ou colonne de l'import, case du formulaire (D-29). Leads Meta : consentement seulement si la case du formulaire est cochée ; sinon l'agent n'écrit pas et la conversation passe à un conseiller (D-26) | Validation par le DPO, dont la mention d'accord des formulaires d'inscription aux événements |
+| Durée de conservation | Proposée et appliquée (D-17 à D-19 : 3 ans, 12 mois, 30 jours) | Validation par le DPO |
 | Registre des traitements | — | Ajouter le traitement « prospection assistée par IA » |
 | Information des personnes | — | Mention d'information (politique de confidentialité, lien dans les emails) |
-| Clé Gemini | À confirmer | Offre payante : les conditions de l'offre gratuite peuvent permettre à Google d'utiliser les données envoyées |
+| Clé Gemini | Clé payante obligatoire avant un prospect réel (D-25) | Accord de sous-traitance au registre (DPO) |
 | Lieu d'hébergement | À confirmer | Hébergement dans l'UE, contrats de sous-traitance (Google, Zoom, hébergeur) |
 | LinkedIn / Meta | Non branchés | Rester dans les produits API accordés ; leurs conditions encadrent strictement la messagerie automatisée |
 | Dépôt public | Public | Le passer en privé au transfert si DATUM le souhaite |
 
 ## 5. Sécurité : points à durcir
 
-- Jeton de connexion dans `localStorage` : passer à un cookie `HttpOnly` avant une exposition publique.
-- Limitation des connexions en mémoire, par processus : un compteur partagé (Redis) si plusieurs instances.
+- Session dans un témoin `HttpOnly`, révocable à la déconnexion ; limitation des connexions par adresse, par
+  identifiant et par couple (lot 10). Reste : compteur partagé (Redis) si plusieurs instances, double
+  authentification (reportée).
 - Identifiants non sensibles à la casse et changement de mot de passe par l'utilisateur : non faits.
 - Jetons de service : faits (`iag_…`, stockés hachés, révocables) ; webhooks LinkedIn et Meta non faits.

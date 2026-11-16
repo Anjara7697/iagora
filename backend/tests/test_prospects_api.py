@@ -136,7 +136,8 @@ async def test_optout_survives_reingestion_until_explicit_consent(client):
     await client.post(f"{API}/prospects/{pid}/opt-out", json={})
     again = await _ingest(client, consent_granted=True)
     assert again.json()["prospect"]["consent_status"] == "opted_out"
-    granted = await client.post(f"{API}/prospects/{pid}/consent", json={"source": "web_form"})
+    body = {"source": "web_form", "reason": "Nouveau formulaire signé le 12/11."}
+    granted = await client.post(f"{API}/prospects/{pid}/consent", json=body)
     assert granted.json()["consent_status"] == "granted"
     assert granted.json()["opted_out_at"] is None
 

@@ -66,7 +66,7 @@ export default function ConversationView({
 }) {
   if (messages.length === 0)
     return (
-      <p className="text-sm text-muted">
+      <p className="type-body text-muted">
         Aucun message.
       </p>
     );
@@ -92,7 +92,7 @@ export default function ConversationView({
             className={`flex gap-2.5 ${fromProspect ? "flex-row" : "flex-row-reverse"} ${dead ? "opacity-60" : ""}`}
           >
             <span
-              className={`mt-5 inline-flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+              className={`mt-5 inline-flex size-7 shrink-0 items-center justify-center rounded-full type-caption font-semibold ${
                 fromProspect
                   ? "bg-surface-tertiary text-foreground"
                   : fromAgent
@@ -104,9 +104,9 @@ export default function ConversationView({
               {fromProspect ? initials(prospectName) : fromAgent ? <Sparkles className="size-3.5" /> : <UserRound className="size-3.5" />}
             </span>
             <div className={`flex max-w-[min(640px,85%)] min-w-0 flex-col gap-1 ${fromProspect ? "items-start" : "items-end"}`}>
-              <div className="text-xs text-muted">{authorLine(m, prospectName, channel)}</div>
+              <div className="type-caption text-muted">{authorLine(m, prospectName, channel)}</div>
               <div
-                className={`flex flex-col gap-2 rounded-2xl px-4 py-3 text-sm ${
+                className={`flex flex-col gap-2 rounded-2xl px-4 py-3 type-body ${
                   fromProspect
                     ? "rounded-tl-md bg-surface text-foreground shadow-surface"
                     : fromAgent
@@ -115,12 +115,12 @@ export default function ConversationView({
                 }`}
               >
                 {pending && (
-                  <div className="text-xs font-medium text-agent-soft-foreground">
+                  <div className="type-caption font-medium text-agent-soft-foreground">
                     Brouillon · pas encore validé
                   </div>
                 )}
                 {draft?.status && !pending && (
-                  <div className="text-xs font-medium text-muted">
+                  <div className="type-caption font-medium text-muted">
                     {label(DRAFT_STATUS, draft.status)}
                     {draft.edited ? " (modifié par un conseiller)" : ""}
                     {draft.reason ? ` — motif : ${draft.reason}` : ""}
@@ -128,12 +128,12 @@ export default function ConversationView({
                 )}
                 <div className={`whitespace-pre-wrap ${dead ? "line-through decoration-muted/60" : ""}`}>{m.content}</div>
                 {Array.isArray(sources) && sources.length > 0 && (
-                  <div className="text-xs text-muted">Sources : {sources.join(" ; ")}</div>
+                  <div className="type-caption text-muted">Sources : {sources.join(" ; ")}</div>
                 )}
               </div>
-              {fromProspect && <div className="text-xs text-muted">Reçu</div>}
+              {fromProspect && <div className="type-caption text-muted">Reçu</div>}
               {line && (
-                <div className={`text-xs ${DELIVERY_TONE[String(m.metadata.delivery)] ?? "text-muted"}`}>{line}</div>
+                <div className={`type-caption ${DELIVERY_TONE[String(m.metadata.delivery)] ?? "text-muted"}`}>{line}</div>
               )}
             </div>
           </article>

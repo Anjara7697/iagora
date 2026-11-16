@@ -50,14 +50,14 @@ export default function ProspectConversation({
         <Loading loading={loading} error={missing ? null : error} onRetry={onRetry} />
         {missing && <EmptyPanel icon={MessageSquare} title="Aucune conversation" />}
         {readOnly && (
-          <p className="text-[13px] text-muted">
+          <p className="type-body-sm text-muted">
             Votre accès observateur permet de consulter les échanges et les décisions.
           </p>
         )}
         {conv?.handoff && (
           <Notice tone="warning" aria-label="Fiche de transfert">
             <Alert.Title>Fiche de transfert — {label(HANDOFF_REASONS, conv.handoff.reason)}</Alert.Title>
-            <div className="flex flex-col gap-1 pt-1 text-sm text-foreground">
+            <div className="flex flex-col gap-1 pt-1 type-body text-foreground">
               {conv.handoff.pending_question && <p>Question : « {conv.handoff.pending_question} »</p>}
               <p>
                 <b className="font-semibold">Action recommandée :</b> {conv.handoff.recommended_action}

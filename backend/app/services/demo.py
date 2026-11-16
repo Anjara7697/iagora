@@ -9,14 +9,12 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.demo import DEMO_DOMAIN, DEMO_SUFFIX, is_demo_email
+from app.database.collections import AGENT_EVENTS, AGENT_RUNS, CONVERSATIONS
 from app.models import Prospect
 
-DEMO_DOMAIN = "demo.example.com"
-_SUFFIX = f"@{DEMO_DOMAIN}"
-
-
-def is_demo_email(email: str | None) -> bool:
-    return bool(email) and str(email).strip().lower().endswith(_SUFFIX)
+__all__ = ["DEMO_DOMAIN", "demo_filter", "is_demo_email"]
+_SUFFIX = DEMO_SUFFIX
 
 
 def demo_filter() -> Any:
@@ -31,7 +29,7 @@ async def demo_prospect_ids(session: AsyncSession) -> list[int]:
 async def summary(session: AsyncSession, db: Any) -> dict[str, int]:
     ids = await demo_prospect_ids(session)
     conversations = (
-        await db["conversations"].count_documents({"prospect_id": {"$in": ids}}) if ids else 0
+        await db[CONVERSATIONS].count_documents({"prospect_id": {"$in": ids}}) if ids else 0
     )
     return {"prospects": len(ids), "conversations": conversations}
 
@@ -41,9 +39,9 @@ async def purge(session: AsyncSession, db: Any) -> dict[str, int]:
     ids = await demo_prospect_ids(session)
     if not ids:
         return {"prospects": 0, "conversations": 0}
-    deleted = await db["conversations"].delete_many({"prospect_id": {"$in": ids}})
-    await db["agent_runs"].delete_many({"prospect_id": {"$in": ids}})
-    await db["agent_events"].delete_many({"prospect_id": {"$in": ids}})
+    deleted = await db[CONVERSATIONS].delete_many({"prospect_id": {"$in": ids}})
+    await db[AGENT_RUNS].delete_many({"prospect_id": {"$in": ids}})
+    await db[AGENT_EVENTS].delete_many({"prospect_id": {"$in": ids}})
     await session.execute(delete(Prospect).where(Prospect.id.in_(ids)))
     await session.commit()
     return {"prospects": len(ids), "conversations": deleted.deleted_count}
@@ -62,9 +60,9 @@ async def purge_prospect(session: AsyncSession, db: Any, email: str) -> dict[str
     )
     if not ids:
         return {"prospects": 0, "conversations": 0}
-    deleted = await db["conversations"].delete_many({"prospect_id": {"$in": ids}})
-    await db["agent_runs"].delete_many({"prospect_id": {"$in": ids}})
-    await db["agent_events"].delete_many({"prospect_id": {"$in": ids}})
+    deleted = await db[CONVERSATIONS].delete_many({"prospect_id": {"$in": ids}})
+    await db[AGENT_RUNS].delete_many({"prospect_id": {"$in": ids}})
+    await db[AGENT_EVENTS].delete_many({"prospect_id": {"$in": ids}})
     await session.execute(delete(Prospect).where(Prospect.id.in_(ids)))
     await session.commit()
     return {"prospects": len(ids), "conversations": deleted.deleted_count}

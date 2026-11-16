@@ -46,8 +46,11 @@ def test_vault_round_trip_and_key_change():
         vault.decrypt(base(jwt_secret_key="b" * 40), token)
     own = base(jwt_secret_key="a" * 40, connectors_secret_key="clé-dédiée")
     assert vault.decrypt(own, vault.encrypt(own, "x")) == "x"
+    # Clé dédiée ajoutée : l'ancien secret (clé dérivée du JWT) reste lisible (AUDIT-SEC-007)…
+    assert vault.decrypt(own, token) == "mot-de-passe"
+    # … mais plus après un changement du secret JWT sans rotation préalable.
     with pytest.raises(vault.VaultError):
-        vault.decrypt(own, token)
+        vault.decrypt(base(jwt_secret_key="b" * 40, connectors_secret_key="clé-dédiée"), token)
 
 
 # --- Détection des serveurs ---------------------------------------------------------------------

@@ -7,13 +7,15 @@ import pytest
 from app.agents.runtime import ensure_run_indexes
 from app.api.dependencies import get_session_factory
 from app.config import get_settings
-from app.core.security import create_access_token, hash_password
+from app.core.ratelimit import limiter
+from app.core.security import hash_password
 from app.database.base import Base
 from app.database.clients import get_mongo_db
 from app.database.session import get_session
 from app.main import app
 from app.models import Channel, Target, User
 from app.models.enums import UserRole
+from app.services import auth_sessions
 from app.services.conversations import ensure_indexes
 from httpx import ASGITransport, AsyncClient
 from mongomock_motor import AsyncMongoMockClient
@@ -97,6 +99,14 @@ async def _make_user(factory, role: UserRole, **over) -> User:
         return user
 
 
+@pytest.fixture(autouse=True)
+def _fresh_login_limiter():
+    """Compteurs de connexion vierges : les échecs d'un test ne bloquent pas le suivant."""
+    limiter.clear()
+    yield
+    limiter.clear()
+
+
 @pytest.fixture
 async def make_client(session_factory, mongo_db):
     """Fabrique un client HTTP authentifié avec le rôle demandé (None : anonyme)."""
@@ -114,7 +124,8 @@ async def make_client(session_factory, mongo_db):
         headers = {}
         if role is not None:
             user = await _make_user(session_factory, role)
-            token = create_access_token(user.id, get_settings())
+            async with session_factory() as s:
+                token = await auth_sessions.open_session(s, user, get_settings())
             headers["Authorization"] = f"Bearer {token}"
         c = AsyncClient(transport=ASGITransport(app=app), base_url="http://test", headers=headers)
         clients.append(c)

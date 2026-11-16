@@ -4,8 +4,8 @@ import { Tabs, toast } from "@heroui/react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
-import { Btn, TAB_RADIUS } from "@/components/ds/controls";
+import { useCurrentUser } from "@/lib/session";
+import { Btn } from "@/components/ds/controls";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Collapse } from "@/components/ds/collapse";
@@ -52,7 +52,6 @@ function Knowledge() {
     <Screen scroll>
       <PageHeader
         {...reveal(0)}
-        eyebrow="Intelligence · Base de connaissances"
         title="Base de connaissances"
         subtitle="Les sources de référence utilisées par l’agent pour répondre aux questions des prospects."
         actions={
@@ -93,13 +92,13 @@ function Knowledge() {
         }}
       />
 
-      <Tabs {...reveal(4)} selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as KnowledgeTab })}>
-        <Tabs.ListContainer className={TAB_RADIUS.container}>
+      <Tabs variant="secondary" align="start" {...reveal(4)} selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as KnowledgeTab })}>
+        <Tabs.ListContainer>
           <Tabs.List aria-label="Sections de la base de connaissances">
             {Object.entries(KNOWLEDGE_TABS).map(([key, title]) => (
-              <Tabs.Tab key={key} id={key} className={TAB_RADIUS.tab}>
+              <Tabs.Tab key={key} id={key}>
                 {title}
-                <Tabs.Indicator className={TAB_RADIUS.indicator} />
+                <Tabs.Indicator />
               </Tabs.Tab>
             ))}
           </Tabs.List>
@@ -134,8 +133,8 @@ function Knowledge() {
           {status.data && (
             <Collapse
               title="Réglages techniques de la recherche"
-              className="card card--default gap-0 rounded-lg px-5 py-4 text-[13px]"
-              triggerClassName="w-full text-sm"
+              className="card card--default gap-0 rounded-lg px-5 py-4 type-body-sm"
+              triggerClassName="w-full type-body"
             >
               <p className="mt-2 text-muted">Ces informations expliquent comment les extraits sont sélectionnés.</p>
               <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5">

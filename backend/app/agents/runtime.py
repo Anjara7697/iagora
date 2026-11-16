@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import weakref
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.defaults import RecordingMessenger
 from app.agents.gateway import DbGateway
+from app.config import get_settings
+from app.database.collections import AGENT_RUNS
 from app.graph import prompts
 from app.graph.builder import build_workflow
 from app.graph.ports import Calendar, Deps, KnowledgeBase, LanguageModel
@@ -28,13 +31,14 @@ from app.services import (
     drafts,
     follow_ups,
     lease,
+    runtime_settings,
 )
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
 
 logger = logging.getLogger(__name__)
-RUNS = "agent_runs"
+RUNS = AGENT_RUNS
 
 
 async def ensure_run_indexes(db: Any) -> None:
@@ -68,7 +72,17 @@ async def _resolve_conversation(
     return await conversations.get_doc(db, read.id)
 
 
-_locks: dict[str, asyncio.Lock] = {}
+# Verrou local par conversation, en plus du bail MongoDB. Dictionnaire faible : un verrou disparaît
+# dès qu'aucune exécution ne le tient ni ne l'attend (AUDIT-ARCH-002 : plus de croissance sans fin).
+_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+
+
+def _conversation_lock(conversation_id: str) -> asyncio.Lock:
+    lock = _locks.get(conversation_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _locks[conversation_id] = lock
+    return lock
 
 
 async def run_agent(
@@ -90,10 +104,8 @@ async def run_agent(
             kwargs.get("channel"),
         )
         conversation_id = str(doc["_id"])
-    async with (
-        _locks.setdefault(conversation_id, asyncio.Lock()),
-        lease.conversation_lock(db, conversation_id),
-    ):
+    lock = _conversation_lock(conversation_id)  # référence tenue jusqu'à la fin de l'exécution
+    async with lock, lease.conversation_lock(db, conversation_id):
         return await _run_agent(session, db, conversation_id=conversation_id, **kwargs)
 
 
@@ -157,6 +169,14 @@ async def _run_agent(
         await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
         trigger, inbound_text = "inbound_message", inputs[-1]["content"]
     elif not messages:
+        # L'agent écrit en premier : seulement à une personne qui a consenti (import coché, case de
+        # formulaire, accord recueilli par un conseiller). Une personne qui écrit d'elle-même reçoit
+        # toujours sa réponse ; un désinscrit n'est jamais contacté (décision D-29).
+        if not simulation and (await get_prospect(session, pid)).consent_status.value != "granted":
+            raise ConflictError(
+                "Consentement non recueilli : l'agent n'écrit pas en premier à ce prospect. "
+                "Enregistrez son accord sur la fiche avant de lancer l'agent."
+            )
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
         trigger, inbound_text = "inbound_message", messages[-1]["content"]
@@ -171,6 +191,7 @@ async def _run_agent(
         messenger=RecordingMessenger(session, db, mode),
         calendar=calendar,
         knowledge=knowledge,
+        tuning=runtime_settings.tuning(await runtime_settings.effective(db, get_settings())),
     )
     graph = build_workflow(deps)
     initial: SalesAgentState = {

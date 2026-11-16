@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Card, Meter, ScrollShadow, Skeleton } from "@heroui/react";
+import { Alert, Button, Card, Chip, Meter, ScrollShadow, Skeleton } from "@heroui/react";
 import { RefreshCw, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -76,19 +76,20 @@ export function ListScroll({ children, className }: { children: ReactNode; class
 
 /** Ligne mono en capitales « Groupe · Page ». */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cx("text-xs tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
+  return <span className={cx("type-caption tracking-[0.06em] text-muted uppercase", className)}>{children}</span>;
 }
 
-/** En-tête d'écran : sur-titre, titre, sous-titre d'une phrase, actions à droite. */
+/**
+ * En-tête d'écran (UX-10) : titre, puis une phrase facultative, actions à droite. Plus de sur-titre : il répétait le
+ * groupe du menu. Les éléments d'un en-tête plus riche (fiche) passent par `subtitle`.
+ */
 export function PageHeader({
-  eyebrow,
   title,
   subtitle,
   actions,
   className,
   style,
 }: {
-  eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -96,11 +97,10 @@ export function PageHeader({
   style?: CSSProperties;
 }) {
   return (
-    <header className={cx("flex flex-wrap items-end gap-3", className)} style={style}>
-      <div className="flex min-w-0 flex-1 basis-[320px] flex-col gap-1">
-        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="text-[26px]/[32px] font-semibold tracking-[-0.02em] text-foreground sm:text-[28px]/[34px]">{title}</h1>
-        {subtitle && <p className="max-w-[72ch] text-sm text-muted">{subtitle}</p>}
+    <header className={cx("flex flex-wrap items-center gap-x-4 gap-y-2", className)} style={style}>
+      <div className="flex min-w-0 flex-1 basis-[280px] flex-col gap-0.5">
+        <h1 className="type-title font-semibold tracking-[-0.01em] text-foreground">{title}</h1>
+        {subtitle && <div className="max-w-[72ch] type-body-sm text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
@@ -157,7 +157,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 
 /** Texte d'absence de contenu, sobre (pour une liste vide dans une carte). */
 export function EmptyText({ children }: { children: ReactNode }) {
-  return <p className="py-2 text-sm text-muted">{children}</p>;
+  return <p className="py-2 type-body text-muted">{children}</p>;
 }
 
 /** Écran ou liste vide : pictogramme, ce que c'est, pourquoi c'est vide, l'action suivante. */
@@ -178,20 +178,13 @@ export function EmptyPanel({
         <Icon className="size-5" />
       </span>
       <div className="flex max-w-sm flex-col gap-1">
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {description && <span className="text-sm text-muted">{description}</span>}
+        <h2 className="type-title-sm font-semibold text-foreground">{title}</h2>
+        {description && <span className="type-body text-muted">{description}</span>}
       </div>
       {action}
     </div>
   );
 }
-
-/** Couleurs de texte du chiffre selon le ton (variantes « soft-foreground » du thème : contraste >= 6,5:1 sur blanc). */
-const TONE_TEXT = {
-  success: "text-success-soft-foreground",
-  warning: "text-warning-soft-foreground",
-  danger: "text-danger-soft-foreground",
-} as const;
 
 /** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
 export function KpiCard({
@@ -214,7 +207,7 @@ export function KpiCard({
   pending?: boolean;
   /** Chiffre en cours de chargement : `Skeleton` HeroUI à la place du chiffre et de la précision (taille conservée). */
   loading?: boolean;
-  /** Lecture du chiffre : le chiffre prend la couleur du ton ; le mot est lu par les lecteurs d'écran (la couleur seule ne porte pas le sens). */
+  /** Lecture du chiffre (« Bon », « Faible »…) : pastille visible à côté du chiffre, qui reste de la couleur du texte. */
   badge?: KpiBadge;
   className?: string;
   style?: CSSProperties;
@@ -235,13 +228,16 @@ export function KpiCard({
         </>
       ) : (
         <>
-          <Card.Title
-            render={(props) => <span {...props} />}
-            className={cx("text-3xl tabular-nums", badge && TONE_TEXT[badge.tone])}
-          >
-            {value}
-          </Card.Title>
-          {badge && <span className="sr-only">{badge.label}</span>}
+          <span className="flex flex-wrap items-center gap-2">
+            <Card.Title render={(props) => <span {...props} />} className="type-display tabular-nums">
+              {value}
+            </Card.Title>
+            {badge && (
+              <Chip size="sm" variant="soft" color={badge.tone}>
+                <Chip.Label>{badge.label}</Chip.Label>
+              </Chip>
+            )}
+          </span>
         </>
       )}
       {hint && !loading && <Card.Description>{hint}</Card.Description>}
@@ -310,7 +306,7 @@ export function BarList({
       {rows.map((r) => (
         <div
           key={r.key}
-          className="grid items-center gap-3 text-sm"
+          className="grid items-center gap-3 type-body"
           style={{ gridTemplateColumns: `${labelWidth}px minmax(0,1fr) 40px` }}
         >
           <span className="flex min-w-0 items-center gap-2 text-foreground">{r.label}</span>
@@ -319,7 +315,7 @@ export function BarList({
               <Meter.Fill className={r.fill} />
             </Meter.Track>
           </Meter>
-          <span className="text-right text-[13px] text-foreground tabular-nums">{r.value}</span>
+          <span className="text-right type-body-sm text-foreground tabular-nums">{r.value}</span>
         </div>
       ))}
     </div>

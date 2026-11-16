@@ -66,8 +66,24 @@ class Settings(BaseSettings):
     # (brouillon en mode assisté). `follow_up_*` : exécuteur des relances programmées.
     agent_auto_reply: bool = True
     follow_up_worker_enabled: bool = True
+    # Boucles de fond (réponses, relances, relève email, reprise Meta) dans ce processus.
+    # L'application tourne en un seul processus (--workers 1) ; un éventuel second processus
+    # ne servant que le HTTP doit avoir `false` (AUDIT-ARCH-002).
+    background_workers_enabled: bool = True
+
+    # Conservation (décision D-18, à valider par le DPO) : traces de décision de l'agent et
+    # entrées terminées de la file de l'agent, supprimées par des index TTL MongoDB.
+    agent_runs_retention_days: int = Field(365, ge=30, le=3650)
+    agent_events_retention_days: int = Field(30, ge=1, le=365)
     follow_up_interval_seconds: int = Field(300, ge=5)
     follow_up_max_per_silence: int = Field(3, ge=1, le=10)
+    # Seuils de décision de l'agent (décision D-27, réglables dans Paramètres, à confirmer par
+    # DATUM) : score à partir duquel un rendez-vous est proposé, score jusqu'auquel un prospect
+    # froid est entretenu, confiance minimale de lecture du message, termes engageants ajoutés.
+    agent_meeting_min_score: int = Field(50, ge=1, le=100)
+    agent_nurture_max_score: int = Field(24, ge=0, le=99)
+    agent_min_confidence: float = Field(0.5, ge=0.1, le=0.95)
+    agent_extra_terms: str = Field("", max_length=1000)
     # Fenêtre d'envoi des relances : jours ouvrés, heure de Paris (début inclus, fin exclue).
     follow_up_window_start_hour: int = Field(8, ge=0, le=23)
     follow_up_window_end_hour: int = Field(19, ge=1, le=24)
@@ -127,8 +143,10 @@ class Settings(BaseSettings):
     zoom_client_secret: SecretStr | None = None
     zoom_host_user: str = "me"  # hôte par défaut si le conseiller n'a pas de compte Zoom
 
-    # Clé de chiffrement des identifiants saisis dans la console (connecteurs). Facultative : à
-    # défaut, dérivée de JWT_SECRET_KEY (changer l'une ou l'autre oblige à les ressaisir).
+    # Clé de chiffrement des identifiants saisis dans la console (connecteurs), distincte du secret
+    # JWT (AUDIT-SEC-007). Obligatoire en production ; en développement, à défaut, dérivée de
+    # JWT_SECRET_KEY. Les secrets chiffrés avec l'ancienne clé dérivée restent lisibles (voir
+    # `core/vault.py`) jusqu'à `python -m app.cli rotate-connector-secrets`.
     connectors_secret_key: SecretStr | None = None
 
     # Cles des fournisseurs de LLM : optionnelles tant que l'agent n'est pas branche.
@@ -161,6 +179,14 @@ class Settings(BaseSettings):
         if self.calendar_work_end_hour <= self.calendar_work_start_hour:
             raise ValueError("CALENDAR_WORK_END_HOUR doit être après CALENDAR_WORK_START_HOUR")
         if self.environment == "production":
+            own = (
+                self.connectors_secret_key.get_secret_value() if self.connectors_secret_key else ""
+            )
+            if len(own) < 32 or own == secret:
+                raise ValueError(
+                    "CONNECTORS_SECRET_KEY doit être défini en production (32 caractères minimum, "
+                    "différent de JWT_SECRET_KEY)"
+                )
             if self.debug:
                 raise ValueError("DEBUG doit être désactivé en production")
             for origin in self.cors_origins:

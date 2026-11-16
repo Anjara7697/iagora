@@ -4,7 +4,7 @@ import { CalendarDays, Clock, RefreshCw, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, Suspense, useEffect, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { Box } from "@/components/ds/card";
 import { Btn, Check, SelectBox, Segmented } from "@/components/ds/controls";
@@ -79,7 +79,6 @@ function Appointments() {
     <Screen scroll className="max-w-[1100px]">
       <div {...reveal(0)}>
         <PageHeader
-          eyebrow="Travail · Suivi des rendez-vous"
           title="Rendez-vous"
           subtitle="Retrouvez les rendez-vous enregistrés et préparez vos échanges."
           actions={
@@ -147,7 +146,7 @@ function Appointments() {
           </Btn>
         )}
         <span className="flex-1" />
-        <span className="text-[13px] text-muted tabular-nums" role="status">
+        <span className="type-body-sm text-muted tabular-nums" role="status">
           {count}
         </span>
       </div>
@@ -156,11 +155,11 @@ function Appointments() {
         <ErrorState message={`Liste des conseillers indisponible : ${advisors.error.message}`} onRetry={advisors.reload} />
       )}
       {advisors.data && advisors.data.total > advisors.data.items.length && (
-        <p className="text-[13px] text-muted">
+        <p className="type-body-sm text-muted">
           Les {advisors.data.items.length} premiers conseillers sont proposés dans le filtre.
         </p>
       )}
-      <p className="flex items-start gap-2 text-[13px]/[20px] text-muted">
+      <p className="flex items-start gap-2 type-body-sm text-muted">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
           {when === "upcoming"
@@ -184,7 +183,7 @@ function Appointments() {
                 return (
                   <Fragment key={appointment.id}>
                     {newDay && (
-                      <li className="flex items-center gap-2 border-t border-separator bg-surface-secondary px-5 py-2 text-xs font-medium text-muted first:border-t-0">
+                      <li className="flex items-center gap-2 border-t border-separator bg-surface-secondary px-5 py-2 type-caption font-medium text-muted first:border-t-0">
                         <CalendarDays className="size-3.5" aria-hidden="true" />
                         <span className="first-letter:uppercase">{dayLabel}</span>
                       </li>
@@ -201,8 +200,8 @@ function Appointments() {
                         row.className,
                       )}
                     >
-                      <span className="flex flex-col text-[13px] tabular-nums">
-                        <time dateTime={appointment.start_at} className="text-base font-medium text-foreground">
+                      <span className="flex flex-col type-body-sm tabular-nums">
+                        <time dateTime={appointment.start_at} className="type-title-sm font-medium text-foreground">
                           {hour(appointment.start_at)}
                         </time>
                         <span className="text-muted">
@@ -212,7 +211,7 @@ function Appointments() {
                       </span>
                       <div className="flex min-w-0 items-center gap-3">
                         <span
-                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-semibold text-foreground"
+                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-tertiary type-caption font-semibold text-foreground"
                           aria-hidden="true"
                         >
                           {initialsOf(name)}
@@ -220,14 +219,14 @@ function Appointments() {
                         <span className="flex min-w-0 flex-wrap items-center gap-2">
                           <Link
                             href={`/prospects/${appointment.prospect.id}`}
-                            className="truncate text-sm font-semibold text-foreground hover:text-accent hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                            className="truncate type-body font-semibold text-foreground hover:text-accent hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
                           >
                             {name}
                           </Link>
                           <DemoBadge email={appointment.prospect.email} />
                         </span>
                       </div>
-                      <span className="col-span-2 text-[13px] text-muted md:col-span-1">
+                      <span className="col-span-2 type-body-sm text-muted md:col-span-1">
                         Conseiller :{" "}
                         {appointment.advisor_name ??
                           (appointment.advisor_id ? `Conseiller #${appointment.advisor_id}` : "Non affecté")}
@@ -273,7 +272,7 @@ function Appointments() {
               onChange={(page) => update({ offset: page > 1 ? String((page - 1) * PAGE_SIZE) : "" })}
             />
           )}
-          <p className="text-xs/[18px] text-muted">
+          <p className="type-caption leading-4.5 text-muted">
             Les statuts affichés sont ceux enregistrés dans IAGORA. Les modifications faites directement dans l’agenda
             externe ne sont pas synchronisées ici.
           </p>

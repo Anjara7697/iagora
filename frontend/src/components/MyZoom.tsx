@@ -86,25 +86,25 @@ export function MyZoom() {
   return (
     <Box as="section" className="gap-4 p-5" aria-label="Mon Zoom">
       <div className="flex items-center gap-3">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-secondary text-foreground" aria-hidden="true">
           <Video className="size-5" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <Eyebrow>Mon Zoom</Eyebrow>
-          <h2 className="text-base font-semibold text-foreground">Visioconférence Zoom</h2>
+          <h2 className="type-title-sm font-semibold text-foreground">Visioconférence Zoom</h2>
         </div>
         {connectedTag}
       </div>
       {result && <Notice>{result}</Notice>}
       {status?.mode === "advisor" && status.connected && (
         <>
-          <p className="text-[13px]/[20px] text-foreground">
+          <p className="type-body-sm text-foreground">
             Connecté à <strong>{status.account_email ?? "Zoom"}</strong> depuis
             le {formatDate(status.connected_at)}. Les rendez-vous réservés par
             l’agent ont un lien Zoom à votre nom.
           </p>
           {status.last_error && (
-            <p className="text-[13px] text-danger" role="alert">
+            <p className="type-body-sm text-danger" role="alert">
               L’autorisation a été révoquée : reconnectez votre compte Zoom.
             </p>
           )}
@@ -122,7 +122,7 @@ export function MyZoom() {
       )}
       {status?.mode === "advisor" && !status.connected && (
         <>
-          <p className="text-[13px]/[20px] text-muted">
+          <p className="type-body-sm text-muted">
             Connectez votre compte Zoom pour que vos rendez-vous aient un lien
             de visioconférence à votre nom.
           </p>

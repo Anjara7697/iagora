@@ -220,3 +220,17 @@ async def test_a_failed_delivery_can_be_retried_but_only_then(client, assisted, 
     r = await client.post(url)
     assert r.status_code == 200 and r.json()["metadata"]["delivery"] == "not_sent"
     assert r.json()["metadata"]["delivery_info"]["attempts"] == 0
+
+
+async def test_auto_mode_is_refused_in_production(client, mongo_db, monkeypatch):
+    """Décision D-16 : en production, chaque réponse est validée par un conseiller."""
+    from types import SimpleNamespace
+
+    await agent_settings.set_mode(mongo_db, AgentMode.AUTO, None)  # réglé avant la production
+    monkeypatch.setattr(
+        agent_settings, "get_settings", lambda: SimpleNamespace(environment="production")
+    )
+    assert await agent_settings.get_mode(mongo_db) is AgentMode.ASSISTED
+    refused = await client.put(f"{API}/agent/mode", json={"mode": "auto"})
+    assert refused.status_code == 409 and "production" in refused.json()["detail"]
+    assert (await client.put(f"{API}/agent/mode", json={"mode": "manual"})).status_code == 200

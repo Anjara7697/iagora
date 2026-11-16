@@ -12,6 +12,10 @@ const current = {
   follow_up_window_end_hour: 19,
   follow_up_weekdays_only: true,
   follow_up_max_per_silence: 3,
+  agent_meeting_min_score: 50,
+  agent_nurture_max_score: 24,
+  agent_min_confidence: 0.5,
+  agent_extra_terms: "",
   email_footer: "Répondez STOP.",
   email_ai_notice:
     "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
@@ -34,7 +38,12 @@ const current = {
   embedding_model: "gemini/gemini-embedding-001",
 };
 
-async function mockApi(page: Page, calls: unknown[], role = "ADMIN") {
+async function mockApi(
+  page: Page,
+  calls: unknown[],
+  role = "ADMIN",
+  opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean } = {},
+) {
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -43,14 +52,23 @@ async function mockApi(page: Page, calls: unknown[], role = "ADMIN") {
     if (path === "/auth/login") body = { access_token: "t" };
     else if (path === "/auth/me")
       body = { id: 1, username: "admin", email: "a@example.com", role };
-    else if (path === "/settings" && request.method() === "PUT") {
+    else if (path === "/settings" && request.method() === "GET" && opts.failLoad?.()) {
+      code = 503;
+      body = { detail: "Base indisponible" };
+    } else if (path === "/settings" && request.method() === "DELETE") {
+      calls.push({ reset: true });
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    } else if (path === "/settings" && request.method() === "PUT") {
       calls.push({ put: request.postDataJSON() });
       await route.fulfill({ status: 204, body: "" });
       return;
-    } else if (path === "/settings") body = current;
+    } else if (path === "/settings") body = { ...current, source: opts.source ?? current.source };
     else if (path === "/settings/llm/test") {
       calls.push({ test: request.postDataJSON() });
-      body = { ok: true, model: "gemini-2.5-flash", detail: "ok" };
+      body = opts.llmFails
+        ? { ok: false, model: "gemini-2.5-flash", detail: "clé refusée" }
+        : { ok: true, model: "gemini-2.5-flash", detail: "ok" };
     } else if (path === "/settings/email/preview") {
       calls.push({ preview: request.postDataJSON() });
       body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
@@ -104,7 +122,8 @@ test("régler le modèle de secours, tester puis enregistrer", async ({
   await page
     .getByRole("button", { name: "Enregistrer les paramètres" })
     .click();
-  await expect(page.getByText(/Paramètres enregistrés/)).toBeVisible();
+  // Règle 11 : le succès est confirmé par un Toast.
+  await expect(page.getByRole("alert").or(page.getByRole("status")).filter({ hasText: "Paramètres enregistrés" })).toBeVisible();
   const put = calls.find((c) => (c as { put?: unknown }).put) as {
     put: Record<string, unknown>;
   };
@@ -131,7 +150,13 @@ test("régler la mise en page des emails et voir un aperçu", async ({
   await expect(notice).toHaveValue(/assistant virtuel/);
   await notice.fill("Message préparé par notre assistant IA.");
   await emails.getByLabel("Nom affiché en tête d’email").fill("École test");
-  await emails.getByLabel("Couleur principale des emails").fill("#0a7a4b");
+  // ColorPicker HeroUI : le bouton ouvre le sélecteur, le code se saisit dans son champ.
+  await emails.getByRole("button", { name: /^Couleur principale des emails : #1f4fd8/ }).click();
+  const hex = page.getByRole("textbox", { name: "Couleur principale des emails : code hexadécimal" });
+  await hex.fill("#0a7a4b");
+  await hex.press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(emails.getByRole("button", { name: /^Couleur principale des emails : #0a7a4b/ })).toBeVisible();
   await emails
     .getByLabel("Logo (adresse https, facultatif)")
     .fill("https://exemple.test/logo.png");
@@ -349,4 +374,74 @@ test("paramètres sur mobile : catégorie choisie dans une liste, sans défileme
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("quitter Paramètres par le menu avec une modification non enregistrée demande confirmation", async ({
+  page,
+}) => {
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings");
+  const ia = page.getByRole("region", { name: "Intelligence artificielle" });
+  await ia.getByLabel("Modèle de secours (si le principal est saturé)").fill("gemini-2.5-flash-lite");
+  const menu = page.getByRole("navigation", { name: "Navigation principale" });
+  // AUDIT-FE-001 : le menu latéral ne fait plus perdre la saisie sans prévenir.
+  await menu.getByRole("link", { name: "Rendez-vous", exact: true }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Abandonner les modifications ?" });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Continuer la saisie" }).click();
+  await expect(page).toHaveURL(/\/settings/);
+  await expect(ia.getByLabel("Modèle de secours (si le principal est saturé)")).toHaveValue("gemini-2.5-flash-lite");
+  await menu.getByRole("link", { name: "Rendez-vous", exact: true }).click();
+  await page.getByRole("alertdialog", { name: "Abandonner les modifications ?" }).getByRole("button", { name: "Abandonner" }).click();
+  await expect(page).toHaveURL(/\/appointments/);
+});
+
+test("revenir aux valeurs du serveur demande confirmation", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls, "ADMIN", { source: "console" });
+  await login(page);
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Revenir aux valeurs du serveur" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Revenir aux valeurs du serveur ?" });
+  await expect(confirm).toContainText("clés d’API comprises");
+  await confirm.getByRole("button", { name: "Annuler" }).click();
+  expect(calls).toHaveLength(0);
+  await page.getByRole("button", { name: "Revenir aux valeurs du serveur" }).click();
+  await page
+    .getByRole("alertdialog", { name: "Revenir aux valeurs du serveur ?" })
+    .getByRole("button", { name: "Revenir aux valeurs du serveur" })
+    .click();
+  await expect(page.getByText("Valeurs du serveur rétablies")).toBeVisible();
+  expect(calls).toEqual([{ reset: true }]);
+});
+
+test("chargement en échec : message clair et nouvel essai ; test du modèle refusé", async ({ page }) => {
+  let fail = true;
+  await mockApi(page, [], "ADMIN", { failLoad: () => fail, llmFails: true });
+  await login(page);
+  await page.goto("/settings");
+  const error = page.getByRole("alert").filter({ hasText: "Chargement des paramètres impossible : Base indisponible" });
+  await expect(error).toBeVisible();
+  await auditA11y(page, "paramètres (erreur de chargement)");
+  fail = false;
+  await error.getByRole("button", { name: "Réessayer" }).click();
+  const ia = page.getByRole("region", { name: "Intelligence artificielle" });
+  await ia.getByRole("button", { name: "Tester le modèle" }).click();
+  await expect(ia.getByLabel("Résultat du test du modèle")).toContainText("Le modèle ne répond pas : clé refusée");
+});
+
+test("les seuils de décision de l’agent se règlent dans Agent et relances", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=agent");
+  const agent = page.getByRole("region", { name: "Agent et relances" });
+  await agent.getByLabel("Score à partir duquel proposer un rendez-vous").fill("40");
+  await agent.getByLabel("Termes qui engagent l’école (en plus de la liste intégrée)").fill("Pass Transition");
+  await page.getByRole("button", { name: "Enregistrer les paramètres" }).click();
+  await expect(page.getByText("Paramètres enregistrés", { exact: true })).toBeVisible();
+  const put = calls.find((c) => (c as { put?: unknown }).put) as { put: Record<string, unknown> };
+  expect(put.put).toMatchObject({ agent_meeting_min_score: 40, agent_extra_terms: "Pass Transition" });
+  await auditA11y(page, "paramètres (seuils de l’agent)");
 });

@@ -3,11 +3,18 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.agent_mode import AgentMode
 from app.schemas.conversation import ConversationProspect
-from app.services.agent_settings import AgentMode
 
 TodoKind = Literal[
-    "validation", "escalation", "kb_gap", "incident", "application", "enrollment", "opt_out_check"
+    "validation",
+    "first_contact",
+    "escalation",
+    "kb_gap",
+    "incident",
+    "application",
+    "enrollment",
+    "opt_out_check",
 ]
 Priority = Literal["critical", "high", "medium", "low"]
 
@@ -66,6 +73,10 @@ class TreatedPage(BaseModel):
     items: list[TreatedItem]
     total: int
     hours: int
+    truncated: bool = Field(
+        False,
+        description="Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+    )
 
 
 class TodoPage(BaseModel):
@@ -74,6 +85,10 @@ class TodoPage(BaseModel):
     limit: int
     offset: int
     counts: dict[str, int] = Field(description="Nombre d'éléments par type (avant filtre)")
+    truncated: bool = Field(
+        False,
+        description="Vrai si la liste est incomplète (seules les conversations récentes sont lues)",
+    )
 
 
 class DraftApprove(BaseModel):
@@ -98,3 +113,22 @@ class AgentModeUpdate(BaseModel):
 
 class OptOutReviewDecision(BaseModel):
     decision: Literal["confirm", "restore"]
+    reason: str | None = Field(
+        None, max_length=500, description="Obligatoire pour rétablir le consentement (D-20)"
+    )
+
+
+class DraftRef(BaseModel):
+    conversation_id: str = Field(max_length=64)
+    message_id: str = Field(max_length=64)
+
+
+class FirstContactApproval(BaseModel):
+    """Premiers contacts relus et validés ensemble (au plus 100, ceux affichés dans la file)."""
+
+    drafts: list[DraftRef] = Field(min_length=1, max_length=100)
+
+
+class BatchResult(BaseModel):
+    approved: int
+    skipped: int = Field(description="Brouillons déjà traités, hors périmètre ou non éligibles")

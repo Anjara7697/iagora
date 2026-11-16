@@ -1,43 +1,46 @@
 "use client";
 
+import { Tabs, toast } from "@heroui/react";
 import { Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { EmailSettings } from "@/components/EmailSettings";
-import { Btn, ErrorText } from "@/components/ds/controls";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
+import { Btn, ErrorText, Notice, TAB_RADIUS } from "@/components/ds/controls";
 import { cx } from "@/components/ds/layout";
-import { ActionsBar, Feedback, InfoRow, StatePill, Stats } from "@/components/ds/settings";
-import { api, ApiError } from "@/lib/api";
+import { ActionsBar, InfoRow, StatePill, Stats } from "@/components/ds/settings";
+import { api, failure } from "@/lib/api";
+import { replaceUrl } from "@/lib/url";
 import { DELIVERY, formatDate, label } from "@/lib/labels";
 import type { EmailCheck, EmailStatus, Tone } from "@/lib/types";
 
-/** Messagerie : « Vue d'ensemble » (état, actions sur la boîte enregistrée) puis « Configuration ». */
+type EmailTab = "overview" | "config";
+
+/** Messagerie : « Vue d'ensemble » (état, actions sur la boîte enregistrée) puis « Configuration ».
+ *  L'onglet ouvert est dans l'adresse (`?c=email&tab=config`, règle 3). */
 export function EmailConnector({
   status: s,
   onReload,
+  onDirtyChange,
 }: {
   status: EmailStatus;
   onReload: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const [tab, setTab] = useState<"overview" | "config">(
-    s.configured ? "overview" : "config",
-  );
+  const requested = useSearchParams().get("tab");
+  const tab: EmailTab = requested === "config" || requested === "overview" ? requested : s.configured ? "overview" : "config";
+  const setTab = (next: EmailTab) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", next);
+    replaceUrl(`${window.location.pathname}?${params.toString()}`);
+  };
   const [check, setCheck] = useState<EmailCheck | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function run(action: "check" | "sync") {
-    if (
-      action === "sync" &&
-      s.send_enabled &&
-      !window.confirm(
-        "L’envoi est activé : ce passage peut envoyer de vrais emails aux prospects (hors bac à sable). Continuer ?",
-      )
-    )
-      return;
     setBusy(true);
     setError(null);
-    setNotice(null);
     if (action === "check") setCheck(null);
     try {
       if (action === "check") {
@@ -52,13 +55,13 @@ export function EmailConnector({
           { method: "POST" },
         );
         const n = (key: string) => r.report[key] ?? 0;
-        setNotice(
-          `Passage terminé : ${n("received")} reçu(s), ${n("sent")} envoyé(s), ${n("blocked")} bloqué(s), ${n("errors")} erreur(s).`,
-        );
+        toast.success("Passage terminé", {
+          description: `${n("received")} reçu(s), ${n("sent")} envoyé(s), ${n("blocked")} bloqué(s), ${n("errors")} erreur(s).`,
+        });
         onReload();
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Échec");
+      setError(failure(action === "check" ? "Test de la boîte impossible" : "Passage impossible", err));
     } finally {
       setBusy(false);
     }
@@ -83,47 +86,40 @@ export function EmailConnector({
   return (
     <div className="flex flex-col gap-4">
       {!s.configured && (
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-[13px]/[20px] text-warning-soft-foreground" role="alert">
-          Boîte non configurée : renseignez-la dans l’onglet « Configuration »
-          (adresse et mot de passe, les serveurs sont détectés automatiquement).
-        </p>
-      )}
-      <div className="inline-flex w-fit gap-0.5 rounded-xl bg-surface-tertiary p-[3px]" role="tablist" aria-label="Messagerie">
-        {(
-          [
-            ["overview", "Vue d’ensemble"],
-            ["config", "Configuration"],
-          ] as const
-        ).map(([id, text]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`email-tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={`email-panel-${id}`}
-            onClick={() => setTab(id)}
-            className={cx(
-              "inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus",
-              tab === id ? "bg-segment text-foreground shadow-surface" : "text-muted hover:text-foreground",
-            )}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-
-      <section
-        id="email-panel-overview"
-        role="tabpanel"
-        aria-labelledby="email-tab-overview"
-        aria-label="Messagerie"
-        hidden={tab !== "overview"}
-        className="flex flex-col gap-4"
-      >
-        <div className="flex flex-col gap-3 rounded-2xl bg-surface-secondary px-4 py-4">
+        <Notice tone="warning">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="flex-1 text-[13px] text-muted">Dernier test de la boîte</span>
+            <span className="min-w-[200px] flex-1">
+              Boîte non configurée : renseignez l’adresse et le mot de passe, les serveurs sont détectés automatiquement.
+            </span>
+            {tab !== "config" && (
+              <Btn size="sm" variant="outline" onClick={() => setTab("config")}>
+                Configurer la boîte
+              </Btn>
+            )}
+          </div>
+        </Notice>
+      )}
+      <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(key as EmailTab)}>
+        <Tabs.ListContainer className={TAB_RADIUS.container}>
+          <Tabs.List aria-label="Messagerie">
+            {(
+              [
+                ["overview", "Vue d’ensemble"],
+                ["config", "Configuration"],
+              ] as const
+            ).map(([id, text]) => (
+              <Tabs.Tab key={id} id={id} className={TAB_RADIUS.tab}>
+                {text}
+                <Tabs.Indicator className={TAB_RADIUS.indicator} />
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs.ListContainer>
+        <Tabs.Panel id="overview" className="pt-4" shouldForceMount hidden={tab !== "overview"}>
+      <section aria-label="Messagerie" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-surface-secondary px-4 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex-1 type-body-sm text-muted">Dernier test de la boîte</span>
             <StatePill tone={testTone}>{testLabel}</StatePill>
           </div>
           <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="État de la messagerie">
@@ -134,7 +130,7 @@ export function EmailConnector({
                 [s.send_enabled, s.send_enabled ? "Envoi activé" : "Envoi désactivé"],
               ] as const
             ).map(([on, text]) => (
-              <li key={text} className="flex items-center gap-2 text-[13px] text-foreground">
+              <li key={text} className="flex items-center gap-2 type-body-sm text-foreground">
                 <span className={cx("size-2 rounded-full", on ? "bg-success" : "bg-muted/40")} aria-hidden="true" />
                 {text}
               </li>
@@ -146,38 +142,52 @@ export function EmailConnector({
             <ShieldCheck className="size-4" aria-hidden="true" />
             Tester la boîte enregistrée
           </Btn>
-          <Btn variant="outline" disabled={busy || !s.configured} onClick={() => run("sync")}>
-            <RefreshCw className="size-4" aria-hidden="true" />
-            Lancer un passage maintenant
-          </Btn>
+          {s.send_enabled ? (
+            <ConfirmDialog
+              trigger={
+                <Btn variant="outline" disabled={busy || !s.configured}>
+                  <RefreshCw className="size-4" aria-hidden="true" />
+                  Lancer un passage maintenant
+                </Btn>
+              }
+              title="Lancer un passage maintenant ?"
+              description="L’envoi est activé : ce passage peut envoyer de vrais emails aux prospects (hors bac à sable)."
+              confirmLabel="Lancer le passage"
+              status="warning"
+              onConfirm={() => void run("sync")}
+            />
+          ) : (
+            <Btn variant="outline" disabled={busy || !s.configured} onClick={() => run("sync")}>
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Lancer un passage maintenant
+            </Btn>
+          )}
         </ActionsBar>
-        <p className="text-xs/[18px] text-muted">
+        <p className="type-caption leading-4.5 text-muted">
           Ces actions utilisent la boîte enregistrée. Pour essayer des
           modifications avant de les appliquer, utilisez « Tester ces paramètres
           » dans l’onglet Configuration.
         </p>
-        <Feedback notice={notice} error={error} />
-        {check && (
-          <ul className="flex flex-col gap-1 rounded-xl border border-separator px-4 py-3 font-mono text-[13px]" aria-label="Résultat du test">
-            <li className={check.imap === "ok" ? "text-success" : "text-danger"}>
-              IMAP : {check.imap === "ok" ? "✓ connecté" : `✗ ${check.imap}`}
-            </li>
-            <li className={check.smtp === "ok" ? "text-success" : "text-danger"}>
-              SMTP : {check.smtp === "ok" ? "✓ connecté" : `✗ ${check.smtp}`}
-            </li>
-          </ul>
-        )}
+        {error && <ErrorText>{error}</ErrorText>}
+        {check &&
+          (checkPassed ? (
+            <Notice aria-label="Résultat du test">Boîte joignable : IMAP et SMTP connectés.</Notice>
+          ) : (
+            <ErrorText aria-label="Résultat du test">
+              {`Boîte injoignable : IMAP ${check.imap === "ok" ? "connecté" : check.imap} · SMTP ${check.smtp === "ok" ? "connecté" : check.smtp}`}
+            </ErrorText>
+          ))}
         {s.last_error && <ErrorText>Dernière erreur : {s.last_error}</ErrorText>}
         <InfoRow label="Réception">
           <span>
-            Relève IMAP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.imap_host}</code> · dernière relève{" "}
+            Relève IMAP <code className="rounded bg-surface-tertiary px-1 font-mono type-body-sm">{s.imap_host}</code> · dernière relève{" "}
             {formatDate(s.last_run_at)}
           </span>
         </InfoRow>
         <InfoRow label="Envoi">
           <span className="inline-flex flex-wrap items-center gap-1">
             <Mail className="size-3.5 text-muted" aria-hidden="true" />
-            SMTP <code className="rounded bg-surface-tertiary px-1 font-mono text-[12.5px]">{s.smtp_host}</code> · boîte {s.sender ?? "-"}
+            SMTP <code className="rounded bg-surface-tertiary px-1 font-mono type-body-sm">{s.smtp_host}</code> · boîte {s.sender ?? "-"}
           </span>
         </InfoRow>
         <InfoRow
@@ -204,22 +214,20 @@ export function EmailConnector({
           )}
         </InfoRow>
       </section>
-
-      <div
-        id="email-panel-config"
-        role="tabpanel"
-        aria-labelledby="email-tab-config"
-        hidden={tab !== "config"}
-      >
-        <EmailSettings
-          disabled={busy}
-          onBusyChange={setBusy}
-          onSaved={() => {
-            setCheck(null);
-            onReload();
-          }}
-        />
-      </div>
+        </Tabs.Panel>
+        {/* Gardé monté : une saisie en cours n'est pas perdue en changeant d'onglet. */}
+        <Tabs.Panel id="config" className="pt-4" shouldForceMount hidden={tab !== "config"}>
+          <EmailSettings
+            disabled={busy}
+            onBusyChange={setBusy}
+            onDirtyChange={onDirtyChange}
+            onSaved={() => {
+              setCheck(null);
+              onReload();
+            }}
+          />
+        </Tabs.Panel>
+      </Tabs>
     </div>
   );
 }

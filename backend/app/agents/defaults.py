@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.graph.ports import (
+    CALENDAR_NOT_CONFIGURED,
     BookedMeeting,
     CalendarNotConfiguredError,
     MessageBlockedError,
@@ -24,7 +25,7 @@ from app.services import conversations
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 
-NOT_CONFIGURED = "Agenda non configuré (CALENDAR_PROVIDER, voir docs/calendar.md)"
+NOT_CONFIGURED = CALENDAR_NOT_CONFIGURED
 
 
 class UnconfiguredCalendar:
@@ -50,7 +51,9 @@ class UnconfiguredCalendar:
 
 
 class EmptyKnowledgeBase:
-    async def search(self, query: str, target_code: str | None, limit: int = 4) -> list[Passage]:
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
         return []
 
 

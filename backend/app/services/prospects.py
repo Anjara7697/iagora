@@ -30,6 +30,7 @@ from app.models.enums import (
 )
 from app.schemas.prospect import ProspectIngest, ProspectUpdate
 from app.services import campaign_ownership, commercial_context, erasure, references
+from app.services import scope as scope_service
 from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 
@@ -110,6 +111,9 @@ async def _record_consent(
     event_type: ConsentEventType,
     source: str,
     channel_id: int | None = None,
+    *,
+    reason: str | None = None,
+    actor_id: int | None = None,
 ) -> None:
     now = _now()
     if event_type is ConsentEventType.GRANTED:
@@ -127,6 +131,8 @@ async def _record_consent(
             event_type=event_type,
             source=source,
             occurred_at=now,
+            reason=reason,
+            actor_user_id=actor_id,
         )
     )
 
@@ -369,8 +375,9 @@ def _filtered(
     source_id: int | None = None,
     channel: str | None = None,
     pending_campaign: bool = False,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> Any:
-    stmt = select(Prospect)
+    stmt = select(Prospect).where(scope_service.condition(scope))
     if pending_campaign:
         stmt = stmt.where(~Prospect.id.in_(select(CampaignProspect.prospect_id)))
     if demo == "exclude":
@@ -436,6 +443,7 @@ async def list_prospects(
     source_id: int | None = None,
     channel: str | None = None,
     pending_campaign: bool = False,
+    scope: scope_service.Scope = scope_service.EVERYTHING,
 ) -> tuple[list[Prospect], int]:
     stmt = _filtered(
         q=q,
@@ -449,6 +457,7 @@ async def list_prospects(
         source_id=source_id,
         channel=channel,
         pending_campaign=pending_campaign,
+        scope=scope,
     )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))
@@ -502,13 +511,38 @@ async def opt_out(
     return prospect
 
 
+MIN_RESTORE_REASON = 10
+
+
 async def grant_consent(
-    session: AsyncSession, prospect_id: int, source: str, channel_name: str | None
+    session: AsyncSession,
+    prospect_id: int,
+    source: str,
+    channel_name: str | None,
+    *,
+    reason: str | None = None,
+    actor_id: int | None = None,
 ) -> Prospect:
+    """Consentement donné. Lever une désinscription exige un motif écrit (la preuve, ex. « email
+    du 12/11 où il redemande des informations »), gardé avec son auteur (décision D-20)."""
     prospect = await get_prospect(session, prospect_id)
+    reason = (reason or "").strip() or None
+    if prospect.consent_status is ConsentStatus.OPTED_OUT and (
+        reason is None or len(reason) < MIN_RESTORE_REASON
+    ):
+        raise ValidationFailure(
+            "Motif obligatoire pour lever une désinscription : indiquez la preuve de la nouvelle "
+            "demande (ex. « email du 12/11 où il redemande des informations »)"
+        )
     channel = await references.get_channel(session, channel_name)
     await _record_consent(
-        session, prospect, ConsentEventType.GRANTED, source, channel.id if channel else None
+        session,
+        prospect,
+        ConsentEventType.GRANTED,
+        source,
+        channel.id if channel else None,
+        reason=reason,
+        actor_id=actor_id,
     )
     await session.commit()
     return prospect

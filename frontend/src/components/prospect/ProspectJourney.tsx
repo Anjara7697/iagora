@@ -54,7 +54,7 @@ export default function ProspectJourney({
           }
         />
       ) : (
-        <p className={cx("text-[13px] text-muted", reveal(1).className)} style={reveal(1).style}>
+        <p className={cx("type-body-sm text-muted", reveal(1).className)} style={reveal(1).style}>
           {p.current_membership_id && "Contexte de l’agent : rattachement le plus récemment actif. "}
           Les scores de chaque source restent distincts ; ils servent à prioriser le suivi.
         </p>
@@ -68,14 +68,14 @@ export default function ProspectJourney({
         >
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <h3 className="text-sm font-semibold text-foreground">
+              <h3 className="type-body font-semibold text-foreground">
                 {m.campaign_id ? (
                   <TextLink href={`/campaigns/${m.campaign_id}`}>{m.campaign_name ?? `Campagne ${m.campaign_id}`}</TextLink>
                 ) : (
                   `Parcours ${index + 1}`
                 )}
               </h3>
-              {m.source_name && <p className="text-xs text-muted">Source : {m.source_name}</p>}
+              {m.source_name && <p className="type-caption text-muted">Source : {m.source_name}</p>}
             </div>
             {canWrite && (
               <Btn size="sm" variant="outline" data-membership={m.id} onClick={() => setEditing(m.id)}>
@@ -89,10 +89,10 @@ export default function ProspectJourney({
             <StageBadge stage={m.conversion_stage} />
             <ScoreBadge total={m.total_score} level={m.interest_status} />
           </div>
-          <p className="text-xs text-muted tabular-nums">
+          <p className="type-caption text-muted tabular-nums">
             Intérêt {m.interest_score} · Adéquation {m.fit_score}
           </p>
-          <p className="text-[13px] text-foreground">
+          <p className="type-body-sm text-foreground">
             Conseiller responsable : <strong className="font-semibold">{advisorName(m.assigned_advisor_id)}</strong>
           </p>
           <MembershipHistory key={`${m.id}:${revision}`} id={m.id} index={index + 1} />
@@ -139,17 +139,17 @@ function MembershipHistory({ id, index }: { id: number; index: number }) {
     <>
       {history.data && (
         <Collapse title={`Historique du parcours ${index}`} triggerClassName="w-fit py-1">
-          <ul className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4 text-[13px] text-foreground">
+          <ul className="mt-2 flex flex-col gap-1.5 border-l-2 border-separator pl-4 type-body-sm text-foreground">
             {history.data.stage_events.map((e) => (
               <li key={`s${e.id}`}>
-                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
+                <span className="type-caption text-muted">{formatDate(e.created_at)}</span> — étape :{" "}
                 {label(STAGES, e.from_stage)} → <b className="font-semibold">{label(STAGES, e.to_stage)}</b>{" "}
                 {e.reason ? `(${e.reason})` : ""}
               </li>
             ))}
             {history.data.score_events.map((e) => (
               <li key={`p${e.id}`}>
-                <span className="text-xs text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
+                <span className="type-caption text-muted">{formatDate(e.created_at)}</span> — {e.score_type}{" "}
                 {e.points >= 0 ? "+" : ""}
                 {e.points} → {e.new_value} ({e.reason})
               </li>
@@ -202,7 +202,7 @@ function CampaignAttribution({ id, onDone }: { id: number; onDone: () => void })
           <Btn size="sm" variant="ghost" disabled={offset === 0 || busy} onClick={() => page(offset - 50)}>
             Campagnes précédentes
           </Btn>
-          <span className="text-xs text-muted tabular-nums">
+          <span className="type-caption text-muted tabular-nums">
             {offset + 1}–{Math.min(offset + 50, campaigns.data.total)} / {campaigns.data.total}
           </span>
           <Btn
@@ -217,7 +217,6 @@ function CampaignAttribution({ id, onDone }: { id: number; onDone: () => void })
       )}
       <Field label="Campagne d’attribution">
         <SelectBox
-          variant="primary"
           value={campaign}
           disabled={busy || campaigns.loading}
           onChange={(e) => {
@@ -234,7 +233,7 @@ function CampaignAttribution({ id, onDone }: { id: number; onDone: () => void })
         </SelectBox>
       </Field>
       <Field label="Source d’attribution">
-        <SelectBox variant="primary" value={source} disabled={busy || !selected} onChange={(e) => setSource(e.target.value)}>
+        <SelectBox value={source} disabled={busy || !selected} onChange={(e) => setSource(e.target.value)}>
           <option value="">Choisir une source</option>
           {selected?.sources?.map((s) => (
             <option key={s.id} value={s.id}>

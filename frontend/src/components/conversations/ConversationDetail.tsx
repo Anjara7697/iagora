@@ -9,7 +9,7 @@ import { Alert, Avatar, Button, Dropdown, toast } from "@heroui/react";
 import { Bot, Ellipsis, Hand, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { useCurrentUser } from "@/components/AppShell";
+import { useCurrentUser } from "@/lib/session";
 import { displayNameOf } from "@/components/shell/AccountMenu";
 import ConversationView from "@/components/ConversationView";
 import { useReplyDraft } from "@/components/ReplyDrafts";
@@ -188,7 +188,7 @@ export function ConversationDetail({
           <Avatar.Fallback>{initials(name)}</Avatar.Fallback>
         </Avatar>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h2 className="text-xl font-semibold tracking-[-0.01em] text-foreground">{name}</h2>
+          <h2 className="type-title font-semibold tracking-[-0.01em] text-foreground">{name}</h2>
           <div className="flex flex-wrap gap-1.5">
             {/* Statut de la conversation chargée (celui sur lequel portent les actions), sinon celui de la liste. */}
             <Tag tone={STATUS_TONE[(conv?.status ?? summary.status) as keyof typeof STATUS_TONE] ?? "neutral"}>
@@ -275,7 +275,7 @@ export function ConversationDetail({
               <span className="shrink-0">Fiche de transfert</span>
               <Tag tone="warning">{label(HANDOFF_REASONS, conv.handoff.reason)}</Tag>
             </Alert.Title>
-            <div className="flex flex-col gap-3 pt-1 text-sm text-foreground">
+            <div className="flex flex-col gap-3 pt-1 type-body text-foreground">
               {conv.handoff.pending_question ? (
                 <blockquote className="flex flex-col gap-1 rounded-lg bg-surface-secondary px-4 py-3">
                   <Eyebrow>Question à reprendre</Eyebrow>
@@ -311,8 +311,8 @@ export function ConversationDetail({
       {conv && (
         <Box as="section" className={`gap-4 p-5 ${reveal(3).className}`} style={reveal(3).style} aria-label="Fil de la conversation">
           <div className="flex items-baseline gap-2">
-            <h3 className="flex-1 text-base font-semibold text-foreground">Fil de la conversation</h3>
-            <span className="text-xs text-muted">
+            <h3 className="flex-1 type-title-sm font-semibold text-foreground">Fil de la conversation</h3>
+            <span className="type-caption text-muted">
               {conv.messages.length} message{conv.messages.length > 1 ? "s" : ""}
             </span>
           </div>
@@ -352,15 +352,14 @@ export function ConversationDetail({
       {!readOnly && conv && conv.status !== "closed" && (
         <Box as="div" className={`gap-3 p-5 ${reveal(5).className}`} style={reveal(5).style}>
           <div className="flex flex-wrap items-baseline gap-2">
-            <strong className="text-sm font-semibold text-foreground">Votre réponse</strong>
-            <span className="text-xs text-muted">
+            <strong className="type-body font-semibold text-foreground">Votre réponse</strong>
+            <span className="type-caption text-muted">
               {label(CHANNELS, summary.channel)} ·{" "}
               {p?.email ?? summary.prospect?.email ?? "Prospect"}
             </span>
           </div>
           <TextBox
             aria-label="Votre réponse"
-            variant="secondary"
             placeholder="Écrire une réponse…"
             value={text}
             ref={replyRef}
@@ -369,7 +368,7 @@ export function ConversationDetail({
             className="min-h-32"
           />
           {text.trim() && (
-            <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <p className="flex flex-wrap items-center gap-2 type-caption text-muted">
               Réponse non envoyée · conservée pendant votre navigation.
               <Btn size="sm" variant="ghost" disabled={busy} onClick={() => setConfirm("clear")}>
                 Effacer la réponse
@@ -386,7 +385,7 @@ export function ConversationDetail({
               {pending === "send" ? "Enregistrement…" : `Envoyer en tant que ${user ? displayNameOf(user.username) : "conseiller"}`}
             </Btn>
             {/* Sur mobile, l'aide passe sous le bouton au lieu d'une colonne étroite à côté. */}
-            <p className="min-w-0 flex-1 text-xs text-muted max-sm:basis-full">
+            <p className="min-w-0 flex-1 type-caption text-muted max-sm:basis-full">
               {summary.channel === "email"
                 ? "Envoyé par email dès que l’envoi est actif ; son état s’affiche sous le message dans le fil."
                 : "Message enregistré ; la livraison sur ce canal reste à confirmer."}

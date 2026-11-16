@@ -70,6 +70,24 @@ def _field_values(payload: dict[str, Any]) -> dict[str, list[str]]:
     return fields
 
 
+_YES = {"1", "true", "yes", "oui", "j'accepte", "accepte", "d'accord"}
+CONSENT_FIELDS = ("consent", "consentement", "accord_contact", "opt_in")
+
+
+def consent_from_form(payload: dict[str, Any], fields: dict[str, list[str]]) -> bool | None:
+    """Base légale des leads Meta (décision D-26) : une case de consentement cochée dans le
+    formulaire (mention personnalisée ou question « consentement »). Sinon : inconnu, et l'agent
+    n'écrit pas avant qu'un conseiller l'ait confirmé."""
+    for response in payload.get("custom_disclaimer_responses") or []:
+        if isinstance(response, dict) and str(response.get("is_checked", "")).lower() in _YES:
+            return True
+    for name in CONSENT_FIELDS:
+        values = fields.get(name) or []
+        if values and values[0].strip().lower() in _YES:
+            return True
+    return None
+
+
 def _first(fields: dict[str, list[str]], *names: str) -> str | None:
     for name in names:
         values = fields.get(name) or []
@@ -108,6 +126,7 @@ def to_ingest(leadgen_id: str, payload: dict[str, Any], mapping: dict[str, Any])
         "message",
         "project",
         "projet",
+        *CONSENT_FIELDS,
     }
     answers = {name: values for name, values in fields.items() if name not in known}
     profile: dict[str, Any] = {
@@ -132,8 +151,9 @@ def to_ingest(leadgen_id: str, payload: dict[str, Any], mapping: dict[str, Any])
         target_code=mapping.get("target_code"),
         message=_first(fields, "message", "project", "projet"),
         external_id=f"meta:{leadgen_id}",
-        # Remplir un formulaire publicitaire ne prouve pas à lui seul un consentement marketing.
-        consent_granted=None,
+        # Remplir un formulaire publicitaire ne prouve pas à lui seul un consentement marketing :
+        # seule une case cochée le fait (décision D-26).
+        consent_granted=consent_from_form(payload, fields),
         profile=profile,
     )
 
@@ -278,6 +298,7 @@ async def simulate(
         target_code=mapping.get("target_code"),
         message=data.message,
         external_id=external_id,
+        consent_granted=True if data.consent else None,
         profile={"meta": {"form_id": data.form_id, "simulated": True}},
     )
     prospect, created, _ = await prospects.ingest_prospect(session, payload)

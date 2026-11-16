@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 
-from app.api.dependencies import ANY_ROLE, DbSession
+from app.api.dependencies import ANY_ROLE, CurrentScope, DbSession
 from app.models.enums import AppointmentStatus
 from app.schemas.appointment import AppointmentRead
 from app.schemas.common import Page
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/appointments", tags=["appointments"], dependencies=[
 @router.get("", response_model=Page[AppointmentRead])
 async def list_appointments(
     session: DbSession,
+    scope: CurrentScope,
     when: Literal["upcoming", "past"] = "upcoming",
     status: AppointmentStatus | None = None,
     advisor_id: Annotated[int | None, Query(ge=1)] = None,
@@ -25,8 +26,8 @@ async def list_appointments(
 ) -> Page[AppointmentRead]:
     """À venir inclut les rendez-vous en cours. Le statut enregistré reste inchangé.
 
-    Tous les rôles authentifiés peuvent consulter, comme pour les prospects.
-    advisor_id est un filtre de consultation, pas une restriction d'accès.
+    Un conseiller ne voit que les rendez-vous des prospects de son périmètre (décision D-23) ;
+    advisor_id est un filtre de consultation.
     """
     return await appointments.list_appointments(
         session,
@@ -36,4 +37,5 @@ async def list_appointments(
         demo=demo,
         limit=limit,
         offset=offset,
+        scope=scope,
     )

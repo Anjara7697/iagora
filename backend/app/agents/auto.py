@@ -15,7 +15,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,11 +38,19 @@ from app.services.agent_events import enqueue_reply
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import get_prospect
+from app.services.send_window import in_send_window
 
 logger = logging.getLogger(__name__)
-PARIS = ZoneInfo("Europe/Paris")
 MAX_FOLLOW_UP_ERRORS = 3  # erreurs techniques successives avant abandon d'une relance
 FOLLOW_UP_RETRY_DELAY = timedelta(minutes=10)  # multiplié par le nombre d'erreurs
+META_CONSENT_HANDOFF = {
+    "reason": "consentement_meta_a_confirmer",
+    "summary": "Lead Meta reçu sans case de consentement cochée : l'agent ne lui a pas écrit.",
+    "recommended_action": (
+        "Vérifier le consentement (formulaire Meta, échange direct), l'enregistrer sur la fiche, "
+        "puis répondre ou rendre la main à l'agent."
+    ),
+}
 MAX_EVENT_ERRORS = 5  # erreurs successives avant abandon d'une entrée de la file de l'agent
 BATCH = 50
 
@@ -68,6 +75,7 @@ async def reply_to_message(
             {
                 "$set": {
                     "completed": True,
+                    "completed_at": datetime.now(UTC),
                     "superseded": True,
                 }
             },
@@ -89,12 +97,28 @@ async def reply_to_message(
         async with session_factory() as session:
             doc = await conversations.get_doc(db, conversation_id)
             prospect = await get_prospect(session, doc["prospect_id"])
-            if doc["status"] != "open" or prospect.consent_status.value == "opted_out":
+            if (
+                doc["status"] == "open"
+                and prospect.consent_status.value == "unknown"
+                and ("meta" in (prospect.profile or {}))
+            ):
+                # Lead Meta sans case de consentement cochée : l'agent n'écrit pas ; un conseiller
+                # confirme d'abord (décision D-26).
+                await conversations.set_handoff(db, conversation_id, META_CONSENT_HANDOFF)
+            meta_unconfirmed = prospect.consent_status.value == "unknown" and "meta" in (
+                prospect.profile or {}
+            )
+            if (
+                doc["status"] != "open"
+                or prospect.consent_status.value == "opted_out"
+                or meta_unconfirmed
+            ):
                 await db["agent_events"].update_one(
                     {"_id": event_id},
                     {
                         "$set": {
                             "completed": True,
+                            "completed_at": datetime.now(UTC),
                             "cancelled": True,
                         }
                     },
@@ -114,24 +138,16 @@ async def reply_to_message(
                 conversation_id=conversation_id,
                 event_id=event_id,
             )
+            now = datetime.now(UTC)
             await db["agent_events"].update_one(
                 {"_id": event_id},
-                {"$set": {"completed": True, "at": datetime.now(UTC)}},
+                {"$set": {"completed": True, "at": now, "completed_at": now}},
                 upsert=True,
             )
     except (ConflictError, NotFoundError) as exc:
         logger.info("Réponse automatique ignorée (%s) : %s", conversation_id, exc)
     except Exception:
         logger.exception("Réponse automatique en erreur (conversation %s)", conversation_id)
-
-
-def in_send_window(now: datetime, settings: Settings) -> bool:
-    """Jours ouvrés (sauf réglage contraire), de l'heure de début (incluse) à l'heure de fin
-    (exclue), heure de Paris."""
-    local = now.astimezone(PARIS)
-    return (local.weekday() < 5 or not settings.follow_up_weekdays_only) and (
-        settings.follow_up_window_start_hour <= local.hour < settings.follow_up_window_end_hour
-    )
 
 
 @dataclass
@@ -480,7 +496,8 @@ async def run_pending_replies(
             )
         except NotFoundError:
             await db["agent_events"].update_one(
-                {"_id": event["_id"]}, {"$set": {"completed": True, "cancelled": True}}
+                {"_id": event["_id"]},
+                {"$set": {"completed": True, "completed_at": datetime.now(UTC), "cancelled": True}},
             )
         except Exception as exc:
             errors = int(event.get("errors", 0)) + 1
@@ -489,6 +506,7 @@ async def run_pending_replies(
                 # réponse de l'agent ; la file ne boucle plus dessus (AUDIT-BIZ-005).
                 update: dict[str, Any] = {
                     "completed": True,
+                    "completed_at": datetime.now(UTC),
                     "failed": True,
                     "errors": errors,
                     "last_error": type(exc).__name__,

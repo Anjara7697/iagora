@@ -69,10 +69,11 @@ type Calls = {
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; removeConflict?: boolean } = {},
+  opts: { role?: string; removeConflict?: boolean; status?: string } = {},
 ) {
   const calls: Calls = { requests: [], queries: [] };
-  let current = campaign();
+  let current = campaign(opts.status ? { status: opts.status } : {});
+  let prepared = false;
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -187,7 +188,22 @@ async function mockApi(
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
-    else code = 404;
+    else if (path === "/campaigns/1/first-contacts") {
+      if (method === "POST") {
+        calls.requests.push({ method, path, body: null });
+        prepared = true;
+      }
+      body = {
+        campaign_active: current.status === "active",
+        eligible: prepared ? 0 : 2,
+        queued: method === "POST" ? 2 : 0,
+        without_consent: 1,
+        without_email: 0,
+        already_contacted: 0,
+        in_progress: prepared ? 2 : 0,
+        opted_out: 0,
+      };
+    } else code = 404;
     await route.fulfill({ status: code, json: body });
   });
   return calls;
@@ -580,7 +596,7 @@ test("fiche : les prospects de la campagne sont listés sous les sources", async
   await row.click();
   await expect(page).toHaveURL(/\/prospects\/5\?from=/, { timeout: 15000 });
   // Le retour ramène à la campagne, sur l'onglet et l'étape quittés.
-  await page.getByRole("link", { name: "← Retour à la campagne" }).click();
+  await page.getByRole("link", { name: "Retour à la campagne" }).click();
   await expect(page).toHaveURL(/\/campaigns\/1\?tab=prospects&stage=qualified$/, { timeout: 15000 });
   await expect(page.getByRole("tab", { name: "Prospects" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("region", { name: "Prospects de la campagne" }).getByLabel("Étape")).toContainText("Qualifié");
@@ -711,8 +727,8 @@ test("liste : filtres dans l'URL, conservés au retour depuis une fiche", async 
   await expect(page).toHaveURL(/\/campaigns\?status=draft$/);
   await page.getByRole("row", { name: /Recrutement eBIHAR 2026/ }).click();
   await expect(page).toHaveURL(/\/campaigns\/1\?from=%2Fcampaigns%3Fstatus%3Ddraft$/, { timeout: 15_000 });
-  // Lien « ← Campagnes » : retour à la liste filtrée.
-  await page.getByRole("link", { name: "← Campagnes" }).click();
+  // Lien de retour « Campagnes » : retour à la liste filtrée.
+  await page.getByRole("main").getByRole("link", { name: "Campagnes", exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns\?status=draft$/, { timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Brouillons", exact: true })).toHaveAttribute("aria-pressed", "true");
   // Retour du navigateur : même résultat, et l'onglet de la fiche est conservé.
@@ -733,12 +749,12 @@ test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à 
   await page.goto("/campaigns/1?tab=inconnu&from=https%3A%2F%2Fexemple.test");
   await expect(page.getByRole("tab", { name: "Vue d'ensemble" })).toHaveAttribute("aria-selected", "true");
   // Une URL de retour étrangère n'est jamais suivie.
-  await expect(page.getByRole("link", { name: "← Campagnes" })).toHaveAttribute("href", "/campaigns");
+  await expect(page.getByRole("main").getByRole("link", { name: "Campagnes", exact: true })).toHaveAttribute("href", "/campaigns");
 });
 
 test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {
   await mockApi(page);
-  const many = Array.from({ length: 8 }, (_, i) =>
+  const many = Array.from({ length: 25 }, (_, i) =>
     campaign({ id: 100 + i, name: `Campagne ${i + 1}`, status: i < 3 ? "active" : "draft" }),
   );
   const queries: string[] = [];
@@ -753,14 +769,15 @@ test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-de
   });
   await login(page);
   const strip = page.getByRole("region", { name: "Chiffres clés" });
-  await expect(strip.getByText("3 / 8")).toBeVisible();
-  await expect(strip.getByText("5 brouillon(s)")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Campagne 1\b/ })).toBeVisible();
-  await expect(page.getByRole("row", { name: /Campagne 7/ })).toHaveCount(0);
+  await expect(strip.getByText("3 / 25")).toBeVisible();
+  await expect(strip.getByText("22 brouillon(s)")).toBeVisible();
+  // Vingt campagnes par page (UX-13).
+  await expect(page.getByRole("row", { name: /Campagne 20\b/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 21/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Page 2", exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns\?page=2$/);
-  await expect(page.getByRole("row", { name: /Campagne 7/ })).toBeVisible();
-  expect(queries.some((q) => q.includes("limit=6") && q.includes("offset=6"))).toBe(true);
+  await expect(page.getByRole("row", { name: /Campagne 21/ })).toBeVisible();
+  expect(queries.some((q) => q.includes("limit=20") && q.includes("offset=20"))).toBe(true);
   // Une page hors limites revient à la dernière page.
   await page.goto("/campaigns?page=9");
   await expect(page).toHaveURL(/\/campaigns\?page=2$/, { timeout: 15_000 });
@@ -997,4 +1014,58 @@ test("barre : recherche à gauche, menu du compte au clavier", async ({ page }) 
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await expect(account).toBeFocused();
+});
+
+test("prospects de la campagne : importer une liste et préparer les premiers contacts", async ({ page }) => {
+  const calls = await mockApi(page, { status: "active" });
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("2 personnes de la campagne peuvent recevoir un premier message de l’agent.")).toBeVisible();
+  await expect(card.getByText("1 personne sans consentement (l’agent ne lui écrit pas)")).toBeVisible();
+  await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveAttribute(
+    "href",
+    /\/prospects\/import\?campaign=1&source=\d+$/,
+  );
+  await card.getByRole("button", { name: "Préparer les 2 premiers contacts" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("rien ne part avant votre validation", { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Préparer" }).click();
+  await expect(page.getByText("2 premiers contacts en préparation")).toBeVisible();
+  expect(calls.requests.filter((r) => r.path === "/campaigns/1/first-contacts")).toHaveLength(1);
+  await expect(card.getByText("Personne à aborder pour l’instant.")).toBeVisible();
+  await expect(card.getByText("2 en préparation", { exact: false })).toBeVisible();
+});
+
+test("campagne en brouillon : les premiers contacts attendent son activation", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("Activez la campagne pour préparer les premiers contacts.")).toBeVisible();
+  await expect(card.getByRole("button", { name: /Préparer/ })).toHaveCount(0);
+});
+
+test("observateur : les premiers contacts se consultent sans action", async ({ page }) => {
+  await mockApi(page, { role: "VIEWER", status: "active" });
+  await login(page, "/campaigns/1?tab=prospects");
+  const card = page.getByRole("region", { name: "Premiers contacts" });
+  await expect(card.getByText("2 personnes de la campagne", { exact: false })).toBeVisible();
+  await expect(card.getByRole("button", { name: /Préparer/ })).toHaveCount(0);
+  await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveCount(0);
+});
+
+test("liste en mobile : statut et chiffres lisibles sans défilement horizontal", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  const list = page.getByRole("list", { name: "Liste des campagnes" });
+  const row = list.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Recrutement eBIHAR 2026", exact: true }) });
+  await expect(row).toBeVisible();
+  await expect(row.getByText("Brouillon", { exact: true })).toBeInViewport();
+  for (const term of ["Leads", "Qualifiés", "Inscrits", "Sources"]) await expect(row.getByText(term, { exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  // Toute la ligne ouvre la fiche : le lien du nom couvre la ligne, un clic sur les chiffres l'atteint.
+  await row.getByText("Leads", { exact: true }).click({ force: true });
+  await expect(page).toHaveURL(/\/campaigns\/\d+$/);
+  await page.goBack();
+  await auditA11y(page, "campagnes mobile");
 });

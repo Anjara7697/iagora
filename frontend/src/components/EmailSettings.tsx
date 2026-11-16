@@ -1,11 +1,14 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { Radar, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
-import { Btn, SelectBox, TextInput } from "./ds/controls";
+import { api, failure } from "@/lib/api";
+import { ConfirmDialog } from "./ds/ConfirmDialog";
+import { Btn, ErrorText, Notice, SelectBox, TextInput } from "./ds/controls";
 import { cx } from "./ds/layout";
-import { ActionsBar, Feedback, InfoRow, SettingRow as Field, Toggle } from "./ds/settings";
+import { useDiscardGuard } from "./ds/useDiscardGuard";
+import { ActionsBar, InfoRow, SettingRow as Field, SettingsLoading, Toggle } from "./ds/settings";
 import { Field as Stacked } from "./ds/controls";
 import { Collapse } from "@/components/ds/collapse";
 import type {
@@ -21,15 +24,25 @@ const SOURCES: Record<EmailAutodetect["source"], string> = {
   guess: "paramètres devinés",
 };
 
+const FAILURES = {
+  detect: "Détection des serveurs impossible",
+  test: "Test des paramètres impossible",
+  save: "Enregistrement de la boîte impossible",
+  forget: "Suppression de la configuration impossible",
+} as const;
+
 /** Paramétrage de la boîte email depuis la console (administrateur) : aucune variable `.env`. */
 export function EmailSettings({
   onSaved,
   disabled = false,
   onBusyChange,
+  onDirtyChange,
 }: {
   onSaved: () => void;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [form, setForm] = useState<EmailConfig | null>(null);
   const [password, setPassword] = useState("");
@@ -38,43 +51,30 @@ export function EmailSettings({
   const [test, setTest] = useState<EmailTestResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const { dialog: discardDialog } = useDiscardGuard(() => dirty);
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
   const load = useCallback(() => {
-    setError(null);
+    setLoadError(null);
     return api<EmailConfig>("/integrations/email/config")
       .then((c) => {
         setForm(c);
         setSandbox(c.sandbox_recipients.join(", "));
       })
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+      .catch((e) => setLoadError(failure("Chargement des paramètres de la boîte impossible", e)));
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  if (!form)
-    return error ? (
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger-soft-foreground" role="alert">
-        <span className="flex-1">{error}</span>
-        <Btn size="sm" variant="outline" onClick={load}>
-          Réessayer les paramètres
-        </Btn>
-      </div>
-    ) : (
-      <p className="text-sm text-muted" role="status">
-        Chargement des paramètres de la boîte…
-      </p>
-    );
+  if (!form) return <SettingsLoading label="Paramètres de la boîte email" error={loadError} onRetry={() => void load()} />;
 
   const set = <K extends keyof EmailConfig>(key: K, value: EmailConfig[K]) => {
     setForm({ ...form, [key]: value });
     setDirty(true);
-    setNotice(null);
     if (
       [
         "address",
@@ -103,15 +103,14 @@ export function EmailSettings({
     };
   }
 
-  async function act(name: string, fn: () => Promise<void>) {
+  async function act(name: keyof typeof FAILURES, fn: () => Promise<void>) {
     setBusy(name);
     onBusyChange?.(true);
     setError(null);
-    setNotice(null);
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure(FAILURES[name], e));
     } finally {
       setBusy(null);
       onBusyChange?.(false);
@@ -160,20 +159,12 @@ export function EmailSettings({
       setDirty(false);
       setTest(null);
       setDetected(null);
-      setNotice(
-        "Boîte enregistrée. Elle est prise en compte à la prochaine relève, sans redémarrage.",
-      );
+      toast.success("Boîte enregistrée", { description: "Elle est prise en compte à la prochaine relève, sans redémarrage." });
       onSaved();
     });
 
   const forget = () =>
     act("forget", async () => {
-      if (
-        !window.confirm(
-          "Oublier la boîte saisie ici ? Les valeurs du fichier .env du serveur s’appliqueront à nouveau.",
-        )
-      )
-        return;
       await api("/integrations/email/config", { method: "DELETE" });
       const c = await api<EmailConfig>("/integrations/email/config");
       setForm(c);
@@ -182,24 +173,25 @@ export function EmailSettings({
       setTest(null);
       setDetected(null);
       setDirty(false);
-      setNotice("Configuration de la console supprimée.");
+      toast.success("Boîte de la console oubliée", { description: "Les valeurs du serveur s’appliquent à nouveau." });
       onSaved();
     });
 
-  const ok = (v: string) => (v === "ok" ? "✓ connecté" : `✗ ${v}`);
+  const ok = (v: string) => (v === "ok" ? "connecté" : v);
   const folders = test?.folders ?? [];
   const hasFolder = folders.some((f) => f.name === form.imap_folder);
 
   return (
     <section className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
+      {discardDialog}
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={busy !== null || disabled}>
         <legend className="sr-only">Configuration de la boîte email</legend>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="flex-1 text-sm font-semibold text-foreground">Paramètres de la boîte</h3>
+            <h3 className="flex-1 type-body font-semibold text-foreground">Paramètres de la boîte</h3>
             <span
               className={cx(
-                "inline-flex items-center gap-1.5 text-xs font-medium",
+                "inline-flex items-center gap-1.5 type-caption font-medium",
                 dirty ? "text-warning-soft-foreground" : "text-muted",
               )}
               role="status"
@@ -212,7 +204,7 @@ export function EmailSettings({
                   : "Configuration du serveur"}
             </span>
           </div>
-          <p className="text-[13px]/[20px] text-muted">
+          <p className="type-body-sm text-muted">
             Modifiez et testez ces paramètres, puis enregistrez-les pour les
             appliquer à la boîte.
           </p>
@@ -241,7 +233,6 @@ export function EmailSettings({
               setPassword(e.target.value);
               setDirty(true);
               setTest(null);
-              setNotice(null);
             }}
           />
         </Field>
@@ -255,19 +246,19 @@ export function EmailSettings({
               {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
             </Btn>
             {detected && (
-              <span className="text-[13px] text-success-soft-foreground">
+              <span className="type-body-sm text-success-soft-foreground">
                 {detected.provider ?? "Hébergeur inconnu"} — {SOURCES[detected.source]}.
               </span>
             )}
           </div>
           <Collapse
   title="Paramètres avancés des serveurs"
-  className="rounded-xl border border-separator px-4 py-3"
+  className="rounded-lg border border-separator px-4 py-3"
   triggerClassName="w-full text-muted hover:text-foreground"
   bodyClassName="pt-3"
 >
             <div className="mt-3 flex flex-col gap-4">
-              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
+              <h4 className="type-caption font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
                 <Stacked label="Serveur IMAP (réception)">
                   <TextInput value={form.imap_host} onChange={(e) => set("imap_host", e.target.value)} />
@@ -283,7 +274,7 @@ export function EmailSettings({
                   <TextInput value={form.username ?? ""} onChange={(e) => set("username", e.target.value || null)} />
                 </Stacked>
               </div>
-              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Envoi des messages</h4>
+              <h4 className="type-caption font-semibold tracking-[0.04em] text-muted uppercase">Envoi des messages</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
                 <Stacked label="Serveur SMTP (envoi)">
                   <TextInput value={form.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} />
@@ -314,18 +305,15 @@ export function EmailSettings({
               <ShieldCheck className="size-4" aria-hidden="true" />
               {busy === "test" ? "Test en cours…" : "Tester ces paramètres"}
             </Btn>
-            {test && (
-              <span
-                aria-label="Résultat du test des paramètres"
-                className={cx(
-                  "font-mono text-[12.5px]",
-                  test.imap === "ok" && test.smtp === "ok" ? "text-success" : "text-danger",
-                )}
-              >
-                IMAP : {ok(test.imap)} · SMTP : {ok(test.smtp)}
-              </span>
-            )}
           </div>
+          {test &&
+            (test.imap === "ok" && test.smtp === "ok" ? (
+              <Notice aria-label="Résultat du test des paramètres">Connexion réussie : IMAP et SMTP connectés.</Notice>
+            ) : (
+              <ErrorText aria-label="Résultat du test des paramètres">
+                {`Connexion impossible : IMAP ${ok(test.imap)} · SMTP ${ok(test.smtp)}`}
+              </ErrorText>
+            ))}
         </InfoRow>
         <Field
           label="Dossier surveillé"
@@ -361,7 +349,6 @@ export function EmailSettings({
             onChange={(e) => {
               setSandbox(e.target.value);
               setDirty(true);
-              setNotice(null);
             }}
           />
         </Field>
@@ -382,12 +369,17 @@ export function EmailSettings({
             Enregistrer
           </Btn>
           {form.source === "console" && (
-            <Btn onClick={forget} disabled={busy !== null}>
-              Oublier cette boîte
-            </Btn>
+            <ConfirmDialog
+              trigger={<Btn disabled={busy !== null}>Oublier cette boîte</Btn>}
+              title="Oublier la boîte saisie ici ?"
+              description="Le mot de passe et les réglages enregistrés dans la console sont supprimés : les valeurs du fichier de configuration du serveur s’appliquent à nouveau."
+              confirmLabel="Oublier cette boîte"
+              status="warning"
+              onConfirm={() => void forget()}
+            />
           )}
         </ActionsBar>
-        <Feedback notice={notice} error={error} />
+        {error && <ErrorText>{error}</ErrorText>}
       </fieldset>
     </section>
   );

@@ -78,13 +78,30 @@
   --agent-foreground: #ffffff;
   --agent-soft: #f3eefe;
   --agent-soft-foreground: #5b28c2;
+  /* Marque IAGORA : panneau de la page de connexion et tuile « ▪ ». Identiques dans les deux thèmes
+     (non redéfinis plus bas) : la marque ne change pas de teinte. */
+  --brand-panel: #0f1220;
+  --brand-violet: #7a3df0;
+  --brand-blue: #1f4fd8;
+  --brand-mark: #a79bf0;
   --level-cold: #94a3b8;
   --level-warm: #fdba74;
   --level-hot: #f97316;
   --level-very-hot: #c2410c;
   --level-very-hot-foreground: #ffffff;
+  /* Champs (texte, listes, recherche, dates) : une seule apparence, fond de surface et bordure, sans ombre (règle 8). */
+  --field-background: var(--surface);
+  --field-hover: var(--surface);
+  --field-focus: var(--surface);
+  --field-border-width: 1px;
+  --field-border: #d4d4d8;
+  --field-border-hover: #a1a1aa;
+  --field-border-focus: var(--accent);
+  --field-shadow: none;
   --backdrop: rgba(24, 24, 27, 0.4);
-  --surface-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 1px 0 rgba(0, 0, 0, 0.06);
+  /* Ce qui est posé sur la page (cartes, indicateur d'onglet) : un filet, pas d'ombre. L'ombre est réservée à ce qui
+     flotte au-dessus (menus, panneaux, toasts, dialogues : --overlay-shadow). */
+  --surface-shadow: 0 0 0 1px var(--border);
   --overlay-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 -6px 12px 0 rgba(0, 0, 0, 0.03), 0 14px 28px 0 rgba(0, 0, 0, 0.08);
 }
 
@@ -134,8 +151,16 @@
   --level-hot: #fb8a3c;
   --level-very-hot: #f0722f;
   --level-very-hot-foreground: #111113;
+  --field-background: var(--surface);
+  --field-hover: var(--surface);
+  --field-focus: var(--surface);
+  --field-border-width: 1px;
+  --field-border: #3f3f46;
+  --field-border-hover: #71717a;
+  --field-border-focus: var(--accent);
+  --field-shadow: none;
   --backdrop: rgba(0, 0, 0, 0.6);
-  --surface-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --surface-shadow: 0 0 0 1px var(--border);
   --overlay-shadow: 0 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 14px 28px 0 rgba(0, 0, 0, 0.45);
 }
 :root {
@@ -147,8 +172,42 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
+/* Échelle de texte (DESIGN_SYSTEM.md §4) : une classe par rôle, à utiliser à la place des tailles en pixels.
+   `type-caption` horodatage, aide, en-tête de colonne · `type-body-sm` lignes de tableau, texte secondaire ·
+   `type-body` texte courant · `type-title-sm` titre de section · `type-title` titre d'écran · `type-display` chiffre clé.
+   Préfixe `type-` et non `text-` : la fusion de classes de HeroUI (tailwind-variants) prendrait `text-display` pour
+   une couleur et le retirerait dès qu'une couleur de texte le suit (« text-display text-success… »). */
+@utility type-caption {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+@utility type-body-sm {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+@utility type-body {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+@utility type-title-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+@utility type-title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+@utility type-display {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+}
+
 @theme inline {
   --color-agent: var(--agent);
+  --color-brand-panel: var(--brand-panel);
+  --color-brand-violet: var(--brand-violet);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-mark: var(--brand-mark);
   --color-agent-foreground: var(--agent-foreground);
   --color-agent-soft: var(--agent-soft);
   --color-agent-soft-foreground: var(--agent-soft-foreground);
@@ -212,6 +271,15 @@
   .card,
   .alert {
     border-radius: var(--radius-lg);
+  }
+  /* Onglets d'une fiche (variante soulignée, règle 3) : chaque onglet à la largeur de son texte, alignés à gauche ;
+     le filet du conteneur reste sur toute la largeur. */
+  .tabs--secondary .tabs__tab {
+    width: auto;
+  }
+  /* Les alertes ont déjà un fond coloré : ni ombre ni filet. */
+  .alert {
+    box-shadow: none;
   }
   /* Onglet survolé : texte plus foncé plutôt qu'une opacité réduite (HeroUI), qui faisait passer le texte sous le
      contraste AA, surtout en thème sombre. */

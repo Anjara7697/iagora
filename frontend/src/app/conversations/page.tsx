@@ -9,8 +9,11 @@
 import { ArrowRight, Inbox as InboxIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
-import { useCurrentUser } from "@/components/AppShell";
-import { Btn, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
+import { useCurrentUser } from "@/lib/session";
+import { Label, Popover } from "@heroui/react";
+import { Btn, Field, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
+import { ActiveFilters, FiltersButton, type ActiveFilter } from "@/components/ds/toolbar";
+import { CHANNELS, label } from "@/lib/labels";
 import { EmptyPanel, ListScroll, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
@@ -18,6 +21,7 @@ import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
+import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { OWNER_FILTERS, STATUS_FILTERS, conversationHref, isFiltered, readConversationView, type ConversationView as InboxView } from "@/lib/conversationNav";
 import { replaceUrl } from "@/lib/url";
 import type { ConversationSummary, Page } from "@/lib/types";
@@ -54,11 +58,13 @@ function Inbox() {
   };
 
   const offset = (view.page - 1) * LIMIT;
+  // Recherche envoyée une fois la frappe arrêtée (DATA-01) ; le champ et l'adresse suivent la saisie sans délai.
+  const searched = useDebouncedValue(view.q);
   const list = useApi<Page<ConversationSummary>>(
     `/conversations${qs({
       status: view.status,
       channel: view.channel,
-      q: view.q,
+      q: searched,
       advisor_id: view.owner === "me" ? user?.id : undefined,
       unassigned: view.owner === "none" ? "true" : undefined,
       limit: LIMIT,
@@ -67,6 +73,13 @@ function Inbox() {
     { keepPrevious: true },
   );
   const filtered = isFiltered(view);
+  // Filtres de la fenêtre « Filtres » : chacun actif s'affiche en puce retirable sous le statut.
+  const active: ActiveFilter[] = [
+    ...(view.owner
+      ? [{ name: "Responsable", text: `Responsable : ${label(Object.fromEntries(OWNER_FILTERS.map((o) => [o.value, o.text])), view.owner)}`, clear: () => filter({ owner: "" }) }]
+      : []),
+    ...(view.channel ? [{ name: "Canal", text: `Canal : ${label(CHANNELS, view.channel)}`, clear: () => filter({ channel: "" }) }] : []),
+  ];
   // Total sans filtre, pour « N sur M » (règle 5).
   const all = useApi<Page<ConversationSummary>>(filtered ? "/conversations?limit=1" : null);
 
@@ -87,7 +100,6 @@ function Inbox() {
   return (
     <Screen wide className="gap-4">
       <PageHeader
-        eyebrow="Travail · Boîte de réception"
         title="Conversations"
         subtitle={
           // Sur mobile, une conversation ouverte prend la place.
@@ -114,48 +126,61 @@ function Inbox() {
           className={`w-full shrink-0 flex-col gap-3 lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100dvh-9rem)] lg:w-[360px] lg:overflow-hidden lg:pb-2 ${selectedId ? "hidden" : "flex"} ${queue.className}`}
         >
           <header className="flex items-baseline gap-2">
-            <h2 className="flex-1 text-base font-semibold text-foreground">Boîte de réception</h2>
-            <span className="text-[13px] text-muted tabular-nums" role="status">
+            <h2 className="flex-1 type-title-sm font-semibold text-foreground">Boîte de réception</h2>
+            <span className="type-body-sm text-muted tabular-nums" role="status">
               {list.data
                 ? `${total} conversation${total > 1 ? "s" : ""}${filtered && all.data ? ` sur ${all.data.total}` : ""}`
                 : ""}
             </span>
           </header>
-          <TextInput
-            variant="secondary"
-            type="search"
-            aria-label="Rechercher une conversation"
-            placeholder="Nom ou email…"
-            value={view.q}
-            onChange={(e) => filter({ q: e.target.value })}
-          />
+          {/* Recherche et statut visibles ; responsable et canal dans « Filtres · N » (UX-11, règle 5). */}
+          <div className="flex items-center gap-2">
+            <TextInput
+              type="search"
+              aria-label="Rechercher une conversation"
+              placeholder="Nom ou email…"
+              className="min-w-0 flex-1"
+              value={view.q}
+              onChange={(e) => filter({ q: e.target.value })}
+            />
+            <Popover>
+              <FiltersButton count={active.length} />
+              <Popover.Content placement="bottom end" className="w-[min(320px,calc(100vw-2rem))]">
+                <Popover.Dialog aria-label="Filtres" className="flex flex-col gap-4 p-4">
+                  <div className="flex flex-col gap-1.5">
+                    {/* Libellé visible comme celui du canal ; le groupe garde son nom accessible. */}
+                    <Label aria-hidden="true">Responsable</Label>
+                    <FilterChipGroup
+                      label="Responsable"
+                      options={[...OWNER_FILTERS]}
+                      value={view.owner}
+                      onChange={(owner) => filter({ owner })}
+                    />
+                  </div>
+                  <Field label="Canal">
+                    <SelectBox value={view.channel} onChange={(e) => filter({ channel: e.target.value })}>
+                      {CHANNEL_FILTERS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.text}
+                        </option>
+                      ))}
+                    </SelectBox>
+                  </Field>
+                </Popover.Dialog>
+              </Popover.Content>
+            </Popover>
+          </div>
           <FilterChipGroup
             label="Statut"
             options={[...STATUS_FILTERS]}
             value={view.status}
             onChange={(status) => filter({ status })}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterChipGroup
-              label="Responsable"
-              options={[...OWNER_FILTERS]}
-              value={view.owner}
-              onChange={(owner) => filter({ owner })}
-            />
-            <SelectBox
-              variant="secondary"
-              aria-label="Canal"
-              className="min-w-[150px] flex-1"
-              value={view.channel}
-              onChange={(e) => filter({ channel: e.target.value })}
-            >
-              {CHANNEL_FILTERS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.text}
-                </option>
-              ))}
-            </SelectBox>
-          </div>
+          <ActiveFilters
+            filters={active}
+            filtered={filtered}
+            onReset={() => filter({ q: "", status: "", owner: "", channel: "" })}
+          />
           <Loading
             loading={list.loading && !list.data}
             error={list.error}
@@ -164,7 +189,7 @@ function Inbox() {
           />
           {list.data && items.length === 0 && (
             <div className="flex flex-col items-start gap-2 px-2 py-3">
-              <p className="text-[13px] text-muted">
+              <p className="type-body-sm text-muted">
                 {filtered ? "Aucune conversation ne correspond à ces filtres." : "Aucune conversation pour le moment."}
               </p>
               {filtered && (

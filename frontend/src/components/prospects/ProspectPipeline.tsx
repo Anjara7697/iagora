@@ -55,7 +55,7 @@ export function ProspectPipeline({
   }
   return (
     <>
-      <p className="text-[13px] text-muted">
+      <p className="type-body-sm text-muted">
         {data.total > data.items.length
           ? `${data.items.length} prospect${data.items.length > 1 ? "s" : ""} affiché${data.items.length > 1 ? "s" : ""} sur ${data.total}. Affinez les filtres ou utilisez la vue Table pour parcourir l’ensemble.`
           : `${data.total} prospect${data.total > 1 ? "s" : ""}.`}{" "}
@@ -74,8 +74,8 @@ export function ProspectPipeline({
               aria-label={title}
             >
               <header className="flex items-center gap-2 px-2 py-1.5">
-                <h2 className="flex-1 text-sm font-semibold text-foreground">{title}</h2>
-                <span className="rounded-md bg-surface px-1.5 text-xs text-muted tabular-nums">{items.length}</span>
+                <h2 className="flex-1 type-body font-semibold text-foreground">{title}</h2>
+                <span className="rounded-lg bg-surface px-1.5 type-caption text-muted tabular-nums">{items.length}</span>
               </header>
               {items.map((p) => (
                 <Link
@@ -85,22 +85,23 @@ export function ProspectPipeline({
                 >
                   <div className="flex items-center gap-2">
                     <ProspectAvatar prospect={p} />
-                    <strong className="min-w-0 flex-1 text-[13px] font-semibold break-words text-foreground">{fullName(p)}</strong>
+                    <strong className="min-w-0 flex-1 type-body-sm font-semibold break-words text-foreground">{fullName(p)}</strong>
                     <DemoBadge email={p.email} />
                   </div>
-                  <span className="text-xs break-all text-muted">
+                  <span className="type-caption break-all text-muted">
                     {p.email ||
                       p.phone ||
                       "Coordonnées non renseignées"}
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  {/* Alignées en haut : une pastille à côté d'un rattachement sur deux lignes garde sa hauteur (UI-05). */}
+                  <div className="flex flex-wrap items-start gap-1.5">
                     {memberships(p)
                       .filter((m) =>
                         column.stages.includes(m.conversion_stage),
                       )
                       .map((m) => (
                         <span key={m.id} className="flex min-w-0 flex-col gap-1">
-                          <span className="truncate text-xs font-medium text-foreground">
+                          <span className="truncate type-caption font-medium text-foreground">
                             {m.campaign_name ?? "Campagne"}
                           </span>
                           <span className="flex flex-wrap gap-1.5">
@@ -114,14 +115,14 @@ export function ProspectPipeline({
                       ))}
                     <ConsentTag status={p.consent_status} />
                   </div>
-                  <span className="text-xs text-muted">
+                  <span className="type-caption text-muted">
                     Créé le {formatDate(p.created_at)}
                   </span>
                 </Link>
               ))}
               {!items.length && (
                 <p
-                  className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted"
+                  className="rounded-lg border border-dashed border-border px-3 py-4 text-center type-caption text-muted"
                   title={
                     data.total > data.items.length
                       ? "Aucun parmi les prospects affichés sur cette page"

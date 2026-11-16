@@ -43,6 +43,7 @@ from app.services import (
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
+from app.services.send_window import in_send_window
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,10 @@ INTERRUPTED = (
     "avant de relancer, le message est peut-être déjà parti."
 )
 OUTBOX_BATCH = 20
+# Premiers contacts (l'agent écrit en premier, souvent après un import) : au plus 5 par passage
+# (environ 300 par heure) et seulement dans la fenêtre d'envoi, pour ménager la réputation de la
+# boîte et ses limites d'envoi. Les réponses aux prospects ne sont pas concernées.
+FIRST_CONTACTS_PER_CYCLE = 5
 DEFAULT_SUBJECT = "DATUM Academy"
 DEMO_DOMAINS = ("@demo.example.com", "@example.com", "@example.org", "@example.net")
 
@@ -517,6 +522,8 @@ async def deliver_outbox(
         report.notes.append("envoi désactivé (EMAIL_SEND_ENABLED)")
         return report
     sent_this_cycle = 0
+    first_contacts_this_cycle = 0
+    window_open = in_send_window(_now(), settings)
     cursor = db[conversations.COLLECTION].find(
         {
             "channel": CHANNEL,
@@ -535,6 +542,18 @@ async def deliver_outbox(
                 if "envois de l'agent suspendus (arrêt d'urgence)" not in report.notes:
                     report.notes.append("envois de l'agent suspendus (arrêt d'urgence)")
                 continue
+            if (message.get("metadata") or {}).get("first_contact"):
+                if not window_open or first_contacts_this_cycle >= FIRST_CONTACTS_PER_CYCLE:
+                    report.skipped += 1
+                    note = (
+                        "premiers contacts en attente de la fenêtre d'envoi"
+                        if not window_open
+                        else "premiers contacts étalés sur les passages suivants"
+                    )
+                    if note not in report.notes:
+                        report.notes.append(note)
+                    continue
+                first_contacts_this_cycle += 1
             if sent_this_cycle >= OUTBOX_BATCH:
                 return report
             sent_this_cycle += 1

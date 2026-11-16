@@ -23,6 +23,12 @@ chargée ou des filtres affichés. Une tâche qui n'est plus en attente renvoie 
 message explicite ; son échange reste consultable dans Conversations.
 La file « À traiter » affiche 50 éléments par page ; les interactions, 20.
 
+**Premiers contacts** (décision D-29). Les premiers messages préparés après un import ont leur propre type
+dans « À traiter ». Chacun s'ouvre et se décide comme un brouillon ; après en avoir relu quelques-uns,
+**Valider les N premiers contacts affichés** valide la page en une fois, après confirmation (au plus 100 ;
+un brouillon déjà traité ou devenu non éligible est ignoré et compté). Les envois restent étalés dans la
+fenêtre d'envoi.
+
 **Oppositions à vérifier.** Un « stop », « désinscrire » ou « unsubscribe » est toujours enregistré tout
 de suite. Quand il apparaît dans une question ou un message long (12 mots ou plus), la demande peut parler
 d'autre chose (« comment me désinscrire de mon école actuelle ? ») : elle arrive aussi dans « À traiter ».

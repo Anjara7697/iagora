@@ -88,6 +88,12 @@ export const CHANNELS: Record<string, string> = {
   linkedin: "LinkedIn",
 };
 
+/** Prénom affichable à partir de l'identifiant (« nadia.cohen » → « Nadia »). */
+export const firstNameOf = (username: string) => {
+  const first = username.split(/[.\s_@-]+/).filter(Boolean)[0] ?? "";
+  return first ? first[0].toUpperCase() + first.slice(1).toLowerCase() : "";
+};
+
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return (parts[0]?.[0] ?? "?").concat(parts[1]?.[0] ?? "").toUpperCase();
@@ -207,7 +213,7 @@ export function formatPeriod(start: string | null | undefined, end: string | nul
   return "Sans dates";
 }
 
-/** Titre de l'en-tête selon la route (les plus spécifiques d'abord). */
+/** Titre de l'écran selon la route, pour le titre du document (les plus spécifiques d'abord). */
 const PAGE_TITLES: [string, string][] = [
   ["/appointments", "Rendez-vous"],
   ["/dashboard", "Tableau de bord"],
@@ -227,8 +233,12 @@ const PAGE_TITLES: [string, string][] = [
   ["/settings/testing", "Tests et démonstration"],
   ["/settings", "Paramètres"],
   ["/account", "Mon compte"],
+  ["/login", "Connexion"],
   ["/simulator", "Simulateur"],
 ];
+
+/** Titre du document d'un écran : « Prospects · IAGORA ». */
+export const documentTitle = (pathname: string) => `${pageTitle(pathname)} · IAGORA`;
 
 export function pageTitle(pathname: string): string {
   if (pathname === "/") return "Aujourd’hui";

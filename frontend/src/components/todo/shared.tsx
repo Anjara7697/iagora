@@ -18,6 +18,14 @@ export function revealed(index: number, className = "") {
 }
 /** Éléments par page de la file. */
 export const PAGE_SIZE = 50;
+
+/** Raccourcis de la file (règle 21) : passer d'un élément à l'autre, modifier puis valider un brouillon. */
+export const TODO_KEYS = {
+  next: { key: "j" },
+  previous: { key: "k" },
+  edit: { key: "m" },
+  approve: { key: "Enter", mod: true },
+} as const;
 /** Résultat d'une décision, annoncé par un Toast : `treatedId` ajoute « Voir la décision ». */
 export type DecisionResult = { title: string; description: string; treatedId?: string };
 /** Ce que reçoit chaque panneau de décision : la fin du traitement, le signal « saisie modifiée » et la garde. */
@@ -45,6 +53,7 @@ export const TASK_LABELS: Record<TodoKind, string> = {
   enrollment: "Inscriptions",
   application: "Candidatures",
   validation: "Brouillons à valider",
+  first_contact: "Premiers contacts",
   escalation: "Demandes de conseiller",
   kb_gap: "Réponses à compléter",
   incident: "Incidents",
@@ -54,6 +63,7 @@ export const KIND_ORDER: TodoKind[] = [
   "enrollment",
   "application",
   "validation",
+  "first_contact",
   "escalation",
   "kb_gap",
   "incident",
@@ -73,6 +83,7 @@ export const KIND_TONE: Record<TodoKind, Tone> = {
   enrollment: "success",
   application: "success",
   validation: "warning",
+  first_contact: "warning",
   escalation: "accent",
   kb_gap: "agent",
   incident: "danger",
@@ -95,7 +106,7 @@ export const EXECUTION_TONE: Record<string, Tone> = {
 };
 
 export function Confidence({ value }: { value: number | null }) {
-  if (value === null) return <p className="text-sm text-muted">Non évaluée</p>;
+  if (value === null) return <p className="type-body text-muted">Non évaluée</p>;
   const percent = Math.round(value * 100);
   return (
     <div className="flex items-center gap-2" aria-label={`Confiance ${percent} %`}>
@@ -105,7 +116,7 @@ export function Confidence({ value }: { value: number | null }) {
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span className="text-[13px] text-foreground tabular-nums">{percent} %</span>
+      <span className="type-body-sm text-foreground tabular-nums">{percent} %</span>
     </div>
   );
 }
@@ -144,7 +155,7 @@ export function DetailHead({
     <header {...revealed(0, "flex flex-wrap items-start gap-3")}>
       <PersonMark name={name} incident={incident} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <h2 ref={title} tabIndex={-1} className="text-xl font-semibold tracking-[-0.01em] text-foreground outline-none">
+        <h2 ref={title} tabIndex={-1} className="type-title font-semibold tracking-[-0.01em] text-foreground outline-none">
           {name}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">{chips}</div>

@@ -1,17 +1,27 @@
 "use client";
 
+import { toast } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
-import { API_URL, api, ApiError } from "@/lib/api";
+import { API_URL, api, failure } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ServiceToken } from "@/lib/types";
 import { CampaignSourcePicker } from "./CampaignSourcePicker";
-import { Btn, TextInput, TextLink } from "./ds/controls";
-import { ActionsBar, Feedback, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
+import { ConfirmDialog } from "./ds/ConfirmDialog";
+import { Btn, ErrorText, TextInput, TextLink } from "./ds/controls";
+import { ErrorState } from "./ds/layout";
+import { ActionsBar, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
 import { Box } from "@/components/ds/card";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */
-export function LeadSources({ embedded = false }: { embedded?: boolean }) {
+export function LeadSources({
+  embedded = false,
+  onDirtyChange,
+}: {
+  embedded?: boolean;
+  /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [tokens, setTokens] = useState<ServiceToken[]>([]);
   const [name, setName] = useState("");
   const [dest, setDest] = useState<{
@@ -21,13 +31,16 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
   const [created, setCreated] = useState<ServiceToken | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const dirty = name.trim() !== "" || dest.campaign_id !== null;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
-  const load = () =>
-    api<ServiceToken[]>("/integrations/tokens")
+  const load = () => {
+    setLoadError(null);
+    return api<ServiceToken[]>("/integrations/tokens")
       .then(setTokens)
-      .catch((e) =>
-        setError(e instanceof ApiError ? e.message : "Chargement impossible"),
-      );
+      .catch((e) => setLoadError(failure("Chargement des jetons impossible", e)));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -42,26 +55,24 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
       });
       setCreated(t);
       setName("");
+      setDest({ campaign_id: null, source_id: null });
+      toast.success("Jeton créé", { description: "Copiez-le maintenant : il ne sera plus réaffiché." });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Création du jeton impossible", e));
     } finally {
       setBusy(false);
     }
   }
 
   async function revoke(t: ServiceToken) {
-    if (
-      !window.confirm(
-        `Révoquer « ${t.name} » ? Les envois avec ce jeton seront refusés immédiatement.`,
-      )
-    )
-      return;
+    setError(null);
     try {
       await api(`/integrations/tokens/${t.id}`, { method: "DELETE" });
+      toast.success("Jeton révoqué", { description: `Les envois avec « ${t.name} » sont désormais refusés.` });
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Échec");
+      setError(failure("Révocation du jeton impossible", e));
     }
   }
 
@@ -73,17 +84,17 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
     >
       {!embedded && (
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-semibold text-foreground">Formulaire du site et outils (n8n…)</h2>
+          <h2 className="flex-1 type-title-sm font-semibold text-foreground">Formulaire du site et outils (n8n…)</h2>
           <StatePill tone={active.length ? "ok" : "off"}>
             {active.length ? `${active.length} jeton(s) actif(s)` : "Aucun jeton"}
           </StatePill>
         </div>
       )}
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Un jeton permet à un formulaire ou à un outil d’envoyer des prospects
         vers la campagne choisie, sans compte utilisateur. Il ne donne accès à
         rien d’autre. Pour un fichier :{" "}
-        <TextLink href="/prospects/import" className="text-[13px]">importer un CSV</TextLink>.
+        <TextLink href="/prospects/import" className="type-body-sm">importer un CSV</TextLink>.
       </p>
       {created?.token && (
         <SecretOnce
@@ -97,7 +108,7 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
           doneLabel="J’ai copié le jeton"
           onDone={() => setCreated(null)}
         >
-          <pre className="overflow-x-auto rounded-xl bg-foreground px-4 py-3 font-mono text-[12px]/[18px] text-background">{`curl -X POST ${API_URL}/leads \\
+          <pre className="overflow-x-auto rounded-lg bg-foreground px-4 py-3 font-mono type-caption text-background">{`curl -X POST ${API_URL}/leads \\
   -H "Authorization: Bearer ${created.token}" \\
   -H "Content-Type: application/json" \\
   -d '{"first_name":"Inès","email":"ines@exemple.fr","message":"Je veux des infos","consent":true}'`}</pre>
@@ -121,18 +132,19 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
           Créer un jeton
         </Btn>
       </ActionsBar>
-      <Feedback error={error} />
+      {error && <ErrorText>{error}</ErrorText>}
+      {loadError && <ErrorState message={loadError} onRetry={() => void load()} />}
       {tokens.length > 0 && (
         <div aria-label="Jetons de service" role="list" className="flex flex-col gap-2">
           {tokens.map((t) => (
             <div
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-separator px-4 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-separator px-4 py-3"
               role="listitem"
               key={t.id}
             >
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <strong className="text-sm font-semibold text-foreground">{t.name}</strong>
-                <span className="text-xs text-muted">
+                <strong className="type-body font-semibold text-foreground">{t.name}</strong>
+                <span className="type-caption text-muted">
                   <code className="rounded bg-surface-tertiary px-1 font-mono">{t.hint}</code> · créé le {formatDate(t.created_at)} ·
                   dernier envoi {formatDate(t.last_used_at)}
                 </span>
@@ -140,9 +152,17 @@ export function LeadSources({ embedded = false }: { embedded?: boolean }) {
               {t.revoked_at ? (
                 <StatePill tone="warn">Révoqué</StatePill>
               ) : (
-                <Btn size="sm" variant="danger-soft" onClick={() => revoke(t)}>
-                  Révoquer
-                </Btn>
+                <ConfirmDialog
+                  trigger={
+                    <Btn size="sm" variant="danger-soft">
+                      Révoquer
+                    </Btn>
+                  }
+                  title={`Révoquer « ${t.name} » ?`}
+                  description="Les envois avec ce jeton seront refusés immédiatement. Le formulaire ou l’outil qui l’utilise devra recevoir un nouveau jeton."
+                  confirmLabel="Révoquer"
+                  onConfirm={() => void revoke(t)}
+                />
               )}
             </div>
           ))}

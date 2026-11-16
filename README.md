@@ -39,7 +39,7 @@ docker-compose.yml  backend + PostgreSQL + MongoDB + Redis
 
 ## Démarrage rapide
 
-Prérequis : Docker, ou bien Python >= 3.11 et Node >= 20.
+Prérequis : Docker, ou bien Python >= 3.11 et Node >= 22.18 (les tests unitaires de la console s’exécutent avec Node seul).
 
 ```bash
 cp .env.example .env        # Windows : copy .env.example .env
@@ -185,8 +185,8 @@ Parcours guidé (qualification, objection, rendez-vous fictif) et contrat de pr�
 et étapes de recette : [guide n8n](docs/n8n/README.md).
 
 Le simulateur se désactive avec `NEXT_PUBLIC_ENABLE_SIMULATOR=false` (déploiement réel).
-Le jeton de connexion est conservé dans le navigateur (`localStorage`) : suffisant pour un outil interne, à durcir
-(cookie `HttpOnly`) avant une exposition publique.
+La session de la console est un témoin `HttpOnly` posé par l'API (illisible par la page) et révoquée à la
+déconnexion : la console et l'API doivent être servies sur le même site (voir `docs/deploiement.md`).
 
 ### Base de connaissances (RAG)
 
@@ -226,6 +226,11 @@ pytest                                  # tests (SQLite et mongomock en mémoire
 cd ../frontend
 npm run lint && npm run typecheck && npm run build
 ```
+
+**Contrat frontend / API.** Après une modification d'un schéma de réponse de l'API :
+`cd backend && python scripts/export_openapi.py`, puis `cd frontend && npm run api:types`, et versionner
+`frontend/src/lib/api/openapi.json` et `schema.d.ts`. `src/lib/api/contract.ts` vérifie au typecheck que
+chaque champ lu par la console existe dans l'API ; la CI refuse un contrat ou des types non à jour.
 
 Hooks Git optionnels : `pip install pre-commit && pre-commit install`.
 La CI (`.github/workflows/ci.yml`) exécute ces contrôles à chaque push et pull request.

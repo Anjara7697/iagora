@@ -1,8 +1,9 @@
 "use client";
 
-import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useCallback, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonProps = ComponentProps<typeof Button>;
@@ -11,6 +12,7 @@ type ButtonProps = ComponentProps<typeof Button>;
  * Bouton HeroUI : toutes les propriétés du `Button` (variant, size, color, isIconOnly, onPress, ref…)
  * sont acceptées. Raccourcis : `onClick` (appelé sans événement) et `disabled`.
  * Par défaut neutre (« tertiary ») et `type="button"` ; « primary » pour l'action de l'écran.
+ * `keyShortcuts` : raccourci clavier annoncé aux lecteurs d'écran (`aria-keyshortcuts`, voir `useShortcuts`).
  */
 export function Btn({
   variant = "tertiary",
@@ -19,16 +21,34 @@ export function Btn({
   onPress,
   disabled,
   isDisabled,
+  keyShortcuts,
   ...rest
-}: Omit<ButtonProps, "onClick"> & { onClick?: () => void; disabled?: boolean }) {
+}: Omit<ButtonProps, "onClick"> & { onClick?: () => void; disabled?: boolean; keyShortcuts?: string }) {
+  const keysRef = useKeyShortcuts(keyShortcuts);
   return (
     <Button
+      ref={keysRef}
       variant={variant}
       type={type}
       isDisabled={isDisabled ?? disabled}
       onPress={onClick || onPress ? (e) => { onPress?.(e); onClick?.(); } : undefined}
       {...rest}
     />
+  );
+}
+
+/**
+ * Pose `aria-keyshortcuts` sur l'élément rendu : le `Button` de React Aria ne transmet pas cet attribut au DOM.
+ * À donner en `ref`.
+ */
+export function useKeyShortcuts(value: string | undefined) {
+  return useCallback(
+    (el: HTMLElement | null) => {
+      if (!el) return;
+      if (value) el.setAttribute("aria-keyshortcuts", value);
+      else el.removeAttribute("aria-keyshortcuts");
+    },
+    [value],
   );
 }
 
@@ -68,6 +88,25 @@ export function LinkButton({
 } & Omit<ComponentProps<typeof Link>, "href" | "className" | "children">) {
   return (
     <Link href={href} className={buttonVariants({ variant, size, className })} {...rest}>
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Retour à l'écran précédent (NAV-04) : un seul lien de retour dans toute la console, discret, au-dessus de l'en-tête.
+ * La flèche est décorative : le nom du lien est son texte (« Campagnes », « Retour aux résultats »).
+ */
+export function BackLink({ href, children, className }: { href: string; children: ReactNode; className?: string }) {
+  return (
+    <Link
+      href={href}
+      className={cx(
+        "inline-flex w-fit items-center gap-1.5 rounded-lg type-body-sm font-medium text-muted outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus",
+        className,
+      )}
+    >
+      <ArrowLeft className="size-3.5" aria-hidden="true" />
       {children}
     </Link>
   );
@@ -207,6 +246,46 @@ export function Field({
 /** Champ texte HeroUI : toutes les propriétés de `Input` (variant, fullWidth…), pleine largeur par défaut. */
 export function TextInput({ fullWidth = true, ...props }: ComponentProps<typeof Input>) {
   return <Input fullWidth={fullWidth} {...props} />;
+}
+
+/**
+ * Choix d'une couleur : `ColorPicker` HeroUI (zone saturation / luminosité, teinte, code hexadécimal).
+ * `label` nomme le bouton qui ouvre le sélecteur ; `onChange` reçoit le code « #rrggbb ».
+ */
+export function ColorChoice({
+  label,
+  value,
+  onChange,
+  describedBy,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+  describedBy?: string;
+}) {
+  return (
+    <ColorPicker value={value} onChange={(color) => onChange(color.toString("hex").toLowerCase())}>
+      <ColorPicker.Trigger aria-label={`${label} : ${value}`} aria-describedby={describedBy}>
+        <ColorSwatch size="md" />
+        <span className="font-mono type-body-sm text-foreground">{value}</span>
+      </ColorPicker.Trigger>
+      <ColorPicker.Popover className="flex w-60 flex-col gap-3 p-3">
+        <ColorArea aria-label={`${label} : saturation et luminosité`} colorSpace="hsb" xChannel="saturation" yChannel="brightness">
+          <ColorArea.Thumb />
+        </ColorArea>
+        <ColorSlider aria-label={`${label} : teinte`} channel="hue" colorSpace="hsb">
+          <ColorSlider.Track>
+            <ColorSlider.Thumb />
+          </ColorSlider.Track>
+        </ColorSlider>
+        <ColorField aria-label={`${label} : code hexadécimal`}>
+          <ColorField.Group>
+            <ColorField.Input />
+          </ColorField.Group>
+        </ColorField>
+      </ColorPicker.Popover>
+    </ColorPicker>
+  );
 }
 
 /** Zone de texte HeroUI : toutes les propriétés de `TextArea`, pleine largeur par défaut. */
@@ -368,7 +447,7 @@ export function FileInput({
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-2.5">
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-surface-secondary px-3 py-2.5">
       <input
         ref={input}
         id={id}
@@ -382,7 +461,7 @@ export function FileInput({
       <Btn variant="secondary" size="sm" onClick={() => input.current?.click()}>
         {buttonLabel}
       </Btn>
-      <span className="min-w-0 truncate text-[13px] text-muted">{file ? file.name : emptyLabel}</span>
+      <span className="min-w-0 truncate type-body-sm text-muted">{file ? file.name : emptyLabel}</span>
     </div>
   );
 }
@@ -415,9 +494,9 @@ export function Check({
         <Checkbox.Control>
           <Checkbox.Indicator />
         </Checkbox.Control>
-        <span className="flex flex-col gap-0.5 text-sm text-foreground">
+        <span className="flex flex-col gap-0.5 type-body text-foreground">
           <span>{children}</span>
-          {hint && <span className="text-xs text-muted">{hint}</span>}
+          {hint && <span className="type-caption text-muted">{hint}</span>}
         </span>
       </Checkbox.Content>
     </Checkbox>
