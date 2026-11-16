@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, LinkButton, Tag } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
-import { DemoBadge } from "@/components/ui";
+import { DemoBadge } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { CHANNELS, formatDate, fullName, label, EXECUTION } from "@/lib/labels";
 import type { TreatedItem } from "@/lib/types";

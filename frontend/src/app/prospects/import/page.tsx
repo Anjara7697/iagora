@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ArrowLeft, Check as CheckIcon, Eye, FileSpreadsheet, Upload } from "lucide-react";
 import { useCurrentUser } from "@/lib/session";
-import { CampaignSourcePicker } from "@/components/CampaignSourcePicker";
+import { CampaignSourcePicker } from "@/components/campaign/CampaignSourcePicker";
 import { FirstContacts } from "@/components/campaign/FirstContacts";
 import { Btn, FileInput, LinkButton, Tag } from "@/components/ds/controls";
 import { PageHeader, Screen, cx } from "@/components/ds/layout";

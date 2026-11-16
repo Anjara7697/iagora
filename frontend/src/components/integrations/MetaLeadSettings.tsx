@@ -6,10 +6,10 @@ import { FlaskConical, Plus, RotateCcw } from "lucide-react";
 import { API_URL, api, failure } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { MetaFormMapping, MetaSettings } from "@/lib/types";
-import { CampaignSourcePicker } from "./CampaignSourcePicker";
-import { Btn, Check, ErrorText, TextInput, TextLink } from "./ds/controls";
-import { Eyebrow } from "./ds/layout";
-import { ActionsBar, CodeBlock, InfoRow, SettingRow as Field, SettingsLoading, StatePill, Stats } from "./ds/settings";
+import { CampaignSourcePicker } from "../campaign/CampaignSourcePicker";
+import { Btn, Check, ErrorText, TextInput, TextLink } from "../ds/controls";
+import { Eyebrow } from "../ds/layout";
+import { ActionsBar, CodeBlock, InfoRow, SettingRow as Field, SettingsLoading, StatePill, Stats } from "../ds/settings";
 import { Box } from "@/components/ds/card";
 
 type Secrets = {

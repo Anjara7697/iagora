@@ -4,7 +4,7 @@ import { Sparkles } from "lucide-react";
 import { Btn } from "@/components/ds/controls";
 import { Box } from "@/components/ds/card";
 import { EmptyText, Eyebrow, Panel } from "@/components/ds/layout";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import type { ApiError } from "@/lib/api";
 import { ACTIONS, CHANNELS, CONSENT, PROFILE_FIELDS, formatDate, label } from "@/lib/labels";
 import type { AgentRun, Conversation, Prospect } from "@/lib/types";

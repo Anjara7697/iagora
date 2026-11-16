@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { Segmented } from "@/components/ds/controls";
 import { BarList, EmptyText, ErrorState, KpiStrip, PageHeader, Panel, Screen, cx } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { Skeleton } from "@/components/ui";
+import { Skeleton } from "@/components/ds/ui";
 import { formatDay } from "@/lib/labels";
 import type { Analytics } from "@/lib/types";
 import { replaceUrl } from "@/lib/url";

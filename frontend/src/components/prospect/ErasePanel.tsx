@@ -5,9 +5,9 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ErasureReport, Prospect } from "@/lib/types";
-import { Btn, ErrorText, Field, LinkButton, Notice, SelectBox, TextInput } from "./ds/controls";
-import { PageHeader, Screen } from "./ds/layout";
-import { SettingsCard, Stats } from "./ds/settings";
+import { Btn, ErrorText, Field, LinkButton, Notice, SelectBox, TextInput } from "../ds/controls";
+import { PageHeader, Screen } from "../ds/layout";
+import { SettingsCard, Stats } from "../ds/settings";
 
 /** Droit à l'effacement (RGPD, art. 17) : administrateur seulement, irréversible. Contenu du panneau latéral
  *  ouvert depuis le menu « ⋯ » de la fiche : motif, puis saisie de l'adresse (ou du numéro) pour confirmer. */

@@ -10,7 +10,7 @@ import { Collapse } from "@/components/ds/collapse";
 import { LinkButton, TextLink } from "@/components/ds/controls";
 import { EmptyText, ErrorState, Eyebrow, PageHeader, Screen, Section, cx, initialsOf } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { LevelBadge, Loading } from "@/components/ui";
+import { LevelBadge, Loading } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";

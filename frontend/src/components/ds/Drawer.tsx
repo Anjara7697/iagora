@@ -3,7 +3,7 @@
 import { Button, Drawer as HeroDrawer } from "@heroui/react";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { Eyebrow } from "./ds/layout";
+import { Eyebrow } from "./layout";
 
 /**
  * Panneau latéral (règle 2) sur le `Drawer` HeroUI (ARCH-03, A11Y-02) : piège à focus, reste de la page inerte, Échap

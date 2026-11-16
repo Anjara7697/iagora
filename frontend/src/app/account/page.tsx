@@ -5,8 +5,8 @@ import { useCurrentUser } from "@/lib/session";
 import { Btn, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } from "@/components/ds/settings";
-import { MyCalendar } from "@/components/MyCalendar";
-import { MyZoom } from "@/components/MyZoom";
+import { MyCalendar } from "@/components/account/MyCalendar";
+import { MyZoom } from "@/components/account/MyZoom";
 import { api, ApiError } from "@/lib/api";
 import { ROLE_LABELS } from "@/lib/labels";
 

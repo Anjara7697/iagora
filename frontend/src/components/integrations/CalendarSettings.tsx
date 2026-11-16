@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { api, failure } from "@/lib/api";
 import { calendarBadge } from "@/lib/connectors";
 import type { CalendarSettings as Settings, Page } from "@/lib/types";
-import { Btn, ErrorText, SelectBox, TextInput } from "./ds/controls";
-import { ActionsBar, CodeBlock, ConnectedAccounts, InfoRow, SettingRow as Field, SettingsLoading, StatePill } from "./ds/settings";
+import { Btn, ErrorText, SelectBox, TextInput } from "../ds/controls";
+import { ActionsBar, CodeBlock, ConnectedAccounts, InfoRow, SettingRow as Field, SettingsLoading, StatePill } from "../ds/settings";
 import { Box } from "@/components/ds/card";
 
 const MODES: Record<Settings["provider"], string> = {

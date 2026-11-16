@@ -6,7 +6,7 @@
  */
 
 import { SlidersHorizontal } from "lucide-react";
-import { Drawer } from "@/components/Drawer";
+import { Drawer } from "@/components/ds/Drawer";
 import { Btn, Check, ErrorText, SelectInput } from "@/components/ds/controls";
 import { CHANNELS, CONSENT, LEVELS, STAGES, TARGETS } from "@/lib/labels";
 import type { ProspectResults } from "@/lib/prospectResults";

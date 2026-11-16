@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Btn, Check as CheckBox, ErrorText, Field, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { formatDate, label, STAGES } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";

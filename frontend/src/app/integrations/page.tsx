@@ -5,19 +5,19 @@ import { ArrowRight, Plug } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { CalendarSettings } from "@/components/CalendarSettings";
-import { ConnectorIcon } from "@/components/ConnectorIcons";
-import { Drawer } from "@/components/Drawer";
-import { EmailConnector } from "@/components/EmailConnector";
-import { LeadSources } from "@/components/LeadSources";
-import { MetaLeadSettings } from "@/components/MetaLeadSettings";
-import { ZoomSettings } from "@/components/ZoomSettings";
+import { CalendarSettings } from "@/components/integrations/CalendarSettings";
+import { ConnectorIcon } from "@/components/integrations/ConnectorIcons";
+import { Drawer } from "@/components/ds/Drawer";
+import { EmailConnector } from "@/components/integrations/EmailConnector";
+import { LeadSources } from "@/components/integrations/LeadSources";
+import { MetaLeadSettings } from "@/components/integrations/MetaLeadSettings";
+import { ZoomSettings } from "@/components/integrations/ZoomSettings";
 import { Btn, LinkButton, Notice, Segmented } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, PageHeader, Screen, cx } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { StatePill } from "@/components/ds/settings";
-import { Loading, Skeleton } from "@/components/ui";
+import { Loading, Skeleton } from "@/components/ds/ui";
 import {
   CATEGORIES,
   CONNECTORS,

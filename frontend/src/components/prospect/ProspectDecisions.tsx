@@ -1,10 +1,10 @@
 "use client";
 
 import { Bot } from "lucide-react";
-import RunView from "@/components/TraceView";
+import RunView from "@/components/agent/TraceView";
 import { EmptyPanel, cx } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import type { ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { AgentRun } from "@/lib/types";

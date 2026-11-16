@@ -5,7 +5,7 @@
 import { Eyebrow } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Collapse } from "@/components/ds/collapse";
-import { ScoreBadge, StageBadge } from "@/components/ui";
+import { ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { CHANNELS, CONSENT, formatDate, label } from "@/lib/labels";
 import type { Conversation, ConversationSummary, Prospect } from "@/lib/types";
 import { Box } from "@/components/ds/card";

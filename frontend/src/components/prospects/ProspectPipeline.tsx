@@ -5,7 +5,7 @@
 import { ScrollShadow } from "@heroui/react";
 import Link from "next/link";
 import { SCROLL_SHADOW_SIZE } from "@/components/ds/layout";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { formatDate, fullName } from "@/lib/labels";
 import type { Membership, Page, Prospect } from "@/lib/types";
 import { ConsentTag, PIPELINE_COLUMNS, ProspectAvatar, level, type PipelineColumn } from "@/components/prospects/shared";

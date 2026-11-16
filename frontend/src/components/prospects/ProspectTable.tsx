@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
 import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { formatDate, fullName } from "@/lib/labels";
 import type { Membership, Prospect } from "@/lib/types";
 import { ConsentTag, ProspectAvatar, level } from "@/components/prospects/shared";

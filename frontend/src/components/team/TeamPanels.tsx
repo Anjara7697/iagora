@@ -3,7 +3,7 @@
 import { buttonVariants, toast, Tooltip } from "@heroui/react";
 import { KeyRound, UserPlus, UsersRound } from "lucide-react";
 import { useRef, useState, type MutableRefObject, type ReactNode } from "react";
-import { Drawer } from "@/components/Drawer";
+import { Drawer } from "@/components/ds/Drawer";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, ErrorText, Field, SelectBox, Tag, TextInput } from "@/components/ds/controls";
 import { SecretOnce } from "@/components/ds/settings";

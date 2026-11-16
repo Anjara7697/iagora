@@ -53,7 +53,7 @@ Les écrans importent ces composants, qui enveloppent HeroUI, plutôt que des é
 | `settings.tsx` | `SettingsCard`, `InfoRow`, `Toggle`, `Stats`, `ActionsBar` |
 | `badges.tsx` | `StageBadge`, `ScoreBadge`, `HeatMeter`, `LevelBadge`, `DemoChip` |
 
-Le panneau latéral est `components/Drawer.tsx`, sur le `Drawer` HeroUI (focus, inertie de la page, Échap et voile gérés par React Aria) ; l'état d'une page dans l'adresse passe par `lib/url.ts`
+Le panneau latéral est `components/ds/Drawer.tsx`, sur le `Drawer` HeroUI (focus, inertie de la page, Échap et voile gérés par React Aria) ; l'état d'une page dans l'adresse passe par `lib/url.ts`
 (`replaceUrl`) et un module par parcours (`lib/campaignNav.ts`, `lib/knowledgeNav.ts`).
 
 Éléments HTML natifs conservés : listes de définitions `dl`, listes `ul`/`li` sémantiques,
@@ -123,7 +123,7 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 15. **États vides, chargement** : `EmptyPanel` avec l'action suivante (et « Afficher tout » quand un filtre
     est actif) ; `Skeleton` ou chargement du tableau, jamais de « … ».
 
-**Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
+**Barre et menu** (`components/shell/`, dont `AppShell.tsx`)
 
 Session : `lib/session/` (`SessionProvider`, `useCurrentUser`). Après la connexion, l'arrivée se fait sur Aujourd'hui ;
 une session expirée renvoie à `/login?next=…`, qui ramène à la page en cours (adresse vérifiée par `returnPath` :
@@ -235,7 +235,7 @@ un écran connu de la console, jamais une adresse externe).
     panneau est protégée à sa fermeture ; passage d'envoi réel, oubli de la boîte et révocation d'un jeton passent
     par `ConfirmDialog`. Chaque panneau : `SettingsLoading` au chargement, succès en Toast, échec en `ErrorText`
     (message construit avec `failure()` de `lib/api`).
-34. **Simulateur** (`app/simulator`, `components/GuidedSimulation.tsx`) : entrée propre dans le menu (règle 18) ; trois colonnes (prospect fictif, conversation,
+34. **Simulateur** (`app/simulator`, `components/simulator/GuidedSimulation.tsx`) : entrée propre dans le menu (règle 18) ; trois colonnes (prospect fictif, conversation,
     décision de l'agent), propres à cet outil de test ; parcours guidé dans l'adresse (`?mode=guide`). Mode assisté
     et arrêt d'urgence en `Alert` (l'arrêt avec « Ouvrir la page Agent ») ; suppression des données fictives par
     `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est

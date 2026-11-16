@@ -16,7 +16,7 @@ import { type ActiveFilter, FiltersButton, ListToolbar, countLabel } from "@/com
 import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
-import { Loading, Skeleton } from "@/components/ui";
+import { Loading, Skeleton } from "@/components/ds/ui";
 import { ProspectFilters } from "@/components/prospects/ProspectFilters";
 import { ProspectPipeline } from "@/components/prospects/ProspectPipeline";
 import { ProspectTable } from "@/components/prospects/ProspectTable";

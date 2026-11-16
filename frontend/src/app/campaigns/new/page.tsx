@@ -5,11 +5,11 @@ import { useRef, useState } from "react";
 import CampaignForm, {
   EMPTY_VALUES,
   type CampaignValues,
-} from "@/components/CampaignForm";
+} from "@/components/campaign/CampaignForm";
 import { useCurrentUser } from "@/lib/session";
 import { BackLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { toast } from "@heroui/react";
 import { linkMetaForms } from "@/lib/metaForms";

@@ -18,7 +18,7 @@ import { EmptyPanel, ListScroll, PageHeader, Screen } from "@/components/ds/layo
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
-import { Loading, Skeleton } from "@/components/ui";
+import { Loading, Skeleton } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";

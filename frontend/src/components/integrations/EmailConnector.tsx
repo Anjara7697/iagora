@@ -4,7 +4,7 @@ import { Tabs, toast } from "@heroui/react";
 import { Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { EmailSettings } from "@/components/EmailSettings";
+import { EmailSettings } from "@/components/integrations/EmailSettings";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, ErrorText, Notice, TAB_RADIUS } from "@/components/ds/controls";
 import { cx } from "@/components/ds/layout";

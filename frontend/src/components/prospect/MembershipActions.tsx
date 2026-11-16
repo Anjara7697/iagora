@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, Field, SelectBox, Notice, TextBox, TextInput } from "@/components/ds/controls";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { STAGES } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
