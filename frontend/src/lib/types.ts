@@ -1,3 +1,8 @@
+import type { components } from "./api/schema";
+
+/** Types de lecture dérivés du schéma OpenAPI généré (DATA-04) : ceux qui ne le sont pas encore restent écrits à la main. */
+type Schemas = components["schemas"];
+
 // Types alignés sur les schémas de l'API (backend/app/schemas).
 
 export type Page<T> = {
@@ -9,17 +14,9 @@ export type Page<T> = {
 
 export type Role = "ADMIN" | "ADVISOR" | "VIEWER";
 
-export type User = {
-  id: number;
-  username: string;
-  email: string;
-  role: Role;
-  is_active?: boolean;
-  must_change_password?: boolean;
-  created_at?: string;
-};
+export type User = Schemas["UserRead"];
 
-export type CreatedUser = User & { temporary_password: string | null };
+export type CreatedUser = Schemas["UserCreated"];
 
 export type Membership = {
   id: number;
@@ -38,38 +35,11 @@ export type Membership = {
   assigned_advisor_id: number | null;
 };
 
-export type Prospect = {
-  id: number;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
-  profile: Record<string, unknown>;
-  consent_status: string;
-  consent_source: string | null;
-  opted_out_at: string | null;
-  created_at: string;
-  is_demo?: boolean;
-  campaigns: Membership[];
-  current_membership_id?: number | null;
-};
+export type Prospect = Schemas["ProspectDetail"];
 
-export type Target = { id: number; code: string; name: string };
-export type Source = {
-  id: number;
-  name: string;
-  type?: string;
-  platform?: string;
-  external_id?: string | null;
-};
-export type MetaFormMapping = {
-  form_id: string;
-  form_name: string;
-  campaign_id: number;
-  source_id: number;
-  target_code: string | null;
-  enabled: boolean;
-};
+export type Target = Schemas["TargetRead"];
+export type Source = Schemas["SourceRead"];
+export type MetaFormMapping = Schemas["MetaFormMapping"];
 export type MetaSettings = {
   configured: boolean;
   enabled: boolean;
@@ -91,41 +61,9 @@ export type MetaSettings = {
   /** En échec et encore rejouables. */
   replayable?: number;
 };
-export type Campaign = {
-  id: number;
-  responsible_advisor_id?: number | null;
-  responsible_advisor_name?: string | null;
-  responsible_advisor_active?: boolean | null;
-  name: string;
-  status: string;
-  description?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  targets: Target[];
-  sources: Source[];
-};
-export type CampaignStats = {
-  prospects: number;
-  average_score: number;
-  by_stage: Record<string, number>;
-  by_level: Record<string, number>;
-  by_source: {
-    source_id: number;
-    name: string;
-    platform: string;
-    prospects: number;
-  }[];
-  meetings: number;
-  converted: number;
-};
-export type CampaignOverview = {
-  campaign_id: number;
-  prospects: number;
-  hot: number;
-  meetings: number;
-  qualified?: number;
-  converted: number;
-};
+export type Campaign = Schemas["CampaignRead"];
+export type CampaignStats = Schemas["CampaignStats"];
+export type CampaignOverview = Schemas["CampaignOverview"];
 
 export type Message = {
   id: string;
@@ -190,7 +128,7 @@ export type ConversationSummary = {
   prospect: ConversationProspect | null;
 };
 
-export type TraceEntry = { node: string; summary: string; at: string };
+export type TraceEntry = Schemas["TraceRead"];
 
 export type AgentRun = {
   run_id: string;
@@ -276,36 +214,17 @@ export type TodoPage = Page<TodoItem> & {
   truncated?: boolean;
 };
 
-export type KnowledgeStatus = {
-  configured: boolean;
-  embedding_model: string | null;
-  min_score: number;
-  top_k: number;
-};
+export type KnowledgeStatus = Schemas["KnowledgeStatus"];
 
-export type KnowledgeDocument = {
-  slug: string;
-  title: string;
-  target_code: string | null;
-  chunks: number;
-  embedding_model: string;
-  is_demo: boolean;
-  updated_at: string | null;
-  needs_reindex: boolean;
-};
+export type KnowledgeDocument = Schemas["DocumentRead"];
 
 export type KnowledgeDocumentDetail = KnowledgeDocument & {
   source_text: string | null;
   sections: { heading: string | null; text: string }[];
 };
 
-export type SearchHit = {
-  source: string;
-  text: string;
-  score: number;
-  retained: boolean;
-};
-export type SearchResult = { threshold: number; results: SearchHit[] };
+export type SearchHit = Schemas["SearchHit"];
+export type SearchResult = Schemas["SearchResult"];
 
 export type EmailStatus = {
   configured: boolean;
@@ -321,41 +240,9 @@ export type EmailStatus = {
   outbox: Record<string, number>;
 };
 
-export type EmailCheck = { imap: string; smtp: string };
+export type EmailCheck = Schemas["EmailCheck"];
 
-export type DashboardSummary = {
-  agent_mode: AgentMode;
-  hot_prospects: {
-    id: number;
-    name: string;
-    email: string | null;
-    stage: string;
-    level: string | null;
-    total_score: number;
-    campaign_id: number | null;
-    campaign_name: string | null;
-  }[];
-  activity: {
-    hours: number;
-    prospects_analysed: number;
-    drafts_generated: number;
-    sent_after_validation: number;
-    sent_without_validation: number;
-    escalations: number;
-    errors: number;
-  };
-  follow_ups: {
-    id: number;
-    prospect_id: number;
-    prospect_name: string;
-    scheduled_at: string;
-    reason: string | null;
-  }[];
-  follow_ups_total: number;
-  funnel_days: number;
-  funnel: Record<string, number>;
-  leads: number;
-};
+export type DashboardSummary = Schemas["DashboardSummary"];
 
 export type TreatedItem = {
   id: string;
@@ -402,22 +289,9 @@ export type EmailConfig = {
   updated_at?: string | null;
 };
 
-export type EmailAutodetect = {
-  provider: string | null;
-  imap_host: string;
-  imap_port: number;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_security: "starttls" | "ssl";
-  source: "preset" | "mx" | "ispdb" | "guess";
-  note: string | null;
-};
+export type EmailAutodetect = Schemas["EmailAutodetect"];
 
-export type EmailTestResult = {
-  imap: string;
-  smtp: string;
-  folders: { name: string; label: string }[];
-};
+export type EmailTestResult = Schemas["EmailTestResult"];
 
 export type CalendarSettings = {
   provider: "none" | "demo" | "google";
@@ -435,13 +309,7 @@ export type CalendarSettings = {
   }[];
 };
 
-export type MyCalendar = {
-  available: boolean;
-  connected: boolean;
-  account_email: string | null;
-  connected_at: string | null;
-  last_error: string | null;
-};
+export type MyCalendar = Schemas["MyCalendarRead"];
 
 export type ZoomMode = "none" | "account" | "advisor";
 
@@ -465,78 +333,13 @@ export type ZoomSettings = {
   }[];
 };
 
-export type MyZoom = {
-  mode: ZoomMode;
-  connected: boolean;
-  account_email: string | null;
-  connected_at: string | null;
-  last_error: string | null;
-};
+export type MyZoom = Schemas["MyZoomRead"];
 
-export type RuntimeSettings = {
-  llm_provider: "gemini" | "openai";
-  llm_model: string;
-  llm_fallback_model: string;
-  llm_temperature: number;
-  agent_auto_reply: boolean;
-  follow_up_window_start_hour: number;
-  follow_up_window_end_hour: number;
-  follow_up_weekdays_only: boolean;
-  follow_up_max_per_silence: number;
-  /** Seuils de décision de l'agent (décision D-27). */
-  agent_meeting_min_score: number;
-  agent_nurture_max_score: number;
-  agent_min_confidence: number;
-  agent_extra_terms: string;
-  email_footer: string;
-  email_ai_notice: string;
-  email_brand_name: string;
-  email_brand_color: string;
-  email_logo_url: string;
-  email_create_unknown_senders: boolean;
-  email_poll_seconds: number;
-  calendar_timezone: string;
-  calendar_work_days: string;
-  calendar_work_start_hour: number;
-  calendar_work_end_hour: number;
-  calendar_slot_minutes: number;
-  calendar_min_notice_hours: number;
-  calendar_horizon_days: number;
-  calendar_buffer_minutes: number;
-  source?: "console" | "env";
-  gemini_api_key_set?: boolean;
-  openai_api_key_set?: boolean;
-  embedding_model?: string;
-};
+export type RuntimeSettings = Schemas["RuntimeSettingsRead"];
 
-export type ErasureReport = {
-  prospect_id: number;
-  conversations: number;
-  interactions: number;
-  appointments: number;
-  suppressed: boolean;
-  external_events: {
-    start_at: string;
-    advisor: string | null;
-    calendar_event_id: string | null;
-    zoom_meeting_id: string | null;
-    meeting_url: string | null;
-  }[];
-};
+export type ErasureReport = Schemas["ErasureReport"];
 
-export type ServiceToken = {
-  id: string;
-  name: string;
-  hint: string;
-  channel: string;
-  campaign_id: number | null;
-  source_id: number | null;
-  target_code: string | null;
-  created_at: string;
-  last_used_at: string | null;
-  revoked_at: string | null;
-  token?: string;
-};
+export type ServiceToken = Schemas["ServiceTokenCreated"];
 
 export type ImportReport = {
   dry_run: boolean;
@@ -551,61 +354,14 @@ export type ImportReport = {
 };
 
 /** Premiers contacts d'une campagne (décision D-29) : qui les recevrait, et pourquoi les autres non. */
-export type FirstContacts = {
-  campaign_active: boolean;
-  eligible: number;
-  queued: number;
-  without_consent: number;
-  without_email: number;
-  already_contacted: number;
-  in_progress: number;
-  opted_out: number;
-};
+export type FirstContacts = Schemas["FirstContactsRead"];
 
-export type BatchResult = { approved: number; skipped: number };
+export type BatchResult = Schemas["BatchResult"];
 
-export type Appointment = {
-  id: number;
-  prospect: {
-    id: number;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-  };
-  advisor_id: number | null;
-  advisor_name: string | null;
-  start_at: string;
-  end_at: string;
-  status: "proposed" | "scheduled" | "done" | "cancelled" | "no_show";
-  meeting_url: string | null;
-};
+export type Appointment = Schemas["AppointmentRead"];
 
 /** Tableau de bord (Pilotage) : `GET /dashboard/overview?days=7|30|90`. */
-export type DashboardOverview = {
-  days: number;
-  since: string;
-  leads: number;
-  funnel: { key: string; label: string; count: number }[];
-  by_target: { key: string | null; label: string; count: number }[];
-  by_source: { key: string | null; label: string; count: number }[];
-};
+export type DashboardOverview = Schemas["DashboardOverview"];
 
 /** Analyses (Pilotage) : `GET /analytics?days=7|30|90`. Une valeur null signifie « pas de donnée ». */
-export type Analytics = {
-  days: number;
-  since: string;
-  first_reply_sent: { median_seconds: number | null; count: number };
-  first_reply_drafted: { median_seconds: number | null; count: number };
-  average_confidence: number | null;
-  drafts: {
-    generated: number;
-    approved_unchanged: number;
-    approved_edited: number;
-    rejected: number;
-    superseded: number;
-    pending: number;
-  };
-  reject_reasons: { reason: string; count: number }[];
-  coverage: { questions: number; answered: number };
-  funnel: { key: string; label: string; count: number }[];
-};
+export type Analytics = Schemas["Analytics"];
