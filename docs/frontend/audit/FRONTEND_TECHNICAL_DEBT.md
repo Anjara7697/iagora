@@ -42,6 +42,13 @@ du code et de recherches dans `frontend/src` au commit `5ce9fda`.
 - Solution sans toucher l'API : dédupliquer et ne pas recharger quand le filtre change. Solution propre : des
   compteurs dans la réponse de liste, **à proposer au backend**, sans rien retirer du contrat actuel.
 
+> **Lot 7, PR 7.3 (16/11/2026)** : 28 des 45 types vérifiés par `contract.ts` sont désormais dérivés du schéma
+> (`Schemas["…"]` dans `lib/types.ts`), ceux dont le passage ne cassait aucun usage (mesuré type par type au
+> compilateur). Restent écrits à la main, et vérifiés par `contract.ts`, les 17 qui demandent d'ajuster du code :
+> par ordre d'effort mesuré, KnowledgeDocumentDetail et Membership (1 erreur), EmailConfig, TodoPage, TreatedItem,
+> TreatedPage (2), ImportReport (3), ConversationSummary, EmailStatus, ZoomSettings (4), CalendarSettings,
+> ConversationProspect (5), AgentRun (7), MetaSettings (8), Message (13), TodoItem (17), Conversation (20).
+
 **DATA-04 — Deux sources de types** · P2 · effort M
 - `lib/types.ts` : 54 types écrits à la main ; `lib/api/schema.d.ts` : 8 444 lignes générées depuis l'OpenAPI.
 - `lib/api/contract.ts` vérifie 46 correspondances à la compilation : un champ lu par la console et absent de
