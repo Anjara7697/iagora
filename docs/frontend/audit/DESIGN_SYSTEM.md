@@ -68,8 +68,10 @@ Changements proposés :
   points d'état. Les 58 usages de `xl`, `2xl`, `md` rejoignent `lg`. **Correction (13/11/2026, PR 2.1)** : la
   première version de ce document donnait `lg` = 8 px et `sm` = 4 px. Avec le rayon de base du projet
   (`--radius: 0.25rem`, « Rayon S » décidé dans `heroui.md`), `lg` vaut 4 px et `sm` 2 px : la taille actuelle est
-  gardée, seuls les rayons dispersés sont ramenés à l'échelle.
-- Bordures : 1 px `--border` pour délimiter un champ ou une carte ; `--separator` entre lignes.
+  gardée, seuls les rayons dispersés sont ramenés à l'échelle. Confirmé par le responsable du projet le 16/11/2026 :
+  4 px.
+- Bordures : 1 px `--border` pour délimiter un champ ou une carte ; `--separator` entre lignes. Bordure de champ
+  discrète au repos, plus marquée au survol et au focus (décidé le 16/11/2026, voir `heroui.md`).
 - Ombres : aucune sur les cartes posées sur la page (bordure seule) ; `--overlay-shadow` pour ce qui flotte
   (menus, panneaux, toasts, dialogues).
 

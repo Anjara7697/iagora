@@ -29,7 +29,8 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
   sur-titres sont en police sans-serif avec `tabular-nums`.
 - **Champs** (texte, zone de texte, listes, recherche, dates) : une seule apparence, réglée par les jetons `--field-*`
   de `heroui.css` (fond de surface, bordure de 1 px plus marquée au survol, couleur d'accent au focus, sans ombre).
-  Ne pas poser de `variant` sur un champ. Interrupteurs et cases : apparence HeroUI par défaut.
+  La bordure reste discrète (décidé avec le responsable du projet le 16/11/2026) : elle n'atteint pas le contraste
+  de 3:1 de WCAG 1.4.11 ; le champ se repère à son libellé et à son fond, et le focus prend la couleur d'accent. Ne pas poser de `variant` sur un champ. Interrupteurs et cases : apparence HeroUI par défaut.
 - **Surcouches** : elles acceptent toutes les propriétés du composant HeroUI (`variant`, `size`, `color`…) et
   n'ajoutent que des raccourcis ; ne pas y poser de styles qui changent l'apparence du composant.
 
@@ -145,7 +146,13 @@ un écran connu de la console, jamais une adresse externe).
 21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
     d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
     l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
-    concernent, jamais une barre collante qui le masque.
+    concernent, jamais une barre collante qui le masque. **Clavier** (« À traiter ») : `J` et `K` ouvrent
+    l'élément suivant ou précédent, `M` modifie le brouillon, `⌘ Entrée` (Ctrl Entrée) le valide. Les
+    raccourcis sont déclarés avec `useShortcuts` (`lib/useShortcuts.ts`, touches dans `TODO_KEYS`) : ils ne se
+    déclenchent pas dans un champ de saisie ni quand une fenêtre est ouverte, ils sont listés dans la palette
+    (« Sur cette page ») et affichés dans l'infobulle du bouton (`ShortcutTooltip`), qui les annonce avec
+    `keyShortcuts` (`aria-keyshortcuts`). Valider demande une touche de commande : une lettre seule ne doit pas
+    pouvoir envoyer un message.
 22. **Actions sur l'état** (Conversations) : dans l'en-tête du détail, à côté du statut, l'action principale
     selon l'état et les autres dans un menu « … » (`Dropdown` HeroUI). Celles qui ont un effet (rendre la main à
     l'agent, le relancer, clôturer) passent par `ConfirmDialog`. Un brouillon de l'agent se décide sur place avec
