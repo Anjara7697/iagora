@@ -18,6 +18,14 @@ export function revealed(index: number, className = "") {
 }
 /** Éléments par page de la file. */
 export const PAGE_SIZE = 50;
+
+/** Raccourcis de la file (règle 21) : passer d'un élément à l'autre, modifier puis valider un brouillon. */
+export const TODO_KEYS = {
+  next: { key: "j" },
+  previous: { key: "k" },
+  edit: { key: "m" },
+  approve: { key: "Enter", mod: true },
+} as const;
 /** Résultat d'une décision, annoncé par un Toast : `treatedId` ajoute « Voir la décision ». */
 export type DecisionResult = { title: string; description: string; treatedId?: string };
 /** Ce que reçoit chaque panneau de décision : la fin du traitement, le signal « saisie modifiée » et la garde. */

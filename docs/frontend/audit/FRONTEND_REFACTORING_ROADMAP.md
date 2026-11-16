@@ -255,5 +255,5 @@ Contenu, risques et critères d'acceptation : sections « Lot 3 » à « Lot 7 �
 | Audit (phases 1 et 2) | fusionné, [Anjara7697/iagora#184](https://github.com/Anjara7697/iagora/pull/184) |
 | 1 — Socle technique | fusionné : [Anjara7697/iagora#188](https://github.com/Anjara7697/iagora/pull/188), [#189](https://github.com/Anjara7697/iagora/pull/189), [#190](https://github.com/Anjara7697/iagora/pull/190), [#191](https://github.com/Anjara7697/iagora/pull/191) |
 | 2 — Design system | fusionné : [#192](https://github.com/Anjara7697/iagora/pull/192) à [#198](https://github.com/Anjara7697/iagora/pull/198) ; les sections sans carte (UI-06) passent aux lots 5 et 6, écran par écran |
-| 3 — À traiter | en cours : 3.1 (décision avant le contexte) |
+| 3 — À traiter | 3.1 fusionnée ([#199](https://github.com/Anjara7697/iagora/pull/199)) ; en cours : 3.2 (raccourcis clavier) |
 | 4 à 7 | à faire |
