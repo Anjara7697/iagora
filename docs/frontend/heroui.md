@@ -185,8 +185,13 @@ un écran connu de la console, jamais une adresse externe).
     clavier, le nom du prospect est le lien). Barre : période, conseiller, statut et prospects fictifs à gauche,
     « Réinitialiser » quand un filtre est actif, compteur « N rendez-vous » (ou « N sur M ») à droite ;
     pagination `TablePagination`.
-27. **Aujourd'hui** : « Prochains rendez-vous » (les siens pour un conseiller, tous sinon, cinq au plus) avec un
-    lien vers la liste complète. Statut et lien de visio partagés avec Rendez-vous
+27. **Aujourd'hui** (page d'orientation) : la date sous la salutation ; la prochaine action dans une carte,
+    avec la répartition de la file en une ligne de liens vers la file filtrée (le nombre total n'est que dans la
+    barre du haut) ; puis, en sections sans carte (`Section`), « Prochains rendez-vous » (les siens pour un
+    conseiller, tous sinon, cinq au plus) et « Prospects à fort signal » côte à côte, l'activité de l'agent en une
+    ligne de chiffres avec « aucun envoi sans validation », les relances repliées (`Collapse`) et un lien vers le
+    tableau de bord, qui garde l'entonnoir (règle 28). En mobile, un rendez-vous met l'heure et le nom sur une
+    ligne, le statut et la visio dessous : rien n'est tronqué. Statut et lien de visio partagés avec Rendez-vous
     (`components/appointments/shared.tsx`). Pendant le chargement, rien ou un `Skeleton`, jamais « … ».
 
 **Tableau de bord** (`app/dashboard`)

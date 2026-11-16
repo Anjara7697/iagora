@@ -136,6 +136,36 @@ export function Panel({
   );
 }
 
+/**
+ * Section d'une page, sans carte (UI-06) : titre h2 et action sur un filet, contenu posé sur la page. La carte est
+ * réservée aux objets (un prospect, un connecteur) et à l'action principale d'un écran.
+ */
+export function Section({
+  title,
+  label,
+  action,
+  children,
+  className,
+  style,
+}: {
+  title: ReactNode;
+  label: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <section aria-label={label} className={cx("flex min-w-0 flex-col", className)} style={style}>
+      <div className="flex min-h-9 items-center gap-3 border-b border-separator pb-2">
+        <h2 className="min-w-0 flex-1 type-title-sm font-semibold text-foreground">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 /** Erreur de chargement lisible, avec nouvelle tentative. */
 /** Erreur de chargement : `Alert` HeroUI danger (même apparence que `ErrorText`), avec « Réessayer » à droite. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
