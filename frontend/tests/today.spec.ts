@@ -153,7 +153,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
       new URL(r.url()).searchParams.get("kind") === "validation",
   );
   await expect(page.locator('a[href="/simulator"]')).toHaveCount(0);
-  await page.getByRole("link", { name: /^Validations/ }).click();
+  await page.getByRole("navigation", { name: "Répartition de la file" }).getByRole("link", { name: "2 validations" }).click();
   await request;
   await expect(page).toHaveURL(/\/todo\?kind=validation$/);
   await expect(
@@ -168,7 +168,7 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
   await auditA11y(page, "accueil");
 });
 
-test("accueil : salutation, familles à traiter, signaux forts, activité, relances et entonnoir", async ({
+test("accueil : salutation, répartition de la file, signaux forts, activité, relances et lien vers le tableau de bord", async ({
   page,
 }) => {
   await mockApi(page);
@@ -176,22 +176,18 @@ test("accueil : salutation, familles à traiter, signaux forts, activité, relan
   await expect(
     page.getByRole("heading", { name: "Bonjour Nadia" }),
   ).toBeVisible();
-  await expect(page.getByText("5 éléments vous attendent")).toBeVisible();
-  await expect(
-    page.getByText("l’agent a préparé 3 brouillons en 24 h"),
-  ).toBeVisible();
+  // Le nombre d'éléments à traiter n'est que dans la barre du haut (UX-08) : la page donne la répartition.
+  await expect(page.getByRole("link", { name: "5 à traiter" })).toBeVisible();
+  await expect(page.getByRole("main").getByText(/vous attend/)).toHaveCount(0);
   const next = page.getByRole("region", { name: "Prochaine action" });
   await expect(next.getByText("Relire une réponse")).toBeVisible();
   await expect(next.getByText(/Marie Martin/)).toBeVisible();
   await expect(
     next.getByRole("link", { name: "Traiter maintenant" }),
   ).toHaveAttribute("href", "/todo?id=validation%3A42");
-  await expect(page.getByRole("link", { name: /Validations/ })).toContainText(
-    "2",
-  );
-  await expect(page.getByRole("link", { name: /Escalades/ })).toContainText(
-    "1",
-  );
+  const split = page.getByRole("navigation", { name: "Répartition de la file" });
+  await expect(split.getByRole("link")).toHaveText(["2 validations", "1 escalade", "1 question sans réponse", "1 incident"]);
+  await expect(split.getByRole("link", { name: "1 escalade" })).toHaveAttribute("href", "/todo?kind=escalation");
   const hot = page.getByRole("region", { name: "Prospects à fort signal" });
   await expect(
     hot.getByRole("link", { name: /Sophie Merlin/ }),
@@ -202,13 +198,17 @@ test("accueil : salutation, familles à traiter, signaux forts, activité, relan
   await expect(
     activity.getByText("L’agent n’a envoyé aucun message sans validation."),
   ).toBeVisible();
+  // Relances repliées : elles s'ouvrent au besoin.
   const follow = page.getByRole("region", { name: "Relances programmées" });
+  await expect(follow.getByText("Marie Dupont")).toBeHidden();
+  await follow.getByRole("button", { name: "Relances programmées (3)" }).click();
   await expect(follow.getByText("Marie Dupont")).toBeVisible();
   await expect(
     follow.getByText("+ 2 autre(s) relance(s) programmée(s)."),
   ).toBeVisible();
-  const funnel = page.getByRole("region", { name: "Entonnoir" });
-  await expect(funnel.getByText("35 prospects arrivés")).toBeVisible();
+  // L'entonnoir est dans le Tableau de bord (UX-09).
+  await expect(page.getByRole("region", { name: "Entonnoir" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /voir le tableau de bord/ })).toHaveAttribute("href", "/dashboard");
 });
 
 test("accueil : incident en bandeau avec lien de diagnostic", async ({
@@ -290,4 +290,30 @@ test("accueil : la file n'est lue qu'une fois au chargement (barre du haut et pa
   await expect(page.getByRole("heading", { name: "Relire une réponse" })).toBeVisible();
   await page.waitForLoadState("networkidle");
   expect(reads).toHaveLength(1);
+});
+
+test("accueil mobile : rendez-vous lisibles en entier, sans troncature", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page, { role: "ADVISOR" });
+  await open(page);
+  const panel = page.getByRole("region", { name: "Prochains rendez-vous" });
+  const name = panel.getByRole("link", { name: "Sophie Merlin", exact: true });
+  const status = panel.getByText("Planifié", { exact: true });
+  await expect(name).toBeVisible();
+  await expect(status).toBeVisible();
+  // Ni le nom ni le statut ne sont coupés (UX-05).
+  for (const el of [name, status]) expect(await el.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("accueil à 1440 × 900 : l'essentiel tient dans le premier écran", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page, { role: "ADVISOR" });
+  await open(page);
+  await expect(page.getByRole("region", { name: "Prochaine action" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("navigation", { name: "Répartition de la file" })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole("region", { name: "Prochains rendez-vous" }).getByRole("link", { name: "Sophie Merlin", exact: true })).toBeInViewport();
+  await expect(page.getByRole("region", { name: "Prospects à fort signal" }).getByRole("link").first()).toBeInViewport();
+  await expect(page.getByText("L’agent n’a envoyé aucun message sans validation.")).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });

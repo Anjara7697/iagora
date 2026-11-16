@@ -52,7 +52,7 @@ pydantic-core==2.50.4     # via pydantic
 pydantic-settings==2.16.2  # via -r requirements.txt
 pyjwt==2.15.1             # via redis, -r requirements.txt
 pymongo==4.19.0           # via motor
-pypdf==6.21.4             # via -r requirements.txt
+pypdf==7.0.1              # via -r requirements.txt
 python-dotenv==1.2.4      # via pydantic-settings, uvicorn
 python-multipart==0.0.33  # via -r requirements.txt
 pyyaml==6.0.3             # via langchain-core, uvicorn
