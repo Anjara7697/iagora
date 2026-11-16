@@ -10,7 +10,7 @@ const positiveId = (value: string | null) =>
     ? value
     : "";
 
-export type ProspectView = "" | "table" | "pipeline";
+type ProspectView = "" | "table" | "pipeline";
 
 /** Only supported list settings are carried between the results and a profile. */
 export function readProspectResults(query: Query) {

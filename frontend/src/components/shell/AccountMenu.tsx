@@ -7,10 +7,10 @@ import { AGENT_COPY, AgentDot, useAgentControl } from "@/components/AgentStatus"
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { LinkButton } from "@/components/ds/controls";
 import { useHasUnsentReplies } from "@/components/ReplyDrafts";
+import { ROLE_LABELS } from "@/lib/labels";
 import type { User } from "@/lib/types";
 import ThemeSwitcher from "./ThemeSwitcher";
 
-const ROLE_LABELS = { ADMIN: "Administrateur", ADVISOR: "Conseiller", VIEWER: "Observateur" };
 
 export const displayNameOf = (username: string) =>
   username

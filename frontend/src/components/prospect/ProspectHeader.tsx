@@ -48,7 +48,7 @@ export default function ProspectHeader({
   const initials =
     [p.first_name, p.last_name]
       .filter(Boolean)
-      .map((name) => name![0])
+      .flatMap((name) => (name ? [name[0]] : []))
       .join("")
       .slice(0, 2)
       .toUpperCase() || "?";

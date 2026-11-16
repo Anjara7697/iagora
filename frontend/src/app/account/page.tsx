@@ -8,12 +8,8 @@ import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } fr
 import { MyCalendar } from "@/components/MyCalendar";
 import { MyZoom } from "@/components/MyZoom";
 import { api, ApiError } from "@/lib/api";
+import { ROLE_LABELS } from "@/lib/labels";
 
-const ROLE_LABELS = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
 
 export default function AccountPage() {
   const user = useCurrentUser();

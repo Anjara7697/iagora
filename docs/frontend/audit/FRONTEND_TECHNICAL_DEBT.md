@@ -125,6 +125,13 @@ schéma d'API (`npm run api:check`).
 
 Chaque élément a été cherché dans `src`, `tests` et `tests-api` ; aucun import dynamique dans le projet.
 
+> **Lot 7, PR 7.1 (16/11/2026)** : CLEAN-01 et CLEAN-03 traités sur l'inventaire refait à cette date (exports
+> morts supprimés, exports internes rendus privés ; restent exportés, à dessein, `ApiContract`, vérification
+> à la compilation, et `schema.d.ts`, généré). CLEAN-02 : `ROLE_LABELS` (une seule définition dans
+> `lib/labels.ts`), ton de statut des campagnes (`CampaignStatusTag`) ; les trois fonctions d'initiales ne
+> sont pas des doublons (découpages différents, résultats différents), elles restent. TS-01 (`RouterConfig`
+> déclaré), TS-03 (`draftStatus`), TS-04 traités ; TS-02 laissé (correct).
+
 **CLEAN-01 — Exports sans aucun usage** (une seule occurrence, leur définition) :
 
 | Élément | Fichier |

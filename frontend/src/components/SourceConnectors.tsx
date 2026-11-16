@@ -77,7 +77,7 @@ export const CONNECTORS: Connector[] = [
 type State = { tone: "success" | "warning" | "default"; label: string; link?: { href: string; text: string } };
 
 /** État de chaque connecteur dans IAGORA (lu sur les réglages d'Intégrations ; l'administrateur seul y a accès). */
-export function useConnectorStates(): Record<ConnectorId, State | null> {
+function useConnectorStates(): Record<ConnectorId, State | null> {
   const meta = useApi<MetaSettings>("/integrations/meta");
   const tokens = useApi<ServiceToken[]>("/integrations/tokens");
   const email = useApi<EmailStatus>("/integrations/email");
@@ -106,7 +106,7 @@ export function useConnectorStates(): Record<ConnectorId, State | null> {
 }
 
 /** Ce que l'administrateur doit encore faire pour qu'une source reçoive des prospects. */
-export function draftState(s: SourceDraft): { tone: "success" | "warning" | "default"; label: string; help: ReactNode } {
+function draftState(s: SourceDraft): { tone: "success" | "warning" | "default"; label: string; help: ReactNode } {
   switch (s.connector) {
     case "meta":
       return s.external_id.trim()

@@ -18,8 +18,8 @@ export const OWNER_FILTERS = [
   { value: "me", text: "Moi" },
   { value: "none", text: "Non assigné" },
 ] as const;
-export type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
-export type OwnerFilter = (typeof OWNER_FILTERS)[number]["value"];
+type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+type OwnerFilter = (typeof OWNER_FILTERS)[number]["value"];
 
 const isStatus = (v: string): v is StatusFilter => STATUS_FILTERS.some((o) => o.value === v);
 const isOwner = (v: string): v is OwnerFilter => OWNER_FILTERS.some((o) => o.value === v);

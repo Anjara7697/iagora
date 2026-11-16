@@ -1,5 +1,14 @@
 // Libellés français des valeurs techniques de l'API.
 
+import type { Role } from "./types";
+
+/** Rôles des comptes (menu du compte, Mon compte, Équipe). */
+export const ROLE_LABELS: Record<Role, string> = {
+  ADMIN: "Administrateur",
+  ADVISOR: "Conseiller",
+  VIEWER: "Observateur",
+};
+
 export const STAGES: Record<string, string> = {
   new: "Nouveau",
   to_qualify: "À qualifier",
@@ -281,12 +290,4 @@ export const EXECUTION: Record<string, string> = {
 
 export const APPOINTMENT_STATUS: Record<string, string> = {
   proposed: "Proposé", scheduled: "Planifié", done: "Réalisé", cancelled: "Annulé", no_show: "Absent",
-};
-
-/** Monogramme d'une plateforme de source (pastilles décoratives des campagnes). */
-export const PLATFORM_MARK: Record<string, string> = {
-  linkedin: "in",
-  meta: "f",
-  web: "www",
-  email: "@",
 };

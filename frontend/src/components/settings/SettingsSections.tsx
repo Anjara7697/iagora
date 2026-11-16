@@ -10,7 +10,7 @@ import type { RuntimeSettings } from "@/lib/types";
 /** Réglages numériques (bornés dans le formulaire par `NumberInput`). */
 export type NumericSetting = { [K in keyof RuntimeSettings]-?: RuntimeSettings[K] extends number ? K : never }[keyof RuntimeSettings];
 
-export type SectionProps = {
+type SectionProps = {
   form: RuntimeSettings;
   set: <K extends keyof RuntimeSettings>(key: K, value: RuntimeSettings[K]) => void;
   /** Champ numérique du formulaire : valeur et mise à jour pour `NumberInput`. */

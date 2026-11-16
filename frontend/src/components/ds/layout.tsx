@@ -217,7 +217,7 @@ export function EmptyPanel({
 }
 
 /** Chiffre clé : `Card` HeroUI (libellé en `Card.Description`), valeur en chiffres tabulaires, indication. Lien si `href`. */
-export function KpiCard({
+function KpiCard({
   label,
   value,
   hint,
@@ -286,7 +286,7 @@ export function KpiCard({
   );
 }
 
-export type KpiItem = {
+type KpiItem = {
   key: string;
   label: ReactNode;
   value?: ReactNode;

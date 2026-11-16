@@ -12,7 +12,7 @@ const OPTIONS: { id: ThemePreference; label: string; icon: typeof Sun }[] = [
 ];
 
 /** Préférence de thème du navigateur ; « Système » suit le réglage de l'appareil, même quand il change. */
-export function useThemePreference() {
+function useThemePreference() {
   const [preference, setPreference] = useState<ThemePreference>("system");
   useEffect(() => setPreference(readThemePreference()), []);
   useEffect(() => {

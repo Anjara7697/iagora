@@ -9,14 +9,9 @@ import { Btn, ErrorText, Field, SelectBox, Tag, TextInput } from "@/components/d
 import { SecretOnce } from "@/components/ds/settings";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { api, ApiError } from "@/lib/api";
-import { formatDate } from "@/lib/labels";
+import { ROLE_LABELS, formatDate } from "@/lib/labels";
 import type { CreatedUser, Role, User } from "@/lib/types";
 
-export const ROLE_LABELS: Record<Role, string> = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
 const ROLE_HELP: Record<Role, string> = {
   ADMIN: "accès complet, dont Équipe, Intégrations et Paramètres",
   ADVISOR: "file, conversations, prospects, validations",

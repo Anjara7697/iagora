@@ -39,7 +39,7 @@ export function campaignListReturnHref(value: string | null) {
 }
 
 export const CAMPAIGN_TABS = { overview: "Vue d'ensemble", prospects: "Prospects", sources: "Sources", settings: "Réglages" };
-export type CampaignTab = keyof typeof CAMPAIGN_TABS;
+type CampaignTab = keyof typeof CAMPAIGN_TABS;
 
 export function readCampaignView(query: Query) {
   return {
