@@ -72,9 +72,14 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    (`variant="secondary" align="start"`), chaque onglet à la largeur de son texte ; l'onglet ouvert dans l'adresse
    (`?tab=…`). Un choix exclusif court (Pipeline / Table) reste en segments (`Segmented`, `TAB_RADIUS`).
 4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
-   Toute la ligne ouvre l'élément (clic et Entrée).
-5. **Barre au-dessus d'un tableau** : recherche et filtres à gauche, compteur à droite (« N éléments », ou
-   « N sur M » quand un filtre est actif). Quand les filtres sont nombreux (Prospects), seuls la recherche et les
+   Toute la ligne ouvre l'élément (clic et Entrée). Sous 640 px, le tableau devient une liste de lignes à deux
+   niveaux (`CompactList`, `CompactRow` de `ds/table.tsx`) : nom et état sur la première ligne, détails en dessous,
+   toute la ligne est un lien nommé par le nom seul ; jamais de défilement horizontal pour lire l'état. Une vue en
+   colonnes (pipeline) n'est la vue par défaut qu'à partir de 1024 px ; un choix explicite, gardé dans l'adresse,
+   reste prioritaire.
+5. **Barre au-dessus d'un tableau** (`ListToolbar`, `FiltersButton`, `countLabel` de `ds/toolbar.tsx`) :
+   recherche et filtres à gauche, compteur à droite (« N éléments », ou « N sur M » quand un filtre est actif ; le
+   total M est lu une fois, pas à chaque filtre). Quand les filtres sont nombreux (Prospects), seuls la recherche et les
    pastilles de périmètre restent dans la barre ; les autres passent dans un panneau latéral ouvert par
    « Filtres · N », qui s'applique tout de suite, et chaque filtre actif s'affiche en puce retirable sous la barre,
    avec « Réinitialiser ».
