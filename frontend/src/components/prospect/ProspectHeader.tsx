@@ -5,7 +5,7 @@ import { Ellipsis, MessageSquare, Play, ShieldCheck, ShieldOff, Trash2 } from "l
 import { Btn, LinkButton, Tag } from "@/components/ds/controls";
 import { Box } from "@/components/ds/card";
 import { Eyebrow } from "@/components/ds/layout";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { CONSENT, fullName, label } from "@/lib/labels";
 import type { Conversation, Prospect } from "@/lib/types";
 

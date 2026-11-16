@@ -2,13 +2,13 @@
 
 import { Pencil, Users } from "lucide-react";
 import { useState } from "react";
-import MembershipActions from "@/components/MembershipActions";
-import { Drawer } from "@/components/Drawer";
+import MembershipActions from "@/components/prospect/MembershipActions";
+import { Drawer } from "@/components/ds/Drawer";
 import { Btn, ErrorText, Field, Notice, SelectBox, Tag, TextLink } from "@/components/ds/controls";
 import { Collapse } from "@/components/ds/collapse";
 import { EmptyPanel, cx } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { Loading, ScoreBadge, StageBadge } from "@/components/ui";
+import { Loading, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { STAGES, formatDate, label } from "@/lib/labels";
 import type { Campaign, History, Page, Prospect } from "@/lib/types";

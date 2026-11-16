@@ -8,7 +8,7 @@ import { Stepper, type Step } from "@/components/ds/Stepper";
 import { formatDay } from "@/lib/labels";
 import type { Target } from "@/lib/types";
 import { Box } from "@/components/ds/card";
-import SourceConnectors, { type SourceDraft } from "@/components/SourceConnectors";
+import SourceConnectors, { type SourceDraft } from "@/components/campaign/SourceConnectors";
 
 export type { SourceDraft };
 

@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { EmptyText } from "@/components/ds/layout";
 import { SourceAvatar } from "@/components/ds/SourceAvatars";
 import { DataTable, Table } from "@/components/ds/table";
-import { ConnectorCatalogue, type Connector } from "@/components/SourceConnectors";
+import { ConnectorCatalogue, type Connector } from "@/components/campaign/SourceConnectors";
 import { api, ApiError } from "@/lib/api";
 import { PLATFORMS, SOURCE_TYPES, label } from "@/lib/labels";
 import { linkMetaForms } from "@/lib/metaForms";

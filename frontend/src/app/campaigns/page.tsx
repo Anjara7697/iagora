@@ -4,7 +4,7 @@ import { Megaphone, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, type ReactNode } from "react";
 import { useCurrentUser } from "@/lib/session";
-import CampaignsTable from "@/components/CampaignsTable";
+import CampaignsTable from "@/components/campaign/CampaignsTable";
 import { Btn, FilterChip, FilterChipGroup, LinkButton } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, KpiStrip, PageHeader, Screen } from "@/components/ds/layout";
 import { CountUp, reveal } from "@/components/ds/motion";

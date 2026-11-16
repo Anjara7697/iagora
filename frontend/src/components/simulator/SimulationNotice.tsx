@@ -1,6 +1,6 @@
 import { FlaskConical } from "lucide-react";
 import type { ReactNode } from "react";
-import { BackLink } from "./ds/controls";
+import { BackLink } from "../ds/controls";
 
 /** Bandeau des écrans de test : retour à « Tests et démonstration » et rappel des données fictives. */
 export default function SimulationNotice({

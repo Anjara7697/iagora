@@ -4,12 +4,12 @@ import { toast } from "@heroui/react";
 import { Radar, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, failure } from "@/lib/api";
-import { ConfirmDialog } from "./ds/ConfirmDialog";
-import { Btn, ErrorText, Notice, NumberInput, SelectBox, TextInput } from "./ds/controls";
-import { cx } from "./ds/layout";
-import { useDiscardGuard } from "./ds/useDiscardGuard";
-import { ActionsBar, InfoRow, SettingRow as Field, SettingsLoading, Toggle } from "./ds/settings";
-import { Field as Stacked } from "./ds/controls";
+import { ConfirmDialog } from "../ds/ConfirmDialog";
+import { Btn, ErrorText, Notice, NumberInput, SelectBox, TextInput } from "../ds/controls";
+import { cx } from "../ds/layout";
+import { useDiscardGuard } from "../ds/useDiscardGuard";
+import { ActionsBar, InfoRow, SettingRow as Field, SettingsLoading, Toggle } from "../ds/settings";
+import { Field as Stacked } from "../ds/controls";
 import { Collapse } from "@/components/ds/collapse";
 import type {
   EmailAutodetect,

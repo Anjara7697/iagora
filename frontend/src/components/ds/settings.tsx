@@ -8,7 +8,7 @@ import type { Tone as StateTone } from "@/lib/types";
 import { Box } from "./card";
 import { Btn, ErrorText, Notice, SelectBox, Tag, type Tone } from "./controls";
 import { ErrorState, Eyebrow, cx } from "./layout";
-import { Skeleton } from "../ui";
+import { Skeleton } from "./ui";
 
 /**
  * Carte de réglages : sur-titre mono, titre, introduction, puis les lignes.

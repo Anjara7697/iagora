@@ -3,8 +3,8 @@
 import { Skeleton as HeroSkeleton } from "@heroui/react";
 import type { ApiError } from "@/lib/api";
 import { isDemoEmail } from "@/lib/labels";
-import { DemoChip } from "./ds/badges";
-import { ErrorState } from "./ds/layout";
+import { DemoChip } from "./badges";
+import { ErrorState } from "./layout";
 
 type SkeletonShape = "lines" | "rows" | "cards";
 
@@ -70,5 +70,5 @@ export function DemoBadge({ email }: { email: string | null | undefined }) {
   return isDemoEmail(email) ? <DemoChip /> : null;
 }
 
-export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./ds/badges";
+export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./badges";
 

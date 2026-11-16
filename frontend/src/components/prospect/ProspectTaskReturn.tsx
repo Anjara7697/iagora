@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { qs } from "@/lib/api";
-import { LinkButton } from "./ds/controls";
+import { LinkButton } from "../ds/controls";
 
 /** Retour explicite à la demande d’origine, même après une ouverture directe. */
 export default function ProspectTaskReturn() {

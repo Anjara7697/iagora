@@ -1,39 +1,38 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
+import { Video } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Btn, ErrorText, Notice, Tag } from "./ds/controls";
-import { Eyebrow } from "./ds/layout";
-import { ActionsBar } from "./ds/settings";
+import { Btn, ErrorText, Notice, Tag } from "../ds/controls";
+import { Eyebrow } from "../ds/layout";
+import { ActionsBar } from "../ds/settings";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
-import type { MyCalendar as Status } from "@/lib/types";
+import type { MyZoom as Status } from "@/lib/types";
 import { Box } from "@/components/ds/card";
 
 const RESULTS: Record<string, string> = {
-  connected: "Agenda Google connecté.",
-  refused: "Connexion annulée : l’accès à l’agenda n’a pas été autorisé.",
-  error: "La connexion à Google a échoué.",
+  connected: "Compte Zoom connecté.",
+  refused: "Connexion annulée : l’accès à Zoom n’a pas été autorisé.",
+  error: "La connexion à Zoom a échoué.",
 };
 
-/** Section « Mon agenda » de Mon compte : connexion OAuth à son Google Agenda. */
-export function MyCalendar() {
+/** Section « Mon Zoom » de Mon compte (mode « compte de chaque conseiller »). */
+export function MyZoom() {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   const load = () =>
-    api<Status>("/calendar/me")
+    api<Status>("/zoom/me")
       .then(setStatus)
       .catch((e) =>
         setError(e instanceof ApiError ? e.message : "Chargement impossible"),
       );
 
   useEffect(() => {
-    // Retour de Google : ?calendar=connected|refused|error
     const params = new URLSearchParams(window.location.search);
-    const outcome = params.get("calendar");
+    const outcome = params.get("zoom");
     if (outcome) {
       const detail = params.get("detail");
       setResult(
@@ -48,7 +47,7 @@ export function MyCalendar() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ url: string }>("/calendar/google/connect", {
+      const r = await api<{ url: string }>("/zoom/connect", {
         method: "POST",
         body: { return_to: `${window.location.origin}/account` },
       });
@@ -60,12 +59,11 @@ export function MyCalendar() {
   }
 
   async function disconnect() {
-    if (!window.confirm("Déconnecter votre agenda Google ?")) return;
+    if (!window.confirm("Déconnecter votre compte Zoom ?")) return;
     setBusy(true);
-    setError(null);
     try {
-      await api("/calendar/me", { method: "DELETE" });
-      setResult("Agenda déconnecté.");
+      await api("/zoom/me", { method: "DELETE" });
+      setResult("Compte Zoom déconnecté.");
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Échec");
@@ -74,50 +72,46 @@ export function MyCalendar() {
     }
   }
 
-  const connectedTag = status?.available ? (
-    status.connected ? (
-      status.last_error ? <Tag tone="danger">À reconnecter</Tag> : <Tag tone="success">Connecté</Tag>
-    ) : (
-      <Tag>Non connecté</Tag>
-    )
-  ) : null;
+  if (status && status.mode !== "advisor" && !result) return null;
+
+  const connectedTag =
+    status?.mode === "advisor" ? (
+      status.connected ? (
+        status.last_error ? <Tag tone="danger">À reconnecter</Tag> : <Tag tone="success">Connecté</Tag>
+      ) : (
+        <Tag>Non connecté</Tag>
+      )
+    ) : null;
 
   return (
-    <Box as="section" className="gap-4 p-5" aria-label="Mon agenda">
+    <Box as="section" className="gap-4 p-5" aria-label="Mon Zoom">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-secondary text-foreground" aria-hidden="true">
-          <CalendarDays className="size-5" />
+          <Video className="size-5" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <Eyebrow>Mon agenda</Eyebrow>
-          <h2 className="type-title-sm font-semibold text-foreground">Google Agenda</h2>
+          <Eyebrow>Mon Zoom</Eyebrow>
+          <h2 className="type-title-sm font-semibold text-foreground">Visioconférence Zoom</h2>
         </div>
         {connectedTag}
       </div>
       {result && <Notice>{result}</Notice>}
-      {status && !status.available && (
-        <p className="type-body-sm text-muted">
-          Google Agenda n’est pas encore branché par l’administrateur
-          (Intégrations → Agenda).
-        </p>
-      )}
-      {status?.available && status.connected && (
+      {status?.mode === "advisor" && status.connected && (
         <>
           <p className="type-body-sm text-foreground">
-            Connecté à{" "}
-            <strong>{status.account_email ?? "Google Agenda"}</strong> depuis le{" "}
-            {formatDate(status.connected_at)}. L’agent propose vos créneaux
-            libres et réserve les rendez-vous dans cet agenda.
+            Connecté à <strong>{status.account_email ?? "Zoom"}</strong> depuis
+            le {formatDate(status.connected_at)}. Les rendez-vous réservés par
+            l’agent ont un lien Zoom à votre nom.
           </p>
           {status.last_error && (
             <p className="type-body-sm text-danger" role="alert">
-              L’autorisation a été révoquée : reconnectez votre agenda.
+              L’autorisation a été révoquée : reconnectez votre compte Zoom.
             </p>
           )}
           <ActionsBar>
             {status.last_error && (
               <Btn variant="primary" onClick={connect} disabled={busy}>
-                Reconnecter mon agenda Google
+                Reconnecter mon compte Zoom
               </Btn>
             )}
             <Btn variant="outline" onClick={disconnect} disabled={busy}>
@@ -126,14 +120,14 @@ export function MyCalendar() {
           </ActionsBar>
         </>
       )}
-      {status?.available && !status.connected && (
+      {status?.mode === "advisor" && !status.connected && (
         <>
           <p className="type-body-sm text-muted">
-            Connectez votre Google Agenda pour que l’agent propose vos créneaux
-            réellement libres et y réserve les rendez-vous.
+            Connectez votre compte Zoom pour que vos rendez-vous aient un lien
+            de visioconférence à votre nom.
           </p>
           <Btn variant="primary" onClick={connect} disabled={busy}>
-            Connecter mon agenda Google
+            Connecter mon compte Zoom
           </Btn>
         </>
       )}

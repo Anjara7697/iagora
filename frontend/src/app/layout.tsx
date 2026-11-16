@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AppShell from "@/components/AppShell";
+import AppShell from "@/components/shell/AppShell";
 import { Providers } from "@/components/ds/Providers";
 import { Toaster } from "@/components/ds/Toaster";
 import { SessionProvider } from "@/lib/session";

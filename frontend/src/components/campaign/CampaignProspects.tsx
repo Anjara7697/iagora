@@ -3,7 +3,7 @@
 import { SelectBox, Tag } from "@/components/ds/controls";
 import { EmptyText, initialsOf } from "@/components/ds/layout";
 import { DataTable, Table, TablePagination } from "@/components/ds/table";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { CONSENT, STAGES, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";

@@ -11,7 +11,7 @@ import { Btn, Check, SelectBox, Segmented } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
-import { DemoBadge, Loading, Skeleton } from "@/components/ui";
+import { DemoBadge, Loading, Skeleton } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { APPOINTMENT_STATUS, fullName } from "@/lib/labels";
 import type { Appointment, Page } from "@/lib/types";

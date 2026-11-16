@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { FilterChip, FilterChipGroup, Notice, Segmented, Tag, RowButton } from "@/components/ds/controls";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { CHANNELS, PRIORITIES, formatDate, fullName, label, relativeTime, EXECUTION } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
