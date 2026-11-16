@@ -229,6 +229,7 @@ métier, pas seulement les fiches en `@demo.example.com`.
 chaque version majeure (pytest, types Node, icônes) : huit PR en une journée, dont plusieurs à refuser.
 
 **Décision.** Une PR groupée par écosystème le 1er de chaque mois (pip, npm, images Docker, actions), une seule
-ouverte à la fois, versions majeures ignorées. Une version majeure se décide à la main, dans une PR dédiée. Les
+ouverte à la fois, versions majeures ignorées ; pour les images Docker, versions mineures aussi
+(`python:3.12` → `3.15`). Une version majeure, ou de Python et de Node, se décide à la main, dans une PR dédiée. Les
 failles connues restent signalées à chaque PR par la tâche CI `audit` (`pip-audit`, `npm audit`).
 

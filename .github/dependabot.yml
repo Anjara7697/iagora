@@ -40,9 +40,11 @@ updates:
     target-branch: dev
     schedule:
       interval: monthly
+    # Images : `python:3.12` -> `3.15` compte comme mineure. Changer de version de Python ou de Node
+    # se décide à la main (CI, versions figées, images) : seuls les correctifs sont proposés.
     ignore:
       - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       images:
         patterns: ["*"]
