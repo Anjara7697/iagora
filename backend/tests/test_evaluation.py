@@ -67,13 +67,30 @@ async def test_every_case_is_conform_offline(session_factory, mongo_db, case):
 
 async def test_lexical_knowledge_finds_the_fact_and_respects_the_programme():
     kb = LexicalKnowledge()
-    found = await kb.search("Combien de temps dure le programme eBIHAR ?", "ebihar_students")
+
+    async def search(query: str, target: str = "ebihar_students"):
+        return await kb.search(query, target, include_demo=True)
+
+    found = await search("Combien de temps dure le programme eBIHAR ?")
     assert found and "18 mois" in found[0].text and "FICTIF" in found[0].source
-    assert await kb.search("Quel est le taux de réussite au diplôme ?", "ebihar_students") == []
-    assert await kb.search("Bonjour.", "ebihar_students") == []
+    assert await search("Quel est le taux de réussite au diplôme ?") == []
+    assert await search("Bonjour.") == []
     # Les Compagnons n'est pas renvoyé à un prospect eBIHAR (comme la vraie base).
-    pro = await kb.search("Combien de temps dure le programme Les Compagnons ?", "ebihar_students")
+    pro = await search("Combien de temps dure le programme Les Compagnons ?")
     assert all("Compagnons" not in p.source for p in pro)
+    # Comme la vraie base : documents fictifs réservés aux prospects fictifs.
+    question = "Combien de temps dure le programme eBIHAR ?"
+    assert await kb.search(question, "ebihar_students") == []
+
+
+async def test_recording_knowledge_keeps_demo_documents_for_fictive_prospects():
+    """`--rag-reel` : l'enveloppe de mesure transmet `include_demo`, sinon la vraie recherche
+    écarte les documents de démonstration et chaque question couverte part en transfert."""
+    kb = evaluation.RecordingKnowledge(LexicalKnowledge())
+    question = "Combien de temps dure le programme eBIHAR ?"
+    assert await kb.search(question, "ebihar_students") == []
+    found = await kb.search(question, "ebihar_students", include_demo=True)
+    assert found and kb.returned == found
 
 
 # --- Mesures : chiffres inventés avant / après les garde-fous, variantes d'ablation ---
