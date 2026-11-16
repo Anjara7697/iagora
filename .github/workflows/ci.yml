@@ -33,8 +33,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -72,8 +72,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -97,7 +97,7 @@ jobs:
       # En cas d'échec, captures obtenues, attendues et différences (tests/visuel.spec.ts) à télécharger.
       - name: Résultats des tests navigateur
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-test-results
           path: frontend/test-results/
@@ -108,11 +108,11 @@ jobs:
     # pour l'instant. Les versions analysées sont celles qui partent en production.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Dépendances Python (pip-audit)
@@ -163,8 +163,8 @@ jobs:
       E2E_ADMIN_PASSWORD: E2e-Compte-de-test-CI-1
       E2E_API_URL: http://127.0.0.1:8000/api/v1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -178,7 +178,7 @@ jobs:
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
           for _ in $(seq 1 30); do curl -sf http://127.0.0.1:8000/api/v1/health/ready && exit 0; sleep 2; done
           cat "$RUNNER_TEMP/api.log"; exit 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -202,7 +202,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build ./backend
       - name: Image de la console
         run: |
