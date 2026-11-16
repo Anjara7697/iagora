@@ -136,7 +136,9 @@ un écran connu de la console, jamais une adresse externe).
     Mon compte, état et contrôle de l'agent (arrêt d'urgence ou reprise après confirmation ; un point de
     couleur sur l'avatar rappelle l'état), thème clair / sombre / système (`ToggleButtonGroup`, choix gardé
     dans le navigateur, appliqué avant l'affichage par `lib/theme.ts`), Déconnexion.
-18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Sur bureau, menu
+18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Chaque écran a son
+    entrée, que le menu surligne quand on y est ; le Simulateur a la sienne, sous « Paramètres », visible seulement
+    s'il est activé et permis au rôle (`canUseSimulator`, NAV-02). Sur bureau, menu
     réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
     navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
 19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
@@ -233,7 +235,7 @@ un écran connu de la console, jamais une adresse externe).
     panneau est protégée à sa fermeture ; passage d'envoi réel, oubli de la boîte et révocation d'un jeton passent
     par `ConfirmDialog`. Chaque panneau : `SettingsLoading` au chargement, succès en Toast, échec en `ErrorText`
     (message construit avec `failure()` de `lib/api`).
-34. **Simulateur** (`app/simulator`, `components/GuidedSimulation.tsx`) : trois colonnes (prospect fictif, conversation,
+34. **Simulateur** (`app/simulator`, `components/GuidedSimulation.tsx`) : entrée propre dans le menu (règle 18) ; trois colonnes (prospect fictif, conversation,
     décision de l'agent), propres à cet outil de test ; parcours guidé dans l'adresse (`?mode=guide`). Mode assisté
     et arrêt d'urgence en `Alert` (l'arrêt avec « Ouvrir la page Agent ») ; suppression des données fictives par
     `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est
