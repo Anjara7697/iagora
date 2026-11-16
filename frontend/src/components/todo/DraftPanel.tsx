@@ -12,7 +12,11 @@ import { api, ApiError } from "@/lib/api";
 import { CHANNELS, label } from "@/lib/labels";
 import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { Box } from "@/components/ds/card";
-import { PanelProps, useReportDirty, itemName } from "@/components/todo/shared";
+import { ShortcutTooltip } from "@/components/ds/shortcut";
+import { PanelProps, TODO_KEYS, useReportDirty, itemName } from "@/components/todo/shared";
+import { ariaKeyShortcut, type ShortcutKey } from "@/lib/shortcuts";
+import { useIsMac } from "@/lib/useIsMac";
+import { useShortcuts } from "@/lib/useShortcuts";
 
 export function DraftPanel({
   item,
@@ -20,9 +24,12 @@ export function DraftPanel({
   onDirtyChange,
   guard,
   conversationLink = true,
+  shortcuts = false,
 }: PanelProps & {
   /** Faux dans la conversation elle-même : le lien « Voir l'échange complet » y mènerait à la même page. */
   conversationLink?: boolean;
+  /** Raccourcis de la file (« À traiter ») : ⌘/Ctrl Entrée valide, M ouvre la modification. */
+  shortcuts?: boolean;
 }) {
   const user = useCurrentUser();
   const draft = item.draft!;
@@ -37,6 +44,15 @@ export function DraftPanel({
   const base = `/conversations/${item.conversation_id}/drafts/${draft.message_id}`;
   const changed = editing && text !== draft.content;
   useReportDirty(changed, onDirtyChange);
+  const mac = useIsMac();
+  const canApprove = !readOnly && !busy && !!text.trim();
+  const approve = () => act("approve", { content: editing ? text : null });
+  const approveLabel = editing ? "Valider la version modifiée" : "Valider la réponse";
+  useShortcuts([
+    { ...TODO_KEYS.approve, label: approveLabel, run: () => void approve(), disabled: !shortcuts || !canApprove },
+    { ...TODO_KEYS.edit, label: "Modifier la réponse", run: () => setEditing(true), disabled: !shortcuts || readOnly || busy || editing },
+  ]);
+  const keys = (shortcut: ShortcutKey) => (shortcuts ? ariaKeyShortcut(shortcut, mac) : undefined);
 
   async function act(path: string, body?: unknown) {
     setBusy(true);
@@ -71,6 +87,8 @@ export function DraftPanel({
       <div className="flex flex-col gap-3 px-5 py-4">
         {editing ? (
           <TextBox
+            // Le texte à modifier reçoit le focus (au clic comme avec M).
+            autoFocus
             aria-label="Texte du brouillon"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -99,31 +117,37 @@ export function DraftPanel({
         // Actions sous le texte, sans effet collant : rien ne cache ce qui partira. Mobile : Valider sur toute la
         // largeur, les autres actions en dessous.
         <div className="flex flex-wrap items-center gap-2 border-t border-separator px-5 py-4" aria-label="Décision" role="group">
-          <Btn
-            variant="primary"
-            className="max-sm:basis-full"
-            disabled={busy || !text.trim()}
-            onClick={() => act("approve", { content: editing ? text : null })}
-          >
-            <Check className="size-4" aria-hidden="true" />
-            {busy ? "Traitement en cours…" : editing ? "Valider la version modifiée" : "Valider la réponse"}
-          </Btn>
-          <Btn
-            variant="secondary"
-            className="max-sm:flex-1"
-            disabled={busy}
-            onClick={() =>
-              editing
-                ? guard(() => {
-                    setText(draft.content);
-                    setEditing(false);
-                  })
-                : setEditing(true)
-            }
-          >
-            <Pencil className="size-4" aria-hidden="true" />
-            {editing ? "Annuler la modification" : "Modifier"}
-          </Btn>
+          <ShortcutTooltip label={approveLabel} shortcut={TODO_KEYS.approve} disabled={!shortcuts}>
+            <Btn
+              variant="primary"
+              className="max-sm:basis-full"
+              disabled={!canApprove}
+              keyShortcuts={keys(TODO_KEYS.approve)}
+              onClick={() => void approve()}
+            >
+              <Check className="size-4" aria-hidden="true" />
+              {busy ? "Traitement en cours…" : approveLabel}
+            </Btn>
+          </ShortcutTooltip>
+          <ShortcutTooltip label="Modifier la réponse" shortcut={TODO_KEYS.edit} disabled={!shortcuts || editing}>
+            <Btn
+              variant="secondary"
+              className="max-sm:flex-1"
+              disabled={busy}
+              keyShortcuts={editing ? undefined : keys(TODO_KEYS.edit)}
+              onClick={() =>
+                editing
+                  ? guard(() => {
+                      setText(draft.content);
+                      setEditing(false);
+                    })
+                  : setEditing(true)
+              }
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+              {editing ? "Annuler la modification" : "Modifier"}
+            </Btn>
+          </ShortcutTooltip>
           <Btn
             variant="secondary"
             className="max-sm:flex-1"

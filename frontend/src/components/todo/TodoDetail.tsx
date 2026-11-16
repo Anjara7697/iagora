@@ -186,7 +186,7 @@ triggerClassName="w-full px-5 py-3 hover:bg-surface-secondary focus-visible:ring
         <div className="flex min-w-0 flex-col gap-4">
           {item.draft && (
             <div {...reveal(3)}>
-              <DraftPanel key={item.id} {...panel} />
+              <DraftPanel key={item.id} {...panel} shortcuts />
             </div>
           )}
           {item.kind === "application" && <ApplicationReview {...panel} />}

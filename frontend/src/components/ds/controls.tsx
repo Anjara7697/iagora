@@ -3,7 +3,7 @@
 import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Children, cloneElement, isValidElement, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useCallback, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonProps = ComponentProps<typeof Button>;
@@ -12,6 +12,7 @@ type ButtonProps = ComponentProps<typeof Button>;
  * Bouton HeroUI : toutes les propriétés du `Button` (variant, size, color, isIconOnly, onPress, ref…)
  * sont acceptées. Raccourcis : `onClick` (appelé sans événement) et `disabled`.
  * Par défaut neutre (« tertiary ») et `type="button"` ; « primary » pour l'action de l'écran.
+ * `keyShortcuts` : raccourci clavier annoncé aux lecteurs d'écran (`aria-keyshortcuts`, voir `useShortcuts`).
  */
 export function Btn({
   variant = "tertiary",
@@ -20,16 +21,34 @@ export function Btn({
   onPress,
   disabled,
   isDisabled,
+  keyShortcuts,
   ...rest
-}: Omit<ButtonProps, "onClick"> & { onClick?: () => void; disabled?: boolean }) {
+}: Omit<ButtonProps, "onClick"> & { onClick?: () => void; disabled?: boolean; keyShortcuts?: string }) {
+  const keysRef = useKeyShortcuts(keyShortcuts);
   return (
     <Button
+      ref={keysRef}
       variant={variant}
       type={type}
       isDisabled={isDisabled ?? disabled}
       onPress={onClick || onPress ? (e) => { onPress?.(e); onClick?.(); } : undefined}
       {...rest}
     />
+  );
+}
+
+/**
+ * Pose `aria-keyshortcuts` sur l'élément rendu : le `Button` de React Aria ne transmet pas cet attribut au DOM.
+ * À donner en `ref`.
+ */
+export function useKeyShortcuts(value: string | undefined) {
+  return useCallback(
+    (el: HTMLElement | null) => {
+      if (!el) return;
+      if (value) el.setAttribute("aria-keyshortcuts", value);
+      else el.removeAttribute("aria-keyshortcuts");
+    },
+    [value],
   );
 }
 

@@ -1040,3 +1040,114 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await expect(validate).toBeInViewport({ ratio: 1 });
   });
+
+test("clavier : une file de trois brouillons se traite sans souris", async ({ page }) => {
+  const calls = await mockApi(page);
+  const drafts = (["Marie", "Ahmed", "Lina"] as const).map((first_name, n) => ({
+    ...draftItem,
+    id: `draft:k${n}:m${n}`,
+    conversation_id: `k${n}`,
+    prospect: { ...prospect, id: 10 + n, first_name, last_name: "Clavier" },
+    created_at: new Date(Date.now() - (n + 1) * 3600_000).toISOString(),
+    draft: { ...draftItem.draft, message_id: `m${n}`, content: `Bonjour ${first_name}, voici la réponse.` },
+  }));
+  let items = [...drafts];
+  await page.route("**/api/v1/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/v1", "");
+    if (path === "/todo") {
+      const counts = { validation: items.length };
+      return route.fulfill({ json: { items, total: items.length, limit: 100, offset: 0, counts, truncated: false } });
+    }
+    const approve = path.match(/^\/conversations\/(k\d)\/drafts\/(m\d)\/approve$/);
+    if (approve) {
+      calls.posts.push({ path, method: request.method(), body: request.postDataJSON() });
+      items = items.filter((i) => i.conversation_id !== approve[1]);
+      return route.fulfill({ json: { status: "approved" } });
+    }
+    return route.fallback();
+  });
+  await open(page);
+  const detail = (name: string) => page.getByRole("heading", { name, exact: true });
+  const validate = page.getByRole("button", { name: "Valider la réponse", exact: true });
+
+  // J ouvre le premier élément, puis le suivant ; K revient au précédent. Le titre reçoit le focus.
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByText("Marie Clavier")).toBeVisible();
+  await page.keyboard.press("j");
+  await expect(detail("Marie Clavier")).toBeFocused();
+  await expect(validate).toHaveAttribute("aria-keyshortcuts", "Control+Enter");
+  await page.keyboard.press("j");
+  await expect(detail("Ahmed Clavier")).toBeFocused();
+  await page.keyboard.press("k");
+  await expect(detail("Marie Clavier")).toBeFocused();
+
+  // Ctrl Entrée valide ; l'élément suivant s'ouvre.
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Réponse validée", { exact: true })).toBeVisible();
+  await expect(detail("Ahmed Clavier")).toBeFocused();
+
+  // M ouvre la modification, le texte reçoit le focus : les touches y écrivent sans rien déclencher.
+  await page.keyboard.press("m");
+  const text = page.getByLabel("Texte du brouillon");
+  await expect(text).toBeFocused();
+  await text.press("ControlOrMeta+a");
+  await page.keyboard.type("Bonjour Ahmed, version relue jk");
+  await page.keyboard.press("Control+Enter");
+  await expect(text).toHaveValue("Bonjour Ahmed, version relue jk");
+  await expect(detail("Ahmed Clavier")).toBeVisible();
+  expect(calls.posts).toHaveLength(1);
+  // Hors du champ, Ctrl Entrée valide la version modifiée.
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Valider la version modifiée" })).toBeFocused();
+  await page.keyboard.press("Control+Enter");
+  await expect(detail("Lina Clavier")).toBeFocused();
+
+  // Une confirmation ouverte neutralise les raccourcis.
+  await page.getByRole("button", { name: "Refuser le brouillon" }).focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("alertdialog", { name: "Refuser le brouillon ?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Annuler" }).focus();
+  const url = page.url();
+  for (const key of ["j", "k", "m"]) await page.keyboard.press(key);
+  await expect(dialog).toBeVisible();
+  expect(page.url()).toBe(url);
+  await expect(page.getByLabel("Texte du brouillon")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeHidden();
+  expect(calls.posts).toHaveLength(2);
+
+  // Le dernier : la file est vide, son titre reçoit le focus.
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Votre file est à jour.")).toBeVisible();
+  expect(calls.posts.map((c) => c.body)).toEqual([
+    { content: null },
+    { content: "Bonjour Ahmed, version relue jk" },
+    { content: null },
+  ]);
+});
+
+test("clavier : les raccourcis de la file figurent dans la palette", async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  await expect(page.getByRole("complementary", { name: "Éléments à traiter" }).getByText("Marie Dupont")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Rechercher/ })).toHaveAttribute("aria-keyshortcuts", "Control+K");
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Recherche rapide" });
+  // La touche ne part pas vers la page pendant la saisie dans la palette.
+  await page.keyboard.type("suivant");
+  await expect(palette.getByRole("option", { name: /Élément suivant de la file/ })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(palette).toBeHidden();
+  await expect(page).toHaveURL(/id=draft%3Ac1%3Am1/);
+  await expect(page.getByRole("heading", { name: "Marie Dupont", exact: true })).toBeFocused();
+  // L'infobulle du bouton donne la touche.
+  await page.getByRole("heading", { name: "Marie Dupont", exact: true }).click();
+  await page.getByRole("button", { name: "Valider la réponse", exact: true }).hover();
+  await expect(page.getByRole("tooltip")).toHaveText(/Valider la réponse\s*Ctrl/);
+  // Avec un brouillon ouvert, valider et modifier s'y ajoutent.
+  await page.mouse.move(0, 0);
+  await page.keyboard.press("Control+k");
+  await expect(palette.getByRole("option", { name: /Valider la réponse/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /Modifier la réponse/ })).toBeVisible();
+});

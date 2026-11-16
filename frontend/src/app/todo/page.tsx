@@ -10,9 +10,10 @@ import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading, Skeleton } from "@/components/ui";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
+import { useShortcuts } from "@/lib/useShortcuts";
 import type { TodoItem, TodoKind, TodoPage, TreatedPage } from "@/lib/types";
 import { Box } from "@/components/ds/card";
-import { KIND_ORDER, PAGE_SIZE, type KindFilter } from "@/components/todo/shared";
+import { KIND_ORDER, PAGE_SIZE, TODO_KEYS, type KindFilter } from "@/components/todo/shared";
 import { TodoQueue } from "@/components/todo/TodoQueue";
 import { TodoDetail } from "@/components/todo/TodoDetail";
 import { TreatedDetail } from "@/components/todo/TreatedDetail";
@@ -78,6 +79,19 @@ function Todo() {
   );
   const selected =
     inPage ?? (direct.data?.id === selectedId ? direct.data : null);
+  // J / K : élément suivant ou précédent de la page affichée (le premier si rien n'est ouvert), titre focalisé.
+  const queue: { id: string }[] = tab === "treated" ? treatedItems : items;
+  function step(delta: 1 | -1) {
+    const index = queue.findIndex((i) => i.id === selectedId);
+    const target = index < 0 ? queue[0] : queue[index + delta];
+    if (!target) return;
+    const url = tab === "treated" ? `/todo${qs({ tab: "treated", id: target.id })}` : `/todo${qs({ kind, page: pageParam, id: target.id })}`;
+    go(url, () => setFocusId(target.id));
+  }
+  useShortcuts([
+    { ...TODO_KEYS.next, label: "Élément suivant de la file", run: () => step(1), disabled: !queue.length },
+    { ...TODO_KEYS.previous, label: "Élément précédent de la file", run: () => step(-1), disabled: !queue.length },
+  ]);
   const counts = all.data?.counts ?? {};
   const total = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
   const refresh = () => {
