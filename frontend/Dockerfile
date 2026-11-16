@@ -2,12 +2,12 @@
 # NEXT_PUBLIC_* sont figés à la construction : une image par environnement.
 #   docker build --build-arg NEXT_PUBLIC_API_URL=https://dev.iagora.neosolve.info/api/v1 \
 #                --build-arg NEXT_PUBLIC_ENABLE_SIMULATOR=true ./frontend
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_ENABLE_SIMULATOR=false
@@ -18,7 +18,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine AS run
+FROM node:26-alpine AS run
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
