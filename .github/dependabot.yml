@@ -1,4 +1,6 @@
-# Mises à jour des dépendances (AUDIT-OPS-004) : une PR groupée par écosystème, chaque lundi, vers dev.
+# Mises à jour des dépendances (AUDIT-OPS-004, décision D-31) : une PR groupée par écosystème, le
+# 1er de chaque mois, vers dev. Les versions majeures sont ignorées : elles cassent souvent quelque
+# chose et se décident à la main. Les failles connues restent signalées par la tâche CI « audit ».
 # Chaque PR passe la CI complète et se relit comme les autres ; rien n'est mergé automatiquement.
 # Python : les versions figées (requirements*.lock.txt) sont générées par scripts/lock-deps.sh ;
 # si l'étape « Versions figées à jour » échoue sur une PR Dependabot, relancer le script sur la
@@ -9,9 +11,11 @@ updates:
     directory: /backend
     target-branch: dev
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 2
+      interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       python:
         patterns: ["*"]
@@ -21,9 +25,11 @@ updates:
     directory: /frontend
     target-branch: dev
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 2
+      interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       npm:
         patterns: ["*"]
@@ -33,8 +39,10 @@ updates:
     directories: [/backend, /frontend]
     target-branch: dev
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       images:
         patterns: ["*"]
@@ -43,8 +51,10 @@ updates:
     directory: /
     target-branch: dev
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       actions:
         patterns: ["*"]
