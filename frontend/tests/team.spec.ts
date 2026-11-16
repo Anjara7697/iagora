@@ -185,6 +185,28 @@ test("recherche et rôle dans l'adresse ; aucune correspondance", async ({ page 
   await expect(page).toHaveURL(/\/team$/);
 });
 
+test("mobile : rôle et état lisibles sans défilement, la ligne ouvre la fiche", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  await page.goto("/team");
+  // Sous 640 px, lignes à deux niveaux au lieu du tableau (UX-04).
+  const list = page.getByRole("list", { name: "Liste des membres" });
+  const paul = list.getByRole("button", { name: "paul", exact: true });
+  const row = list.getByRole("listitem").filter({ has: page.getByRole("button", { name: "paul", exact: true }) });
+  await expect(row.getByText("Actif", { exact: true })).toBeInViewport();
+  await expect(row.getByText(/^Conseiller · membre depuis le/)).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  await paul.click();
+  await expect(page).toHaveURL(/member=2/);
+  const panel = page.getByRole("dialog", { name: "paul" });
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Fermer" }).click();
+  // Le focus revient à la ligne qui a ouvert la fiche.
+  await expect(paul).toBeFocused();
+  await auditA11y(page, "équipe mobile");
+});
+
 test("fermer une fiche modifiée demande confirmation", async ({ page }) => {
   await mockApi(page);
   await login(page);

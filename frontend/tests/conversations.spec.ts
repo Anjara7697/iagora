@@ -256,6 +256,8 @@ test("les filtres sont transmis à l'API", async ({ page }) => {
   await filters.getByRole("button", { name: "Moi", exact: true }).click();
   await choose(filters.getByLabel("Canal"), "facebook");
   await expect(filters).toBeVisible();
+  // La liste du canal fermée, le focus revient dans la fenêtre : Échap la ferme alors.
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'))).toBe(true);
   await page.keyboard.press("Escape");
   await expect(filters).toBeHidden();
   await expect(page.getByRole("button", { name: /^Filtres/ })).toContainText("2");
