@@ -4,9 +4,11 @@ import { FileSearch, FileText } from "lucide-react";
 import type { ReactNode } from "react";
 import { DemoChip } from "@/components/ds/badges";
 import { reveal } from "@/components/ds/motion";
-import { Btn, Field, FilterChipGroup, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, FilterChipGroup, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel } from "@/components/ds/layout";
-import { DataTable, Table } from "@/components/ds/table";
+import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
+import { ListToolbar, countLabel } from "@/components/ds/toolbar";
+import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import { COMMON, type KnowledgeView } from "@/lib/knowledgeNav";
 import { TARGETS, formatDate, label } from "@/lib/labels";
 import type { KnowledgeDocument } from "@/lib/types";
@@ -46,20 +48,29 @@ export default function DocumentList({
   );
   const filtered = !!view.q || !!view.programme || !!view.status;
   const toReindex = documents.filter((d) => d.needs_reindex).length;
+  const narrow = useMediaQuery(NARROW);
+  const status = (d: KnowledgeDocument) => (
+    <Tag tone={d.needs_reindex ? "warning" : "success"}>{d.needs_reindex ? "À recalculer" : "À jour"}</Tag>
+  );
 
   return (
     // Règle des parcours : le tableau HeroUI est posé sur la page (pas de carte autour), filtres au-dessus.
     <section className="flex flex-col gap-4" aria-label="Documents disponibles">
       {(documents.length > 0 || filtered) && (
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Rechercher un document" className="w-full sm:w-72">
-            <TextInput
-              type="search"
-              value={view.q}
-              onChange={(e) => onChange({ q: e.target.value })}
-              placeholder="Titre ou identifiant…"
-            />
-          </Field>
+        // Barre au-dessus du tableau (règle 5) : recherche, programme et statut à gauche, compteur à droite.
+        <ListToolbar
+          label="Recherche et filtres des documents"
+          count={isLoading ? "" : countLabel(shown.length, "document", filtered ? documents.length : null)}
+        >
+          <TextInput
+            type="search"
+            aria-label="Rechercher un document"
+            className="w-full sm:w-72"
+            fullWidth={false}
+            value={view.q}
+            onChange={(e) => onChange({ q: e.target.value })}
+            placeholder="Titre ou identifiant…"
+          />
           {programmes.length > 1 && (
             <FilterChipGroup
               label="Programme"
@@ -76,12 +87,33 @@ export default function DocumentList({
               onChange={() => onChange({ status: view.status ? "" : "reindex" })}
             />
           )}
-          <span className="ml-auto type-body-sm text-muted tabular-nums" role="status">
-            {isLoading ? "" : `${shown.length} document${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${documents.length}` : ""}`}
-          </span>
-        </div>
+        </ListToolbar>
       )}
 
+      {narrow && shown.length > 0 ? (
+        // Sous 640 px : titre et statut, puis identifiant, programme, extraits et date (règle 4, UX-04).
+        <CompactList label="Liste des documents">
+          {shown.map((d) => (
+            <CompactRow
+              key={d.slug}
+              onPress={() => onOpen(d.slug)}
+              selected={d.slug === selected}
+              leading={<FileText className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />}
+              title={d.title}
+              aside={status(d)}
+            >
+              <span className="flex flex-wrap items-center gap-2 type-caption break-all text-muted">
+                {d.slug}
+                {d.is_demo && <DemoChip />}
+              </span>
+              <span className="type-caption text-muted">
+                {d.target_code ? label(TARGETS, d.target_code) : "Tous les programmes"} · {d.chunks} extrait
+                {d.chunks > 1 ? "s" : ""} · mis à jour le {formatDate(d.updated_at)}
+              </span>
+            </CompactRow>
+          ))}
+        </CompactList>
+      ) : (
       <DataTable
         label="Liste des documents"
         minWidth={720}
@@ -141,12 +173,11 @@ export default function DocumentList({
             <Table.Cell className="whitespace-nowrap text-muted">{d.target_code ? label(TARGETS, d.target_code) : "Tous"}</Table.Cell>
             <Table.Cell className="text-right tabular-nums">{d.chunks}</Table.Cell>
             <Table.Cell className="type-caption whitespace-nowrap text-muted tabular-nums">{formatDate(d.updated_at)}</Table.Cell>
-            <Table.Cell>
-              <Tag tone={d.needs_reindex ? "warning" : "success"}>{d.needs_reindex ? "À recalculer" : "À jour"}</Tag>
-            </Table.Cell>
+            <Table.Cell>{status(d)}</Table.Cell>
           </Table.Row>
         ))}
       </DataTable>
+      )}
 
       {documents.some((d) => d.is_demo) && (
         <p className="type-caption leading-4.5 text-muted">
