@@ -134,10 +134,10 @@ class PgKnowledgeBase:
             )
             return [(c, d, float(s)) for c, d, s in rows]
         # Repli sans pgvector (tests locaux sur SQLite) : similarité calculée en Python.
-        rows = await session.execute(
+        pairs = await session.execute(
             select(KnowledgeChunk, KnowledgeDocument)
             .join(KnowledgeDocument, KnowledgeDocument.id == KnowledgeChunk.document_id)
             .where(*filters)
         )
-        ranked = [(c, d, _cosine(vector, c.embedding)) for c, d in rows]
+        ranked = [(c, d, _cosine(vector, c.embedding)) for c, d in pairs]
         return sorted(ranked, key=lambda t: t[2], reverse=True)[:limit]
