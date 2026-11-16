@@ -82,7 +82,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
    total M est lu une fois, pas à chaque filtre). Quand les filtres sont nombreux (Prospects), seuls la recherche et les
    pastilles de périmètre restent dans la barre ; les autres passent dans un panneau latéral ouvert par
    « Filtres · N », qui s'applique tout de suite, et chaque filtre actif s'affiche en puce retirable sous la barre,
-   avec « Réinitialiser ».
+   avec « Réinitialiser » (`ActiveFilters`). Quand ils sont peu nombreux (Conversations : responsable et canal),
+   « Filtres · N » ouvre une fenêtre ancrée (`Popover`) au lieu du panneau latéral.
 6. **Adresse** : onglet, filtres, page et élément ouvert sont dans l'URL, mise à jour sans entrée d'historique
    (`replaceUrl`). Une adresse de retour est reconstruite à partir des valeurs connues, jamais suivie telle quelle.
 
