@@ -44,6 +44,10 @@ for (const screen of SCREENS) {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, "défilement horizontal de la page").toBeLessThanOrEqual(0);
 
+    // Une seule action principale par écran (règle des boutons, lot 6).
+    const primaries = await page.getByRole("main").locator(".button--primary").filter({ visible: true }).allTextContents();
+    expect(primaries.length, `boutons primaires : ${primaries.join(", ")}`).toBeLessThanOrEqual(1);
+
     await expect(page).toHaveScreenshot(`${screen.name}.png`, { fullPage: true });
     await auditA11y(page, screen.name, [], { strict: true });
   });
