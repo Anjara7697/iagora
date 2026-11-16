@@ -92,31 +92,48 @@ export function CompactList({ label, children }: { label: string; children: Reac
 
 export function CompactRow({
   href,
+  onPress,
+  selected = false,
   leading,
   title,
   aside,
   children,
 }: {
-  href: string;
+  /** La ligne ouvre une page… */
+  href?: string;
+  /** …ou une action sur place (panneau latéral). */
+  onPress?: () => void;
+  /** Élément ouvert dans un panneau. */
+  selected?: boolean;
   leading?: ReactNode;
-  /** Nom de la ligne : c'est le lien, étendu à toute la ligne. */
+  /** Nom de la ligne : c'est le lien (ou le bouton), étendu à toute la ligne. */
   title: ReactNode;
   /** État à droite du nom (statut, consentement). */
   aside?: ReactNode;
   children?: ReactNode;
 }) {
+  const target =
+    "min-w-0 flex-1 text-left type-body font-semibold break-words text-foreground outline-none after:absolute after:inset-0 after:content-['']";
   return (
     // Le lien porte le nom seul (WCAG 2.5.3) ; son pseudo-élément couvre la ligne, cliquable partout.
-    <li className="relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-secondary has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus has-[a:focus-visible]:ring-inset">
+    <li
+      className={cx(
+        "relative flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-secondary has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus has-[:focus-visible]:ring-inset",
+        selected && "bg-accent-soft/50",
+      )}
+    >
       {leading}
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-start gap-2">
-          <Link
-            href={href}
-            className="min-w-0 flex-1 type-body font-semibold break-words text-foreground outline-none after:absolute after:inset-0 after:content-['']"
-          >
-            {title}
-          </Link>
+          {href ? (
+            <Link href={href} className={target}>
+              {title}
+            </Link>
+          ) : (
+            <button type="button" onClick={onPress} aria-haspopup="dialog" className={cx(target, "cursor-pointer")}>
+              {title}
+            </button>
+          )}
           <span className="flex shrink-0 flex-wrap justify-end gap-1.5">{aside}</span>
         </div>
         {children}

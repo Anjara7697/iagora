@@ -4,10 +4,12 @@ import { SearchX, UserPlus, UsersRound } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { Btn, Field, FilterChipGroup, Notice, Tag, TextInput } from "@/components/ds/controls";
+import { Btn, FilterChipGroup, Notice, Tag, TextInput } from "@/components/ds/controls";
 import { EmptyPanel, ErrorState, PageHeader, Screen, cx, initialsOf as initials } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { DataTable, Table } from "@/components/ds/table";
+import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
+import { ListToolbar, countLabel } from "@/components/ds/toolbar";
+import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import {
   CreateMemberPanel,
   MemberPanel,
@@ -44,6 +46,21 @@ function teamHref(view: TeamView) {
   return `/team${query ? `?${query}` : ""}`;
 }
 
+/** Initiales du membre, estompées pour un compte désactivé. */
+function MemberAvatar({ member }: { member: User }) {
+  return (
+    <span
+      className={cx(
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-full type-body-sm font-semibold",
+        member.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
+      )}
+      aria-hidden="true"
+    >
+      {initials(member.username)}
+    </span>
+  );
+}
+
 export default function TeamPage() {
   return (
     <Suspense>
@@ -61,6 +78,7 @@ function Team() {
   const navigate = (patch: Partial<TeamView>) =>
     replaceUrl(teamHref({ ...readView(new URLSearchParams(window.location.search)), ...patch }));
   const [creating, setCreating] = useState(false);
+  const narrow = useMediaQuery(NARROW);
   const [secret, setSecret] = useState<Secret | null>(null);
 
   if (user && !isAdmin)
@@ -101,15 +119,25 @@ function Team() {
         <ErrorState message={`Chargement de l’équipe impossible : ${members.error.message}`} onRetry={members.reload} />
       ) : (
         <section className="flex flex-col gap-4" aria-label="Membres de l’équipe">
-          <div className={cx("flex flex-wrap items-end gap-3", reveal(1).className)} style={reveal(1).style}>
-            <Field label="Rechercher un membre" className="w-full sm:w-64">
-              <TextInput
-                type="search"
-                value={view.q}
-                placeholder="Nom ou email…"
-                onChange={(e) => navigate({ q: e.target.value })}
-              />
-            </Field>
+          {/* Barre au-dessus du tableau (règle 5) : recherche et rôle à gauche, compteur à droite. */}
+          <ListToolbar
+            {...reveal(1)}
+            label="Recherche et filtres des membres"
+            count={
+              members.data
+                ? `${countLabel(shown.length, "membre", filtered ? all.length : null)} · ${active} actif${active > 1 ? "s" : ""}`
+                : ""
+            }
+          >
+            <TextInput
+              type="search"
+              aria-label="Rechercher un membre"
+              className="w-full sm:w-64"
+              fullWidth={false}
+              value={view.q}
+              placeholder="Nom ou email…"
+              onChange={(e) => navigate({ q: e.target.value })}
+            />
             <FilterChipGroup
               label="Rôle"
               value={view.role}
@@ -119,13 +147,36 @@ function Team() {
                 ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({ value: r as RoleFilter, text: ROLE_LABELS[r] })),
               ]}
             />
-            <span className="ml-auto type-body-sm text-muted tabular-nums" role="status">
-              {members.data
-                ? `${shown.length} membre${shown.length > 1 ? "s" : ""}${filtered ? ` sur ${all.length}` : ""} · ${active} actif${active > 1 ? "s" : ""}`
-                : ""}
-            </span>
-          </div>
+          </ListToolbar>
 
+          {narrow && shown.length > 0 ? (
+            // Sous 640 px : nom et état, puis email, rôle et ancienneté (règle 4, UX-04).
+            <CompactList label="Liste des membres">
+              {shown.map((m) => {
+                const state = memberState(m);
+                return (
+                  <CompactRow
+                    key={m.id}
+                    onPress={() => navigate({ member: m.id })}
+                    selected={m.id === view.member}
+                    leading={<MemberAvatar member={m} />}
+                    title={
+                      <>
+                        {m.username}
+                        {m.id === user?.id && <span className="font-normal text-muted"> · vous</span>}
+                      </>
+                    }
+                    aside={<Tag tone={state.tone}>{state.label}</Tag>}
+                  >
+                    <span className="type-caption break-all text-muted">{m.email}</span>
+                    <span className="type-caption text-muted">
+                      {ROLE_LABELS[m.role]} · membre depuis le {formatDate(m.created_at ?? null)}
+                    </span>
+                  </CompactRow>
+                );
+              })}
+            </CompactList>
+          ) : (
           <DataTable
             {...reveal(2)}
             label="Liste des membres"
@@ -178,15 +229,7 @@ function Team() {
                 >
                   <Table.Cell>
                     <span className="flex items-center gap-3">
-                      <span
-                        className={cx(
-                          "inline-flex size-9 shrink-0 items-center justify-center rounded-full type-body-sm font-semibold",
-                          m.is_active ? "bg-accent-soft text-accent-soft-foreground" : "bg-surface-tertiary text-muted",
-                        )}
-                        aria-hidden="true"
-                      >
-                        {initials(m.username)}
-                      </span>
+                      <MemberAvatar member={m} />
                       <span className="flex min-w-0 flex-col">
                         <strong className="type-body font-semibold text-foreground">
                           {m.username}
@@ -207,6 +250,7 @@ function Team() {
               );
             })}
           </DataTable>
+          )}
         </section>
       )}
 
