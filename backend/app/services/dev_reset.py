@@ -81,7 +81,9 @@ def guard(settings: Settings) -> None:
 async def preview(session: AsyncSession, db: Any) -> ResetReport:
     report = ResetReport()
     for label, model in TABLES:
-        report.counts[label] = int(await session.scalar(select(func.count()).select_from(model)))
+        report.counts[label] = int(
+            await session.scalar(select(func.count()).select_from(model)) or 0
+        )
     for label, name in COLLECTIONS:
         report.counts[label] = await db[name].count_documents({})
     return report
