@@ -74,7 +74,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
    Toute la ligne ouvre l'élément (clic et Entrée). Sous 640 px, le tableau devient une liste de lignes à deux
    niveaux (`CompactList`, `CompactRow` de `ds/table.tsx`) : nom et état sur la première ligne, détails en dessous,
-   toute la ligne est un lien nommé par le nom seul ; jamais de défilement horizontal pour lire l'état. Une vue en
+   toute la ligne est un lien nommé par le nom seul, ou un bouton quand elle ouvre un panneau (Équipe, Base de
+   connaissances) ; jamais de défilement horizontal pour lire l'état. Une vue en
    colonnes (pipeline) n'est la vue par défaut qu'à partir de 1024 px ; un choix explicite, gardé dans l'adresse,
    reste prioritaire.
 5. **Barre au-dessus d'un tableau** (`ListToolbar`, `FiltersButton`, `countLabel` de `ds/toolbar.tsx`) :
