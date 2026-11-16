@@ -13,7 +13,7 @@ import { LeadSources } from "@/components/LeadSources";
 import { MetaLeadSettings } from "@/components/MetaLeadSettings";
 import { ZoomSettings } from "@/components/ZoomSettings";
 import { Btn, LinkButton, Notice, Segmented } from "@/components/ds/controls";
-import { EmptyPanel, ErrorState, Eyebrow, PageHeader, Screen, cx } from "@/components/ds/layout";
+import { EmptyPanel, ErrorState, PageHeader, Screen, cx } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { StatePill } from "@/components/ds/settings";
@@ -231,7 +231,7 @@ function Catalog() {
             style={reveal(2 + index).style}
             aria-label={category.label}
           >
-            <Eyebrow>{category.label}</Eyebrow>
+            <h2 className="type-caption tracking-[0.06em] text-muted uppercase">{category.label}</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {items.map((c) => {
                 const v = views[c.id];

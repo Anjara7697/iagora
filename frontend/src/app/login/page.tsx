@@ -56,11 +56,11 @@ export default function LoginPage() {
         </span>
         <div className="relative flex max-w-[520px] flex-col gap-5">
           <span className="text-xs tracking-[0.06em] text-white/60 uppercase">Agent intelligent commercial</span>
-          <h1 className="text-[44px]/[50px] font-semibold tracking-[-0.03em]">
+          <p className="text-[44px]/[50px] font-semibold tracking-[-0.03em]">
             Chaque échange,
             <br />
             une nouvelle possibilité.
-          </h1>
+          </p>
           <p className="text-base/[26px] text-white/75">
             Retrouvez vos prospects, suivez leurs parcours et accompagnez-les vers la bonne
             formation.
@@ -90,9 +90,9 @@ export default function LoginPage() {
           <Box as="form" className="gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
             <div className="flex flex-col gap-1">
               <Eyebrow>Votre espace de travail</Eyebrow>
-              <h2 id="login-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
+              <h1 id="login-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
                 Bienvenue sur IAGORA
-              </h2>
+              </h1>
               <p className="text-sm text-muted">Connectez-vous avec votre compte professionnel.</p>
             </div>
             <Field label="Email ou nom d'utilisateur">
