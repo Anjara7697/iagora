@@ -2,10 +2,10 @@
 
 import { toast } from "@heroui/react";
 import { Radar, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, failure } from "@/lib/api";
 import { ConfirmDialog } from "./ds/ConfirmDialog";
-import { Btn, ErrorText, Notice, SelectBox, TextInput } from "./ds/controls";
+import { Btn, ErrorText, Notice, NumberInput, SelectBox, TextInput } from "./ds/controls";
 import { cx } from "./ds/layout";
 import { useDiscardGuard } from "./ds/useDiscardGuard";
 import { ActionsBar, InfoRow, SettingRow as Field, SettingsLoading, Toggle } from "./ds/settings";
@@ -44,6 +44,8 @@ export function EmailSettings({
   /** Saisie non enregistrée : le panneau qui l'affiche demande confirmation avant de se fermer. */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  // Un port signalé sous son champ (vide ou hors bornes) bloque le test et l'enregistrement (FORM-01).
+  const root = useRef<HTMLElement>(null);
   const [form, setForm] = useState<EmailConfig | null>(null);
   const [password, setPassword] = useState("");
   const [sandbox, setSandbox] = useState("");
@@ -104,6 +106,12 @@ export function EmailSettings({
   }
 
   async function act(name: keyof typeof FAILURES, fn: () => Promise<void>) {
+    const invalid = name !== "forget" ? root.current?.querySelector<HTMLElement>('[aria-invalid="true"]') : null;
+    if (invalid) {
+      setError(`${FAILURES[name]} : corrigez la valeur signalée.`);
+      invalid.focus();
+      return;
+    }
     setBusy(name);
     onBusyChange?.(true);
     setError(null);
@@ -182,7 +190,7 @@ export function EmailSettings({
   const hasFolder = folders.some((f) => f.name === form.imap_folder);
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
+    <section ref={root} className="flex flex-col gap-4" aria-label="Paramètres de la boîte email">
       {discardDialog}
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={busy !== null || disabled}>
         <legend className="sr-only">Configuration de la boîte email</legend>
@@ -264,11 +272,7 @@ export function EmailSettings({
                   <TextInput value={form.imap_host} onChange={(e) => set("imap_host", e.target.value)} />
                 </Stacked>
                 <Stacked label="Port IMAP">
-                  <TextInput
-                    type="number"
-                    value={String(form.imap_port)}
-                    onChange={(e) => set("imap_port", Number(e.target.value))}
-                  />
+                  <NumberInput min={1} max={65535} value={form.imap_port} onValueChange={(v) => set("imap_port", v)} />
                 </Stacked>
                 <Stacked label="Identifiant (si différent de l’adresse)" className="sm:col-span-2">
                   <TextInput value={form.username ?? ""} onChange={(e) => set("username", e.target.value || null)} />
@@ -280,11 +284,7 @@ export function EmailSettings({
                   <TextInput value={form.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} />
                 </Stacked>
                 <Stacked label="Port SMTP">
-                  <TextInput
-                    type="number"
-                    value={String(form.smtp_port)}
-                    onChange={(e) => set("smtp_port", Number(e.target.value))}
-                  />
+                  <NumberInput min={1} max={65535} value={form.smtp_port} onValueChange={(v) => set("smtp_port", v)} />
                 </Stacked>
                 <Stacked label="Sécurité SMTP" className="sm:col-span-2">
                   <SelectBox

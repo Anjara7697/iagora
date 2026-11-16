@@ -270,7 +270,8 @@ function Catalog() {
                       ) : (
                         <Btn
                           size="sm"
-                          variant={!c.soon && !v.configured ? "primary" : "outline"}
+                          // Bouton neutre sur chaque carte (UX-07) : l'état (« Non branché ») porte l'information.
+                          variant="outline"
                           aria-label={`${cta} ${c.name}`}
                           onClick={() => openConnector(c.id)}
                         >
