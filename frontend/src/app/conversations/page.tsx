@@ -10,7 +10,10 @@ import { ArrowRight, Inbox as InboxIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useRef } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { Btn, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
+import { Label, Popover } from "@heroui/react";
+import { Btn, Field, FilterChipGroup, LinkButton, SelectBox, TextInput } from "@/components/ds/controls";
+import { ActiveFilters, FiltersButton, type ActiveFilter } from "@/components/ds/toolbar";
+import { CHANNELS, label } from "@/lib/labels";
 import { EmptyPanel, ListScroll, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
@@ -70,6 +73,13 @@ function Inbox() {
     { keepPrevious: true },
   );
   const filtered = isFiltered(view);
+  // Filtres de la fenêtre « Filtres » : chacun actif s'affiche en puce retirable sous le statut.
+  const active: ActiveFilter[] = [
+    ...(view.owner
+      ? [{ name: "Responsable", text: `Responsable : ${label(Object.fromEntries(OWNER_FILTERS.map((o) => [o.value, o.text])), view.owner)}`, clear: () => filter({ owner: "" }) }]
+      : []),
+    ...(view.channel ? [{ name: "Canal", text: `Canal : ${label(CHANNELS, view.channel)}`, clear: () => filter({ channel: "" }) }] : []),
+  ];
   // Total sans filtre, pour « N sur M » (règle 5).
   const all = useApi<Page<ConversationSummary>>(filtered ? "/conversations?limit=1" : null);
 
@@ -123,39 +133,54 @@ function Inbox() {
                 : ""}
             </span>
           </header>
-          <TextInput
-            type="search"
-            aria-label="Rechercher une conversation"
-            placeholder="Nom ou email…"
-            value={view.q}
-            onChange={(e) => filter({ q: e.target.value })}
-          />
+          {/* Recherche et statut visibles ; responsable et canal dans « Filtres · N » (UX-11, règle 5). */}
+          <div className="flex items-center gap-2">
+            <TextInput
+              type="search"
+              aria-label="Rechercher une conversation"
+              placeholder="Nom ou email…"
+              className="min-w-0 flex-1"
+              value={view.q}
+              onChange={(e) => filter({ q: e.target.value })}
+            />
+            <Popover>
+              <FiltersButton count={active.length} />
+              <Popover.Content placement="bottom end" className="w-[min(320px,calc(100vw-2rem))]">
+                <Popover.Dialog aria-label="Filtres" className="flex flex-col gap-4 p-4">
+                  <div className="flex flex-col gap-1.5">
+                    {/* Libellé visible comme celui du canal ; le groupe garde son nom accessible. */}
+                    <Label aria-hidden="true">Responsable</Label>
+                    <FilterChipGroup
+                      label="Responsable"
+                      options={[...OWNER_FILTERS]}
+                      value={view.owner}
+                      onChange={(owner) => filter({ owner })}
+                    />
+                  </div>
+                  <Field label="Canal">
+                    <SelectBox value={view.channel} onChange={(e) => filter({ channel: e.target.value })}>
+                      {CHANNEL_FILTERS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.text}
+                        </option>
+                      ))}
+                    </SelectBox>
+                  </Field>
+                </Popover.Dialog>
+              </Popover.Content>
+            </Popover>
+          </div>
           <FilterChipGroup
             label="Statut"
             options={[...STATUS_FILTERS]}
             value={view.status}
             onChange={(status) => filter({ status })}
           />
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterChipGroup
-              label="Responsable"
-              options={[...OWNER_FILTERS]}
-              value={view.owner}
-              onChange={(owner) => filter({ owner })}
-            />
-            <SelectBox
-              aria-label="Canal"
-              className="min-w-[150px] flex-1"
-              value={view.channel}
-              onChange={(e) => filter({ channel: e.target.value })}
-            >
-              {CHANNEL_FILTERS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.text}
-                </option>
-              ))}
-            </SelectBox>
-          </div>
+          <ActiveFilters
+            filters={active}
+            filtered={filtered}
+            onReset={() => filter({ q: "", status: "", owner: "", channel: "" })}
+          />
           <Loading
             loading={list.loading && !list.data}
             error={list.error}

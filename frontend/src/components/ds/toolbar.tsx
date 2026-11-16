@@ -48,27 +48,44 @@ export function ListToolbar({
           {count}
         </span>
       </div>
-      {(filters.length > 0 || (filtered && onReset)) && (
-        <div className="flex flex-wrap items-center gap-2" aria-label="Filtres actifs">
-          {filters.map((f) => (
-            <Btn key={f.name} size="sm" variant="tertiary" aria-label={`Retirer le filtre ${f.name}`} onClick={f.clear}>
-              {f.text}
-              <X className="size-3.5 text-muted" aria-hidden="true" />
-            </Btn>
-          ))}
-          {onReset && (
-            <Btn size="sm" variant="ghost" className="text-link" onClick={onReset}>
-              Réinitialiser
-            </Btn>
-          )}
-        </div>
-      )}
+      <ActiveFilters filters={filters} filtered={filtered} onReset={onReset} />
     </section>
   );
 }
 
-/** Ouvre le panneau des filtres ; le nombre de filtres actifs s'affiche à côté (« Filtres · N »). */
-export function FiltersButton({ count, onPress }: { count: number; onPress: () => void }) {
+/** Filtres actifs en puces retirables, puis « Réinitialiser » ; rien quand aucun filtre n'est actif. */
+export function ActiveFilters({
+  filters,
+  filtered = filters.length > 0,
+  onReset,
+}: {
+  filters: ActiveFilter[];
+  filtered?: boolean;
+  onReset?: () => void;
+}) {
+  if (!filters.length && !(filtered && onReset)) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Filtres actifs">
+      {filters.map((f) => (
+        <Btn key={f.name} size="sm" variant="tertiary" aria-label={`Retirer le filtre ${f.name}`} onClick={f.clear}>
+          {f.text}
+          <X className="size-3.5 text-muted" aria-hidden="true" />
+        </Btn>
+      ))}
+      {onReset && (
+        <Btn size="sm" variant="ghost" className="text-link" onClick={onReset}>
+          Réinitialiser
+        </Btn>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ouvre les filtres (panneau latéral, ou fenêtre ancrée quand ils sont peu nombreux) ; le nombre de filtres actifs
+ * s'affiche à côté (« Filtres · N »). Sans `onPress`, il sert de déclencheur à un `Popover`.
+ */
+export function FiltersButton({ count, onPress }: { count: number; onPress?: () => void }) {
   return (
     <Btn variant="secondary" aria-haspopup="dialog" onClick={onPress}>
       <SlidersHorizontal className="size-4" aria-hidden="true" />
