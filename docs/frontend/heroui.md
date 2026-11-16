@@ -30,7 +30,9 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
 - **Champs** (texte, zone de texte, listes, recherche, dates) : une seule apparence, réglée par les jetons `--field-*`
   de `heroui.css` (fond de surface, bordure de 1 px plus marquée au survol, couleur d'accent au focus, sans ombre).
   La bordure reste discrète (décidé avec le responsable du projet le 16/11/2026) : elle n'atteint pas le contraste
-  de 3:1 de WCAG 1.4.11 ; le champ se repère à son libellé et à son fond, et le focus prend la couleur d'accent. Ne pas poser de `variant` sur un champ. Interrupteurs et cases : apparence HeroUI par défaut.
+  de 3:1 de WCAG 1.4.11 ; le champ se repère à son libellé et à son fond, et le focus prend la couleur d'accent. Ne pas poser de `variant` sur un champ. Un nombre se saisit dans
+  `NumberInput` : jamais `type="number"` avec `Number(e.target.value)`, qui transforme un champ vidé en 0 sans le
+  dire (FORM-01). Interrupteurs et cases : apparence HeroUI par défaut.
 - **Surcouches** : elles acceptent toutes les propriétés du composant HeroUI (`variant`, `size`, `color`…) et
   n'ajoutent que des raccourcis ; ne pas y poser de styles qui changent l'apparence du composant.
 
@@ -213,8 +215,11 @@ un écran connu de la console, jamais une adresse externe).
 
 31. **Paramètres** (écarts aux règles 3 et 21, décidés pour cet écran) : les catégories sont un menu vertical avec
     une aide sous chaque intitulé (une liste sur mobile), la catégorie ouverte dans l'adresse (`?section=`) ; une
-    seule barre « Enregistrer les paramètres », commune aux catégories, reste collée en bas de l'écran et reprend sa
-    place après le dernier champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
+    seule barre « Enregistrer les paramètres », commune aux catégories, posée dans le flux sous la catégorie
+    ouverte : elle ne recouvre ni un champ, ni une note, ni la notification (UX-15, A11Y-04). Les nombres se
+    saisissent dans `NumberInput` (bornes du serveur) : une valeur vide ou hors bornes est signalée sous son
+    champ ; « Enregistrer » est alors refusé, avec le nom du champ et sa catégorie, qui s'ouvre, le focus sur le
+    champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
     « Revenir aux valeurs du serveur » passe par `ConfirmDialog` ; succès en Toast, échec en `ErrorText`.
 32. **Équipe** (`app/team`, `components/team/`) : tableau des membres (recherche et rôle dans l'adresse, compteur
     « N membres · N actifs ») ; « Ajouter un membre » et la fiche d'un membre s'ouvrent dans un panneau latéral
