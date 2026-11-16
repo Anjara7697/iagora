@@ -152,7 +152,9 @@ test("accueil : une famille ouvre la file sur son filtre réel", async ({
       new URL(r.url()).pathname.endsWith("/todo") &&
       new URL(r.url()).searchParams.get("kind") === "validation",
   );
-  await expect(page.locator('a[href="/simulator"]')).toHaveCount(0);
+  // L'outil de test a son entrée de menu (NAV-02), mais aucun raccourci dans le contenu de l'accueil.
+  await expect(page.getByRole("navigation", { name: "Navigation principale" }).locator('a[href="/simulator"]')).toHaveCount(1);
+  await expect(page.getByRole("main").locator('a[href="/simulator"]')).toHaveCount(0);
   await page.getByRole("navigation", { name: "Répartition de la file" }).getByRole("link", { name: "2 validations" }).click();
   await request;
   await expect(page).toHaveURL(/\/todo\?kind=validation$/);
