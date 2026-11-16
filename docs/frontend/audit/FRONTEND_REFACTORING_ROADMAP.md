@@ -256,5 +256,5 @@ Contenu, risques et critères d'acceptation : sections « Lot 3 » à « Lot 7 �
 | 1 — Socle technique | fusionné : [Anjara7697/iagora#188](https://github.com/Anjara7697/iagora/pull/188), [#189](https://github.com/Anjara7697/iagora/pull/189), [#190](https://github.com/Anjara7697/iagora/pull/190), [#191](https://github.com/Anjara7697/iagora/pull/191) |
 | 2 — Design system | fusionné : [#192](https://github.com/Anjara7697/iagora/pull/192) à [#198](https://github.com/Anjara7697/iagora/pull/198) ; les sections sans carte (UI-06) passent aux lots 5 et 6, écran par écran |
 | 3 — À traiter | fusionné : [#199](https://github.com/Anjara7697/iagora/pull/199), [#200](https://github.com/Anjara7697/iagora/pull/200) |
-| 4 — Listes et tableaux | en cours : 4.1 (Prospects, `ListToolbar`, lignes à deux niveaux) ; tri et sélection (UX-12) reportés : l'API des listes n'a pas de paramètre de tri |
+| 4 — Listes et tableaux | 4.1 Prospects ([#201](https://github.com/Anjara7697/iagora/pull/201)) ; en cours : 4.2 (Campagnes : 20 par page, lignes à deux niveaux) ; tri et sélection (UX-12) reportés : l'API des listes n'a pas de paramètre de tri |
 | 5 à 7 | à faire |

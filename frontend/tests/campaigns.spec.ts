@@ -754,7 +754,7 @@ test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à 
 
 test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {
   await mockApi(page);
-  const many = Array.from({ length: 8 }, (_, i) =>
+  const many = Array.from({ length: 25 }, (_, i) =>
     campaign({ id: 100 + i, name: `Campagne ${i + 1}`, status: i < 3 ? "active" : "draft" }),
   );
   const queries: string[] = [];
@@ -769,14 +769,15 @@ test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-de
   });
   await login(page);
   const strip = page.getByRole("region", { name: "Chiffres clés" });
-  await expect(strip.getByText("3 / 8")).toBeVisible();
-  await expect(strip.getByText("5 brouillon(s)")).toBeVisible();
-  await expect(page.getByRole("row", { name: /Campagne 1\b/ })).toBeVisible();
-  await expect(page.getByRole("row", { name: /Campagne 7/ })).toHaveCount(0);
+  await expect(strip.getByText("3 / 25")).toBeVisible();
+  await expect(strip.getByText("22 brouillon(s)")).toBeVisible();
+  // Vingt campagnes par page (UX-13).
+  await expect(page.getByRole("row", { name: /Campagne 20\b/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Campagne 21/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Page 2", exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns\?page=2$/);
-  await expect(page.getByRole("row", { name: /Campagne 7/ })).toBeVisible();
-  expect(queries.some((q) => q.includes("limit=6") && q.includes("offset=6"))).toBe(true);
+  await expect(page.getByRole("row", { name: /Campagne 21/ })).toBeVisible();
+  expect(queries.some((q) => q.includes("limit=20") && q.includes("offset=20"))).toBe(true);
   // Une page hors limites revient à la dernière page.
   await page.goto("/campaigns?page=9");
   await expect(page).toHaveURL(/\/campaigns\?page=2$/, { timeout: 15_000 });
@@ -1050,4 +1051,21 @@ test("observateur : les premiers contacts se consultent sans action", async ({ p
   await expect(card.getByText("2 personnes de la campagne", { exact: false })).toBeVisible();
   await expect(card.getByRole("button", { name: /Préparer/ })).toHaveCount(0);
   await expect(card.getByRole("link", { name: "Importer une liste" })).toHaveCount(0);
+});
+
+test("liste en mobile : statut et chiffres lisibles sans défilement horizontal", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+  const list = page.getByRole("list", { name: "Liste des campagnes" });
+  const row = list.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Recrutement eBIHAR 2026", exact: true }) });
+  await expect(row).toBeVisible();
+  await expect(row.getByText("Brouillon", { exact: true })).toBeInViewport();
+  for (const term of ["Leads", "Qualifiés", "Inscrits", "Sources"]) await expect(row.getByText(term, { exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  // Toute la ligne ouvre la fiche : le lien du nom couvre la ligne, un clic sur les chiffres l'atteint.
+  await row.getByText("Leads", { exact: true }).click({ force: true });
+  await expect(page).toHaveURL(/\/campaigns\/\d+$/);
+  await page.goBack();
+  await auditA11y(page, "campagnes mobile");
 });
