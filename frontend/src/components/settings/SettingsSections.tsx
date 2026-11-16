@@ -1,17 +1,20 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { FlaskConical, Mail, Sparkles } from "lucide-react";
-import { Btn, ColorChoice, ErrorText, FilterChip, LinkButton, Notice, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
+import { Btn, ColorChoice, ErrorText, FilterChip, LinkButton, Notice, NumberInput, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ActionsBar, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
 import type { RuntimeSettings } from "@/lib/types";
 
 /** Sections de l'écran Paramètres (une carte par catégorie). L'état du formulaire reste dans la page :
  *  une catégorie masquée garde sa saisie, et un seul bouton enregistre tout (règle 31). */
+/** Réglages numériques (bornés dans le formulaire par `NumberInput`). */
+export type NumericSetting = { [K in keyof RuntimeSettings]-?: RuntimeSettings[K] extends number ? K : never }[keyof RuntimeSettings];
+
 export type SectionProps = {
   form: RuntimeSettings;
   set: <K extends keyof RuntimeSettings>(key: K, value: RuntimeSettings[K]) => void;
-  num: (key: keyof RuntimeSettings) => (e: ChangeEvent<HTMLInputElement>) => void;
+  /** Champ numérique du formulaire : valeur et mise à jour pour `NumberInput`. */
+  num: (key: NumericSetting) => { value: number; onValueChange: (value: number) => void };
   busy: string | null;
   hidden: boolean;
 };
@@ -101,13 +104,11 @@ export function AiSection({
             label="Créativité (0 = factuel, 1 = libre)"
             note="0,2 à 0,4 recommandé : l’agent ne doit jamais inventer."
           >
-            <TextInput
-              type="number"
-              step="0.1"
+            <NumberInput
+              step={0.1}
               min={0}
               max={2}
-              value={form.llm_temperature}
-              onChange={num("llm_temperature")}
+              {...num("llm_temperature")}
             />
           </Field>
           <InfoRow
@@ -176,34 +177,34 @@ export function AgentSection({
           />
           <InfoRow label="Fenêtre d’envoi des relances" note="Heure de début et de fin (heure locale).">
               <div className="flex items-center gap-2">
-                <TextInput
-                  aria-label="Relances : à partir de (heure)"
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={form.follow_up_window_start_hour}
-                  onChange={num("follow_up_window_start_hour")}
-                  className="w-24"
-                />
+                <div className="flex flex-col gap-1">
+                  <NumberInput
+                    aria-label="Relances : à partir de (heure)"
+                    min={0}
+                    max={23}
+                    className="w-24"
+                    fullWidth={false}
+                    {...num("follow_up_window_start_hour")}
+                  />
+                </div>
                 <span className="type-body text-muted">→</span>
-                <TextInput
-                  aria-label="jusqu’à (heure)"
-                  type="number"
-                  min={1}
-                  max={24}
-                  value={form.follow_up_window_end_hour}
-                  onChange={num("follow_up_window_end_hour")}
-                  className="w-24"
-                />
+                <div className="flex flex-col gap-1">
+                  <NumberInput
+                    aria-label="jusqu’à (heure)"
+                    min={1}
+                    max={24}
+                    className="w-24"
+                    fullWidth={false}
+                    {...num("follow_up_window_end_hour")}
+                  />
+                </div>
               </div>
           </InfoRow>
           <Field label="Relances maximum sans réponse">
-            <TextInput
-              type="number"
+            <NumberInput
               min={1}
               max={10}
-              value={form.follow_up_max_per_silence}
-              onChange={num("follow_up_max_per_silence")}
+              {...num("follow_up_max_per_silence")}
             />
           </Field>
           <Toggle
@@ -219,37 +220,31 @@ export function AgentSection({
             label="Score à partir duquel proposer un rendez-vous"
             note="Prospect qualifié (profil complet) dont le score atteint ce seuil : l’agent propose des créneaux réels."
           >
-            <TextInput
-              type="number"
+            <NumberInput
               min={1}
               max={100}
-              value={form.agent_meeting_min_score}
-              onChange={num("agent_meeting_min_score")}
+              {...num("agent_meeting_min_score")}
             />
           </Field>
           <Field
             label="Score jusqu’auquel un prospect est jugé froid"
             note="En dessous, un message neutre est suivi d’un entretien espacé, sans insister. Doit rester sous le seuil de rendez-vous."
           >
-            <TextInput
-              type="number"
+            <NumberInput
               min={0}
               max={99}
-              value={form.agent_nurture_max_score}
-              onChange={num("agent_nurture_max_score")}
+              {...num("agent_nurture_max_score")}
             />
           </Field>
           <Field
             label="Confiance minimale de lecture (0,1 à 0,95)"
             note="Si le modèle comprend le message avec moins de confiance, la conversation passe à un conseiller."
           >
-            <TextInput
-              type="number"
-              step="0.05"
+            <NumberInput
+              step={0.05}
               min={0.1}
               max={0.95}
-              value={form.agent_min_confidence}
-              onChange={num("agent_min_confidence")}
+              {...num("agent_min_confidence")}
             />
           </Field>
           <Field
@@ -350,12 +345,10 @@ export function EmailsSection({
             label="Relève de la boîte toutes les (secondes)"
             note="60 secondes conviennent ; la boîte se règle dans Intégrations."
           >
-            <TextInput
-              type="number"
+            <NumberInput
               min={10}
               max={3600}
-              value={form.email_poll_seconds}
-              onChange={num("email_poll_seconds")}
+              {...num("email_poll_seconds")}
             />
           </Field>
           <Toggle
@@ -397,61 +390,49 @@ export function AppointmentsSection({ form, set, num, hidden }: SectionProps) {
             </div>
           </InfoRow>
           <Field label="Début de journée (heure)">
-            <TextInput
-              type="number"
+            <NumberInput
               min={0}
               max={23}
-              value={form.calendar_work_start_hour}
-              onChange={num("calendar_work_start_hour")}
+              {...num("calendar_work_start_hour")}
             />
           </Field>
           <Field label="Fin de journée (heure)">
-            <TextInput
-              type="number"
+            <NumberInput
               min={1}
               max={24}
-              value={form.calendar_work_end_hour}
-              onChange={num("calendar_work_end_hour")}
+              {...num("calendar_work_end_hour")}
             />
           </Field>
           <Field label="Durée d’un rendez-vous (minutes)">
-            <TextInput
-              type="number"
+            <NumberInput
               min={15}
               max={240}
               step={15}
-              value={form.calendar_slot_minutes}
-              onChange={num("calendar_slot_minutes")}
+              {...num("calendar_slot_minutes")}
             />
           </Field>
           <Field
             label="Délai minimum avant un rendez-vous (heures)"
             note="Évite de proposer un créneau dans l’heure qui vient."
           >
-            <TextInput
-              type="number"
+            <NumberInput
               min={0}
               max={240}
-              value={form.calendar_min_notice_hours}
-              onChange={num("calendar_min_notice_hours")}
+              {...num("calendar_min_notice_hours")}
             />
           </Field>
           <Field label="Créneaux proposés sur (jours)">
-            <TextInput
-              type="number"
+            <NumberInput
               min={1}
               max={60}
-              value={form.calendar_horizon_days}
-              onChange={num("calendar_horizon_days")}
+              {...num("calendar_horizon_days")}
             />
           </Field>
           <Field label="Marge entre rendez-vous (minutes)">
-            <TextInput
-              type="number"
+            <NumberInput
               min={0}
               max={120}
-              value={form.calendar_buffer_minutes}
-              onChange={num("calendar_buffer_minutes")}
+              {...num("calendar_buffer_minutes")}
             />
           </Field>
           <Field label="Fuseau horaire" note="Ex. Europe/Paris.">

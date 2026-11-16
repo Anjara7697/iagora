@@ -36,3 +36,10 @@ test("rayons : seulement sm, lg et full (hors bulles du fil de Conversations, rÃ
     [],
   );
 });
+
+test("nombres : saisis dans NumberInput, jamais en type=\"number\" brut (un champ vidÃ© deviendrait 0, FORM-01)", () => {
+  assert.deepEqual(
+    find(/type="number"/).filter((hit) => !hit.startsWith("components/ds/controls.tsx")),
+    [],
+  );
+});

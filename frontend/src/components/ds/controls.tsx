@@ -3,7 +3,7 @@
 import { Alert, Button, buttonVariants, Checkbox, CheckboxGroup, Chip, ColorArea, ColorField, ColorPicker, ColorSlider, ColorSwatch, Description, Input, Label, Link as HeroLink, Tabs, ListBox, Select, TextArea, ToggleButton } from "@heroui/react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { Children, cloneElement, isValidElement, useCallback, useId, useRef, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useCallback, useId, useRef, useState, type ComponentProps, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { cx } from "./layout";
 
 type ButtonProps = ComponentProps<typeof Button>;
@@ -246,6 +246,90 @@ export function Field({
 /** Champ texte HeroUI : toutes les propriétés de `Input` (variant, fullWidth…), pleine largeur par défaut. */
 export function TextInput({ fullWidth = true, ...props }: ComponentProps<typeof Input>) {
   return <Input fullWidth={fullWidth} {...props} />;
+}
+
+const frNumber = (n: number) => n.toLocaleString("fr-FR");
+
+/**
+ * Champ numérique (FORM-01) : garde ce que l'utilisateur tape, sans le ramener à 0 quand le champ est vidé.
+ * Une valeur vide, non numérique ou hors bornes est signalée sous le champ (`aria-invalid`, message relié par
+ * `aria-describedby`) et n'est pas transmise : `onValueChange` ne reçoit que des valeurs valides. Le formulaire
+ * qui l'emploie bloque l'enregistrement tant qu'un champ est `aria-invalid` (voir Paramètres). À placer dans
+ * `Field`, qui lui donne son libellé.
+ */
+export function NumberInput({
+  value,
+  onValueChange,
+  min,
+  max,
+  step = 1,
+  id,
+  "aria-describedby": describedBy,
+  className,
+  fullWidth = true,
+  ...rest
+}: Omit<ComponentProps<typeof Input>, "value" | "onChange" | "type" | "min" | "max" | "step"> & {
+  value: number;
+  onValueChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const auto = useId();
+  const errorId = `${id ?? auto}-error`;
+  const [text, setText] = useState(String(value));
+  // Valeur changée de l'extérieur (rechargement, retour aux valeurs du serveur) : le champ la reprend.
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setText(String(value));
+  }
+  const parse = (raw: string) => (raw.trim() === "" ? Number.NaN : Number(raw.replace(",", ".")));
+  const check = (raw: string): string | null => {
+    const n = parse(raw);
+    if (raw.trim() === "") return "Saisissez une valeur.";
+    if (Number.isNaN(n)) return "Saisissez un nombre.";
+    if ((min !== undefined && n < min) || (max !== undefined && n > max))
+      return min !== undefined && max !== undefined
+        ? `Saisissez une valeur entre ${frNumber(min)} et ${frNumber(max)}.`
+        : min !== undefined
+          ? `Saisissez une valeur d’au moins ${frNumber(min)}.`
+          : `Saisissez une valeur d’au plus ${frNumber(max!)}.`;
+    return null;
+  };
+  const error = check(text);
+  return (
+    <>
+      <Input
+        {...rest}
+        id={id}
+        type="number"
+        inputMode={Number.isInteger(step) ? "numeric" : "decimal"}
+        min={min}
+        max={max}
+        step={step}
+        fullWidth={fullWidth}
+        className={className}
+        value={text}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={[describedBy, error && errorId].filter(Boolean).join(" ") || undefined}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          if (!check(raw)) {
+            const n = parse(raw);
+            setSeen(n);
+            onValueChange(n);
+          }
+        }}
+      />
+      {error && (
+        <p id={errorId} className="type-caption text-danger">
+          {error}
+        </p>
+      )}
+    </>
+  );
 }
 
 /**
