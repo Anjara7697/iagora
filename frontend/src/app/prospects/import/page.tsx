@@ -65,7 +65,7 @@ function Import() {
   if (user?.role === "VIEWER")
     return (
       <Screen>
-        <p className="rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-soft-foreground" role="alert">
+        <p className="rounded-lg bg-warning-soft px-4 py-3 type-body text-warning-soft-foreground" role="alert">
           L’import est réservé aux conseillers et administrateurs.
         </p>
       </Screen>
@@ -125,7 +125,7 @@ function Import() {
               key={label}
               aria-current={current ? "step" : undefined}
               className={cx(
-                "flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-[13px] font-medium",
+                "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 type-body-sm font-medium",
                 current
                   ? "border-accent/40 bg-accent-soft text-accent-soft-foreground"
                   : done
@@ -135,7 +135,7 @@ function Import() {
             >
               <span
                 className={cx(
-                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs",
+                  "inline-flex size-6 shrink-0 items-center justify-center rounded-full type-caption",
                   current ? "bg-accent text-accent-foreground" : done ? "bg-success text-success-foreground" : "bg-surface-tertiary",
                 )}
                 aria-hidden="true"
@@ -163,10 +163,10 @@ function Import() {
           />
         </Field>
         {file && (
-          <p className="flex items-center gap-2 text-[13px] text-foreground">
+          <p className="flex items-center gap-2 type-body-sm text-foreground">
             <FileSpreadsheet className="size-4 text-success" aria-hidden="true" />
             <span className="font-medium">{file.name}</span>
-            <span className="text-xs text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
+            <span className="type-caption text-muted">{Math.max(1, Math.round(file.size / 1024))} Ko</span>
           </p>
         )}
         <InfoRow label="Destination" note="Facultatif : les prospects sans campagne restent « à rattacher ».">
@@ -208,7 +208,7 @@ function Import() {
             Importer
           </Btn>
           {!report?.dry_run && (
-            <span id="import-hint" className="text-xs text-muted">
+            <span id="import-hint" className="type-caption text-muted">
               Faites d’abord un aperçu
             </span>
           )}
@@ -235,13 +235,13 @@ function Import() {
               { value: report.invalid.length, caption: "invalides" },
             ]}
           />
-          <div className="overflow-hidden rounded-xl border border-separator">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] bg-surface-secondary px-4 py-2 text-xs font-medium text-muted">
+          <div className="overflow-hidden rounded-lg border border-separator">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] bg-surface-secondary px-4 py-2 type-caption font-medium text-muted">
               <span>Colonne du fichier</span>
               <span>Champ IAGORA</span>
             </div>
             {Object.entries(report.columns).map(([col, field]) => (
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-t border-separator px-4 py-2.5 text-[13px]" key={col}>
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-t border-separator px-4 py-2.5 type-body-sm" key={col}>
                 <span className="truncate font-mono text-foreground">{col}</span>
                 <span className={field in FIELDS ? "text-foreground" : "text-muted italic"}>{FIELDS[field] ?? "ignorée"}</span>
               </div>
@@ -249,7 +249,7 @@ function Import() {
           </div>
           {report.invalid.length > 0 && (
             <InfoRow label="Lignes invalides">
-              <ul className="flex flex-col gap-1 text-[13px] text-danger" aria-label="Lignes invalides">
+              <ul className="flex flex-col gap-1 type-body-sm text-danger" aria-label="Lignes invalides">
                 {report.invalid.slice(0, 50).map((e) => (
                   <li key={e.row}>
                     Ligne {e.row} : {e.error}

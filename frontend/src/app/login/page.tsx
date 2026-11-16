@@ -44,28 +44,28 @@ export default function LoginPage() {
           aria-hidden="true"
           className="pointer-events-none absolute -right-40 -bottom-48 size-[560px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand-blue)_50%,transparent),transparent_65%)]"
         />
-        <span className="relative flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]">
+        <span className="relative flex items-center gap-2.5 type-title-sm font-semibold tracking-[-0.01em]">
           <span
             aria-hidden="true"
-            className="inline-flex size-6 items-center justify-center rounded-md bg-white text-[22px] leading-none text-brand-violet"
+            className="inline-flex size-6 items-center justify-center rounded-lg bg-white type-title leading-none text-brand-violet"
           >
             ▪
           </span>
           IAGORA
-          <span className="rounded-sm border border-white/25 px-1.5 text-[11px] font-normal text-white/70">2.0</span>
+          <span className="rounded-sm border border-white/25 px-1.5 type-caption font-normal text-white/70">2.0</span>
         </span>
         <div className="relative flex max-w-[520px] flex-col gap-5">
-          <span className="text-xs tracking-[0.06em] text-white/60 uppercase">Agent intelligent commercial</span>
-          <p className="text-[44px]/[50px] font-semibold tracking-[-0.03em]">
+          <span className="type-caption tracking-[0.06em] text-white/60 uppercase">Agent intelligent commercial</span>
+          <p className="text-5xl/tight font-semibold tracking-[-0.03em]">
             Chaque échange,
             <br />
             une nouvelle possibilité.
           </p>
-          <p className="text-base/[26px] text-white/75">
+          <p className="type-title-sm leading-6.5 text-white/75">
             Retrouvez vos prospects, suivez leurs parcours et accompagnez-les vers la bonne
             formation.
           </p>
-          <ul className="flex flex-col gap-3 pt-2 text-sm text-white/80">
+          <ul className="flex flex-col gap-3 pt-2 type-body text-white/80">
             {[
               { icon: Sparkles, text: "L’agent prépare les réponses, vous gardez la main." },
               { icon: MessagesSquare, text: "Toutes les conversations au même endroit." },
@@ -80,7 +80,7 @@ export default function LoginPage() {
             ))}
           </ul>
         </div>
-        <span className="relative text-xs tracking-[0.06em] text-white/60 uppercase">DATUM Academy</span>
+        <span className="relative type-caption tracking-[0.06em] text-white/60 uppercase">DATUM Academy</span>
       </section>
       <section className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="flex w-full max-w-[420px] flex-col gap-6">
@@ -90,10 +90,10 @@ export default function LoginPage() {
           <Box as="form" className="gap-5 p-6 sm:p-8" onSubmit={submit} aria-busy={busy} aria-labelledby="login-title">
             <div className="flex flex-col gap-1">
               <Eyebrow>Votre espace de travail</Eyebrow>
-              <h1 id="login-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">
+              <h1 id="login-title" className="type-title font-semibold tracking-[-0.02em] text-foreground">
                 Bienvenue sur IAGORA
               </h1>
-              <p className="text-sm text-muted">Connectez-vous avec votre compte professionnel.</p>
+              <p className="type-body text-muted">Connectez-vous avec votre compte professionnel.</p>
             </div>
             <Field label="Email ou nom d'utilisateur">
               <TextInput
@@ -127,7 +127,7 @@ export default function LoginPage() {
               )}
             </Btn>
           </Box>
-          <p className="text-center text-[13px] text-muted">Besoin d’un accès ? Contactez votre administrateur.</p>
+          <p className="text-center type-body-sm text-muted">Besoin d’un accès ? Contactez votre administrateur.</p>
         </div>
       </section>
     </main>

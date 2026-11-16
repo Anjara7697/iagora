@@ -131,7 +131,7 @@ function DocumentView({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted">
+      <div className="flex flex-wrap items-center gap-2 type-body-sm text-muted">
         <Tag tone="neutral">{doc.target_code ? label(TARGETS, doc.target_code) : "Tous les programmes"}</Tag>
         <Tag tone={doc.needs_reindex ? "warning" : "success"}>{doc.needs_reindex ? "À recalculer" : "À jour"}</Tag>
         {doc.is_demo && <DemoChip />}
@@ -168,10 +168,10 @@ function DocumentView({
         <ol className="flex flex-col">
           {doc.sections.map((s, i) => (
             <li key={i} className="flex gap-3 border-t border-separator px-4 py-3 first:border-t-0">
-              <span className="mt-0.5 text-xs text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+              <span className="mt-0.5 type-caption text-muted tabular-nums">{String(i + 1).padStart(2, "0")}</span>
               <span className="flex min-w-0 flex-col gap-1">
-                <strong className="text-sm font-semibold text-foreground">{s.heading ?? "Introduction"}</strong>
-                <p className="text-[13px]/[20px] whitespace-pre-wrap text-muted">{s.text}</p>
+                <strong className="type-body font-semibold text-foreground">{s.heading ?? "Introduction"}</strong>
+                <p className="type-body-sm whitespace-pre-wrap text-muted">{s.text}</p>
               </span>
             </li>
           ))}
@@ -179,7 +179,7 @@ function DocumentView({
       </Box>
       <Collapse
         title="Informations techniques"
-        className="rounded-lg bg-surface px-4 py-2.5 text-[13px]"
+        className="rounded-lg bg-surface px-4 py-2.5 type-body-sm"
         triggerClassName="w-full text-muted hover:text-foreground"
       >
         <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
@@ -326,7 +326,7 @@ function DocumentEditor({
         <TextBox
           value={parts.body}
           onChange={(e) => set({ body: e.target.value })}
-          className="min-h-[320px] font-mono text-[13px]/[20px]"
+          className="min-h-[320px] font-mono type-body-sm"
         />
       </Field>
       {error && <ErrorText>{error}</ErrorText>}

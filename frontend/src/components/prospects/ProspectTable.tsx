@@ -44,7 +44,7 @@ export function ProspectTable({
                   </Link>
                   <DemoBadge email={p.email} />
                 </span>
-                <span className="text-xs text-muted">
+                <span className="type-caption text-muted">
                   {p.email || p.phone || "—"}
                 </span>
               </div>
@@ -55,7 +55,7 @@ export function ProspectTable({
               <div className="flex flex-col gap-1.5">
                 {memberships(p).map((m) => (
                   <div key={m.id} className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="type-caption font-medium text-foreground">
                       {m.campaign_name ?? "Campagne"}
                     </span>
                     <span className="flex flex-wrap gap-1.5">
@@ -69,13 +69,13 @@ export function ProspectTable({
                 ))}
                   </div>
                 ) : (
-                  <span className="text-[13px] text-muted">Sans campagne</span>
+                  <span className="type-body-sm text-muted">Sans campagne</span>
                 )}
               </Table.Cell>
               <Table.Cell>
                 <ConsentTag status={p.consent_status} />
               </Table.Cell>
-              <Table.Cell className="text-xs text-muted tabular-nums">
+              <Table.Cell className="type-caption text-muted tabular-nums">
                 {formatDate(p.created_at)}
               </Table.Cell>
             </Table.Row>

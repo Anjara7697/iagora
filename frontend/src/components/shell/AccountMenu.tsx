@@ -27,7 +27,7 @@ const initialsOf = (name: string) => {
 
 /** Ligne du menu : même hauteur, rayon et survol que les liens du menu latéral ; icônes sans la marge négative
  *  des boutons HeroUI (`mx-0`), pour s'aligner sur les lignes Agent et Thème. */
-const ROW = "h-9 w-full justify-start gap-3 rounded-lg px-2 text-sm font-normal";
+const ROW = "h-9 w-full justify-start gap-3 rounded-lg px-2 type-body font-normal";
 
 /**
  * Menu du compte (Popover HeroUI : il contient des contrôles, pas seulement des actions). Identité, Mon compte,
@@ -73,9 +73,9 @@ export default function AccountMenu({
             )}
           </span>
           <span className="flex-col items-start leading-tight max-sm:sr-only sm:flex">
-            <span className="text-sm font-medium text-foreground">{name}</span>
+            <span className="type-body font-medium text-foreground">{name}</span>
             <span className="sr-only"> </span>
-            <span className="text-xs font-normal text-muted">{ROLE_LABELS[user.role]}</span>
+            <span className="type-caption font-normal text-muted">{ROLE_LABELS[user.role]}</span>
           </span>
           <span className="sr-only">
             {` — Menu du compte${mode ? ` — agent : ${AGENT_COPY[mode].short.toLowerCase()}` : ""}`}
@@ -89,8 +89,8 @@ export default function AccountMenu({
                 <Avatar.Fallback>{initialsOf(user.username)}</Avatar.Fallback>
               </Avatar>
               <span className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-sm font-semibold text-foreground">{name}</span>
-                <span className="truncate text-xs text-muted">{user.email}</span>
+                <span className="truncate type-body font-semibold text-foreground">{name}</span>
+                <span className="truncate type-caption text-muted">{user.email}</span>
               </span>
             </div>
             <Separator className="my-1" />
@@ -106,7 +106,7 @@ export default function AccountMenu({
             {showAgent && agent.row}
             <div className="flex h-11 items-center gap-3 px-2">
               <Monitor className="size-4 shrink-0 text-muted" aria-hidden="true" />
-              <span className="flex-1 text-sm text-foreground" aria-hidden="true">Thème</span>
+              <span className="flex-1 type-body text-foreground" aria-hidden="true">Thème</span>
               <ThemeSwitcher />
             </div>
             <Separator className="my-1" />

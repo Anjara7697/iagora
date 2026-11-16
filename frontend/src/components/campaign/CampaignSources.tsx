@@ -139,10 +139,10 @@ export default function CampaignSources({
       {canEdit && (
         <section aria-labelledby="add-source-title" className="flex flex-col gap-3">
           <div className="flex flex-col gap-0.5">
-            <h2 id="add-source-title" className="text-base font-semibold text-foreground">
+            <h2 id="add-source-title" className="type-title-sm font-semibold text-foreground">
               Ajouter une source
             </h2>
-            <p className="text-sm text-muted">Choisissez d’où viendront les prospects de cette campagne.</p>
+            <p className="type-body text-muted">Choisissez d’où viendront les prospects de cette campagne.</p>
           </div>
           <div className="flex flex-col gap-3">
             <ConnectorCatalogue title={null} onAdd={(connector) => setDraft({ connector, name: connector.defaultName, external_id: "" })} />

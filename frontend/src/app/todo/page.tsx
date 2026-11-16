@@ -173,8 +173,8 @@ function Todo() {
               />
               {!treated.loading && !treated.error && treated.data && (
                 <div className="flex flex-col items-start gap-3">
-                  <h2 className="text-lg font-semibold text-foreground">Cette décision n’est pas dans la liste.</h2>
-                  <p className="text-sm text-muted">
+                  <h2 className="type-title-sm font-semibold text-foreground">Cette décision n’est pas dans la liste.</h2>
+                  <p className="type-body text-muted">
                     Les décisions affichées couvrent les dernières 24 heures.
                     Retrouvez l’échange dans les conversations ou actualisez la liste.
                   </p>

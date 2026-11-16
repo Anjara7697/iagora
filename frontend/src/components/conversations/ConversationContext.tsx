@@ -23,9 +23,9 @@ export function ConversationContext({
     <Box as="div" className={`gap-0 overflow-hidden p-0 ${reveal(2).className}`} style={reveal(2).style}>
       <Collapse
         title="Contexte et règles d’envoi"
-        triggerClassName="w-full px-5 py-3.5 text-sm hover:bg-surface-secondary focus-visible:ring-inset"
+        triggerClassName="w-full px-5 py-3.5 type-body hover:bg-surface-secondary focus-visible:ring-inset"
       >
-        <div className="flex flex-col gap-3 border-t border-separator px-5 py-4 text-sm text-foreground">
+        <div className="flex flex-col gap-3 border-t border-separator px-5 py-4 type-body text-foreground">
           <p>
             Conseiller responsable :{" "}
             {summary.prospect?.assigned_advisor_name ??

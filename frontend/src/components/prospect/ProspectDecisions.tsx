@@ -34,10 +34,10 @@ export default function ProspectDecisions({
           className={cx("flex flex-col gap-2 rounded-lg border border-separator bg-surface p-4", reveal(index + 1).className)}
           style={reveal(index + 1).style}
         >
-          <div className="text-xs text-muted tabular-nums">{formatDate(r.started_at)}</div>
+          <div className="type-caption text-muted tabular-nums">{formatDate(r.started_at)}</div>
           <RunView run={r} />
           {r.reply && (
-            <blockquote className="rounded-lg border-l-2 border-agent/40 bg-surface-secondary px-4 py-3 text-sm whitespace-pre-wrap text-foreground">
+            <blockquote className="rounded-lg border-l-2 border-agent/40 bg-surface-secondary px-4 py-3 type-body whitespace-pre-wrap text-foreground">
               {r.reply}
             </blockquote>
           )}

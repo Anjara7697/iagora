@@ -91,11 +91,11 @@ export function CalendarSettings({
     >
       {!embedded && (
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-semibold text-foreground">Agenda des conseillers</h2>
+          <h2 className="flex-1 type-title-sm font-semibold text-foreground">Agenda des conseillers</h2>
           <StatePill tone={tone}>{badge}</StatePill>
         </div>
       )}
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Sert à proposer uniquement des créneaux réellement libres et à
         réserver le rendez-vous dans l’agenda du conseiller.
         {cfg.source === "env" &&
@@ -168,7 +168,7 @@ export function CalendarSettings({
           </InfoRow>
           <InfoRow label="Agendas connectés">
             {connected === 0 ? (
-              <p className="text-xs/[18px] text-muted">
+              <p className="type-caption leading-4.5 text-muted">
                 Aucun pour l’instant : chaque conseiller connecte le sien
                 depuis « Mon compte ».
               </p>

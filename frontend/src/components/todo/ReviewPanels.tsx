@@ -36,8 +36,8 @@ function ReviewCard({ label: aria, title, intro, children }: { label: string; ti
   return (
     <Box as="section" className="gap-4 p-5" aria-label={aria}>
       <div className="flex flex-col gap-1">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {intro && <p className="text-[13px] text-muted">{intro}</p>}
+        <h3 className="type-title-sm font-semibold text-foreground">{title}</h3>
+        {intro && <p className="type-body-sm text-muted">{intro}</p>}
       </div>
       {children}
     </Box>
@@ -168,7 +168,7 @@ export function ApplicationReview({ item, onDone, onDirtyChange }: PanelProps) {
                       ? "Passer à « Candidature déposée » et terminer"
                       : "Terminer la vérification"}
                 </Btn>
-                <span className="text-[13px] text-muted">
+                <span className="type-body-sm text-muted">
                   {checked
                     ? "La demande quittera la file."
                     : "Cochez le contrôle du dossier pour continuer."}
@@ -370,7 +370,7 @@ export function OptOutReview({ item, onDone }: PanelProps) {
                 </Field>
               </ConfirmDialog>
             ) : (
-              <span className="text-xs text-muted">Seul un administrateur peut rétablir le consentement.</span>
+              <span className="type-caption text-muted">Seul un administrateur peut rétablir le consentement.</span>
             )}
           </div>
         </>

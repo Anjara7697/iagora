@@ -85,11 +85,11 @@ export function ZoomSettings({
     >
       {!embedded && (
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="flex-1 text-base font-semibold text-foreground">Zoom</h2>
+          <h2 className="flex-1 type-title-sm font-semibold text-foreground">Zoom</h2>
           <StatePill tone={tone}>{badge}</StatePill>
         </div>
       )}
-      <p className="text-[13px]/[20px] text-muted">
+      <p className="type-body-sm text-muted">
         Crée le lien de visioconférence de chaque rendez-vous réservé par
         l’agent.
         {cfg.source === "env" &&
@@ -158,7 +158,7 @@ export function ZoomSettings({
           </InfoRow>
           <InfoRow label="Comptes connectés">
             {cfg.connections.length === 0 ? (
-              <p className="text-xs/[18px] text-muted">
+              <p className="type-caption leading-4.5 text-muted">
                 Aucun : chaque conseiller connecte le sien depuis « Mon
                 compte ». Sans compte connecté, le rendez-vous est réservé
                 sans lien.

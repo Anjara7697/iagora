@@ -59,7 +59,7 @@ export function MeetingLink({ appointment, name }: { appointment: Appointment; n
       Ouvrir la visio
     </LinkButton>
   ) : (
-    <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+    <span className="inline-flex items-center gap-1.5 type-body-sm text-muted">
       <VideoOff className="size-4" aria-hidden="true" />
       Lien visio non disponible
     </span>

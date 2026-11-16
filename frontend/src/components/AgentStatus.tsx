@@ -92,14 +92,14 @@ export function useAgentControl({ refreshKey, readOnly, onAsk }: { refreshKey: s
       <div className="flex items-start gap-3">
         <Bot className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="flex items-center gap-2 text-sm text-foreground">
+          <span className="flex items-center gap-2 type-body text-foreground">
             Agent
-            <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${AGENT_COPY[mode].tone}`}>
+            <span className={`inline-flex items-center gap-1.5 type-caption font-medium ${AGENT_COPY[mode].tone}`}>
               <AgentDot mode={mode} />
               {AGENT_COPY[mode].short}
             </span>
           </span>
-          <span className="text-xs/[16px] text-muted">{AGENT_COPY[mode].text}</span>
+          <span className="type-caption leading-4 text-muted">{AGENT_COPY[mode].text}</span>
         </div>
       </div>
       {!readOnly &&

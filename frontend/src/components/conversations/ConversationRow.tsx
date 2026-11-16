@@ -27,9 +27,9 @@ export function ConversationRow({
         </Avatar>
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-center gap-2">
-            <strong className="min-w-0 truncate text-sm font-semibold text-foreground">{name}</strong>
+            <strong className="min-w-0 truncate type-body font-semibold text-foreground">{name}</strong>
             <DemoBadge email={c.prospect?.email} />
-            <span className="ms-auto shrink-0 text-xs text-muted">{relativeTime(c.last_message_at)}</span>
+            <span className="ms-auto shrink-0 type-caption text-muted">{relativeTime(c.last_message_at)}</span>
           </span>
           <span className="flex flex-wrap gap-1.5">
             <Tag>{label(CHANNELS, c.channel)}</Tag>
@@ -42,7 +42,7 @@ export function ConversationRow({
             )}
             {c.status === "closed" && <Tag tone="muted">Clôturée</Tag>}
           </span>
-          <span className="line-clamp-2 text-[13px]/[18px] text-foreground/80">
+          <span className="line-clamp-2 type-body-sm text-foreground/80">
             {c.last_message_preview
               ? `« ${c.last_message_preview} »`
               : "Aucun message."}

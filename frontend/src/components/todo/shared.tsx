@@ -98,7 +98,7 @@ export const EXECUTION_TONE: Record<string, Tone> = {
 };
 
 export function Confidence({ value }: { value: number | null }) {
-  if (value === null) return <p className="text-sm text-muted">Non évaluée</p>;
+  if (value === null) return <p className="type-body text-muted">Non évaluée</p>;
   const percent = Math.round(value * 100);
   return (
     <div className="flex items-center gap-2" aria-label={`Confiance ${percent} %`}>
@@ -108,7 +108,7 @@ export function Confidence({ value }: { value: number | null }) {
           style={{ width: `${percent}%` }}
         />
       </span>
-      <span className="text-[13px] text-foreground tabular-nums">{percent} %</span>
+      <span className="type-body-sm text-foreground tabular-nums">{percent} %</span>
     </div>
   );
 }
@@ -147,7 +147,7 @@ export function DetailHead({
     <header {...revealed(0, "flex flex-wrap items-start gap-3")}>
       <PersonMark name={name} incident={incident} />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <h2 ref={title} tabIndex={-1} className="text-xl font-semibold tracking-[-0.01em] text-foreground outline-none">
+        <h2 ref={title} tabIndex={-1} className="type-title font-semibold tracking-[-0.01em] text-foreground outline-none">
           {name}
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">{chips}</div>

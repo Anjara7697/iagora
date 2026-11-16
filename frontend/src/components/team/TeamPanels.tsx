@@ -122,7 +122,7 @@ export function CreateMemberPanel({
         icon={<UsersRound aria-hidden="true" />}
       >
         <form onSubmit={create} className="flex flex-col gap-4">
-          <p className="text-[13px]/[20px] text-muted">
+          <p className="type-body-sm text-muted">
             Le nouveau membre reçoit un mot de passe temporaire et choisit le sien à la première connexion.
           </p>
           <Field label="Nom d’utilisateur" hint="3 caractères minimum.">
@@ -269,7 +269,7 @@ function MemberForm({
   return (
     <div className="flex flex-col gap-6">
       {secret && <TemporaryPassword secret={secret} onDone={onSecretDone} />}
-      <div className="flex flex-wrap items-center gap-2 text-[13px] text-muted">
+      <div className="flex flex-wrap items-center gap-2 type-body-sm text-muted">
         <Tag tone={state.tone}>{state.label}</Tag>
         <span>Membre depuis le {formatDate(member.created_at ?? null)}</span>
         {self && <span>· votre compte</span>}
@@ -306,7 +306,7 @@ function MemberForm({
       </form>
 
       <section aria-label="Accès" className="flex flex-col gap-3 border-t border-separator pt-4">
-        <h3 className="text-sm font-semibold text-foreground">Accès</h3>
+        <h3 className="type-body font-semibold text-foreground">Accès</h3>
         <div className="flex flex-wrap gap-2">
           {self ? (
             <>

@@ -12,14 +12,14 @@ export default function SimulationNotice({
     <div className="flex flex-col gap-3">
       <BackLink href="/settings/testing">Tests et démonstration</BackLink>
       <div
-        className="flex items-start gap-3 rounded-2xl border border-dashed border-agent/40 bg-agent-soft/60 px-4 py-3"
+        className="flex items-start gap-3 rounded-lg border border-dashed border-agent/40 bg-agent-soft/60 px-4 py-3"
         role="note"
       >
         <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-agent-soft text-agent" aria-hidden="true">
           <FlaskConical className="size-4" />
         </span>
-        <div className="flex flex-col gap-1 text-[13px]/[20px] text-foreground">
-          <strong className="text-sm font-semibold">Environnement de test — données fictives</strong>
+        <div className="flex flex-col gap-1 type-body-sm text-foreground">
+          <strong className="type-body font-semibold">Environnement de test — données fictives</strong>
           <p>{children}</p>
           <p className="text-muted">Les réglages et le mode de l’agent sont partagés avec l’application.</p>
         </div>

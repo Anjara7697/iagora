@@ -82,7 +82,7 @@ export function SettingRow({
           ...(children.type === SelectBox ? { "aria-labelledby": `${id}-label` } : {}),
         } as Record<string, string | undefined>)}
         {note && (
-          <p id={noteId} className="type-caption/[18px] text-muted">
+          <p id={noteId} className="type-caption leading-4.5 text-muted">
             {note}
           </p>
         )}
@@ -142,7 +142,7 @@ export function InfoRow({ label, note, children }: { label: ReactNode; note?: Re
       <span className="basis-full type-body-sm font-medium text-foreground sm:basis-[220px] sm:shrink-0">{label}</span>
       <div className="flex min-w-[240px] max-w-[560px] flex-1 flex-col gap-1.5 type-body text-foreground">
         {children}
-        {note && <p className="type-caption/[18px] text-muted">{note}</p>}
+        {note && <p className="type-caption leading-4.5 text-muted">{note}</p>}
       </div>
     </div>
   );

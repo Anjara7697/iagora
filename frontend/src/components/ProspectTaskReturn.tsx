@@ -19,13 +19,13 @@ export default function ProspectTaskReturn() {
   return (
     <nav
      
-      className="flex flex-wrap items-center gap-3 rounded-xl bg-accent-soft px-4 py-3"
+      className="flex flex-wrap items-center gap-3 rounded-lg bg-accent-soft px-4 py-3"
       aria-label="Demande à traiter"
     >
       <LinkButton size="sm" variant="primary" href={`/todo${qs({ id: task, kind: filter })}`}>
         ← Revenir à la demande
       </LinkButton>
-      <p className="text-[13px] text-accent-soft-foreground">
+      <p className="type-body-sm text-accent-soft-foreground">
         Consultez le contexte du prospect, puis revenez à la demande pour décider.
       </p>
     </nav>

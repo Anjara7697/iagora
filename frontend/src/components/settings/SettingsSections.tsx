@@ -114,7 +114,7 @@ export function AiSection({
             label="Recherche documentaire"
             note="Réglé sur le serveur : en changer impose de recalculer la base de connaissances."
           >
-            <span className="font-mono text-[13px]">{form.embedding_model}</span>
+            <span className="font-mono type-body-sm">{form.embedding_model}</span>
           </InfoRow>
           <ActionsBar className="border-t border-separator pt-4">
             <Btn variant="outline" onClick={runTest} disabled={busy !== null}>
@@ -150,7 +150,7 @@ export function AgentSection({
           intro="Chaque relance reste un brouillon soumis à validation en mode assisté ; elles s’arrêtent dès que le prospect répond, se désinscrit ou est transféré."
         >
           {canSimulate && (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-secondary px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
               {dirty || busy !== null ? (
                 <Btn size="sm" disabled>
                   Tester les réglages enregistrés
@@ -162,7 +162,7 @@ export function AgentSection({
                 </LinkButton>
               )}
               {dirty && (
-                <p className="text-xs text-muted">
+                <p className="type-caption text-muted">
                   Enregistrez vos modifications avant de les tester.
                 </p>
               )}
@@ -185,7 +185,7 @@ export function AgentSection({
                   onChange={num("follow_up_window_start_hour")}
                   className="w-24"
                 />
-                <span className="text-sm text-muted">→</span>
+                <span className="type-body text-muted">→</span>
                 <TextInput
                   aria-label="jusqu’à (heure)"
                   type="number"
@@ -339,7 +339,7 @@ export function EmailsSection({
             </Btn>
             {preview && (
               <iframe
-                className="email-preview h-[420px] w-full rounded-xl border border-separator bg-white"
+                className="email-preview h-[420px] w-full rounded-lg border border-separator bg-white"
                 title="Aperçu de l’email"
                 sandbox=""
                 srcDoc={preview}

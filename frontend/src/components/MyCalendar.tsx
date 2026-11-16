@@ -85,32 +85,32 @@ export function MyCalendar() {
   return (
     <Box as="section" className="gap-4 p-5" aria-label="Mon agenda">
       <div className="flex items-center gap-3">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-secondary text-foreground" aria-hidden="true">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-secondary text-foreground" aria-hidden="true">
           <CalendarDays className="size-5" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <Eyebrow>Mon agenda</Eyebrow>
-          <h2 className="text-base font-semibold text-foreground">Google Agenda</h2>
+          <h2 className="type-title-sm font-semibold text-foreground">Google Agenda</h2>
         </div>
         {connectedTag}
       </div>
       {result && <Notice>{result}</Notice>}
       {status && !status.available && (
-        <p className="text-[13px]/[20px] text-muted">
+        <p className="type-body-sm text-muted">
           Google Agenda n’est pas encore branché par l’administrateur
           (Intégrations → Agenda).
         </p>
       )}
       {status?.available && status.connected && (
         <>
-          <p className="text-[13px]/[20px] text-foreground">
+          <p className="type-body-sm text-foreground">
             Connecté à{" "}
             <strong>{status.account_email ?? "Google Agenda"}</strong> depuis le{" "}
             {formatDate(status.connected_at)}. L’agent propose vos créneaux
             libres et réserve les rendez-vous dans cet agenda.
           </p>
           {status.last_error && (
-            <p className="text-[13px] text-danger" role="alert">
+            <p className="type-body-sm text-danger" role="alert">
               L’autorisation a été révoquée : reconnectez votre agenda.
             </p>
           )}
@@ -128,7 +128,7 @@ export function MyCalendar() {
       )}
       {status?.available && !status.connected && (
         <>
-          <p className="text-[13px]/[20px] text-muted">
+          <p className="type-body-sm text-muted">
             Connectez votre Google Agenda pour que l’agent propose vos créneaux
             réellement libres et y réserve les rendez-vous.
           </p>

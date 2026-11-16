@@ -246,12 +246,12 @@ function Simulator() {
 
       <div className={cx("grid grid-cols-1 gap-4 lg:grid-cols-2", reveal(1).className)} style={reveal(1).style}>
         <Box as="section" className="flex-row flex-wrap items-center gap-3 p-5" aria-label="Parcours guidé">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true">
             <Route className="size-4" />
           </span>
           <div className="flex min-w-[200px] flex-1 flex-col gap-1">
-            <h2 className="text-sm font-semibold text-foreground">Tester un parcours complet</h2>
-            <p className="text-[13px]/[20px] text-muted">
+            <h2 className="type-body font-semibold text-foreground">Tester un parcours complet</h2>
+            <p className="type-body-sm text-muted">
               Qualification, objection et réservation dans un calendrier fictif,
               avec le vrai agent.
             </p>
@@ -274,7 +274,7 @@ function Simulator() {
         <Notice tone="info">
           <span>
             Mode assisté : la réponse de l&apos;agent est un <b className="font-semibold">brouillon</b> à valider (ici ou
-            dans <TextLink href="/todo" className="text-[13px]">À traiter</TextLink>).
+            dans <TextLink href="/todo" className="type-body-sm">À traiter</TextLink>).
           </span>
         </Notice>
       )}
@@ -299,7 +299,7 @@ function Simulator() {
         <aside className="flex flex-col gap-4" aria-label="Prospect simulé">
           {!session ? (
             <Box as="section" className="gap-4 p-5">
-              <h2 className="text-base font-semibold text-foreground">Nouveau prospect fictif</h2>
+              <h2 className="type-title-sm font-semibold text-foreground">Nouveau prospect fictif</h2>
               {campaigns.loading && !campaigns.data && <Skeleton />}
               {campaigns.error && (
                 <ErrorState message={`Chargement des campagnes impossible : ${campaigns.error.message}`} onRetry={campaigns.reload} />
@@ -361,14 +361,14 @@ function Simulator() {
             <Box as="section" className="gap-3 p-5">
               <div className="flex items-center gap-3">
                 <span
-                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-sm font-semibold text-foreground"
+                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-tertiary type-body font-semibold text-foreground"
                   aria-hidden="true"
                 >
                   {initialsOf(session.name)}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <strong className="truncate text-sm font-semibold text-foreground">{session.name}</strong>
-                  <span className="text-xs text-muted">Prospect fictif</span>
+                  <strong className="truncate type-body font-semibold text-foreground">{session.name}</strong>
+                  <span className="type-caption text-muted">Prospect fictif</span>
                 </span>
                 <Btn
                   size="sm"
@@ -397,7 +397,7 @@ function Simulator() {
                   <Tag>{label(CONSENT, prospect.consent_status)}</Tag>
                 )}
               </div>
-              <TextLink href={`/prospects/${session.prospectId}`} className="w-fit text-[13px]">
+              <TextLink href={`/prospects/${session.prospectId}`} className="w-fit type-body-sm">
                 Voir la fiche complète →
               </TextLink>
             </Box>
@@ -406,8 +406,8 @@ function Simulator() {
           {session && (
             <Box as="section" className="gap-3 p-5">
               <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-semibold text-foreground">Messages types</h3>
-                <p className="text-xs text-muted">
+                <h3 className="type-body font-semibold text-foreground">Messages types</h3>
+                <p className="type-caption text-muted">
                   Cliquez pour préparer le message, puis envoyez-le.
                 </p>
               </div>
@@ -431,15 +431,15 @@ function Simulator() {
         <Box as="section" className="min-h-[520px] gap-0 p-0" aria-label="Conversation simulée">
           <div className="flex min-h-14 items-center gap-2 border-b border-separator px-5 py-3">
             <MessagesSquare className="size-4 text-muted" aria-hidden="true" />
-            <h2 className="flex-1 text-base font-semibold text-foreground">Conversation</h2>
+            <h2 className="flex-1 type-title-sm font-semibold text-foreground">Conversation</h2>
             <Tag tone="agent">Simulation</Tag>
           </div>
           {!session && (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-              <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-surface-secondary text-muted" aria-hidden="true">
+              <span className="inline-flex size-12 items-center justify-center rounded-lg bg-surface-secondary text-muted" aria-hidden="true">
                 <MessagesSquare className="size-5" />
               </span>
-              <p className="text-sm text-muted">
+              <p className="type-body text-muted">
                 Créez un prospect fictif pour commencer l&apos;échange.
               </p>
             </div>
@@ -449,7 +449,7 @@ function Simulator() {
               <div className="flex flex-1 flex-col gap-4 bg-background/60 px-5 py-5">
                 <ConversationView messages={messages} prospectName={session.name} channel="email" />
                 {draft && (
-                  <div className="flex flex-col gap-3 rounded-xl border border-dashed border-agent/50 bg-agent-soft/60 px-4 py-3 text-sm text-foreground" role="status">
+                  <div className="flex flex-col gap-3 rounded-lg border border-dashed border-agent/50 bg-agent-soft/60 px-4 py-3 type-body text-foreground" role="status">
                     Brouillon de l&apos;agent en attente de validation.
                     <div className="flex flex-wrap items-center gap-2">
                       <Btn
@@ -471,7 +471,7 @@ function Simulator() {
                         Refuser
                       </Btn>
                       <TextLink
-                        className="text-[13px]"
+                        className="type-body-sm"
                         href={`/todo?id=${encodeURIComponent(`draft:${session.conversationId}:${draft.id}`)}`}
                       >
                         Traiter dans « À traiter »
@@ -481,7 +481,7 @@ function Simulator() {
                 )}
                 {error && <ErrorText>{error}</ErrorText>}
                 {closed && (
-                  <p className="text-[13px] text-muted">
+                  <p className="type-body-sm text-muted">
                     Conversation terminée ({label(ACTIONS, lastRun?.action)}).
                     Créez un nouveau prospect pour recommencer.
                   </p>

@@ -188,10 +188,10 @@ export function EmailSettings({
         <legend className="sr-only">Configuration de la boîte email</legend>
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="flex-1 text-sm font-semibold text-foreground">Paramètres de la boîte</h3>
+            <h3 className="flex-1 type-body font-semibold text-foreground">Paramètres de la boîte</h3>
             <span
               className={cx(
-                "inline-flex items-center gap-1.5 text-xs font-medium",
+                "inline-flex items-center gap-1.5 type-caption font-medium",
                 dirty ? "text-warning-soft-foreground" : "text-muted",
               )}
               role="status"
@@ -204,7 +204,7 @@ export function EmailSettings({
                   : "Configuration du serveur"}
             </span>
           </div>
-          <p className="text-[13px]/[20px] text-muted">
+          <p className="type-body-sm text-muted">
             Modifiez et testez ces paramètres, puis enregistrez-les pour les
             appliquer à la boîte.
           </p>
@@ -246,19 +246,19 @@ export function EmailSettings({
               {busy === "detect" ? "Détection…" : "Détecter les serveurs"}
             </Btn>
             {detected && (
-              <span className="text-[13px] text-success-soft-foreground">
+              <span className="type-body-sm text-success-soft-foreground">
                 {detected.provider ?? "Hébergeur inconnu"} — {SOURCES[detected.source]}.
               </span>
             )}
           </div>
           <Collapse
   title="Paramètres avancés des serveurs"
-  className="rounded-xl border border-separator px-4 py-3"
+  className="rounded-lg border border-separator px-4 py-3"
   triggerClassName="w-full text-muted hover:text-foreground"
   bodyClassName="pt-3"
 >
             <div className="mt-3 flex flex-col gap-4">
-              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
+              <h4 className="type-caption font-semibold tracking-[0.04em] text-muted uppercase">Réception des messages</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
                 <Stacked label="Serveur IMAP (réception)">
                   <TextInput value={form.imap_host} onChange={(e) => set("imap_host", e.target.value)} />
@@ -274,7 +274,7 @@ export function EmailSettings({
                   <TextInput value={form.username ?? ""} onChange={(e) => set("username", e.target.value || null)} />
                 </Stacked>
               </div>
-              <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">Envoi des messages</h4>
+              <h4 className="type-caption font-semibold tracking-[0.04em] text-muted uppercase">Envoi des messages</h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
                 <Stacked label="Serveur SMTP (envoi)">
                   <TextInput value={form.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} />

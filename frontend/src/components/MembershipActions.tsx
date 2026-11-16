@@ -79,7 +79,7 @@ export default function MembershipActions({
     }
   }
 
-  const formClass = "flex flex-col gap-3 rounded-xl border border-separator p-4";
+  const formClass = "flex flex-col gap-3 rounded-lg border border-separator p-4";
   return (
     <section
      
@@ -87,10 +87,10 @@ export default function MembershipActions({
       aria-label={`Suivi du parcours ${m.id}`}
     >
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm text-foreground">
+        <p className="type-body text-foreground">
           Conseiller affecté : <strong className="font-semibold">{currentName}</strong>
         </p>
-        <p className="text-xs text-muted">
+        <p className="type-caption text-muted">
           {m.assignment_is_override
             ? "Exception individuelle à la règle de campagne."
             : "Affectation selon la règle de campagne."}
@@ -113,7 +113,7 @@ export default function MembershipActions({
             );
           }}
         >
-          <p className="text-xs text-muted">
+          <p className="type-caption text-muted">
             Une modification ici crée une exception pour ce prospect dans cette
             campagne, sur toutes ses sources.
           </p>
@@ -147,7 +147,7 @@ export default function MembershipActions({
               >
                 Conseillers précédents
               </Btn>
-              <span className="text-xs text-muted tabular-nums">
+              <span className="type-caption text-muted tabular-nums">
                 {offset + 1}–{Math.min(offset + 50, advisors.data.total)} /{" "}
                 {advisors.data.total}
               </span>
@@ -250,8 +250,8 @@ export default function MembershipActions({
           }}
         >
           <div className="flex flex-col gap-1">
-            <h3 className="text-sm font-semibold text-foreground">Confirmer l’inscription</h3>
-            <p className="text-xs text-muted">
+            <h3 className="type-body font-semibold text-foreground">Confirmer l’inscription</h3>
+            <p className="type-caption text-muted">
               Vérifiez la confirmation de l’école avant de passer ce parcours à « Converti ».
               La déclaration du candidat ou son dossier ne suffisent pas.
             </p>

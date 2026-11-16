@@ -62,7 +62,7 @@ export function DraftPanel({
   return (
     <Box as="section" className="gap-0 overflow-hidden p-0" aria-label="Brouillon de l'agent">
       <header className="flex flex-wrap items-center gap-2 border-b border-separator px-5 py-3.5">
-        <strong className="flex-1 text-sm font-semibold text-foreground">
+        <strong className="flex-1 type-body font-semibold text-foreground">
           Réponse proposée — {label(CHANNELS, item.channel)}
           {draft.subject ? ` · objet : ${draft.subject}` : ""}
         </strong>
@@ -77,15 +77,15 @@ export function DraftPanel({
             className="min-h-40"
           />
         ) : (
-          <div className="text-sm/6 whitespace-pre-wrap text-foreground">{text}</div>
+          <div className="type-body leading-6 whitespace-pre-wrap text-foreground">{text}</div>
         )}
         {draft.footer && (
           <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary px-4 py-3">
             <Eyebrow>Pied de message — ajouté automatiquement, non modifiable</Eyebrow>
-            <p className="text-[13px] whitespace-pre-wrap text-muted">{draft.footer}</p>
+            <p className="type-body-sm whitespace-pre-wrap text-muted">{draft.footer}</p>
           </div>
         )}
-        <p className="text-xs text-muted">
+        <p className="type-caption text-muted">
           C’est le texte exact qui partira
           {draft.footer ? ", pied de message compris" : ""}.
         </p>
@@ -145,13 +145,13 @@ export function DraftPanel({
             Refuser le brouillon
           </Btn>
           {conversationLink && (
-            <TextLink href={`/conversations?id=${item.conversation_id}`} className="ms-auto px-1 text-sm max-sm:ms-0 max-sm:basis-full">
+            <TextLink href={`/conversations?id=${item.conversation_id}`} className="ms-auto px-1 type-body max-sm:ms-0 max-sm:basis-full">
               Voir l’échange complet →
             </TextLink>
           )}
         </div>
       )}
-      <p className="border-t border-separator px-5 py-3 text-xs/[18px] text-muted">
+      <p className="border-t border-separator px-5 py-3 type-caption leading-4.5 text-muted">
         Valider approuve le message : il part ensuite par le canal du prospect
         dès que l’envoi est activé (voir Intégrations) et que l’agent n’est pas
         en arrêt d’urgence. Son état reste lisible dans « Traités ».
