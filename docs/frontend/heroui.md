@@ -138,7 +138,10 @@ un écran connu de la console, jamais une adresse externe).
     est posée sur la page : titre et compteur à droite, onglets, filtres (`FilterChipGroup`), liste sur sa
     surface, `TablePagination`. Sur bureau, la colonne est collante (`calc(100dvh - 9rem)`) et seule la liste
     défile, dans `ListScroll` : titre, filtres et pagination restent visibles. Sur mobile, la file ou le détail,
-    avec « ← Liste des éléments ».
+    avec « ← Liste des éléments ». Dans le détail, quand l'élément a un panneau de décision (brouillon, candidature,
+    opposition, inscription), la décision suit directement la demande ; la recommandation, les sources et le contexte
+    viennent ensuite, ou dans une colonne à droite à partir de 1536 px. Sans panneau de décision, la recommandation
+    reste le contenu principal.
 21. **Enchaînement** : une saisie en cours dans le détail est protégée (`useDiscardGuard`) pour tout changement
     d'élément, de filtre, d'onglet ou de page. Après une décision : Toast avec « Voir la décision », puis
     l'élément suivant s'ouvre et son titre reçoit le focus. Les actions suivent le contenu qu'elles
