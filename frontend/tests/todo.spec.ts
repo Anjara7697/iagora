@@ -390,12 +390,12 @@ test("file triée, filtres par type, recommandation et brouillon", async ({
   await expect(detail.getByText("Prochaine action recommandée")).toBeVisible();
   const evidence = detail.getByRole("region", { name: "Éléments pour décider" });
   const draft = detail.getByRole("region", { name: "Brouillon de l'agent" });
-  // Les éléments pour décider précèdent le brouillon.
-  const draftNode = await draft.elementHandle();
+  // La décision passe avant les éléments qui l'éclairent (UX-01) : le brouillon précède la recommandation.
+  const evidenceNode = await evidence.elementHandle();
   expect(
-    await evidence.evaluate(
+    await draft.evaluate(
       (el, node) => Boolean(node && el.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING),
-      draftNode,
+      evidenceNode,
     ),
   ).toBe(true);
   await expect(draft.getByRole("button", { name: "Valider la réponse", exact: true })).toBeEnabled();
@@ -1027,3 +1027,16 @@ test("premiers contacts : relus dans la file puis validés ensemble après confi
   });
   await expect(queue.getByText("Rien à traiter pour le moment.")).toBeVisible();
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }])
+  test(`brouillon : « Valider la réponse » visible sans défiler en ${viewport.width} × ${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await mockApi(page);
+    await open(page);
+    await page.getByRole("complementary", { name: "Éléments à traiter" }).getByRole("button", { name: /Marie Dupont/ }).click();
+    const validate = page.getByRole("region", { name: "Brouillon de l'agent" }).getByRole("button", { name: "Valider la réponse", exact: true });
+    await expect(validate).toBeVisible();
+    // Dans la fenêtre dès l'ouverture, sans défilement de la page.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(validate).toBeInViewport({ ratio: 1 });
+  });
