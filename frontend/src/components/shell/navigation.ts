@@ -18,7 +18,7 @@ import {
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import type { User } from "@/lib/types";
 
-export type NavItem = {
+type NavItem = {
   href?: string;
   label: string;
   /** Pictogramme Lucide, décoratif : le libellé porte le sens (infobulle quand le menu est réduit). */
@@ -34,7 +34,7 @@ export type NavItem = {
 export type NavGroup = { name: string; items: NavItem[] };
 
 /** Menu de la console : intitulés en français, identiques aux titres des pages. */
-export const NAV_GROUPS: NavGroup[] = [
+const NAV_GROUPS: NavGroup[] = [
   {
     name: "Travail",
     items: [

@@ -1,16 +1,15 @@
 "use client";
 
+import { CampaignStatusTag } from "@/components/campaign/CampaignStatusTag";
 import { Spinner } from "@heroui/react";
 import type { ReactNode } from "react";
-import { Tag, type Tone } from "@/components/ds/controls";
+
 import { reveal } from "@/components/ds/motion";
 import { SourceAvatars } from "@/components/ds/SourceAvatars";
 import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
 import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
-import { CAMPAIGN_STATUS, TARGETS, formatPeriod, label } from "@/lib/labels";
+import { TARGETS, formatPeriod, label } from "@/lib/labels";
 import type { Campaign, CampaignOverview } from "@/lib/types";
-
-const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
 
 /**
  * Tableau des campagnes : une ligne par campagne (ouvre sa fiche), sources en pile d'avatars, chiffres du parcours.
@@ -33,7 +32,7 @@ export default function CampaignsTable({
   linkSuffix?: string;
 }) {
   const narrow = useMediaQuery(NARROW);
-  const status = (c: Campaign) => <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>;
+  const status = (c: Campaign) => <CampaignStatusTag status={c.status} />;
   const programme = (c: Campaign) =>
     `${c.targets.map((t) => label(TARGETS, t.code)).join(", ") || "Aucun programme"}${
       c.start_date || c.end_date ? ` · ${formatPeriod(c.start_date, c.end_date)}` : ""

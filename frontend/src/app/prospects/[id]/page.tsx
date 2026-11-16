@@ -1,5 +1,6 @@
 "use client";
 
+import { draftStatus } from "@/lib/messages";
 import { Alert, Tabs, toast } from "@heroui/react";
 import { ShieldCheck, Trash2 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -141,7 +142,7 @@ function ProspectDetail() {
 
   if (erased) return <ErasureResult report={erased} />;
   const pendingDraftId = conv?.messages.find(
-    (m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending",
+    (m) => draftStatus(m) === "pending",
   )?.id;
   const runBlockedReason = !p
     ? null

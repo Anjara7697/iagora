@@ -38,7 +38,7 @@ export function ProspectAvatar({ prospect, size = "sm" }: { prospect: Prospect; 
       <HeroAvatar.Fallback>
         {[prospect.first_name, prospect.last_name]
           .filter(Boolean)
-          .map((s) => s![0])
+          .flatMap((s) => (s ? [s[0]] : []))
           .join("")
           .slice(0, 2)
           .toUpperCase() || "?"}
@@ -47,7 +47,7 @@ export function ProspectAvatar({ prospect, size = "sm" }: { prospect: Prospect; 
   );
 }
 
-export const CONSENT_TONE: Record<string, "success" | "danger" | "neutral" | "warning"> = {
+const CONSENT_TONE: Record<string, "success" | "danger" | "neutral" | "warning"> = {
   granted: "success",
   opted_out: "danger",
   pending: "warning",

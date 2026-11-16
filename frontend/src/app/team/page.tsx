@@ -13,12 +13,11 @@ import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import {
   CreateMemberPanel,
   MemberPanel,
-  ROLE_LABELS,
   TemporaryPassword,
   memberState,
   type Secret,
 } from "@/components/team/TeamPanels";
-import { formatDate } from "@/lib/labels";
+import { ROLE_LABELS, formatDate } from "@/lib/labels";
 import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
 import type { Page, Role, User } from "@/lib/types";

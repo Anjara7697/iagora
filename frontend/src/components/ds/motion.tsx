@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 const QUERY = "(prefers-reduced-motion: reduce)";
 
 /** Vrai quand l'utilisateur demande moins d'animations (faux côté serveur). */
-export function useReducedMotion() {
+function useReducedMotion() {
   return useSyncExternalStore(
     (notify) => {
       const media = window.matchMedia(QUERY);

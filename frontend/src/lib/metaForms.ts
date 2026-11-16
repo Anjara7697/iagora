@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import type { Campaign, MetaFormMapping, MetaSettings } from "@/lib/types";
 
 /** Formulaire Meta saisi pour une source : identifiant du formulaire et nom de la source. */
-export type MetaFormDraft = { connector: string; name: string; external_id: string };
+type MetaFormDraft = { connector: string; name: string; external_id: string };
 
 /**
  * Associe à la campagne créée les formulaires Meta saisis à l'étape des sources (identifiant du formulaire → campagne,

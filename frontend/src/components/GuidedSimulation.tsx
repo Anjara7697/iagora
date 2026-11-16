@@ -1,5 +1,6 @@
 "use client";
 
+import { draftStatus } from "@/lib/messages";
 import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
 import { toast } from "@heroui/react";
 import { useState } from "react";
@@ -74,7 +75,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
 
   const pending = conversation?.messages.find(
     (m) =>
-      (m.metadata.draft as { status?: string } | undefined)?.status ===
+      draftStatus(m) ===
       "pending",
   );
   const stopped =

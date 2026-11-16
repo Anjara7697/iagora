@@ -135,7 +135,7 @@ export type Message = {
   metadata: Record<string, unknown>;
 };
 
-export type HandoffSheet = {
+type HandoffSheet = {
   reason: string;
   identity: Record<string, string | null>;
   campaign: string | null;

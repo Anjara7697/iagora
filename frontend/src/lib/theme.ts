@@ -4,7 +4,7 @@
  * de `THEME_BOOT_SCRIPT` (pas de flash du mauvais thème au rechargement).
  */
 export type ThemePreference = "light" | "dark" | "system";
-export const THEME_KEY = "iagora.theme";
+const THEME_KEY = "iagora.theme";
 
 export function readThemePreference(): ThemePreference {
   try {
@@ -15,7 +15,7 @@ export function readThemePreference(): ThemePreference {
   }
 }
 
-export function resolveTheme(preference: ThemePreference): "light" | "dark" {
+function resolveTheme(preference: ThemePreference): "light" | "dark" {
   if (preference !== "system") return preference;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
