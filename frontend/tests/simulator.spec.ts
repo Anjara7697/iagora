@@ -487,3 +487,15 @@ test("le parcours guidé est dans l'adresse", async ({ page }) => {
   await expect(page).not.toHaveURL(/mode=guide/);
   await auditA11y(page, "simulateur");
 });
+
+test("menu : le Simulateur a son entrée, surlignée sur sa page", async ({ page }) => {
+  await mockApi(page);
+  await start(page);
+  const nav = page.getByRole("navigation", { name: "Navigation principale" });
+  // NAV-02 : l'outil de test n'est plus rangé sous « Paramètres » dans le menu.
+  await expect(nav.getByRole("link", { name: "Simulateur" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Paramètres" })).not.toHaveAttribute("aria-current", "page");
+  await page.goto("/settings");
+  await expect(nav.getByRole("link", { name: "Paramètres" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Simulateur" })).not.toHaveAttribute("aria-current", "page");
+});
