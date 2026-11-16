@@ -215,7 +215,8 @@ test.describe("navigation du simulateur", () => {
       const nav = page.getByRole("navigation", {
         name: "Navigation principale",
       });
-      await expect(nav.locator('a[href="/simulator"]')).toHaveCount(0);
+      // Entrée « Simulateur » dans le menu (NAV-02) quand l'outil est activé et permis au rôle.
+      await expect(nav.locator('a[href="/simulator"]')).toHaveCount(allowed ? 1 : 0);
       if (role === "ADMIN" || allowed)
         await expect(
           nav.getByRole("link", { name: "Paramètres", exact: true }),
