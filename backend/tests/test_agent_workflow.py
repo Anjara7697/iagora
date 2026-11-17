@@ -13,7 +13,7 @@ import pytest
 from app.agents.defaults import RecordingMessenger, UnconfiguredCalendar
 from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
 from app.config import get_settings
-from app.graph import policy
+from app.graph import policy, prompts
 from app.graph.builder import build_workflow
 from app.graph.ports import CalendarError, Deps, LLMConfigError, LLMUnavailableError, Passage
 from app.graph.state import Qualification
@@ -282,6 +282,46 @@ async def test_question_is_answered_from_the_validated_knowledge_base(client, en
     assert (await conversation(client, cid))["messages"][-1]["metadata"]["sources"] == [
         "faq-ebihar"
     ]
+
+
+async def test_a_question_the_documents_do_not_answer_is_really_handed_off(client, env):
+    """Des extraits proches, mais sans la réponse : le modèle le signale et l'application transfère,
+    au lieu d'envoyer « un conseiller vous répondra » sans prévenir personne."""
+    question = "Quel salaire peut-on espérer à la sortie ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, question)
+    # Un extrait proche (même sujet) mais qui ne donne pas la réponse.
+    near = "À la sortie du programme eBIHAR, les diplômés occupent des postes de data analyst."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = lambda system, messages: (
+        "[CONSEILLER] Je préfère laisser un conseiller vous répondre sur ce point."
+        if "Extraits de la base" in system
+        else "Le prospect demande le salaire à la sortie."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    assert prompts.ADVISOR_MARKER in env.llm.generate_calls[0][0]
+    conv = await conversation(client, cid)
+    assert conv["status"] == "handed_off" and conv["handoff"]["pending_question"] == question
+    assert not any("CONSEILLER" in m["content"] for m in conv["messages"])
+    assert conv["messages"][-1]["metadata"]["mode"] == "handoff"
+
+
+async def test_the_advisor_signal_after_a_rejected_draft_hands_off_as_out_of_base(client, env):
+    pid, mid, cid = await lead(client, "Ma formation est-elle finançable par le CPF ?")
+    near = "La formation eBIHAR se déroule en alternance."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    replies = iter(["Oui, elle est éligible au CPF.", "[CONSEILLER] Un conseiller vous répondra."])
+    env.llm.reply = lambda system, messages: (
+        next(replies) if "Extraits de la base" in system else "Résumé."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    texts = [m["content"] for m in (await conversation(client, cid))["messages"]]
+    assert not any("CPF" in t and "éligible" in t for t in texts)
 
 
 # --- NF-10 : jamais d'information inventée ---

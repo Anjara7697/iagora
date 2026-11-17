@@ -10,5 +10,8 @@
   {"question": "Les cours sont-ils en français ?", "target": "ebihar_students", "expect": "faq_generale"},
   {"question": "Quel est le prix exact de la formation ?", "target": "ebihar_students", "expect": "faq_generale"},
   {"question": "Quelle est la meilleure recette de pizza ?", "target": "ebihar_students", "expect": null},
-  {"question": "Quel temps fera-t-il demain à Lyon ?", "target": "ebihar_students", "expect": null}
+  {"question": "Quel temps fera-t-il demain à Lyon ?", "target": "ebihar_students", "expect": null},
+  {"question": "Quel salaire peut-on espérer à la sortie ?", "target": "ebihar_students", "expect": null, "same_topic": true},
+  {"question": "Combien de places reste-t-il pour la prochaine session ?", "target": "ebihar_students", "expect": null, "same_topic": true},
+  {"question": "Proposez-vous un logement étudiant ?", "target": "ebihar_students", "expect": null, "same_topic": true}
 ]

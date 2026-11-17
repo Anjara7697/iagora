@@ -290,3 +290,32 @@ async def test_kb_search_command_shows_scores_and_threshold(
     await kb_cli.cmd_kb_search("Combien de mois dure le programme ?", "prog_a", 3)
     out = capsys.readouterr().out
     assert "Programme Test / Durée" in out and "Seuil de pertinence" in out
+
+
+async def test_kb_eval_measures_same_topic_questions_without_counting_them_as_failures(
+    session_factory, mongo_db, monkeypatch, capsys
+):
+    """Une question du même sujet sans réponse (« quel salaire ? ») passe souvent le seuil : kb-eval
+    affiche son score, sans la compter en échec ; c'est l'agent qui la signale et transfère."""
+    from app.devtools import commands
+    from app.devtools.fakes import FakeLLM
+
+    rt = commands.Runtime(session_factory, mongo_db, FakeLLM(), "test")
+    monkeypatch.setattr(commands, "build_runtime", lambda fake: rt)
+    monkeypatch.setattr(commands, "require_embeddings", lambda: HashEmbeddings())
+
+    async def no_shutdown() -> None:
+        return None
+
+    monkeypatch.setattr(commands, "_shutdown", no_shutdown)
+    async with session_factory() as s:
+        for f in sorted(DEMO_KB_DIR.glob("*.md")):
+            text = f.read_text(encoding="utf-8")
+            await knowledge.ingest_document(s, HashEmbeddings(), f.stem, text, is_demo=True)
+    await commands.cmd_kb_eval()
+    out = capsys.readouterr().out
+    cases = json.loads((DEMO_KB_DIR / "eval.json").read_text(encoding="utf-8"))
+    same_topic = [c for c in cases if c.get("same_topic")]
+    assert len(same_topic) >= 3 and out.count("ℹ [") == len(same_topic)
+    assert f"/{len(cases) - len(same_topic)} conformes" in out
+    assert "Même sujet sans réponse" in out

@@ -5,6 +5,7 @@ vérifiées après coup par du code (policy.ungrounded_claims) : on ne se fie pa
 """
 
 import hashlib
+import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -151,6 +152,23 @@ Créneaux proposés en attente de réponse :
 {slot_text}"""
 
 
+# Signal du modèle : la question précise du prospect n'a pas de réponse dans les extraits. Le
+# message n'est pas envoyé ; l'application transfère au conseiller (motif « question_hors_base »),
+# pour que la promesse « un conseiller vous répondra » soit tenue.
+ADVISOR_MARKER = "[CONSEILLER]"
+_ADVISOR_MARKER = re.compile(r"\[\s*conseiller\s*\]", re.IGNORECASE)
+ADVISOR_RULE = (
+    "Si le prospect pose une question précise dont la réponse ne figure ni dans les extraits ni "
+    f"dans la liste des formations, commence ton message par {ADVISOR_MARKER} : un conseiller "
+    "reprendra la conversation. N'utilise jamais ce signal si les extraits répondent."
+)
+
+
+def defers_to_advisor(reply: str) -> bool:
+    """Le modèle a signalé une question sans réponse dans les extraits (`ADVISOR_MARKER`)."""
+    return bool(_ADVISOR_MARKER.search(reply))
+
+
 def reply_system(
     ctx: ProspectContext,
     profile: dict[str, Any],
@@ -185,6 +203,8 @@ def reply_system(
             "Écris le premier message à ce prospect : présente-toi brièvement, rappelle ce qui "
             f"l'amène (sujet : {target}) et pose UNE question simple pour mieux le comprendre."
         )
+    # Répondre à un message du prospect : signaler ce que les extraits ne couvrent pas.
+    advisor_rule = ADVISOR_RULE if mode != "nurture" and ctx.history else ""
     if missing and mode != "nurture":
         label = FIELD_LABELS.get(missing[0], missing[0])
         ask = f"Si c'est naturel, termine par UNE question sur {label}."
@@ -205,6 +225,7 @@ Extraits de la base de connaissances validée (seule source de faits précis) :
 
 Mission : {goal}
 {ask}
+{advisor_rule}
 {conversation_rules}"""
 
 
@@ -213,5 +234,5 @@ def strict_retry_note(claims: Sequence[str]) -> str:
         "\n\nATTENTION : ta réponse précédente contenait des informations non présentes dans les "
         f"extraits ({', '.join(claims)}). Réécris-la SANS aucun chiffre, prix, durée, date, ni "
         "condition d'admission ou de financement (CPF, éligibilité, gratuité…) qui ne figure pas "
-        "dans les extraits. Si l'information manque, dis qu'un conseiller la donnera."
+        f"dans les extraits. Si l'information manque, commence ton message par {ADVISOR_MARKER}."
     )
