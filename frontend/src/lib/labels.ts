@@ -271,6 +271,8 @@ export const PROFILE_FIELDS: Record<string, string> = {
   field_of_study: "Domaine d’études",
   goal: "Projet",
   availability: "Disponibilité",
+  start_term: "Rentrée visée",
+  location: "Lieu ou format",
   budget: "Budget",
   city: "Ville",
   profession: "Profession",

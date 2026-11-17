@@ -229,6 +229,50 @@ async def test_missing_calendar_never_invents_availability(client, env, calendar
     assert (await conversation(client, cid))["status"] == "handed_off"
 
 
+async def _qualified_prospect(client, env):
+    """Prospect dont la grille D-33 est complète et qui a déjà échangé avec l'agent."""
+    profile = {"goal": "data", "study_level": "BTS", "start_term": "septembre", "location": "Paris"}
+    pid, mid, cid = await lead(client, "Bonjour", profile=profile)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, "Comment se passe l'admission ?")
+    env.kb.passages = [Passage(source="faq", text="L'admission se fait sur dossier et entretien.")]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "L'admission se fait sur dossier, puis par un entretien."
+    return cid
+
+
+async def test_a_qualified_prospect_gets_the_answer_then_real_slots_in_one_message(client, env):
+    cid = await _qualified_prospect(client, env)
+    out = (await run(client, cid)).json()
+    assert out["action"] == "propose_meeting" and out["handoff_reason"] is None
+    last = (await conversation(client, cid))["messages"][-1]
+    assert last["content"].startswith("L'admission se fait sur dossier")
+    assert "Pour avancer, voici des créneaux disponibles" in last["content"]
+    assert not last["content"].startswith("Bonjour")  # en pleine conversation
+    assert last["metadata"]["mode"] == "meeting_proposal" and last["metadata"]["with_answer"]
+    assert "créneaux pour échanger avec un conseiller suivent" in env.llm.generate_calls[0][0]
+
+
+async def test_without_a_calendar_the_answer_is_still_sent_without_handoff(client, env):
+    cid = await _qualified_prospect(client, env)
+    env.calendar = UnconfiguredCalendar()
+    app.dependency_overrides[get_calendar] = lambda: env.calendar
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None
+    conv = await conversation(client, cid)
+    assert conv["status"] == "open"
+    assert conv["messages"][-1]["content"] == env.llm.reply
+
+
+async def test_asking_whether_it_is_a_robot_is_answered_not_handed_off(client, env):
+    pid, mid, cid = await lead(client, "Je parle à un robot ou à une vraie personne ?")
+    env.llm.qualification = Qualification(intent="needs_advisor")
+    env.llm.reply = "Je suis un assistant IA de DATUM Academy ; un conseiller relit nos échanges."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None and out["action"] == "continue_conversation"
+    assert "assistant IA" in out["reply"]
+
+
 # --- Scénario 3 : question inconnue -> information absente -> transfert au conseiller ---
 
 
@@ -524,6 +568,15 @@ async def test_profile_is_enriched_and_known_data_is_never_asked_again(
 
     await say(client, cid, "Je veux devenir data analyst.", role="prospect")
     env.llm.qualification = Qualification(intent="interested", goal="devenir data analyst")
+    await run(client, cid)
+    # Grille D-33 : la rentrée visée vient ensuite, par une question alternative.
+    asked = env.llm.generate_calls[-1][0]
+    assert "la rentrée qu'il ou elle vise" in asked and "question alternative" in asked
+
+    await say(client, cid, "Septembre prochain, plutôt à distance.", role="prospect")
+    env.llm.qualification = Qualification(
+        intent="interested", start_term="septembre", location="à distance"
+    )
     second = (await run(client, cid)).json()
     assert "Ne pose pas de question de qualification" in env.llm.generate_calls[-1][0]
     reasons = {e["reason"] for e in (await history(client, mid))["score_events"]}

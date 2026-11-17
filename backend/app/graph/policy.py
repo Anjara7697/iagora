@@ -23,11 +23,13 @@ MIN_CONFIDENCE = 0.5  # en dessous : lecture du modèle trop incertaine, on tran
 # (AUDIT-BIZ-001).
 SLOT_MIN_NOTICE = timedelta(minutes=15)
 
-# Informations de qualification attendues par cible (F-09) : peu de questions, jamais répétées.
+# Grille de qualification par cible (F-09, décision D-33) : une question à la fois, jamais
+# répétée, dans l'ordre de l'entonnoir : le projet d'abord (question ouverte), puis la situation,
+# la rentrée visée et le lieu ou le format (questions alternatives).
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "ebihar_students": ("study_level", "goal"),
-    "compagnons_pros": ("current_situation", "goal"),
-    "master_candidates": ("study_level", "availability"),
+    "ebihar_students": ("goal", "study_level", "start_term", "location"),
+    "compagnons_pros": ("goal", "current_situation", "start_term", "location"),
+    "master_candidates": ("goal", "study_level", "start_term", "location"),
     "master_companies": ("company_need", "availability"),
 }
 DEFAULT_REQUIRED = ("goal",)
@@ -39,6 +41,8 @@ FIELD_LABELS = {
     "goal": "ce qu'il ou elle recherche (son projet)",
     "availability": "ses disponibilités ou l'échéance visée",
     "company_need": "les profils ou compétences recherchés par l'entreprise",
+    "start_term": "la rentrée qu'il ou elle vise",
+    "location": "le lieu ou le format souhaité (ville, sur place ou à distance)",
 }
 
 
@@ -89,6 +93,32 @@ _PERSONAL_DATA = [
     r"\brgpd\b",
     r"droit (a l'oubli|d'acces|a l'effacement)",
 ]
+
+
+# « Je parle à un robot ? » : une question sur l'interlocuteur, à laquelle l'agent répond
+# franchement (D-32), pas une demande de conseiller.
+_ASKS_ABOUT_AGENT = re.compile(
+    r"\b(robot|bot|chatbot|une ia|l.ia|intelligence artificielle|une machine"
+    r"|vraie personne|un humain|une personne reelle)\b"
+)
+_DEMANDS_HUMAN = re.compile(
+    r"(parler|echanger|discuter) (a|avec) (un|une|quelqu.un|le|la) ?(humain|conseill|personne|vrai)"
+    r"|passez.moi|je (veux|voudrais|prefere|souhaite) (un|une|parler a un) ?(humain|conseill)"
+)
+# Question qui annonce une décision : admission, candidature, inscription, rentrée.
+_NEXT_STEP = re.compile(
+    r"admission|admis\b|candidat|inscri|rentree|dossier|date limite|postuler|commencer"
+    r"|demarr|entretien|prochaine session|quand (ca|cela) commence"
+)
+
+
+def asks_about_agent(text: str) -> bool:
+    t = normalize(text)
+    return "?" in text and bool(_ASKS_ABOUT_AGENT.search(t)) and not _DEMANDS_HUMAN.search(t)
+
+
+def asks_next_step(text: str) -> bool:
+    return bool(_NEXT_STEP.search(normalize(text)))
 
 
 def asks_about_personal_data(text: str) -> bool:
@@ -266,6 +296,22 @@ def decide(state: SalesAgentState, tuning: PolicyTuning = DEFAULT_TUNING) -> Dec
     if stage not in _ADVANCED_STAGES:
         if q is not None and q.intent == "meeting_declined":
             return Decision(Action.NURTURE, "Rendez-vous refusé : relance programmée")
+        # D-33 : grille complète et question qui annonce une décision (admission, rentrée,
+        # candidature) -> l'agent répond, puis propose de lui-même de vrais créneaux, une fois.
+        if (
+            q is not None
+            and q.intent in ("question", "interested")
+            and not missing
+            and ctx.pending_slots == []
+            and stage is not ConversionStage.MEETING_PROPOSED
+            and asks_next_step(state.get("inbound_text", ""))
+        ):
+            return Decision(
+                Action.PROPOSE_MEETING,
+                "Qualification complète et question sur l'admission, la rentrée ou la "
+                "candidature : réponse puis créneaux",
+                answer_first=True,
+            )
         threshold = tuning.propose_meeting_min_score
         if total >= threshold and not missing and ctx.pending_slots == []:
             return Decision(
@@ -279,6 +325,7 @@ def decide(state: SalesAgentState, tuning: PolicyTuning = DEFAULT_TUNING) -> Dec
         total <= tuning.nurture_max_score
         and state.get("trigger") == "inbound_message"
         and (q is None or q.intent == "other")
+        and not asks_about_agent(state.get("inbound_text", ""))
     ):
         return Decision(Action.NURTURE, f"Score faible ({total}) : entretien espacé")
 

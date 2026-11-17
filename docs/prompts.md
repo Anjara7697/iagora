@@ -12,7 +12,8 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 | Nom | Type | Rôle | Utilisé par |
 |---|---|---|---|
 | `IDENTITY` | Texte fixe | L'agent écrit au nom de DATUM Academy ; c'est une IA qui ne se fait jamais passer pour un humain, ne se présente pas comme IA de lui-même (la mention sous le message le dit, D-32) et répond franchement si on le lui demande | `reply_system` |
-| `RULES` | Texte fixe | Vouvoiement, ton, interdiction d'inventer (prix, dates, durées…), une seule question, 120 mots maximum, ne pas parler du fonctionnement interne | `reply_system` |
+| `RULES` | Texte fixe | Vouvoiement, ton, interdiction d'inventer (prix, dates, durées…), aucun avis d'admission, pas d'offre de conseiller spontanée, une seule question, 80 mots au plus en 2 à 4 phrases, reprise de ce que le prospect vient de dire (écoute active), ne pas parler du fonctionnement interne (D-33) | `reply_system` |
+| `QUESTION_STYLE` | Texte fixe | Façon de poser la question de qualification selon le champ manquant : ouverte sur le projet, simple sur le parcours, alternative sur la rentrée et le format (D-33) | `reply_system` |
 | `CATALOGUE` | Texte fixe | Liste validée des trois programmes : noms et publics, **aucun chiffre** | `reply_system` |
 | `PROGRAMS` | Dictionnaire | Libellé du sujet d'intérêt selon la cible du prospect | les deux prompts système |
 | `qualification_system()` | Prompt système | Lire le **dernier** message et remplir le schéma `Qualification` : intention, `asks_catalogue`, `needs_human`, confiance, créneau choisi, champs de profil | nœud `qualify_prospect` (sortie structurée) |
@@ -25,18 +26,19 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 
 | Cas | Consigne |
 |---|---|
-| Premier message (aucun historique) | Se présenter brièvement, rappeler le sujet, poser une question simple |
+| Premier message (aucun historique) | Écrire au nom de DATUM Academy, rappeler le sujet, poser une question simple |
 | Réponse normale | Répondre au dernier message de façon utile et personnalisée |
 | `nurture` (prospect peu engagé, relance) | Message court et chaleureux, un élément utile, aucune demande de rendez-vous |
-| Conversation déjà engagée | Ne pas resaluer, ne pas se représenter, ne pas répéter qu'on est une IA sauf si on le demande |
-| Champ de profil manquant | Terminer, si c'est naturel, par **une** question sur ce champ (`FIELD_LABELS` dans `policy.py`) |
+| Conversation déjà engagée | Ne pas resaluer, ne pas se représenter |
+| Champ de profil manquant | Terminer par **une** question sur le premier champ manquant de la grille (`REQUIRED_FIELDS`, `FIELD_LABELS` dans `policy.py`), posée selon `QUESTION_STYLE` |
+| Créneaux qui suivent la réponse (`then_meeting`, D-33) | Répondre sans poser de question ni parler de rendez-vous : les créneaux réels suivent dans le même message |
 
 ### Textes qui ne passent pas par le modèle
 
 | Texte | Où | Pourquoi |
 |---|---|---|
 | Accusé de transfert (`HANDOFF_MESSAGE`) | `graph/nodes.py` | Toujours identique ; exempté de validation en mode assisté |
-| Proposition de créneaux | `nodes.py::propose_meeting` | Les créneaux viennent uniquement de l'agenda réel (NF-10) |
+| Proposition de créneaux | `nodes.py::propose_meeting` | Les créneaux viennent uniquement de l'agenda réel (NF-10) ; quand ils suivent une réponse (D-33), la réponse rédigée et vérifiée vient d'abord ; « Bonjour » seulement au premier message de l'agent |
 | Pied des emails (`email_footer`) | `config.py` | Mention STOP ; la mention IA (`email_ai_notice`) est ajoutée à part, par `services/email_format.py` (voir [conformite-rgpd.md](conformite-rgpd.md)) |
 
 ## Ce que le code vérifie après le modèle

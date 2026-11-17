@@ -66,11 +66,23 @@ def test_sensitive_messages_flagged():
 
 
 def test_missing_fields_depend_on_target_and_never_ask_known_data():
-    assert policy.missing_fields({}, "ebihar_students") == ["study_level", "goal"]
-    assert policy.missing_fields({"study_level": "Bac+3"}, "ebihar_students") == ["goal"]
-    assert policy.missing_fields({"study_level": "x", "goal": "y"}, "ebihar_students") == []
+    # Grille D-33, dans l'ordre de l'entonnoir : projet, situation, rentrée, lieu ou format.
+    grid = ["goal", "study_level", "start_term", "location"]
+    assert policy.missing_fields({}, "ebihar_students") == grid
+    assert policy.missing_fields({"study_level": "Bac+3"}, "ebihar_students") == [
+        "goal",
+        "start_term",
+        "location",
+    ]
+    full = {"study_level": "x", "goal": "y", "start_term": "septembre", "location": "Paris"}
+    assert policy.missing_fields(full, "ebihar_students") == []
     assert policy.missing_fields({"goal": "  "}, None) == ["goal"]
-    assert policy.missing_fields({}, "compagnons_pros") == ["current_situation", "goal"]
+    assert policy.missing_fields({}, "compagnons_pros") == [
+        "goal",
+        "current_situation",
+        "start_term",
+        "location",
+    ]
 
 
 # --- Signaux de score ---
@@ -424,3 +436,44 @@ def test_requests_about_personal_data_are_recognised():
         assert policy.asks_about_personal_data(text), text
     assert not policy.asks_about_personal_data("STOP")
     assert not policy.asks_about_personal_data("Quelles données sont étudiées en cours ?")
+
+
+# --- Technique de vente (D-33) ---
+
+
+def test_questions_about_the_agent_and_next_step_questions_are_recognised():
+    assert policy.asks_about_agent("Je parle à un robot ou à une vraie personne ?")
+    assert policy.asks_about_agent("Vous êtes une IA ?")
+    assert not policy.asks_about_agent("Je veux parler à un humain, vous êtes un robot ?")
+    assert not policy.asks_about_agent("Le programme est-il éligible au CPF ?")
+    assert not policy.asks_about_agent("Je suis un robot de cuisine.")  # pas une question
+    assert policy.asks_next_step("Comment se passe l'admission ?")
+    assert policy.asks_next_step("Jusqu'à quand puis-je candidater ?")
+    assert policy.asks_next_step("La rentrée est en septembre ?")
+    assert not policy.asks_next_step("Les cours sont-ils en français ?")
+
+
+def test_a_complete_grid_and_a_next_step_question_lead_to_slots_after_the_answer():
+    q = Qualification(intent="question")
+    s = state(q, total=10, missing=[])
+    s["inbound_text"] = "Comment se passe l'admission ?"
+    d = policy.decide(s)
+    assert d.action is Action.PROPOSE_MEETING and d.answer_first
+    # Grille incomplète : on répond et on continue de qualifier.
+    s_missing = state(q, total=10, missing=["start_term"])
+    s_missing["inbound_text"] = "Comment se passe l'admission ?"
+    assert policy.decide(s_missing).action is Action.CONTINUE_CONVERSATION
+    # Pas de question qui annonce une décision : pas de rendez-vous imposé.
+    s_other = state(q, total=10, missing=[])
+    s_other["inbound_text"] = "Les cours sont-ils en français ?"
+    assert policy.decide(s_other).action is Action.CONTINUE_CONVERSATION
+    # Créneaux déjà proposés : on ne les repropose pas.
+    s_done = state(q, total=10, missing=[], stage=S.MEETING_PROPOSED)
+    s_done["inbound_text"] = "Comment se passe l'admission ?"
+    assert policy.decide(s_done).action is Action.CONTINUE_CONVERSATION
+
+
+def test_a_question_about_the_agent_is_answered_not_nurtured():
+    s = state(Qualification(intent="other"), total=5, missing=["goal"])
+    s["inbound_text"] = "Je parle à un robot ?"
+    assert policy.decide(s).action is Action.CONTINUE_CONVERSATION
