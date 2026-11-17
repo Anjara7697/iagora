@@ -16,6 +16,13 @@ l'agent (`agent_runs`) et ses événements (MongoDB). Un second passage sur Mong
 pour rattraper un traitement de l'agent qui aurait écrit entre-temps. Si l'étape SQL échoue après MongoDB,
 la fiche existe encore et l'action peut être relancée.
 
+## Demande reçue par l'agent
+
+Quand un prospect écrit à l'agent pour demander la suppression de ses données (ou l'accès, « RGPD », « droit à
+l'oubli »), l'agent enregistre aussitôt la désinscription, ne lui répond pas et transfère la conversation au
+conseiller (motif « Demande sur ses données personnelles (RGPD) », priorité critique dans « À traiter »). Le
+conseiller traite ensuite la demande dans le délai d'un mois, par la procédure ci-dessus pour un effacement.
+
 ## Ce qui reste, volontairement
 
 Une ligne `erasure_records` : numéro de l'ancienne fiche, motif, auteur, date. **Aucun nom, email ni

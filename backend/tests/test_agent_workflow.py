@@ -387,6 +387,35 @@ async def test_opt_out_is_detected_without_the_model_and_stops_everything(
     assert blocked.status_code == 409
 
 
+async def test_a_request_to_delete_personal_data_unsubscribes_and_reaches_an_advisor(
+    client, env, session_factory
+):
+    """RGPD : « supprimez mes données » vaut désinscription immédiate ET demande qu'un humain doit
+    traiter sous un mois. La conversation passe au conseiller ; rien n'est écrit au prospect."""
+    text = "Je veux que vous supprimiez mes données personnelles."
+    pid, mid, cid = await lead(client, text)
+    env.llm.qualification = Qualification(intent="opt_out")
+    out = (await run(client, cid)).json()
+    assert out["action"] == "opt_out" and out["handoff_reason"] == "donnees_personnelles"
+    async with session_factory() as s:
+        assert (await s.get(Prospect, pid)).consent_status.value == "opted_out"
+    conv = await conversation(client, cid)
+    assert conv["status"] == "handed_off"
+    assert all(m["role"] == "prospect" for m in conv["messages"])  # aucun message au prospect
+    assert "RGPD" in conv["handoff"]["recommended_action"]
+    todo = (await client.get(f"{API}/todo")).json()["items"]
+    item = next(i for i in todo if i["conversation_id"] == cid)
+    assert item["priority"] == "critical" and item["recommendation"]["risk"] == "high"
+
+
+async def test_a_stop_with_a_complaint_is_recorded_and_handed_off(client, env):
+    pid, mid, cid = await lead(client, "STOP, c'est du harcèlement.")
+    out = (await run(client, cid)).json()
+    assert out["action"] == "opt_out" and out["handoff_reason"] == "situation_sensible"
+    assert env.llm.extract_calls == []  # arrêt détecté sans le modèle
+    assert (await conversation(client, cid))["status"] == "handed_off"
+
+
 async def test_already_unsubscribed_prospect_is_never_contacted(client, env):
     pid, mid, cid = await lead(client, None)
     await client.post(f"{API}/prospects/{pid}/opt-out", json={})
@@ -438,6 +467,11 @@ async def test_reply_generation_failure_after_qualification_hands_off(client, en
             "Je veux parler à un conseiller.",
             Qualification(intent="needs_advisor"),
             "demande_conseiller",
+        ),
+        (
+            "Que faites-vous de mes données personnelles ?",
+            Qualification(intent="needs_advisor"),
+            "donnees_personnelles",
         ),
         ("Hmm... peut-être ?", Qualification(intent="question", confidence=0.2), "incertitude"),
         (

@@ -37,6 +37,8 @@ RECOMMENDED_ACTIONS = {
     "aucun_creneau": "Proposer un rendez-vous manuellement : aucun créneau disponible",
     "reservation_impossible": "Confirmer le rendez-vous manuellement : la réservation a échoué",
     "reponse_non_verifiable": "Répondre au prospect : la réponse de l'assistant était invérifiable",
+    "donnees_personnelles": "Traiter la demande sur ses données personnelles (effacement, accès) "
+    "dans le délai d'un mois (RGPD) ; le prospect est déjà désinscrit",
 }
 HANDOFF_MESSAGE = (
     "Je transmets votre demande à un conseiller de DATUM Academy, qui reprendra la "
@@ -499,6 +501,8 @@ class WorkflowNodes:
         if state.get("llm_failed"):
             return "llm_indisponible"
         if state.get("risk_alerts"):
+            if policy.asks_about_personal_data(state.get("inbound_text", "")):
+                return "donnees_personnelles"
             return "situation_sensible"
         q = state.get("qualification")
         if q is not None and q.confidence < self.deps.tuning.min_confidence:
@@ -530,11 +534,20 @@ class WorkflowNodes:
     async def handle_opt_out(self, state: SalesAgentState) -> Update:
         ctx = state["ctx"]
         await self.deps.gateway.record_opt_out(ctx.prospect_id, ctx.channel, "agent_detection")
-        return {
+        update: Update = {
             "opted_out": True,
             "reply_text": None,
             "trace": _t("handle_opt_out", "opt-out enregistré, relances annulées, plus de message"),
         }
+        if state.get("risk_alerts"):
+            # Arrêt ET situation à traiter par un humain (« supprimez mes données », plainte) :
+            # la désinscription est faite, la conversation passe au conseiller. Le prospect étant
+            # désinscrit, aucun message ne lui est envoyé.
+            text = state.get("inbound_text", "")
+            data = policy.asks_about_personal_data(text)
+            update["needs_human"] = True
+            update["handoff_reason"] = "donnees_personnelles" if data else "situation_sensible"
+        return update
 
     async def close_conversation(self, state: SalesAgentState) -> Update:
         ctx = state["ctx"]

@@ -74,6 +74,9 @@ graph TD;
 ### Règles de décision (ordre de priorité)
 
 1. **Désinscrit ou demande d'arrêt** → opt-out enregistré, relances annulées, aucun message (scénario 4).
+   Si le même message demande aussi quelque chose sur ses données (« supprimez mes données », RGPD) ou relève
+   d'une situation sensible (plainte, harcèlement), la conversation passe en plus au conseiller (motif
+   `donnees_personnelles` ou `situation_sensible`, priorité critique dans « À traiter »), toujours sans message.
 2. **Cas qui exigent un humain, quoi qu'il arrive** : modèle indisponible, situation sensible → transfert (F-20).
 3. **Demande de rendez-vous** (même formulée « avec un conseiller ») → l'agent organise le rendez-vous lui-même
    avec des créneaux réels (F-18). Sans agenda, le transfert a lieu juste après : le prospect n'est jamais bloqué.

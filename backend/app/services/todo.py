@@ -59,7 +59,7 @@ def handoff_kind(reason: str | None) -> TodoKind:
 
 
 def handoff_priority(kind: TodoKind, reason: str | None, level: str | None) -> Priority:
-    if reason == "situation_sensible":
+    if reason in ("situation_sensible", "donnees_personnelles"):
         return "critical"
     if kind == "incident":
         return "high"
@@ -221,7 +221,9 @@ async def list_todo(
                         TodoRecommendation(
                             action=sheet["recommended_action"],
                             reason=sheet.get("summary"),
-                            risk="high" if reason == "situation_sensible" else "medium",
+                            risk="high"
+                            if reason in ("situation_sensible", "donnees_personnelles")
+                            else "medium",
                         )
                         if sheet.get("recommended_action")
                         else None

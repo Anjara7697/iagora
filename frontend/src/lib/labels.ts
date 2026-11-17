@@ -46,6 +46,7 @@ export const HANDOFF_REASONS: Record<string, string> = {
   candidature_a_verifier: "Candidature à vérifier",
   question_hors_base: "Question hors base de connaissances",
   situation_sensible: "Situation sensible",
+  donnees_personnelles: "Demande sur ses données personnelles (RGPD)",
   demande_conseiller: "Le prospect demande un conseiller",
   llm_indisponible: "Modèle de langage indisponible",
   reponse_non_verifiable: "Réponse non vérifiable",

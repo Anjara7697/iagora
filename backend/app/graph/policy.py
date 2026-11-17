@@ -81,6 +81,21 @@ _SENSITIVE = [
 ]
 
 
+# Demande sur ses données personnelles (effacement, accès : RGPD, art. 15 à 17) : un humain doit la
+# traiter dans le délai légal, même si l'agent a déjà enregistré la désinscription.
+_PERSONAL_DATA = [
+    r"donnees personnelles",
+    r"(supprim|effac)\w* (toutes )?mes donnees",
+    r"\brgpd\b",
+    r"droit (a l'oubli|d'acces|a l'effacement)",
+]
+
+
+def asks_about_personal_data(text: str) -> bool:
+    t = normalize(text)
+    return any(re.search(p, t) for p in _PERSONAL_DATA)
+
+
 _MEETING = [r"rendez[- ]?vous", r"\brdv\b", r"creneau", r"disponibilites?\b"]
 
 

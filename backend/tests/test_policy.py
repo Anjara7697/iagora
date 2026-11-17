@@ -412,3 +412,15 @@ def test_amounts_written_differently_from_the_source_are_recognised():
         ("Il coûte 70 000 €.", "70 000 €"),
     ):
         assert policy.ungrounded_claims(reply, sources) == [claim], reply
+
+
+def test_requests_about_personal_data_are_recognised():
+    for text in (
+        "Je veux que vous supprimiez mes données personnelles.",
+        "Effacez toutes mes données svp",
+        "J'exerce mon droit à l'oubli",
+        "Demande RGPD : que savez-vous de moi ?",
+    ):
+        assert policy.asks_about_personal_data(text), text
+    assert not policy.asks_about_personal_data("STOP")
+    assert not policy.asks_about_personal_data("Quelles données sont étudiées en cours ?")
