@@ -238,12 +238,14 @@ class WorkflowNodes:
         sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
         conversation = [m.content for m in ctx.history]
 
+        claims: list[str] = []
         try:
             reply = (await self.deps.llm.generate(system, messages)).strip()
             extra = self.deps.tuning.extra_terms
-            claims = policy.ungrounded_claims(
-                reply, sources, conversation=conversation, extra_terms=extra
-            )
+            if not prompts.defers_to_advisor(reply):
+                claims = policy.ungrounded_claims(
+                    reply, sources, conversation=conversation, extra_terms=extra
+                )
             if claims:  # un seul nouvel essai, plus strict
                 reply = (
                     await self.deps.llm.generate(
@@ -263,6 +265,14 @@ class WorkflowNodes:
                     "generate_response",
                     f"modèle indisponible : {type(exc).__name__}",
                 ),
+            }
+        if prompts.defers_to_advisor(reply):
+            # Les extraits ne répondent pas à la question : le message (« un conseiller vous
+            # répondra ») n'est pas envoyé, le transfert le remplace et la promesse est tenue.
+            return {
+                "needs_human": True,
+                "handoff_reason": "question_hors_base",
+                "trace": _t("generate_response", "réponse absente des extraits : transfert"),
             }
         if claims or not reply:
             return {
