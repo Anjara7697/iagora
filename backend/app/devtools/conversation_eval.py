@@ -44,7 +44,7 @@ from app.devtools.evaluation import (
     _rate,
     play_turn,
 )
-from app.devtools.fakes import FakeCalendar, FakeLLM
+from app.devtools.fakes import FakeCalendar, FakeLLM, _tokens
 from app.graph import policy
 from app.graph.ports import KnowledgeBase, LanguageModel
 
@@ -66,6 +66,8 @@ class Turn:
     known: list[str] = field(default_factory=list)  # profil déjà donné : ne plus le demander
     context: bool = False  # ne se comprend qu'avec les messages précédents
     asks_ai: bool = False  # question directe : l'agent peut (doit) dire qu'il est une IA
+    # Profil attendu APRÈS ce tour : champ -> « a|b » (l'un ou l'autre, sur le texte normalisé).
+    profile_after: dict[str, str] = field(default_factory=dict)
     fake: dict[str, Any] = field(default_factory=dict)
 
 
@@ -78,6 +80,8 @@ class Conversation:
     profile: dict[str, str] = field(default_factory=dict)
     live_only: bool = False
     end: dict[str, Any] = field(default_factory=dict)
+    # L'agent devrait proposer un rendez-vous de lui-même au plus tard à ce tour (indicateur).
+    meeting_by: int | None = None
 
     def case(self, index: int) -> EvalCase:
         """Le tour `index` vu comme un cas de `eval-agent` (mêmes vérifications)."""
@@ -155,6 +159,78 @@ def question_count(message: str) -> int:
     return message.count("?")
 
 
+# --- Technique de vente (indicateurs : comptés à part, hors conformité) ---
+
+_EXPLORE = re.compile(
+    r"qu.est.ce qu|pourquoi|comment|que recherchez|qu.attendez|que souhaitez|ce qui vous"
+    r"|ce que vous|qu.aimeriez"
+)
+_INFORM = re.compile(r"\bquel(le)?s?\b|combien|quand|\bou\b")
+_ALTERNATIVE = re.compile(r"\w \bou\b \w")
+_REFORMULATION = re.compile(
+    r"si je (comprends|resume)|vous me dites|d.apres ce que vous|vous (visez|souhaitez|cherchez"
+    r"|recherchez|voulez) donc|avec votre (profil|bts|licence|experience|parcours)"
+    r"|votre (projet|objectif) (est|de)|vous (etes|avez) (donc|actuellement)"
+)
+_ADVISOR_OFFER = re.compile(r"conseiller|rendez.vous|mettre? en relation|echange")
+_ELIGIBILITY = re.compile(
+    r"correspond\w* (bien |parfaitement |tout a fait )?(aux|a nos) (conditions|criteres|prerequis)"
+    r"|vous remplissez|vous etes eligible|votre profil (correspond|est (tout a fait |parfaitement )?"
+    r"(coherent|adapte|compatible))|(tout a fait |parfaitement )coherent avec"
+)
+LONG_MESSAGE_WORDS = 120  # la consigne de l'agent : 120 mots au plus
+
+
+def questions_of(message: str) -> list[str]:
+    return [q for q in re.split(r"(?<=[.!?])\s+", policy.normalize(message)) if "?" in q]
+
+
+def question_kind(question: str) -> str:
+    """Type d'une question : `exploration` (motivation, projet : qu'est-ce qui, pourquoi,
+    comment), `information` (un fait : quel, combien, quand), `alternative` (X ou Y ?) ou
+    `fermée` (oui ou non : souhaitez-vous…). Repérage par expressions, sur le texte normalisé."""
+    q = policy.normalize(question)
+    if _ALTERNATIVE.search(q) and not re.match(r"^\W*(ou|d.ou)\b", q):
+        return "alternative"
+    if _EXPLORE.search(q):
+        return "exploration"
+    if _INFORM.search(q):
+        return "information"
+    return "fermée"
+
+
+def reformulates(prospect: str, message: str) -> bool:
+    """L'agent reprend ce que le prospect vient de dire avant d'enchaîner (écoute active) :
+    formule de reformulation, ou première phrase (hors salutation) qui reprend au moins deux mots
+    significatifs d'un message du prospect qui n'était pas une question."""
+    text = policy.normalize(message)
+    if _REFORMULATION.search(text):
+        return True
+    if "?" in prospect:
+        return False
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+", text) if not _GREETING.search(s)]
+    return bool(sentences) and len(_tokens(sentences[0]) & _tokens(prospect)) >= 2
+
+
+def offers_advisor(message: str) -> bool:
+    """Le message propose un échange avec un conseiller, sous forme de question."""
+    return any(_ADVISOR_OFFER.search(q) for q in questions_of(message))
+
+
+def gives_eligibility_verdict(message: str) -> bool:
+    """« Votre profil correspond aux conditions d'admission » : l'admission revient à l'école."""
+    return bool(_ELIGIBILITY.search(policy.normalize(message)))
+
+
+def profile_matches(profile: dict[str, Any], expected: dict[str, str]) -> bool:
+    """Le profil lu contient, pour chaque champ attendu, l'une des formulations « a|b »."""
+    for name, alternatives in expected.items():
+        value = policy.normalize(str(profile.get(name) or ""))
+        if not any(policy.normalize(a).strip() in value for a in alternatives.split("|")):
+            return False
+    return True
+
+
 # --- Exécution ---
 
 
@@ -167,7 +243,16 @@ class ConversationResult:
     greetings_repeated: int = 0
     ai_self_intros: int = 0
     multi_questions: int = 0
-    agent_messages: int = 0
+    agent_messages: int = 0  # messages rédigés par le modèle
+    profile_checks: list[bool | None] = field(default_factory=list)  # un par tour joué
+    # Indicateurs de technique de vente (hors conformité).
+    question_kinds: list[str] = field(default_factory=list)
+    reformulations: int = 0
+    words: list[int] = field(default_factory=list)
+    advisor_offers: int = 0
+    eligibility_verdicts: int = 0
+    template_greetings: int = 0
+    meeting_turn: int | None = None  # premier tour où l'agent propose ou réserve un rendez-vous
     final: dict[str, Any] = field(default_factory=dict)
     stopped_early: bool = False  # la conversation s'est arrêtée avant le dernier tour
     seconds: float = 0.0
@@ -204,6 +289,23 @@ class ConversationResult:
         return all(checks)
 
     @property
+    def profile_ok(self) -> bool | None:
+        applicable = [c for c in self.profile_checks if c is not None]
+        return all(applicable) if applicable else None
+
+    @property
+    def repeated_offers(self) -> int:
+        return max(0, self.advisor_offers - 1)
+
+    @property
+    def meeting_on_time(self) -> bool | None:
+        """Rendez-vous proposé par l'agent au plus tard au tour `meeting_by` (indicateur)."""
+        by = self.conversation.meeting_by
+        if by is None or not self.evaluable:
+            return None
+        return self.meeting_turn is not None and self.meeting_turn <= by
+
+    @property
     def style_ok(self) -> bool:
         return not (
             self.reasked or self.greetings_repeated or self.ai_self_intros or self.multi_questions
@@ -215,17 +317,32 @@ class ConversationResult:
             self.evaluable
             and not self.stopped_early
             and all(t.ok for t in self.turns)
+            and self.profile_ok is not False
             and self.style_ok
             and self.end_ok is not False
         )
 
 
-def _measure_style(result: ConversationResult, index: int, turn: Turn, written: list[str]) -> None:
-    """Vérifications « à la longue » sur les messages rédigés par le modèle à ce tour."""
-    for message in written:
+def _measure(result: ConversationResult, index: int, turn: Turn, r: CaseResult) -> None:
+    """Ce qui ne se voit qu'à la longue, et les indicateurs de technique de vente, à ce tour."""
+    if result.meeting_turn is None and r.action in ("propose_meeting", "book_meeting"):
+        result.meeting_turn = index + 1
+    result.profile_checks.append(
+        profile_matches(r.observed.get("profile") or {}, turn.profile_after)
+        if turn.profile_after
+        else None
+    )
+    seen_before = sum(1 for role, _ in result.transcript if role == "agent") - len(r.agent_messages)
+    written = set(r.llm_written)
+    for n, message in enumerate(r.agent_messages):
+        if seen_before + n == 0 or not repeats_greeting(message):
+            continue
+        if message in written:
+            result.greetings_repeated += 1  # rédigé par le modèle : compte dans la conformité
+        else:
+            result.template_greetings += 1  # texte fixe (créneaux, confirmation) : indicateur
+    for message in r.llm_written:
         result.agent_messages += 1
-        if result.agent_messages > 1 and repeats_greeting(message):
-            result.greetings_repeated += 1
         if not turn.asks_ai and introduces_itself_as_ai(message):
             result.ai_self_intros += 1
         if question_count(message) > 1:
@@ -233,6 +350,11 @@ def _measure_style(result: ConversationResult, index: int, turn: Turn, written: 
         result.reasked += [
             f"tour {index + 1} : {f}" for f in asked_fields(message) if f in turn.known
         ]
+        result.question_kinds += [question_kind(q) for q in questions_of(message)]
+        result.reformulations += reformulates(turn.says, message)
+        result.words.append(len(message.split()))
+        result.advisor_offers += offers_advisor(message)
+        result.eligibility_verdicts += gives_eligibility_verdict(message)
 
 
 async def run_conversation(
@@ -262,12 +384,11 @@ async def run_conversation(
                 result.turns.append(r)
                 result.seconds += r.seconds
                 result.transcript.append(("prospect", turn.says))
-                agent = [r.reply_text] if r.reply_text else []
-                result.transcript += [("agent", m) for m in agent]
-                said += [turn.says, *agent]
+                result.transcript += [("agent", m) for m in r.agent_messages]
+                said += [turn.says, *r.agent_messages]
                 if r.error or r.llm_unavailable:
                     break
-                _measure_style(result, index, turn, r.llm_written)
+                _measure(result, index, turn, r)
                 result.final = r.observed
                 if r.observed.get("conversation") != "open" and index < len(conv.turns) - 1:
                     result.stopped_early = True  # transfert ou clôture avant la fin prévue
@@ -318,6 +439,7 @@ class ConversationSummary:
     context: Rate
     grounded: Rate
     end: Rate
+    profile: Rate
     handoff_missed: int
     handoff_unneeded: int
     stopped_early: int
@@ -331,6 +453,15 @@ class ConversationSummary:
     llm_calls: int
     tokens_in: int
     tokens_out: int
+    # Qualification et technique de vente : indicateurs, hors conformité.
+    meeting_on_time: Rate
+    question_kinds: dict[str, int]
+    reformulations: int
+    words_median: float | None
+    long_messages: int
+    repeated_offers: int
+    eligibility_verdicts: int
+    template_greetings: int
 
     def as_dict(self) -> dict[str, Any]:
         def rate(r: Rate) -> dict[str, Any]:
@@ -348,6 +479,7 @@ class ConversationSummary:
             "context_followed": rate(self.context),
             "grounded_answers": rate(self.grounded),
             "journey_end": rate(self.end),
+            "profile_read": rate(self.profile),
             "handoff": {"missed": self.handoff_missed, "unneeded": self.handoff_unneeded},
             "stopped_early": self.stopped_early,
             "agent_messages": self.agent_messages,
@@ -359,6 +491,16 @@ class ConversationSummary:
             "latency_seconds_median": self.latency_median,
             "llm_calls": self.llm_calls,
             "tokens_estimated": {"input": self.tokens_in, "output": self.tokens_out},
+            "sales_indicators": {
+                "meeting_proposed_on_time": rate(self.meeting_on_time),
+                "question_kinds": self.question_kinds,
+                "reformulations": self.reformulations,
+                "words_median": self.words_median,
+                "long_messages": self.long_messages,
+                "repeated_advisor_offers": self.repeated_offers,
+                "eligibility_verdicts": self.eligibility_verdicts,
+                "template_greetings": self.template_greetings,
+            },
         }
 
 
@@ -369,6 +511,7 @@ def summarize(results: list[ConversationResult]) -> ConversationSummary:
     turns = [(r.conversation.turns[i], t) for r in ev for i, t in enumerate(r.turns)]
     calls = [c for r in results for t in r.turns for c in t.calls]
     latencies = [r.seconds for r in ev]
+    words = [w for r in ev for w in r.words]
     played = [r for r in results if r.skipped is None]
     return ConversationSummary(
         conversations=len(results),
@@ -382,6 +525,7 @@ def summarize(results: list[ConversationResult]) -> ConversationSummary:
         context=_rate([t.ok for turn, t in turns if turn.context]),
         grounded=_rate([t.grounded_ok for _, t in turns]),
         end=_rate([r.end_ok for r in ev]),
+        profile=_rate([c for r in ev for c in r.profile_checks]),
         handoff_missed=sum(1 for _, t in turns if t.case.handoff and not t.handed_off),
         handoff_unneeded=sum(1 for _, t in turns if t.case.handoff is False and t.handed_off),
         stopped_early=sum(1 for r in ev if r.stopped_early),
@@ -395,6 +539,17 @@ def summarize(results: list[ConversationResult]) -> ConversationSummary:
         llm_calls=len(calls),
         tokens_in=sum(c.chars_in for c in calls) // CHARS_PER_TOKEN,
         tokens_out=sum(c.chars_out for c in calls) // CHARS_PER_TOKEN,
+        meeting_on_time=_rate([r.meeting_on_time for r in ev]),
+        question_kinds={
+            kind: sum(r.question_kinds.count(kind) for r in ev)
+            for kind in ("exploration", "information", "alternative", "fermée")
+        },
+        reformulations=sum(r.reformulations for r in ev),
+        words_median=statistics.median(words) if words else None,
+        long_messages=sum(1 for w in words if w > LONG_MESSAGE_WORDS),
+        repeated_offers=sum(r.repeated_offers for r in ev),
+        eligibility_verdicts=sum(r.eligibility_verdicts for r in ev),
+        template_greetings=sum(r.template_greetings for r in ev),
     )
 
 
@@ -410,6 +565,11 @@ def _issues(r: ConversationResult) -> list[str]:
             f"arrêtée au tour {len(r.turns)} sur {len(r.conversation.turns)} "
             f"(conversation {r.final.get('conversation')})"
         )
+    for i, ok in enumerate(r.profile_checks):
+        if ok is False:
+            expected = r.conversation.turns[i].profile_after
+            got = r.turns[i].observed.get("profile") or {}
+            issues.append(f"tour {i + 1} : profil lu {got} (attendu : {expected})")
     issues += [f"information redemandée ({x})" for x in r.reasked]
     if r.greetings_repeated:
         issues.append(f"salutation répétée : {r.greetings_repeated} message(s)")
@@ -420,6 +580,17 @@ def _issues(r: ConversationResult) -> list[str]:
     if r.end_ok is False:
         issues.append(f"état final {r.final} (attendu : {r.conversation.end})")
     return issues
+
+
+def _kinds(kinds: dict[str, int]) -> str:
+    total = sum(kinds.values())
+    if not total:
+        return "aucune"
+    return " ; ".join(f"{k} {v}" for k, v in kinds.items())
+
+
+def _words(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.0f} mots"
 
 
 def format_console(r: ConversationResult) -> str:
@@ -433,7 +604,7 @@ def format_console(r: ConversationResult) -> str:
     marks = " ".join("✓" if t.ok else "✗" for t in r.turns)
     line = (
         f" {'OK' if r.ok else 'KO'}  {cid:<28} tours {marks}  fin {_mark(r.end_ok)}  "
-        f"ton {_mark(r.style_ok)}  {r.seconds:.1f} s"
+        f"profil {_mark(r.profile_ok)}  ton {_mark(r.style_ok)}  {r.seconds:.1f} s"
     )
     issues = _issues(r)
     if issues and not r.ok:
@@ -464,6 +635,7 @@ def format_markdown(
         f"| Contexte suivi | {s.context} | questions de suivi (« et ça dure combien ? ») justes |",
         f"| Réponses sourcées | {s.grounded} | la réponse contient le fait attendu de la base |",
         f"| Parcours menés au bout | {s.end} | état final attendu (rendez-vous, arrêt, transfert…) |",
+        f"| Profil lu juste | {s.profile} | informations de qualification extraites du message |",
         f"| Transferts | manqués : {s.handoff_missed} ; inutiles : {s.handoff_unneeded} | "
         f"conversations arrêtées avant la fin prévue : {s.stopped_early} |",
         f"| Informations redemandées | {s.reasked} | sur {s.agent_messages} messages de l'agent |",
@@ -475,20 +647,42 @@ def format_markdown(
         f"| Appels au modèle | {s.llm_calls} | jetons estimés : entrée {s.tokens_in}, "
         f"sortie {s.tokens_out} |",
         "",
+        "## Qualification et technique de vente (indicateurs)",
+        "",
+        "Hors conformité : ils décrivent la façon de prospecter, à comparer d'un passage à l'autre.",
+        "",
+        "| Indicateur | Valeur | Lecture |",
+        "|---|---|---|",
+        f"| Rendez-vous proposé à temps | {s.meeting_on_time} | l'agent le propose de lui-même au "
+        "plus tard au tour prévu (`meeting_by`) |",
+        f"| Questions posées | {_kinds(s.question_kinds)} | exploration (projet, motivation), "
+        "information (un fait), alternative (X ou Y), fermée (oui/non) |",
+        f"| Reformulations | {s.reformulations}/{s.agent_messages} messages | l'agent reprend ce "
+        "que le prospect vient de dire (écoute active) |",
+        f"| Longueur des messages | médiane {_words(s.words_median)} ; au-delà de "
+        f"{LONG_MESSAGE_WORDS} mots : {s.long_messages} | consigne : {LONG_MESSAGE_WORDS} mots au plus |",
+        f"| Offres de conseiller répétées | {s.repeated_offers} | « voulez-vous un conseiller ? » "
+        "reposé alors qu'il a déjà été proposé |",
+        f"| Avis d'admission donnés | {s.eligibility_verdicts} | « votre profil correspond aux "
+        "conditions » : l'admission revient à l'école |",
+        f"| Salutations dans les messages fixes | {s.template_greetings} | « Bonjour » en tête des "
+        "créneaux ou de la confirmation, en pleine conversation |",
+        "",
         "## Conversations",
         "",
-        "| Conversation | Tours | Fin | Ton | Durée |",
-        "|---|---|---|---|---|",
+        "| Conversation | Tours | Fin | Profil | Ton | Durée |",
+        "|---|---|---|---|---|---|",
     ]
     for r in results:
         cid = r.conversation.id
         if r.skipped or r.error or r.llm_unavailable:
             why = r.skipped or ("erreur" if r.error else "modèle indisponible")
-            out.append(f"| {cid} | {why} | | | |")
+            out.append(f"| {cid} | {why} | | | | |")
             continue
         marks = " ".join("✓" if t.ok else "✗" for t in r.turns)
         out.append(
-            f"| {cid} | {marks} | {_mark(r.end_ok)} | {_mark(r.style_ok)} | {r.seconds:.1f} s |"
+            f"| {cid} | {marks} | {_mark(r.end_ok)} | {_mark(r.profile_ok)} | "
+            f"{_mark(r.style_ok)} | {r.seconds:.1f} s |"
         )
     out += ["", "## Détail et échanges", ""]
     for r in results:
@@ -519,6 +713,9 @@ def format_markdown(
         " suite peut ne plus coller ; c'est le prix d'une mesure comparable d'un passage à l'autre.",
         "- Informations redemandées, salutations et présentation comme IA sont repérées par des"
         " expressions courantes : un écart signalé se relit dans les échanges ci-dessus.",
+        "- Les indicateurs de technique de vente (types de questions, reformulations, offres"
+        " répétées, avis d'admission) sont repérés de la même façon : ils servent à comparer deux"
+        " passages, pas à juger un message isolé.",
     ]
     return "\n".join(out) + "\n"
 
@@ -538,6 +735,15 @@ def to_json(results: list[ConversationResult], summary: ConversationSummary, **m
             "greetings_repeated": r.greetings_repeated,
             "ai_self_intros": r.ai_self_intros,
             "multi_questions": r.multi_questions,
+            "profile_ok": r.profile_ok,
+            "meeting_turn": r.meeting_turn,
+            "meeting_on_time": r.meeting_on_time,
+            "question_kinds": r.question_kinds,
+            "reformulations": r.reformulations,
+            "words": r.words,
+            "repeated_advisor_offers": r.repeated_offers,
+            "eligibility_verdicts": r.eligibility_verdicts,
+            "template_greetings": r.template_greetings,
             "final": {k: v for k, v in r.final.items() if k != "profile"},
             "seconds": round(r.seconds, 3),
             "turns": [

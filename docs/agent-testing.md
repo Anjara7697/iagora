@@ -148,12 +148,26 @@ ce qui ne se voit qu'à la longue :
 | Informations redemandées | l'agent demande une information de profil que le prospect a déjà donnée |
 | Ton tenu | nouvelle salutation après le premier message, présentation comme IA sans qu'on le demande (D-32), plus d'une question par message |
 | Parcours mené au bout | état final attendu : rendez-vous réservé, désinscription, transfert, conversation ouverte |
+| Profil lu juste | après un tour annoté (`profile_after`), les informations de qualification extraites (niveau, projet, situation…) sont les bonnes |
 | Arrêts prématurés | transfert ou clôture avant le dernier message prévu |
 
-Les 8 conversations couvrent : un parcours complet jusqu'au rendez-vous réservé, des informations à ne pas
-redemander, deux conversations de suivi du contexte, une désinscription en cours de route, une question mêlant
-connu et inconnu, « je parle à un robot ? » et un prospect peu engagé. Le rapport Markdown reprend les échanges
-complets pour juger le ton à la lecture.
+Les 9 conversations couvrent : un parcours complet jusqu'au rendez-vous réservé, un prospect engagé qui ne demande
+pas de rendez-vous, des informations à ne pas redemander, deux conversations de suivi du contexte, une
+désinscription en cours de route, une question mêlant connu et inconnu, « je parle à un robot ? » et un prospect
+peu engagé. Le rapport Markdown reprend les échanges complets pour juger le ton à la lecture.
+
+**Qualification et technique de vente** : des indicateurs, hors conformité, décrivent la façon de prospecter et
+se comparent d'un passage à l'autre :
+
+| Indicateur | Ce qui est compté |
+|---|---|
+| Rendez-vous proposé à temps | l'agent propose un rendez-vous de lui-même au plus tard au tour prévu (`meeting_by`) |
+| Questions posées | par type : exploration (projet, motivation), information (un fait), alternative (X ou Y), fermée (oui/non) |
+| Reformulations | l'agent reprend ce que le prospect vient de dire avant d'enchaîner (écoute active) |
+| Longueur des messages | médiane, et messages au-delà de 120 mots (la consigne) |
+| Offres de conseiller répétées | « voulez-vous un conseiller ? » reposé alors qu'il a déjà été proposé |
+| Avis d'admission donnés | « votre profil correspond aux conditions » : l'admission revient à l'école |
+| Salutations dans les messages fixes | « Bonjour » en tête des créneaux ou de la confirmation, en pleine conversation |
 
 - **Hors ligne**, le faux modèle rejoue l'annotation de chaque tour : 100 % attendu, vérifié par la CI. Les
   conversations de suivi du contexte (`live_only`) ne sont jouées qu'avec `--live` : le faux modèle ne sait pas

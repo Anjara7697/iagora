@@ -262,6 +262,7 @@ class CaseResult:
     handoff_reason: str | None = None
     handed_off: bool = False
     reply_text: str = ""  # messages de l'agent après le dernier message du prospect
+    agent_messages: list[str] = field(default_factory=list)  # les mêmes, un par message
     llm_written: list[str] = field(default_factory=list)  # parmi eux, ceux rédigés par le modèle
     raw_claims: list[list[str]] = field(default_factory=list)  # par sortie brute du modèle
     sent_claims_by_message: list[list[str]] = field(default_factory=list)  # par message envoyé
@@ -391,7 +392,8 @@ async def play_turn(
     result.action, result.reason = run.action, run.reason
     result.handoff_reason = run.handoff_reason
     result.handed_off = run.handoff_reason is not None or observed["conversation"] == "handed_off"
-    result.reply_text = "\n".join(reversed(tail))
+    result.agent_messages = list(reversed(tail))
+    result.reply_text = "\n".join(result.agent_messages)
     result.llm_written = list(reversed(llm_written))
     result.calls = list(llm.calls)
     result.llm_unavailable = run.handoff_reason == "llm_indisponible" or any(

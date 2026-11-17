@@ -1,5 +1,5 @@
 {
- "description": "Conversations annotées pour `eval-conversations` : plusieurs messages du prospect à la suite, sur la base FICTIVE de démonstration. Chaque tour porte les mêmes annotations qu'un cas de `eval_cases.json` (intentions, décisions, transfert, faits attendus) ; `known` liste les informations de profil déjà données (l'agent ne doit plus les demander) ; `context` marque une question qui ne se comprend qu'avec les messages précédents ; `asks_ai` autorise l'agent à dire qu'il est une IA (question directe). `live_only` : conversation mesurée seulement avec le vrai modèle (elle dépend de la compréhension du contexte, que le faux modèle ne simule pas). `fake` : comportement du faux modèle hors ligne.",
+ "description": "Conversations annotées pour `eval-conversations` : plusieurs messages du prospect à la suite, sur la base FICTIVE de démonstration. Chaque tour porte les mêmes annotations qu'un cas de `eval_cases.json` (intentions, décisions, transfert, faits attendus) ; `known` liste les informations de profil déjà données (l'agent ne doit plus les demander) ; `context` marque une question qui ne se comprend qu'avec les messages précédents ; `asks_ai` autorise l'agent à dire qu'il est une IA (question directe). `live_only` : conversation mesurée seulement avec le vrai modèle (elle dépend de la compréhension du contexte, que le faux modèle ne simule pas). `fake` : comportement du faux modèle hors ligne. `profile_after` : informations que l'agent doit avoir lues après ce tour (« a|b »). `meeting_by` : tour auquel l'agent devrait avoir proposé un rendez-vous de lui-même (indicateur, hors conformité).",
  "conversations": [
   {
    "id": "parcours_rdv_ebihar",
@@ -7,6 +7,7 @@
    "target": "ebihar_students",
    "turns": [
     {"says": "Bonjour, je suis en BTS SIO et je voudrais devenir data analyst.",
+     "profile_after": {"study_level": "bts", "goal": "data analyst"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
      "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "BTS SIO", "goal": "devenir data analyst"},
               "reply": "Bonjour Camille, merci pour votre message. Le programme eBIHAR forme justement des data analysts en alternance. Qu'aimeriez-vous savoir en priorité ?"}},
@@ -29,6 +30,7 @@
    "target": "ebihar_students",
    "turns": [
     {"says": "Bonjour, j'ai un Bac+3 en statistiques et je cherche une alternance en data.",
+     "profile_after": {"study_level": "bac+3|bac +3|bac 3", "goal": "alternance"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
      "fake": {"qualification": {"intent": "interested", "study_level": "Bac+3 statistiques", "goal": "une alternance en data"},
               "reply": "Bonjour Camille, merci pour votre message. Votre profil correspond bien au programme eBIHAR, en alternance. Que souhaitez-vous savoir ?"}},
@@ -40,6 +42,32 @@
      "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["data analyst|analyste"],
      "fake": {"qualification": {"intent": "question"},
               "reply": "Les diplômés deviennent data analyst ou analyste business intelligence dans des entreprises partenaires."}}
+   ],
+   "end": {"conversation": "open"}
+  },
+  {
+   "id": "prospect_engage",
+   "title": "Prospect engagé et qualifié qui ne demande pas de rendez-vous : l'agent le propose de lui-même",
+   "target": "ebihar_students",
+   "meeting_by": 4,
+   "turns": [
+    {"says": "Bonjour, je termine un BTS SIO cette année et je veux travailler dans la data.",
+     "profile_after": {"study_level": "bts", "goal": "data"},
+     "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
+     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "BTS SIO", "goal": "travailler dans la data"},
+              "reply": "Bonjour Camille, merci pour votre message. Le programme eBIHAR prépare aux métiers de la data en alternance. Qu'est-ce qui vous attire le plus dans ce domaine ?"}},
+    {"says": "Quelles sont les conditions d'admission pour eBIHAR ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["bac+2|bac +2|bac 2"],
+     "fake": {"qualification": {"intent": "question", "sentiment": "positive"},
+              "reply": "L'admission est ouverte dès un Bac+2, sur dossier et entretien avec un conseiller pédagogique."}},
+    {"says": "La rentrée eBIHAR a lieu en septembre ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["septembre"],
+     "fake": {"qualification": {"intent": "question", "sentiment": "positive"},
+              "reply": "Oui, la rentrée du programme eBIHAR a lieu en septembre."}},
+    {"says": "Et jusqu'à quand peut-on déposer sa candidature pour eBIHAR ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false,
+     "fake": {"qualification": {"intent": "question", "sentiment": "positive"},
+              "reply": "Les candidatures sont ouvertes jusqu'au 30 juin."}}
    ],
    "end": {"conversation": "open"}
   },
@@ -65,6 +93,7 @@
    "live_only": true,
    "turns": [
     {"says": "Je suis chef de projet depuis 5 ans et je voudrais me former à la data sans quitter mon poste.",
+     "profile_after": {"current_situation": "chef de projet"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false},
     {"says": "Les cours ont lieu quand ?", "context": true, "known": ["current_situation", "goal"],
      "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["soiree|samedi"]},
