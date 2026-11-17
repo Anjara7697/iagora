@@ -119,6 +119,30 @@ def test_sales_technique_rules_are_given_to_the_model():
     assert "question ouverte sur son projet" in reply(asked, missing=["goal"])
 
 
+def test_the_model_never_promises_an_advisor_answer_in_words():
+    """D-34 : « je préfère laisser un conseiller vous répondre » écrit sans le signal laissait la
+    question sans transfert ; la consigne renvoie au signal, et l'avis adouci est interdit."""
+    system = reply([HistoryMessage("prospect", "Les cours sont-ils en français ?")])
+    assert "laisser un conseiller la donner" not in system
+    assert "N'écris jamais qu'un conseiller « précisera »" in system
+    assert "« au profil recherché »" in system and prompts.ADVISOR_MARKER in system
+
+
+def test_an_unanswered_question_is_not_asked_again():
+    """D-34 : le prospect n'a pas répondu à la question précédente : pas de question ce tour-ci."""
+    spoke = [
+        HistoryMessage("agent", "Plutôt la prochaine rentrée, ou une suivante ?"),
+        HistoryMessage("prospect", "Les cours sont-ils en français ?"),
+    ]
+    held = prompts.reply_system(
+        ctx(spoke), {}, [], ["start_term"], mode="continue", hold_question=True
+    )
+    assert "Ta question précédente est restée sans réponse" in held
+    assert "Termine par UNE question" not in held
+    asked = prompts.reply_system(ctx(spoke), {}, [], ["start_term"], mode="continue")
+    assert "Termine par UNE question sur" in asked
+
+
 def test_when_slots_follow_the_answer_the_model_asks_nothing():
     asked = [HistoryMessage(role="prospect", content="Comment se passe l'admission ?")]
     text = prompts.reply_system(ctx(asked), {}, [], ["goal"], mode="continue", then_meeting=True)

@@ -10,7 +10,7 @@ import unicodedata
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.graph.ports import PolicyTuning
+from app.graph.ports import HistoryMessage, PolicyTuning
 from app.graph.state import Action, Decision, Qualification, SalesAgentState
 from app.models.enums import ConversionStage, ScoringSignal
 
@@ -124,6 +124,40 @@ def asks_next_step(text: str) -> bool:
 def asks_about_personal_data(text: str) -> bool:
     t = normalize(text)
     return any(re.search(p, t) for p in _PERSONAL_DATA)
+
+
+# Renvoi vers un conseiller écrit sans le signal `[CONSEILLER]` (« je préfère laisser un conseiller
+# vous apporter cette précision », « un conseiller vous précisera… ») : la réponse manque, il faut
+# un vrai transfert pour tenir la promesse (D-34).
+_INFO_VERBS = r"(donn|precis|apport|indiqu|confirm|communiqu|detaill|repond|expliqu|renseign)"
+_ADVISOR = r"\b(un|le|votre|nos|des) conseillers?(?: [\w.]+){0,3}? "
+_PRONOUNS = r"(vous |nous )?(la |le |les |l.|en |y )?"
+_DEFERS = re.compile(
+    r"laisser (a )?(un|le|votre|nos) conseill"
+    rf"|{_ADVISOR}{_PRONOUNS}{_INFO_VERBS}(era|eront|ra|ront)\b"
+    rf"|{_ADVISOR}(pourra|pourront|saura|sauront|va|vont) {_PRONOUNS}{_INFO_VERBS}(er|re)\b"
+    r"|je n.ai pas (cette |l.|d.|de )?(information|precision|reponse)"
+    r"|je ne dispose pas (de cette|de l.|d.)"
+)
+
+
+def defers_to_advisor_in_words(reply: str) -> bool:
+    """Le message renvoie une information à un conseiller, en toutes lettres."""
+    return bool(_DEFERS.search(normalize(reply)))
+
+
+def question_unanswered(
+    history: list[HistoryMessage], qualification: Qualification | None, inbound: str
+) -> bool:
+    """Le dernier message de l'agent posait une question et le prospect y a répondu par une autre
+    question, sans rien dire de nouveau sur lui : reposer la même question serait insistant
+    (D-34), on la garde pour le message suivant."""
+    if "?" not in inbound:
+        return False  # « d'accord », « bonjour » : la question peut être reposée
+    last = next((m for m in reversed(history) if m.role != "prospect"), None)
+    if last is None or "?" not in last.content:
+        return False
+    return qualification is None or not qualification.profile_updates()
 
 
 _MEETING = [r"rendez[- ]?vous", r"\brdv\b", r"creneau", r"disponibilites?\b"]
