@@ -245,6 +245,8 @@ const PAGE_TITLES: [string, string][] = [
   ["/account", "Mon compte"],
   ["/login", "Connexion"],
   ["/simulator", "Simulateur"],
+  ["/evaluation/", "Passage d’évaluation"],
+  ["/evaluation", "Évaluation"],
 ];
 
 /** Titre du document d'un écran : « Prospects · IAGORA ». */

@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChartColumnBig,
   FlaskConical,
+  Gauge,
   LayoutDashboard,
   ListChecks,
   Megaphone,
@@ -16,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { canAccessSettings, canUseSimulator } from "@/lib/access";
+import { canUseEvaluation } from "@/lib/evaluation";
 import type { User } from "@/lib/types";
 
 type NavItem = {
@@ -29,6 +31,8 @@ type NavItem = {
   adminOnly?: boolean;
   /** Outil de test : visible seulement si le simulateur est activé et permis à ce rôle (`canUseSimulator`). */
   simulator?: boolean;
+  /** Outil de recette : administrateurs, quand le simulateur est activé (`canUseEvaluation`, D-35). */
+  evaluation?: boolean;
 };
 
 export type NavGroup = { name: string; items: NavItem[] };
@@ -68,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/settings", label: "Paramètres", icon: Settings },
       // Entrée propre (NAV-02) : dans le Simulateur, le menu le surligne lui, et non « Paramètres ».
       { href: "/simulator", label: "Simulateur", icon: FlaskConical, simulator: true },
+      { href: "/evaluation", label: "Évaluation", icon: Gauge, evaluation: true },
     ],
   },
 ];
@@ -82,7 +87,8 @@ export function visibleGroups(user: User): NavGroup[] {
         i.href &&
         (isAdmin || !i.adminOnly) &&
         (i.href !== "/settings" || canAccessSettings(user.role)) &&
-        (!i.simulator || canUseSimulator(user.role)),
+        (!i.simulator || canUseSimulator(user.role)) &&
+        (!i.evaluation || canUseEvaluation(user.role)),
     ),
   })).filter((g) => g.items.length > 0);
 }

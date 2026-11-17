@@ -118,7 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <aside
           id="app-navigation"
           aria-label="Menu"
-          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-3 border-r border-border bg-surface p-3 transition-[width] duration-200 ease-out lg:flex ${collapsed ? "w-16" : "w-[240px]"}`}
+          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-3 border-r border-border bg-surface p-3 transition-[width] duration-200 ease-out lg:flex print:hidden ${collapsed ? "w-16" : "w-[240px]"}`}
         >
           {/* Marque et bouton de réduction en haut du menu (le bas reste libre pour le défilement). */}
           <div className={`flex items-center gap-2 pt-2 pb-3 ${collapsed ? "flex-col" : "justify-between pl-2"}`}>
@@ -162,7 +162,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </Drawer.Backdrop>
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:px-7"
+            className="sticky top-0 z-30 flex min-h-14 items-center gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-3 sm:px-4 lg:px-7 print:hidden"
           >
             <Button
               variant="ghost"

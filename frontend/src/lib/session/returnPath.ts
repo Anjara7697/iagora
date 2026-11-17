@@ -8,8 +8,9 @@ const BASE = "http://console.invalid";
 
 const SCREENS = [
   /^\/$/,
-  /^\/(todo|conversations|appointments|prospects|prospects\/import|campaigns|campaigns\/new|dashboard|analytics|agent|knowledge|team|integrations|settings|settings\/testing|simulator|account)$/,
+  /^\/(todo|conversations|appointments|prospects|prospects\/import|campaigns|campaigns\/new|dashboard|analytics|agent|knowledge|team|integrations|settings|settings\/testing|simulator|evaluation|account)$/,
   /^\/(prospects|campaigns)\/[1-9]\d{0,9}$/,
+  /^\/evaluation\/[0-9a-f]{32}$/,
 ];
 
 export function returnPath(value: string | null | undefined): string | null {
