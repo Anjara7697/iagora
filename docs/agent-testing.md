@@ -178,6 +178,27 @@ se comparent d'un passage à l'autre :
 - Informations redemandées, salutations et présentation comme IA sont repérées par des expressions courantes :
   un écart signalé se relit dans les échanges du rapport.
 
+## Page Évaluation (API)
+
+Les trois évaluations se lancent aussi depuis l'application (D-35), avec les mêmes fonctions et donc les mêmes
+chiffres que la ligne de commande. Réservé aux administrateurs, refusé en production.
+
+| Route | Rôle |
+|---|---|
+| `GET /evaluations/catalog` | Suites, cas, conversations et questions disponibles ; vrai modèle et embeddings utilisables ou non |
+| `POST /evaluations` | Lance un passage en tâche de fond (un seul à la fois, `409` sinon) ; réglages : `suite`, `label`, `notes`, `live`, `real_rag`, `pause`, `ids`, `categories`, `ablation`, `price_in`, `price_out`, `min_score`, `cleanup` |
+| `GET /evaluations` | Historique, du plus récent au plus ancien, avec les indicateurs (sans le rapport détaillé) |
+| `GET /evaluations/{id}` | Passage complet : réglages, avancement (`progress`) pendant qu'il tourne, rapport, indicateurs |
+| `POST /evaluations/{id}/cancel` | Arrête le passage ; les résultats déjà obtenus sont gardés (`cancelled`) |
+| `POST /evaluations/import` | Ajoute un rapport `--json` de la ligne de commande (`eval-agent`, `eval-conversations`, `kb-eval`) ; l'échange des anciens rapports de conversations est reconstitué |
+| `PATCH /evaluations/{id}`, `DELETE /evaluations/{id}` | Renommer, dater, annoter ; supprimer |
+
+États d'un passage : `running`, `done`, `cancelled`, `failed` (erreur affichée), `interrupted` (API redémarrée
+pendant le passage). Les indicateurs normalisés (`key`, `label`, `group`, `value`, `display`, `better`) servent à
+comparer deux passages et à tracer l'évolution ; une valeur absente d'un rapport plus ancien vaut `n/a`.
+
+`kb-eval --json <chemin>` écrit maintenant lui aussi ses résultats, importables dans la page.
+
 ## Nettoyage
 
 `--cleanup` (scénarios, évaluations) supprime les prospects créés par la recette sans toucher au jeu de démo.

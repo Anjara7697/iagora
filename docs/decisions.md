@@ -288,3 +288,26 @@ qualification toujours fermée, rendez-vous rarement proposé de lui-même.
 **Mesure.** `eval-conversations` (profil lu, rendez-vous proposé à temps, types de questions, reformulations,
 offres répétées, avis d'admission), avant et après.
 
+## D-35 — Page Évaluation : lancer, suivre et comparer les évaluations depuis l'application
+
+*17 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Les trois évaluations (cas un par un, conversations, base de connaissances) se lancent en ligne de
+commande et produisent des fichiers à copier hors du conteneur ; la comparaison avant/après se fait à la main. Pour
+le suivi du projet et le mémoire, il faut un historique lisible et des comparaisons directes.
+
+**Décision.**
+- Une page **Évaluation**, sur le modèle du Simulateur : outil de recette, **réservée aux administrateurs** (un
+  passage avec le vrai modèle consomme du quota), **refusée en production** par l'API elle-même.
+- Un passage joue les mêmes fonctions que la ligne de commande (mêmes chiffres), en tâche de fond dans l'API,
+  **un seul à la fois**, annulable (les résultats déjà obtenus sont gardés). Tous les réglages de la ligne de
+  commande sont proposés : suite, faux ou vrai modèle, recherche lexicale ou réelle, pause, cas ou conversations
+  choisis, catégories, variante d'ablation, prix par million de jetons, seuil de recherche essayé, nettoyage.
+- Les passages sont gardés dans MongoDB (`eval_runs`) avec le rapport complet (échanges compris) et des
+  **indicateurs normalisés** (valeur, affichage, sens du progrès), identiques pour un passage lancé depuis la
+  page et pour un rapport `--json` **importé** : l'historique part de la première mesure.
+- Seules des données fictives (`@demo.example.com`) sont créées ; elles sont supprimées à la fin si demandé.
+
+**Suite.** L'interface (partie 1b), puis les prospects simulés par un second modèle (partie 2), branchés sur la
+même page comme une suite supplémentaire, entièrement réglable.
+
