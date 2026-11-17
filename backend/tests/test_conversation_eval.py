@@ -156,6 +156,7 @@ async def test_command_refuses_to_run_in_production(monkeypatch):
         ("Qu'est-ce qui vous attire dans la data ?", "exploration"),
         ("Pourquoi souhaitez-vous changer de métier ?", "exploration"),
         ("Pourriez-vous m'indiquer quel est votre niveau d'études ?", "information"),
+        ("Pourriez-vous m'indiquer votre niveau d'études actuel ?", "information"),
         ("Visez-vous la rentrée de septembre ou celle de l'an prochain ?", "alternative"),
         ("Souhaitez-vous que je vous mette en relation avec un conseiller ?", "fermée"),
         ("Où habitez-vous ?", "information"),
