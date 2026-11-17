@@ -17,7 +17,7 @@ from app.agents.defaults import EmptyKnowledgeBase
 from app.config import get_settings
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
-from app.devtools import chat, conversation_eval, evaluation, runner, seed
+from app.devtools import chat, conversation_eval, evaluation, kb_evaluation, runner, seed
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import SCENARIOS, get_scenarios
 from app.graph.ports import KnowledgeBase, LanguageModel, Passage
@@ -299,7 +299,7 @@ async def load_demo_kb(rt: Runtime, *, reset: bool) -> None:
             print(f"  base de démo : {file.stem} {result.status.value} ({result.chunks} extraits)")
 
 
-async def cmd_kb_eval() -> int:
+async def cmd_kb_eval(*, json_path: str | None = None) -> int:
     """Mesure la qualité de la recherche sur des questions types (calibrage du seuil)."""
     rt = build_runtime(fake=True)
     embeddings = require_embeddings()
@@ -308,42 +308,31 @@ async def cmd_kb_eval() -> int:
     )
     async with rt.session_factory() as session:
         title_to_slug = {d.title: d.slug for d in await knowledge.list_documents(session)}
-    cases = json.loads((DEMO_KB_DIR / "eval.json").read_text(encoding="utf-8"))
-    hits, hit_scores, miss_scores, failures = 0, [], [], 0
-    same_topic: list[float] = []
-    for case in cases:
-        passages = await kb.search_all(case["question"], case["target"], 1)
-        top = passages[0] if passages else None
-        score = top.score or 0.0 if top else 0.0
-        slug = title_to_slug.get(top.source.split(" / ")[0]) if top else None
-        retained = top is not None and score >= kb.min_score
-        if case.get("same_topic"):
-            # Même sujet, sans réponse dans les documents : le seuil ne peut pas l'écarter ;
-            # c'est l'agent qui le signale et transfère. Mesuré, jamais compté en échec.
-            same_topic.append(score)
-            print(f"ℹ [{score:.3f}] {case['question']}  → {slug or '—'}"
-                  f"{' (retenu : l’agent doit transférer)' if retained else ' (écarté)'}")  # fmt: skip
-            continue
-        if case["expect"] is None:
-            ok = not retained
-            miss_scores.append(score)
-        else:
-            ok = retained and slug == case["expect"]
-            hit_scores.append(score)
-        failures += not ok
-        print(f"{'✓' if ok else '✗'} [{score:.3f}] {case['question']}  → {slug or '—'}"
-              f"{'' if retained else ' (écarté)'}")  # fmt: skip
-        hits += ok
-    print(f"\n{hits}/{len(cases) - len(same_topic)} conformes — seuil actuel {kb.min_score}")
-    if hit_scores and miss_scores:
-        print(f"Questions pertinentes : score min {min(hit_scores):.3f} ; "
-              f"hors sujet : score max {max(miss_scores):.3f}. "
+    results = await kb_evaluation.run(
+        kb,
+        title_to_slug,
+        kb_evaluation.load_cases(),
+        on_done=lambda r: print(kb_evaluation.format_console(r)),
+    )
+    summary = kb_evaluation.summarize(results, kb.min_score)
+    conform = summary["conform"]
+    print(f"\n{conform['ok']}/{conform['total']} conformes — seuil actuel {kb.min_score}")
+    if summary["relevant_score_min"] is not None and summary["off_topic_score_max"] is not None:
+        print(f"Questions pertinentes : score min {summary['relevant_score_min']:.3f} ; "
+              f"hors sujet : score max {summary['off_topic_score_max']:.3f}. "
               "Un bon seuil se situe entre les deux.")  # fmt: skip
-    if same_topic:
-        print(f"Même sujet sans réponse : scores {min(same_topic):.3f} à {max(same_topic):.3f}. "
+    if summary["same_topic_scores"]:
+        low, high = summary["same_topic_scores"]
+        print(f"Même sujet sans réponse : scores {low:.3f} à {high:.3f}. "
               "Le seuil ne les sépare pas des vraies réponses : l'agent les signale et transfère.")  # fmt: skip
+    if json_path:
+        payload = kb_evaluation.to_payload(results, summary, model=embeddings.model_id)
+        Path(json_path).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"Résultats JSON écrits : {json_path}")
     await _shutdown()
-    return 1 if failures else 0
+    return 1 if conform["ok"] < conform["total"] else 0
 
 
 async def _shutdown() -> None:
