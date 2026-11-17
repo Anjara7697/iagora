@@ -22,7 +22,7 @@ import json
 import re
 import statistics
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -134,6 +134,8 @@ _ASKS_FIELD = {
     "goal": r"votre projet|qu.est.ce qui vous amene|que recherchez|votre objectif",
     "availability": r"disponibilites|quand souhaitez|a quelle echeance",
     "company_need": r"profils? recherches?|quelles competences",
+    "start_term": r"rentree|quelle session|session suivante",
+    "location": r"a distance|sur place|en presentiel|quelle ville",
 }
 
 
@@ -180,6 +182,8 @@ _ELIGIBILITY = re.compile(
     r"correspond\w* (bien |parfaitement |tout a fait )?(aux|a nos) (conditions|criteres|prerequis)"
     r"|vous remplissez|vous etes eligible|votre profil (correspond|est (tout a fait |parfaitement )?"
     r"(coherent|adapte|compatible))|(tout a fait |parfaitement )coherent avec"
+    r"|correspond\w* (bien |parfaitement |tout a fait )?au profil (recherche|attendu|vise)"
+    r"|vous avez (bien |tout a fait )?le profil"
 )
 LONG_MESSAGE_WORDS = 120  # la consigne de l'agent : 120 mots au plus
 
@@ -213,6 +217,13 @@ def reformulates(prospect: str, message: str) -> bool:
         return False
     sentences = [s for s in re.split(r"(?<=[.!?])\s+", text) if not _GREETING.search(s)]
     return bool(sentences) and len(_tokens(sentences[0]) & _tokens(prospect)) >= 2
+
+
+def repeats_question(previous: str, message: str, known: Iterable[str] = ()) -> bool:
+    """Le message repose la question du message précédent de l'agent : même information demandée,
+    toujours inconnue (`known` : champs renseignés depuis), ou même phrase."""
+    same = (set(asked_fields(message)) & set(asked_fields(previous))) - set(known)
+    return bool(same) or bool(set(questions_of(message)) & set(questions_of(previous)))
 
 
 def offers_advisor(message: str) -> bool:
@@ -255,6 +266,7 @@ class ConversationResult:
     advisor_offers: int = 0
     eligibility_verdicts: int = 0
     template_greetings: int = 0
+    repeated_questions: list[str] = field(default_factory=list)  # « tour n : question »
     meeting_turn: int | None = None  # premier tour où l'agent propose ou réserve un rendez-vous
     final: dict[str, Any] = field(default_factory=dict)
     stopped_early: bool = False  # la conversation s'est arrêtée avant le dernier tour
@@ -344,7 +356,14 @@ def _measure(result: ConversationResult, index: int, turn: Turn, r: CaseResult) 
             result.greetings_repeated += 1  # rédigé par le modèle : compte dans la conformité
         else:
             result.template_greetings += 1  # texte fixe (créneaux, confirmation) : indicateur
+    agent = [t for role, t in result.transcript if role == "agent"]
+    previous = agent[seen_before - 1] if seen_before > 0 else None
+    profile = r.observed.get("profile") or {}
+    known = [f for f, v in profile.items() if v]
     for message in r.llm_written:
+        # Question laissée sans réponse par le prospect, reposée telle quelle (D-34).
+        if previous is not None and repeats_question(previous, message, known):
+            result.repeated_questions.append(f"tour {index + 1}")
         result.agent_messages += 1
         if not turn.asks_ai and introduces_itself_as_ai(message):
             result.ai_self_intros += 1
@@ -466,6 +485,7 @@ class ConversationSummary:
     repeated_offers: int
     eligibility_verdicts: int
     template_greetings: int
+    repeated_questions: int
 
     def as_dict(self) -> dict[str, Any]:
         def rate(r: Rate) -> dict[str, Any]:
@@ -505,6 +525,7 @@ class ConversationSummary:
                 "repeated_advisor_offers": self.repeated_offers,
                 "eligibility_verdicts": self.eligibility_verdicts,
                 "template_greetings": self.template_greetings,
+                "repeated_questions": self.repeated_questions,
             },
         }
 
@@ -556,6 +577,7 @@ def summarize(results: list[ConversationResult]) -> ConversationSummary:
         repeated_offers=sum(r.repeated_offers for r in ev),
         eligibility_verdicts=sum(r.eligibility_verdicts for r in ev),
         template_greetings=sum(r.template_greetings for r in ev),
+        repeated_questions=sum(len(r.repeated_questions) for r in ev),
     )
 
 
@@ -585,6 +607,7 @@ def _issues(r: ConversationResult) -> list[str]:
         issues.append(f"plus d'une question par message : {r.multi_questions} message(s)")
     if r.end_ok is False:
         issues.append(f"état final {r.final} (attendu : {r.conversation.end})")
+    issues += [f"question reposée sans réponse ({x}, indicateur)" for x in r.repeated_questions]
     return issues
 
 
@@ -673,6 +696,8 @@ def format_markdown(
         "conditions » : l'admission revient à l'école |",
         f"| Salutations dans les messages fixes | {s.template_greetings} | « Bonjour » en tête des "
         "créneaux ou de la confirmation, en pleine conversation |",
+        f"| Questions reposées | {s.repeated_questions} | la question restée sans réponse revient "
+        "au message suivant (D-34 : objectif 0) |",
         "",
         "## Conversations",
         "",
@@ -758,6 +783,7 @@ def to_payload(
             "repeated_advisor_offers": r.repeated_offers,
             "eligibility_verdicts": r.eligibility_verdicts,
             "template_greetings": r.template_greetings,
+            "repeated_questions": r.repeated_questions,
             "final": {k: v for k, v in r.final.items() if k != "profile"},
             "seconds": round(r.seconds, 3),
             "turns": [

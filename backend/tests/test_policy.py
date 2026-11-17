@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 from app.graph import policy
-from app.graph.ports import ProspectContext
+from app.graph.ports import HistoryMessage, ProspectContext
 from app.graph.prompts import format_slot
 from app.graph.state import Action, Qualification
 from app.models.enums import ConversionStage as S
@@ -477,3 +477,50 @@ def test_a_question_about_the_agent_is_answered_not_nurtured():
     s = state(Qualification(intent="other"), total=5, missing=["goal"])
     s["inbound_text"] = "Je parle à un robot ?"
     assert policy.decide(s).action is Action.CONTINUE_CONVERSATION
+
+
+# --- Finitions (D-34) ---
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Concernant la langue d'enseignement, je préfère laisser un conseiller vous apporter cette "
+        "précision lors d'un échange.",
+        "Un conseiller vous précisera le tarif.",
+        "Un conseiller de DATUM Academy vous répondra.",
+        "Le rythme dépend de l'entreprise : un conseiller pourra vous le confirmer.",
+        "Je n'ai pas cette information.",
+    ],
+)
+def test_an_advisor_answer_promised_in_words_is_recognised(reply):
+    assert policy.defers_to_advisor_in_words(reply)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "La sélection comprend un entretien avec un conseiller pédagogique.",
+        "Un conseiller relit nos échanges et peut prendre le relais à tout moment.",
+        "Je transmets votre demande à un conseiller, qui reprendra la conversation avec vous.",
+        "Un conseiller peut vous recevoir en visioconférence.",
+    ],
+)
+def test_mentioning_an_advisor_is_not_a_promise_to_answer(reply):
+    assert not policy.defers_to_advisor_in_words(reply)
+
+
+def test_an_unanswered_question_is_recognised():
+    asked = [
+        HistoryMessage("agent", "Plutôt la prochaine rentrée, ou une suivante ?"),
+        HistoryMessage("prospect", "Les cours sont-ils en français ?"),
+    ]
+    question = Qualification(intent="question")
+    said = asked[1].content
+    assert policy.question_unanswered(asked, question, said)
+    answered = Qualification(intent="interested", start_term="la prochaine rentrée")
+    assert not policy.question_unanswered(asked, answered, "La prochaine, et c'est en français ?")
+    assert not policy.question_unanswered(asked, question, "D'accord.")  # pas une autre question
+    statement = [HistoryMessage("agent", "Le programme dure 18 mois."), asked[1]]
+    assert not policy.question_unanswered(statement, question, said)
+    assert not policy.question_unanswered([asked[1]], question, said)  # l'agent n'a rien dit

@@ -176,6 +176,18 @@ def test_reformulation_advisor_offer_and_admission_verdict_are_detected():
     assert ce.gives_eligibility_verdict("Votre profil correspond aux conditions d'admission.")
     assert ce.gives_eligibility_verdict("Votre BTS est tout à fait cohérent avec le programme.")
     assert not ce.gives_eligibility_verdict("L'admission est ouverte dès un Bac+2.")
+    soft = "Après votre BTS SIO, ce qui correspond au profil recherché pour le programme eBIHAR."
+    assert ce.gives_eligibility_verdict(soft)  # D-34 : l'avis adouci compte aussi
+
+
+def test_a_question_left_unanswered_and_asked_again_is_detected():
+    before = "Le programme dure 18 mois. Plutôt la prochaine rentrée, ou une session suivante ?"
+    again = "Les cours sont en français. Visez-vous la prochaine rentrée ou une suivante ?"
+    assert ce.asked_fields(again) == ["start_term"]
+    assert ce.repeats_question(before, again)
+    assert not ce.repeats_question(before, again, known=["start_term"])  # répondu entre-temps
+    assert not ce.repeats_question(before, "Qu'est-ce qui vous attire dans la data ?")
+    assert ce.asked_fields("Plutôt sur place ou à distance ?") == ["location"]
 
 
 def test_the_profile_read_is_compared_with_the_expected_one():
