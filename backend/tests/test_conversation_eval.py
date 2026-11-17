@@ -145,3 +145,65 @@ async def test_command_refuses_to_run_in_production(monkeypatch):
         await commands.cmd_eval_conversations(
             [], fake=True, real_rag=False, pause=0, report=None, json_path=None, cleanup=False
         )
+
+
+# --- Qualification et technique de vente (indicateurs) ---
+
+
+@pytest.mark.parametrize(
+    ("question", "kind"),
+    [
+        ("Qu'est-ce qui vous attire dans la data ?", "exploration"),
+        ("Pourquoi souhaitez-vous changer de métier ?", "exploration"),
+        ("Pourriez-vous m'indiquer quel est votre niveau d'études ?", "information"),
+        ("Visez-vous la rentrée de septembre ou celle de l'an prochain ?", "alternative"),
+        ("Souhaitez-vous que je vous mette en relation avec un conseiller ?", "fermée"),
+        ("Où habitez-vous ?", "information"),
+    ],
+)
+def test_question_kinds_follow_the_funnel_vocabulary(question, kind):
+    assert ce.question_kind(question) == kind
+
+
+def test_reformulation_advisor_offer_and_admission_verdict_are_detected():
+    said = "Je suis chef de projet depuis 5 ans et je veux me former à la data."
+    assert ce.reformulates(said, "Si je comprends bien, vous voulez évoluer dans votre poste.")
+    assert ce.reformulates(said, "En tant que chef de projet, la data vous servira au quotidien.")
+    assert not ce.reformulates("Combien de temps dure la formation ?", "Elle dure 18 mois.")
+    assert ce.offers_advisor("Souhaitez-vous échanger avec un conseiller ?")
+    assert not ce.offers_advisor("Un conseiller vous recevra en visioconférence.")
+    assert ce.gives_eligibility_verdict("Votre profil correspond aux conditions d'admission.")
+    assert ce.gives_eligibility_verdict("Votre BTS est tout à fait cohérent avec le programme.")
+    assert not ce.gives_eligibility_verdict("L'admission est ouverte dès un Bac+2.")
+
+
+def test_the_profile_read_is_compared_with_the_expected_one():
+    profile = {"study_level": "BTS SIO", "goal": "devenir data analyst"}
+    assert ce.profile_matches(profile, {"study_level": "bts", "goal": "data analyst|data"})
+    assert not ce.profile_matches(profile, {"study_level": "licence|bac+3"})
+    assert not ce.profile_matches({}, {"goal": "data"})
+
+
+async def test_a_profile_not_read_makes_the_conversation_fail(session_factory, mongo_db):
+    conv = ce.load_conversations(["parcours_rdv_ebihar"])[0]
+    conv.turns[0].fake = {**conv.turns[0].fake, "qualification": {"intent": "interested"}}
+    (r,) = await ce.run_conversations(session_factory, mongo_db, [conv], llm=FakeLLM())
+    assert r.profile_checks[0] is False and not r.ok
+    assert any("profil lu" in i for i in ce._issues(r))
+
+
+async def test_sales_indicators_are_measured_without_changing_conformity(session_factory, mongo_db):
+    convs = ce.load_conversations(["parcours_rdv_ebihar", "prospect_engage"])
+    results = await ce.run_conversations(session_factory, mongo_db, convs, llm=FakeLLM())
+    parcours, engage = results
+    assert parcours.ok and engage.ok  # les indicateurs ne changent pas la conformité
+    assert parcours.meeting_turn == 3  # le prospect a demandé le rendez-vous au tour 3
+    # Créneaux et confirmation sont des textes fixes qui commencent par « Bonjour ».
+    assert parcours.template_greetings == 2 and parcours.greetings_repeated == 0
+    assert engage.meeting_on_time is not None and "exploration" in engage.question_kinds
+    summary = ce.summarize(results)
+    indicators = summary.as_dict()["sales_indicators"]
+    kinds = {"exploration", "information", "alternative", "fermée"}
+    assert set(indicators["question_kinds"]) == kinds
+    md = ce.format_markdown(results, summary, mode="hors ligne", model="fake", knowledge="démo")
+    assert "Qualification et technique de vente" in md and "Rendez-vous proposé à temps" in md
