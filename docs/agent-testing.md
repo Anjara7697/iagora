@@ -179,10 +179,27 @@ se comparent d'un passage à l'autre :
 - Informations redemandées, salutations et présentation comme IA sont repérées par des expressions courantes :
   un écart signalé se relit dans les échanges du rapport.
 
-## Page Évaluation (API)
+## Page Évaluation
 
 Les trois évaluations se lancent aussi depuis l'application (D-35), avec les mêmes fonctions et donc les mêmes
 chiffres que la ligne de commande. Réservé aux administrateurs, refusé en production.
+
+Dans la console, **Évaluation** (menu Administration, sous Simulateur) :
+
+- **Historique** : tous les passages, lancés ou importés, filtrables par suite ; une ligne ouvre le passage.
+- **Lancer** : suite, nom et notes, faux ou vrai modèle, vraie recherche, pause, éléments joués, catégories, variante,
+  prix, seuil essayé, nettoyage. Avec le vrai modèle, une confirmation annonce le nombre d'appels estimé.
+- **Comparer** : deux passages d'une même suite côte à côte, chaque indicateur avec son écart et son sens
+  (« en progrès », « en recul », « inchangé ») ; par défaut l'avant-dernier et le dernier.
+- **Évolution** : la courbe d'un indicateur, du premier passage au dernier, avec le tableau des valeurs.
+- **Un passage** (`/evaluation/<id>`) : avancement en direct, annulation, indicateurs regroupés, puis le détail :
+  chaque conversation avec ses écarts et l'échange complet, chaque cas avec le message et la réponse, chaque question
+  avec le document trouvé. « Comparer au précédent », « Imprimer » (sans le menu, pour une annexe), modifier le nom,
+  la date ou les notes, supprimer.
+- **Importer un rapport** : le fichier `--json` d'une évaluation en ligne de commande ; nom et date du fichier
+  proposés.
+
+### API
 
 | Route | Rôle |
 |---|---|
