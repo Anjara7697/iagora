@@ -70,8 +70,8 @@ pydantic-settings==2.16.3  # via -c requirements.lock.txt, -r requirements.txt
 pygments==2.21.0          # via pytest
 pyjwt==2.15.1             # via redis, -c requirements.lock.txt, -r requirements.txt
 pymongo==4.20.0           # via motor, -c requirements.lock.txt
-pypdf==7.1.0              # via -c requirements.lock.txt, -r requirements.txt
-pytest==8.4.2             # via pytest-asyncio, pytest-cov, -r requirements-dev.txt
+pypdf==7.0.1              # via -c requirements.lock.txt, -r requirements.txt
+pytest==9.2.0             # via pytest-asyncio, pytest-cov, -r requirements-dev.txt
 pytest-asyncio==1.5.0     # via -r requirements-dev.txt
 pytest-cov==6.3.0         # via -r requirements-dev.txt
 python-discovery==1.9.5   # via virtualenv

@@ -136,7 +136,8 @@ class LexicalKnowledge:
         self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
     ) -> list[Passage]:
         wanted = _tokens(query)
-        if not wanted:
+        # Comme la vraie base : ces documents fictifs ne sont renvoyés qu'aux prospects fictifs.
+        if not wanted or not include_demo:
             return []
         need = min(2, len(wanted))
         scored = []
@@ -163,7 +164,9 @@ class RecordingKnowledge:
     async def search(
         self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
     ) -> list[Passage]:
-        found = await self.inner.search(query, target_code, limit)
+        # `include_demo` doit suivre : les cas jouent des prospects fictifs, et la vraie recherche
+        # (`--rag-reel`) ne renvoie les documents de démonstration qu'à eux.
+        found = await self.inner.search(query, target_code, limit, include_demo=include_demo)
         self.returned.extend(found)
         return found
 
