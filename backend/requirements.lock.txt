@@ -13,7 +13,7 @@ cryptography==50.0.2      # via google-auth, pyjwt
 distro==1.9.0             # via google-genai, langsmith
 dnspython==2.9.2          # via email-validator, pymongo
 email-validator==2.3.0    # via pydantic
-fastapi==0.162.5          # via -r requirements.txt
+fastapi==0.162.6          # via -r requirements.txt
 filetype==1.2.0           # via langchain-google-genai
 google-auth==2.62.2       # via google-genai
 google-genai==3.3.0       # via langchain-google-genai
@@ -49,10 +49,10 @@ pyasn1-modules==0.4.2     # via google-auth
 pycparser==3.12           # via cffi
 pydantic==2.14.3          # via fastapi, google-genai, langchain-core, langchain-google-genai, langgraph, langsmith, pydantic-settings, -r requirements.txt
 pydantic-core==2.50.4     # via pydantic
-pydantic-settings==2.16.2  # via -r requirements.txt
+pydantic-settings==2.16.3  # via -r requirements.txt
 pyjwt==2.15.1             # via redis, -r requirements.txt
 pymongo==4.20.0           # via motor
-pypdf==7.0.1              # via -r requirements.txt
+pypdf==7.1.0              # via -r requirements.txt
 python-dotenv==1.2.4      # via pydantic-settings, uvicorn
 python-multipart==0.0.33  # via -r requirements.txt
 pyyaml==6.0.3             # via langchain-core, uvicorn
