@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { campaignReturnHref } from "@/lib/campaignNav";
 import { prospectReturnHref } from "@/lib/prospectResults";
-import { BackLink } from "./ds/controls";
+import { BackLink } from "../ds/controls";
 
 export default function ProspectResultsReturn() {
   const params = useSearchParams();

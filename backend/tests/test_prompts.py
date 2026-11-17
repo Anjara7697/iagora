@@ -76,3 +76,21 @@ def test_prospect_content_is_data_never_instructions():
     assert "\n" not in line.removeprefix("- goal : ")
     assert len(line) <= len("- goal : ") + prompts.PROFILE_VALUE_MAX
     assert rendered.count("\n") == 1  # prénom + objectif : aucune ligne injectée
+
+
+def test_a_question_without_answer_in_the_documents_is_signalled_not_promised():
+    """Répondre au prospect : le modèle signale ce que les extraits ne couvrent pas, pour que
+    l'application transfère au lieu de promettre un conseiller sans prévenir personne."""
+    asked = [HistoryMessage(role="prospect", content="Quel salaire à la sortie ?")]
+    assert prompts.ADVISOR_MARKER in reply(asked)
+    assert prompts.ADVISOR_MARKER in prompts.strict_retry_note(["cpf"])
+    # Premier message ou entretien : aucune question à laquelle répondre, pas de signal.
+    assert prompts.ADVISOR_MARKER not in reply()
+    nurture = prompts.reply_system(ctx(asked), {}, [], [], mode="nurture")
+    assert prompts.ADVISOR_MARKER not in nurture
+
+
+def test_the_advisor_signal_is_recognised_however_it_is_written():
+    assert prompts.defers_to_advisor("[CONSEILLER] Je préfère laisser un conseiller répondre.")
+    assert prompts.defers_to_advisor("Un conseiller vous répondra. [ Conseiller ]")
+    assert not prompts.defers_to_advisor("Un conseiller peut vous recevoir en visioconférence.")

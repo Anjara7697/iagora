@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import RunView from "@/components/TraceView";
+import RunView from "@/components/agent/TraceView";
 import { Box } from "@/components/ds/card";
 import { FilterChip } from "@/components/ds/controls";
 import { STAGES, label } from "@/lib/labels";

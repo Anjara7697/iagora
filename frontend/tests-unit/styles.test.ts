@@ -32,7 +32,14 @@ test("échelle de texte : pas d'interligne accolé à une classe type-* (classe 
 
 test("rayons : seulement sm, lg et full (hors bulles du fil de Conversations, règle 7)", () => {
   assert.deepEqual(
-    find(/\brounded-(xl|2xl|3xl|md)\b/).filter((hit) => !hit.startsWith("components/ConversationView.tsx")),
+    find(/\brounded-(xl|2xl|3xl|md)\b/).filter((hit) => !hit.startsWith("components/conversations/ConversationView.tsx")),
+    [],
+  );
+});
+
+test("nombres : saisis dans NumberInput, jamais en type=\"number\" brut (un champ vidé deviendrait 0, FORM-01)", () => {
+  assert.deepEqual(
+    find(/type="number"/).filter((hit) => !hit.startsWith("components/ds/controls.tsx")),
     [],
   );
 });

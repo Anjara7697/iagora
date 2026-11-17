@@ -14,6 +14,8 @@ question du prospect
   → seuil de pertinence (RAG_MIN_SCORE)                [en dessous : l'extrait est écarté]
   → aucun extrait ? question précise ⇒ transfert au conseiller (question_hors_base)
   → extraits ⇒ le modèle rédige ; le code vérifie les chiffres ; la source est tracée dans le message
+  → extraits du même sujet mais sans la réponse ⇒ le modèle écrit [CONSEILLER] ; rien n'est envoyé,
+    transfert au conseiller (question_hors_base)
 ```
 
 ## Documents
@@ -88,6 +90,12 @@ par Git ni par un outil externe.
 liés à la question ; trop haut : il transfère des questions auxquelles la base sait répondre. Après tout changement
 de modèle ou de documents, lancer `kb-eval` : il affiche le score le plus bas des questions pertinentes et le plus
 haut des questions hors sujet ; le bon seuil se situe entre les deux.
+
+Le seuil ne peut pas tout trier. Une question du même sujet sans réponse dans les documents (« Quel salaire à
+la sortie ? », « Proposez-vous un logement ? ») ramène des extraits proches, au même score que les vraies
+réponses. `kb-eval` affiche ces questions à part (`ℹ`), sans les compter en échec. C'est l'agent qui les traite :
+il signale que les extraits ne répondent pas (`[CONSEILLER]`) et l'application transfère au conseiller, au lieu
+d'envoyer « un conseiller vous répondra » sans prévenir personne.
 
 ## Garde-fous
 

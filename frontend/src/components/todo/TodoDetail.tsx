@@ -13,7 +13,7 @@ import { LinkButton, Notice, Tag, TextLink } from "@/components/ds/controls";
 import { Eyebrow, cx } from "@/components/ds/layout";
 import { Collapse } from "@/components/ds/collapse";
 import { reveal } from "@/components/ds/motion";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { CHANNELS, HANDOFF_REASONS, PRIORITIES, RISKS, formatDate, label, EXECUTION } from "@/lib/labels";
 import { Box } from "@/components/ds/card";

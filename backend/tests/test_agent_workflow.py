@@ -13,7 +13,7 @@ import pytest
 from app.agents.defaults import RecordingMessenger, UnconfiguredCalendar
 from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
 from app.config import get_settings
-from app.graph import policy
+from app.graph import policy, prompts
 from app.graph.builder import build_workflow
 from app.graph.ports import CalendarError, Deps, LLMConfigError, LLMUnavailableError, Passage
 from app.graph.state import Qualification
@@ -284,6 +284,46 @@ async def test_question_is_answered_from_the_validated_knowledge_base(client, en
     ]
 
 
+async def test_a_question_the_documents_do_not_answer_is_really_handed_off(client, env):
+    """Des extraits proches, mais sans la réponse : le modèle le signale et l'application transfère,
+    au lieu d'envoyer « un conseiller vous répondra » sans prévenir personne."""
+    question = "Quel salaire peut-on espérer à la sortie ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, question)
+    # Un extrait proche (même sujet) mais qui ne donne pas la réponse.
+    near = "À la sortie du programme eBIHAR, les diplômés occupent des postes de data analyst."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = lambda system, messages: (
+        "[CONSEILLER] Je préfère laisser un conseiller vous répondre sur ce point."
+        if "Extraits de la base" in system
+        else "Le prospect demande le salaire à la sortie."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    assert prompts.ADVISOR_MARKER in env.llm.generate_calls[0][0]
+    conv = await conversation(client, cid)
+    assert conv["status"] == "handed_off" and conv["handoff"]["pending_question"] == question
+    assert not any("CONSEILLER" in m["content"] for m in conv["messages"])
+    assert conv["messages"][-1]["metadata"]["mode"] == "handoff"
+
+
+async def test_the_advisor_signal_after_a_rejected_draft_hands_off_as_out_of_base(client, env):
+    pid, mid, cid = await lead(client, "Ma formation est-elle finançable par le CPF ?")
+    near = "La formation eBIHAR se déroule en alternance."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    replies = iter(["Oui, elle est éligible au CPF.", "[CONSEILLER] Un conseiller vous répondra."])
+    env.llm.reply = lambda system, messages: (
+        next(replies) if "Extraits de la base" in system else "Résumé."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    texts = [m["content"] for m in (await conversation(client, cid))["messages"]]
+    assert not any("CPF" in t and "éligible" in t for t in texts)
+
+
 # --- NF-10 : jamais d'information inventée ---
 
 
@@ -347,6 +387,35 @@ async def test_opt_out_is_detected_without_the_model_and_stops_everything(
     assert blocked.status_code == 409
 
 
+async def test_a_request_to_delete_personal_data_unsubscribes_and_reaches_an_advisor(
+    client, env, session_factory
+):
+    """RGPD : « supprimez mes données » vaut désinscription immédiate ET demande qu'un humain doit
+    traiter sous un mois. La conversation passe au conseiller ; rien n'est écrit au prospect."""
+    text = "Je veux que vous supprimiez mes données personnelles."
+    pid, mid, cid = await lead(client, text)
+    env.llm.qualification = Qualification(intent="opt_out")
+    out = (await run(client, cid)).json()
+    assert out["action"] == "opt_out" and out["handoff_reason"] == "donnees_personnelles"
+    async with session_factory() as s:
+        assert (await s.get(Prospect, pid)).consent_status.value == "opted_out"
+    conv = await conversation(client, cid)
+    assert conv["status"] == "handed_off"
+    assert all(m["role"] == "prospect" for m in conv["messages"])  # aucun message au prospect
+    assert "RGPD" in conv["handoff"]["recommended_action"]
+    todo = (await client.get(f"{API}/todo")).json()["items"]
+    item = next(i for i in todo if i["conversation_id"] == cid)
+    assert item["priority"] == "critical" and item["recommendation"]["risk"] == "high"
+
+
+async def test_a_stop_with_a_complaint_is_recorded_and_handed_off(client, env):
+    pid, mid, cid = await lead(client, "STOP, c'est du harcèlement.")
+    out = (await run(client, cid)).json()
+    assert out["action"] == "opt_out" and out["handoff_reason"] == "situation_sensible"
+    assert env.llm.extract_calls == []  # arrêt détecté sans le modèle
+    assert (await conversation(client, cid))["status"] == "handed_off"
+
+
 async def test_already_unsubscribed_prospect_is_never_contacted(client, env):
     pid, mid, cid = await lead(client, None)
     await client.post(f"{API}/prospects/{pid}/opt-out", json={})
@@ -398,6 +467,11 @@ async def test_reply_generation_failure_after_qualification_hands_off(client, en
             "Je veux parler à un conseiller.",
             Qualification(intent="needs_advisor"),
             "demande_conseiller",
+        ),
+        (
+            "Que faites-vous de mes données personnelles ?",
+            Qualification(intent="needs_advisor"),
+            "donnees_personnelles",
         ),
         ("Hmm... peut-être ?", Qualification(intent="question", confidence=0.2), "incertitude"),
         (

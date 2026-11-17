@@ -5,7 +5,7 @@ import { Ellipsis, MessageSquare, Play, ShieldCheck, ShieldOff, Trash2 } from "l
 import { Btn, LinkButton, Tag } from "@/components/ds/controls";
 import { Box } from "@/components/ds/card";
 import { Eyebrow } from "@/components/ds/layout";
-import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ui";
+import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { CONSENT, fullName, label } from "@/lib/labels";
 import type { Conversation, Prospect } from "@/lib/types";
 
@@ -48,7 +48,7 @@ export default function ProspectHeader({
   const initials =
     [p.first_name, p.last_name]
       .filter(Boolean)
-      .map((name) => name![0])
+      .flatMap((name) => (name ? [name[0]] : []))
       .join("")
       .slice(0, 2)
       .toUpperCase() || "?";

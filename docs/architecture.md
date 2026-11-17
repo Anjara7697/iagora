@@ -185,7 +185,8 @@ Détails : [deploiement.md](deploiement.md).
   mongomock en local, sur PostgreSQL et MongoDB réels en CI.
 - Frontend : ESLint, `tsc`, build, plus de 200 tests Playwright avec API simulée (et audit d'accessibilité axe),
   plus un parcours contre le vrai backend (tâche CI `e2e-api`).
-- Dépendances : Dependabot (une PR groupée par écosystème chaque lundi, vers `dev`) et tâche CI `audit`
+- Dépendances : Dependabot (une PR groupée par écosystème le 1er du mois, versions majeures ignorées, vers
+  `dev`, D-31) et tâche CI `audit`
   (`pip-audit`, `npm audit`), non bloquante pour l'instant.
 - Workflow n8n : tests hors ligne (`node --test tools/n8n/prospect.test.mjs`).
 - CI : `.github/workflows/ci.yml` ; déploiement de `dev` : `.github/workflows/deploy-dev.yml`.

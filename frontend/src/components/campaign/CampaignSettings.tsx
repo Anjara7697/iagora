@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import CampaignOwnership from "@/components/CampaignOwnership";
+import CampaignOwnership from "@/components/campaign/CampaignOwnership";
 import { Btn, CheckCardGroup, Tag } from "@/components/ds/controls";
 import { Panel } from "@/components/ds/layout";
 import { TARGETS, label } from "@/lib/labels";

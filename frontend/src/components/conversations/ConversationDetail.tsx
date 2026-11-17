@@ -5,14 +5,15 @@
  * durables, contexte, fil, brouillon de l'agent à décider sur place et réponse du conseiller.
  */
 
+import { draftStatus } from "@/lib/messages";
 import { Alert, Avatar, Button, Dropdown, toast } from "@heroui/react";
 import { Bot, Ellipsis, Hand, PenLine, RotateCcw, Send, Archive, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { displayNameOf } from "@/components/shell/AccountMenu";
-import ConversationView from "@/components/ConversationView";
-import { useReplyDraft } from "@/components/ReplyDrafts";
+import ConversationView from "@/components/conversations/ConversationView";
+import { useReplyDraft } from "@/components/shell/ReplyDrafts";
 import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { Btn, ErrorText, LinkButton, Notice, Tag, TextBox } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
@@ -20,7 +21,7 @@ import { reveal } from "@/components/ds/motion";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { DraftPanel } from "@/components/todo/DraftPanel";
 import type { DecisionResult } from "@/components/todo/shared";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { api, ApiError, qs } from "@/lib/api";
 import { CHANNELS, CONVERSATION_STATUS, HANDOFF_REASONS, initials, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
@@ -92,7 +93,7 @@ export function ConversationDetail({
   const readOnly = user?.role === "VIEWER";
   const pendingDraft = conv?.messages.some(
     (m) =>
-      (m.metadata.draft as { status?: string } | undefined)?.status ===
+      draftStatus(m) ===
       "pending",
   );
   const optedOut = p?.consent_status === "opted_out";
@@ -153,7 +154,7 @@ export function ConversationDetail({
     }, { title: "Réponse enregistrée", description: "Son état d’envoi s’affiche sous le message dans le fil." });
 
   const pendingId = conv?.messages.find(
-    (m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending",
+    (m) => draftStatus(m) === "pending",
   )?.id;
   // Le brouillon en attente se décide ici, avec le panneau d'« À traiter » (même API, mêmes confirmations).
   // Un brouillon décidé ici disparaît aussitôt, sans attendre le rechargement du fil ; un nouveau brouillon

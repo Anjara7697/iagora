@@ -2,11 +2,11 @@
 
 import { Alert } from "@heroui/react";
 import { MessageSquare } from "lucide-react";
-import ConversationView from "@/components/ConversationView";
-import InteractionHistory from "@/components/InteractionHistory";
+import ConversationView from "@/components/conversations/ConversationView";
+import InteractionHistory from "@/components/conversations/InteractionHistory";
 import { Notice, Tag } from "@/components/ds/controls";
 import { EmptyPanel, Panel } from "@/components/ds/layout";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import type { ApiError } from "@/lib/api";
 import { CHANNELS, CONVERSATION_STATUS, HANDOFF_REASONS, fullName, label } from "@/lib/labels";
 import type { Conversation, Prospect } from "@/lib/types";

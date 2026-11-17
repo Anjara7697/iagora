@@ -3,17 +3,13 @@
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Btn, TextInput } from "@/components/ds/controls";
-import { Screen, initialsOf as initials } from "@/components/ds/layout";
+import { PageHeader, Screen } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } from "@/components/ds/settings";
-import { MyCalendar } from "@/components/MyCalendar";
-import { MyZoom } from "@/components/MyZoom";
+import { MyCalendar } from "@/components/account/MyCalendar";
+import { MyZoom } from "@/components/account/MyZoom";
 import { api, ApiError } from "@/lib/api";
+import { ROLE_LABELS } from "@/lib/labels";
 
-const ROLE_LABELS = {
-  ADMIN: "Administrateur",
-  ADVISOR: "Conseiller",
-  VIEWER: "Observateur",
-};
 
 export default function AccountPage() {
   const user = useCurrentUser();
@@ -49,21 +45,15 @@ export default function AccountPage() {
 
   return (
     <Screen className="max-w-[960px]">
-      <header className="flex flex-wrap items-center gap-4">
-        <span
-          className="inline-flex size-16 shrink-0 items-center justify-center rounded-lg bg-accent-soft type-title font-semibold text-accent-soft-foreground"
-          aria-hidden="true"
-        >
-          {initials(user.username)}
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="type-caption tracking-[0.06em] text-muted uppercase">Mon compte</span>
-          <h1 className="type-display font-semibold tracking-[-0.02em] text-foreground">{user.username}</h1>
-          <p className="type-body text-muted">
-            {user.email} · {ROLE_LABELS[user.role]}
-          </p>
-        </div>
-      </header>
+      {/* En-tête commun (règle 1), titre identique au menu du compte et à l'onglet. */}
+      <PageHeader
+        title="Mon compte"
+        subtitle={
+          <>
+            <span className="font-medium text-foreground">{user.username}</span> · {user.email} · {ROLE_LABELS[user.role]}
+          </>
+        }
+      />
       {user.must_change_password && (
         <p className="rounded-lg bg-warning-soft px-4 py-3 type-body text-warning-soft-foreground" role="alert">
           Votre mot de passe est temporaire : choisissez le vôtre pour accéder

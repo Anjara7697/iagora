@@ -6,7 +6,7 @@ import { APPOINTMENT_STATUS, label } from "@/lib/labels";
 import type { Appointment } from "@/lib/types";
 
 /** Couleur du statut d'un rendez-vous (palette commune aux écrans Rendez-vous et Aujourd'hui). */
-export const APPOINTMENT_TONES: Record<string, Tone> = {
+const APPOINTMENT_TONES: Record<string, Tone> = {
   proposed: "warning",
   scheduled: "accent",
   done: "success",
@@ -15,7 +15,7 @@ export const APPOINTMENT_TONES: Record<string, Tone> = {
 };
 
 /** Lien de visio navigable (http ou https) ; toute autre valeur est ignorée. */
-export function meetingLink(value: string | null) {
+function meetingLink(value: string | null) {
   try {
     const url = new URL(value ?? "");
     return ["https:", "http:"].includes(url.protocol) ? url.href : null;

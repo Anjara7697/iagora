@@ -39,7 +39,7 @@ def for_user(user: User) -> Scope:
     return Scope(user.id) if user.role is UserRole.ADVISOR else EVERYTHING
 
 
-def visible_ids(advisor_id: int) -> Select[tuple[int]]:
+def visible_ids(advisor_id: int) -> Select[int]:
     """Identifiants des prospects visibles par ce conseiller (sous-requête)."""
     return (
         select(CampaignProspect.prospect_id)

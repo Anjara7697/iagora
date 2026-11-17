@@ -1,14 +1,15 @@
 "use client";
 
+import { draftStatus } from "@/lib/messages";
 import { Alert, Tabs, toast } from "@heroui/react";
 import { ShieldCheck, Trash2 } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { EraseForm, ErasureResult } from "@/components/ErasePanel";
-import ProspectResultsReturn from "@/components/ProspectResultsReturn";
-import ProspectTaskReturn from "@/components/ProspectTaskReturn";
-import { Drawer } from "@/components/Drawer";
+import { EraseForm, ErasureResult } from "@/components/prospect/ErasePanel";
+import ProspectResultsReturn from "@/components/prospect/ProspectResultsReturn";
+import ProspectTaskReturn from "@/components/prospect/ProspectTaskReturn";
+import { Drawer } from "@/components/ds/Drawer";
 import ProspectConversation from "@/components/prospect/ProspectConversation";
 import ProspectDecisions from "@/components/prospect/ProspectDecisions";
 import ProspectHeader, { type ProspectAction } from "@/components/prospect/ProspectHeader";
@@ -18,7 +19,7 @@ import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { BackLink, Btn, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
 import { Screen } from "@/components/ds/layout";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { PROSPECT_TABS, prospectTabHref, readProspectTab, replaceUrl, type ProspectTab } from "@/lib/prospectNav";
 import type { AgentRun, Conversation, ErasureReport, Prospect } from "@/lib/types";
@@ -141,7 +142,7 @@ function ProspectDetail() {
 
   if (erased) return <ErasureResult report={erased} />;
   const pendingDraftId = conv?.messages.find(
-    (m) => (m.metadata.draft as { status?: string } | undefined)?.status === "pending",
+    (m) => draftStatus(m) === "pending",
   )?.id;
   const runBlockedReason = !p
     ? null

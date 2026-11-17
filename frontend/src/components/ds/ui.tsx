@@ -1,14 +1,12 @@
 "use client";
 
 import { Skeleton as HeroSkeleton } from "@heroui/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ApiError } from "@/lib/api";
 import { isDemoEmail } from "@/lib/labels";
-import { DemoChip } from "./ds/badges";
-import { Btn } from "./ds/controls";
-import { ErrorState } from "./ds/layout";
+import { DemoChip } from "./badges";
+import { ErrorState } from "./layout";
 
-export type SkeletonShape = "lines" | "rows" | "cards";
+type SkeletonShape = "lines" | "rows" | "cards";
 
 /** Silhouette du contenu à venir (squelette HeroUI) : lignes de texte, lignes de liste ou cartes. */
 export function Skeleton({ shape = "lines" }: { shape?: SkeletonShape }) {
@@ -72,34 +70,5 @@ export function DemoBadge({ email }: { email: string | null | undefined }) {
   return isDemoEmail(email) ? <DemoChip /> : null;
 }
 
-export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./ds/badges";
+export { HeatMeter, LevelBadge, ScoreBadge, StageBadge } from "./badges";
 
-export function Pager({
-  total,
-  limit,
-  offset,
-  onChange,
-}: {
-  total: number;
-  limit: number;
-  offset: number;
-  onChange: (offset: number) => void;
-}) {
-  const from = total === 0 ? 0 : offset + 1;
-  const to = Math.min(offset + limit, total);
-  return (
-    <div className="flex items-center justify-between gap-3 pt-2">
-      <Btn size="sm" variant="ghost" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>
-        <ChevronLeft className="size-4" aria-hidden="true" />
-        Précédent
-      </Btn>
-      <span className="type-body-sm text-muted tabular-nums">
-        {from}-{to} sur {total}
-      </span>
-      <Btn size="sm" variant="ghost" disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>
-        Suivant
-        <ChevronRight className="size-4" aria-hidden="true" />
-      </Btn>
-    </div>
-  );
-}

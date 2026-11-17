@@ -30,7 +30,9 @@ Tout est dans `frontend/src/app/heroui.css` : couches Tailwind et HeroUI, police
 - **Champs** (texte, zone de texte, listes, recherche, dates) : une seule apparence, réglée par les jetons `--field-*`
   de `heroui.css` (fond de surface, bordure de 1 px plus marquée au survol, couleur d'accent au focus, sans ombre).
   La bordure reste discrète (décidé avec le responsable du projet le 16/11/2026) : elle n'atteint pas le contraste
-  de 3:1 de WCAG 1.4.11 ; le champ se repère à son libellé et à son fond, et le focus prend la couleur d'accent. Ne pas poser de `variant` sur un champ. Interrupteurs et cases : apparence HeroUI par défaut.
+  de 3:1 de WCAG 1.4.11 ; le champ se repère à son libellé et à son fond, et le focus prend la couleur d'accent. Ne pas poser de `variant` sur un champ. Un nombre se saisit dans
+  `NumberInput` : jamais `type="number"` avec `Number(e.target.value)`, qui transforme un champ vidé en 0 sans le
+  dire (FORM-01). Interrupteurs et cases : apparence HeroUI par défaut.
 - **Surcouches** : elles acceptent toutes les propriétés du composant HeroUI (`variant`, `size`, `color`…) et
   n'ajoutent que des raccourcis ; ne pas y poser de styles qui changent l'apparence du composant.
 
@@ -51,7 +53,7 @@ Les écrans importent ces composants, qui enveloppent HeroUI, plutôt que des é
 | `settings.tsx` | `SettingsCard`, `InfoRow`, `Toggle`, `Stats`, `ActionsBar` |
 | `badges.tsx` | `StageBadge`, `ScoreBadge`, `HeatMeter`, `LevelBadge`, `DemoChip` |
 
-Le panneau latéral est `components/Drawer.tsx`, sur le `Drawer` HeroUI (focus, inertie de la page, Échap et voile gérés par React Aria) ; l'état d'une page dans l'adresse passe par `lib/url.ts`
+Le panneau latéral est `components/ds/Drawer.tsx`, sur le `Drawer` HeroUI (focus, inertie de la page, Échap et voile gérés par React Aria) ; l'état d'une page dans l'adresse passe par `lib/url.ts`
 (`replaceUrl`) et un module par parcours (`lib/campaignNav.ts`, `lib/knowledgeNav.ts`).
 
 Éléments HTML natifs conservés : listes de définitions `dl`, listes `ul`/`li` sémantiques,
@@ -121,7 +123,7 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 15. **États vides, chargement** : `EmptyPanel` avec l'action suivante (et « Afficher tout » quand un filtre
     est actif) ; `Skeleton` ou chargement du tableau, jamais de « … ».
 
-**Barre et menu** (`components/AppShell.tsx`, `components/shell/`)
+**Barre et menu** (`components/shell/`, dont `AppShell.tsx`)
 
 Session : `lib/session/` (`SessionProvider`, `useCurrentUser`). Après la connexion, l'arrivée se fait sur Aujourd'hui ;
 une session expirée renvoie à `/login?next=…`, qui ramène à la page en cours (adresse vérifiée par `returnPath` :
@@ -134,7 +136,9 @@ un écran connu de la console, jamais une adresse externe).
     Mon compte, état et contrôle de l'agent (arrêt d'urgence ou reprise après confirmation ; un point de
     couleur sur l'avatar rappelle l'état), thème clair / sombre / système (`ToggleButtonGroup`, choix gardé
     dans le navigateur, appliqué avant l'affichage par `lib/theme.ts`), Déconnexion.
-18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Sur bureau, menu
+18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Chaque écran a son
+    entrée, que le menu surligne quand on y est ; le Simulateur a la sienne, sous « Paramètres », visible seulement
+    s'il est activé et permis au rôle (`canUseSimulator`, NAV-02). Sur bureau, menu
     réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
     navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
 19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.
@@ -185,8 +189,13 @@ un écran connu de la console, jamais une adresse externe).
     clavier, le nom du prospect est le lien). Barre : période, conseiller, statut et prospects fictifs à gauche,
     « Réinitialiser » quand un filtre est actif, compteur « N rendez-vous » (ou « N sur M ») à droite ;
     pagination `TablePagination`.
-27. **Aujourd'hui** : « Prochains rendez-vous » (les siens pour un conseiller, tous sinon, cinq au plus) avec un
-    lien vers la liste complète. Statut et lien de visio partagés avec Rendez-vous
+27. **Aujourd'hui** (page d'orientation) : la date sous la salutation ; la prochaine action dans une carte,
+    avec la répartition de la file en une ligne de liens vers la file filtrée (le nombre total n'est que dans la
+    barre du haut) ; puis, en sections sans carte (`Section`), « Prochains rendez-vous » (les siens pour un
+    conseiller, tous sinon, cinq au plus) et « Prospects à fort signal » côte à côte, l'activité de l'agent en une
+    ligne de chiffres avec « aucun envoi sans validation », les relances repliées (`Collapse`) et un lien vers le
+    tableau de bord, qui garde l'entonnoir (règle 28). En mobile, un rendez-vous met l'heure et le nom sur une
+    ligne, le statut et la visio dessous : rien n'est tronqué. Statut et lien de visio partagés avec Rendez-vous
     (`components/appointments/shared.tsx`). Pendant le chargement, rien ou un `Skeleton`, jamais « … ».
 
 **Tableau de bord** (`app/dashboard`)
@@ -208,8 +217,11 @@ un écran connu de la console, jamais une adresse externe).
 
 31. **Paramètres** (écarts aux règles 3 et 21, décidés pour cet écran) : les catégories sont un menu vertical avec
     une aide sous chaque intitulé (une liste sur mobile), la catégorie ouverte dans l'adresse (`?section=`) ; une
-    seule barre « Enregistrer les paramètres », commune aux catégories, reste collée en bas de l'écran et reprend sa
-    place après le dernier champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
+    seule barre « Enregistrer les paramètres », commune aux catégories, posée dans le flux sous la catégorie
+    ouverte : elle ne recouvre ni un champ, ni une note, ni la notification (UX-15, A11Y-04). Les nombres se
+    saisissent dans `NumberInput` (bornes du serveur) : une valeur vide ou hors bornes est signalée sous son
+    champ ; « Enregistrer » est alors refusé, avec le nom du champ et sa catégorie, qui s'ouvre, le focus sur le
+    champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
     « Revenir aux valeurs du serveur » passe par `ConfirmDialog` ; succès en Toast, échec en `ErrorText`.
 32. **Équipe** (`app/team`, `components/team/`) : tableau des membres (recherche et rôle dans l'adresse, compteur
     « N membres · N actifs ») ; « Ajouter un membre » et la fiche d'un membre s'ouvrent dans un panneau latéral
@@ -223,7 +235,7 @@ un écran connu de la console, jamais une adresse externe).
     panneau est protégée à sa fermeture ; passage d'envoi réel, oubli de la boîte et révocation d'un jeton passent
     par `ConfirmDialog`. Chaque panneau : `SettingsLoading` au chargement, succès en Toast, échec en `ErrorText`
     (message construit avec `failure()` de `lib/api`).
-34. **Simulateur** (`app/simulator`, `components/GuidedSimulation.tsx`) : trois colonnes (prospect fictif, conversation,
+34. **Simulateur** (`app/simulator`, `components/simulator/GuidedSimulation.tsx`) : entrée propre dans le menu (règle 18) ; trois colonnes (prospect fictif, conversation,
     décision de l'agent), propres à cet outil de test ; parcours guidé dans l'adresse (`?mode=guide`). Mode assisté
     et arrêt d'urgence en `Alert` (l'arrêt avec « Ouvrir la page Agent ») ; suppression des données fictives par
     `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est

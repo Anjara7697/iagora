@@ -7,7 +7,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Btn, LinkButton, TextLink } from "@/components/ds/controls";
 import { EmptyPanel, Eyebrow, PageHeader, Screen } from "@/components/ds/layout";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
-import { Loading, Skeleton } from "@/components/ui";
+import { Loading, Skeleton } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 import { useShortcuts } from "@/lib/useShortcuts";

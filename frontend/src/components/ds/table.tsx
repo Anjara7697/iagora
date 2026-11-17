@@ -2,11 +2,11 @@
 
 import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
 import Link from "next/link";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { pageList } from "@/lib/pagination";
 import { SCROLL_SHADOW_SIZE, cx } from "./layout";
 
-export type DataColumn = {
+type DataColumn = {
   id: string;
   label: ReactNode;
   /** Colonne d'en-tête de ligne (la première, en général) : donne son nom à la ligne. */
@@ -140,26 +140,6 @@ export function CompactRow({
       </div>
     </li>
   );
-}
-
-/** Pagination côté client d'une liste déjà chargée : page courante (bornée), éléments de la page, retour à la page 1. */
-export function usePagination<T>(items: T[], pageSize: number) {
-  const [page, setPage] = useState(1);
-  const pages = Math.max(1, Math.ceil(items.length / pageSize));
-  const current = Math.min(page, pages);
-  return {
-    page: current,
-    setPage,
-    reset: () => setPage(1),
-    pageItems: items.slice((current - 1) * pageSize, current * pageSize),
-    total: items.length,
-    pageSize,
-    /** Pagination à afficher dans `Table.Footer` : seulement si la liste dépasse une page. */
-    footer:
-      items.length > pageSize ? (
-        <TablePagination total={items.length} pageSize={pageSize} page={current} onChange={setPage} />
-      ) : undefined,
-  };
 }
 
 /**

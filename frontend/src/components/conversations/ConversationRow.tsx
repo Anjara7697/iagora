@@ -4,7 +4,7 @@
 
 import { Avatar } from "@heroui/react";
 import { Tag, RowButton } from "@/components/ds/controls";
-import { DemoBadge } from "@/components/ui";
+import { DemoBadge } from "@/components/ds/ui";
 import { CHANNELS, HANDOFF_REASONS, initials, label, relativeTime } from "@/lib/labels";
 import type { ConversationSummary } from "@/lib/types";
 import { rowName } from "@/components/conversations/shared";

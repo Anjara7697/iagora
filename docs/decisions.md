@@ -220,3 +220,16 @@ campagnes, base de connaissances), sans perdre comptes, connecteurs ni réglages
 refusée en production, sauvegarde faite juste avant par le responsable (`deploiement.md` §7 bis). C'est un outil
 d'exploitation de l'instance d'essai, qui ne contient que des données de test : il efface toutes ses données
 métier, pas seulement les fiches en `@demo.example.com`.
+
+## D-31 — Mises à jour automatiques des dépendances : mensuelles, sans version majeure
+
+*16 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Dependabot (AUDIT-OPS-004) ouvrait chaque lundi une PR par écosystème, plus une PR séparée pour
+chaque version majeure (pytest, types Node, icônes) : huit PR en une journée, dont plusieurs à refuser.
+
+**Décision.** Une PR groupée par écosystème le 1er de chaque mois (pip, npm, images Docker, actions), une seule
+ouverte à la fois, versions majeures ignorées ; pour les images Docker, versions mineures aussi
+(`python:3.12` → `3.15`). Une version majeure, ou de Python et de Node, se décide à la main, dans une PR dédiée. Les
+failles connues restent signalées à chaque PR par la tâche CI `audit` (`pip-audit`, `npm audit`).
+

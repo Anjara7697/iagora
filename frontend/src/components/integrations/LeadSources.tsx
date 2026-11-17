@@ -6,11 +6,11 @@ import { KeyRound } from "lucide-react";
 import { API_URL, api, failure } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import type { ServiceToken } from "@/lib/types";
-import { CampaignSourcePicker } from "./CampaignSourcePicker";
-import { ConfirmDialog } from "./ds/ConfirmDialog";
-import { Btn, ErrorText, TextInput, TextLink } from "./ds/controls";
-import { ErrorState } from "./ds/layout";
-import { ActionsBar, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "./ds/settings";
+import { CampaignSourcePicker } from "../campaign/CampaignSourcePicker";
+import { ConfirmDialog } from "../ds/ConfirmDialog";
+import { Btn, ErrorText, TextInput, TextLink } from "../ds/controls";
+import { ErrorState } from "../ds/layout";
+import { ActionsBar, InfoRow, SecretOnce, SettingRow as Field, StatePill } from "../ds/settings";
 import { Box } from "@/components/ds/card";
 
 /** Formulaire du site, n8n et autres outils : jetons de service, sans compte utilisateur. */

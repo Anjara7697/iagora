@@ -2,7 +2,7 @@
 
 import { FlaskConical } from "lucide-react";
 import Link from "next/link";
-import { Btn, LinkButton } from "./ds/controls";
+import { Btn, LinkButton } from "../ds/controls";
 import { useCurrentUser } from "@/lib/session";
 import { canUseSimulator } from "@/lib/access";
 import { Box } from "@/components/ds/card";

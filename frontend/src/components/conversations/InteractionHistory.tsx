@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Btn, TextLink } from "@/components/ds/controls";
-import { Loading } from "@/components/ui";
+import { Loading } from "@/components/ds/ui";
 import { formatDate } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Page } from "@/lib/types";

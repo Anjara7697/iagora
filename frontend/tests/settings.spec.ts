@@ -215,7 +215,8 @@ test.describe("navigation du simulateur", () => {
       const nav = page.getByRole("navigation", {
         name: "Navigation principale",
       });
-      await expect(nav.locator('a[href="/simulator"]')).toHaveCount(0);
+      // Entrée « Simulateur » dans le menu (NAV-02) quand l'outil est activé et permis au rôle.
+      await expect(nav.locator('a[href="/simulator"]')).toHaveCount(allowed ? 1 : 0);
       if (role === "ADMIN" || allowed)
         await expect(
           nav.getByRole("link", { name: "Paramètres", exact: true }),
@@ -444,4 +445,51 @@ test("les seuils de décision de l’agent se règlent dans Agent et relances", 
   const put = calls.find((c) => (c as { put?: unknown }).put) as { put: Record<string, unknown> };
   expect(put.put).toMatchObject({ agent_meeting_min_score: 40, agent_extra_terms: "Pass Transition" });
   await auditA11y(page, "paramètres (seuils de l’agent)");
+});
+
+test("valeur hors bornes ou vide : signalée sous le champ, enregistrement bloqué jusqu'à correction", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=rdv");
+  const slots = page.getByRole("region", { name: "Disponibilités des rendez-vous" });
+  const start = slots.getByLabel("Début de journée (heure)");
+  // Hors bornes : signalé sous le champ, avant tout envoi (FORM-01).
+  await start.fill("30");
+  await expect(start).toHaveAttribute("aria-invalid", "true");
+  await expect(start).toHaveAccessibleDescription("Saisissez une valeur entre 0 et 23.");
+  // Vidé : il ne vaut pas 0 en silence.
+  const slot = slots.getByLabel("Durée d’un rendez-vous (minutes)");
+  await slot.fill("");
+  await expect(slot).toHaveAccessibleDescription("Saisissez une valeur.");
+  await auditA11y(page, "paramètres, valeurs signalées");
+
+  // Depuis une autre section, « Enregistrer » ramène au champ à corriger, sans rien envoyer.
+  await goSection(page, "Agent et relances");
+  await page.getByRole("button", { name: "Enregistrer les paramètres" }).click();
+  await expect(page.getByText(/Enregistrement impossible : corrigez la valeur signalée \(« Début de journée \(heure\) », section Rendez-vous\)/)).toBeVisible();
+  await expect(page).toHaveURL(/section=rdv/);
+  await expect(start).toBeFocused();
+  expect(calls).toEqual([]);
+
+  // Corrigé : l'enregistrement part avec les valeurs saisies.
+  await start.fill("10");
+  await slot.fill("45");
+  await expect(start).not.toHaveAttribute("aria-invalid");
+  await page.getByRole("button", { name: "Enregistrer les paramètres" }).click();
+  await expect.poll(() => calls.length).toBe(1);
+  expect((calls[0] as { put: Record<string, unknown> }).put).toMatchObject({ calendar_work_start_hour: 10, calendar_slot_minutes: 45 });
+});
+
+test("la barre d'enregistrement suit le contenu, sans le recouvrir", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await mockApi(page, []);
+  await login(page);
+  await page.goto("/settings?section=emails");
+  const bar = page.getByRole("button", { name: "Enregistrer les paramètres" }).locator("xpath=ancestor::div[contains(@class,'rounded-lg')][1]");
+  // Dans le flux (UX-15, A11Y-04) : ni collante ni flottante au-dessus des champs.
+  expect(await bar.evaluate((el) => getComputedStyle(el).position)).toBe("static");
+  const region = page.getByRole("region", { name: "Emails", exact: true });
+  const [regionBox, barBox] = [await region.boundingBox(), await bar.boundingBox()];
+  expect(barBox!.y).toBeGreaterThanOrEqual(regionBox!.y + regionBox!.height);
 });

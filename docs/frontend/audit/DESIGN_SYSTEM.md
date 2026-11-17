@@ -79,7 +79,7 @@ Changements proposés :
 
 | Élément | Convention proposée | Composant HeroUI 3.2.6 | État actuel |
 |---|---|---|---|
-| Bouton | un seul `primary` par écran ; `secondary` pour les actions voisines ; `ghost` dans les barres ; `danger-soft` avant confirmation ; hauteur 36 px, 32 en `sm` | `Button` | conforme, sauf UX-07 |
+| Bouton | un seul `primary` par écran ; `secondary` pour les actions voisines ; `ghost` dans les barres ; `danger-soft` avant confirmation ; hauteur 36 px, 32 en `sm` | `Button` | conforme (UX-07 corrigé au lot 6 ; vérifié sur les écrans de référence par `tests/visuel.spec.ts`) |
 | Champ texte | bordure 1 px, fond `--surface`, libellé au-dessus, erreur sous le champ dès la sortie du champ | `TextField`, `Input`, `FieldError` | `Field` maison, erreurs à la soumission |
 | Nombre | bornes et unité visibles | `NumberField` | 16 `type="number"` |
 | Liste de choix | même bordure que les champs ; recherche intégrée au-delà de dix options | `Select`, `ComboBox` | `SelectInput`, `SelectBox` |

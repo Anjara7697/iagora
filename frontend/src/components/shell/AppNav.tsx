@@ -12,14 +12,12 @@ import { UPCOMING, type NavGroup } from "./navigation";
 export default function AppNav({
   groups,
   pathname,
-  inSimulator,
   waiting,
   collapsed = false,
   onNavigate,
 }: {
   groups: NavGroup[];
   pathname: string;
-  inSimulator: boolean;
   waiting: number | null;
   collapsed?: boolean;
   onNavigate?: () => void;
@@ -36,10 +34,7 @@ export default function AppNav({
             )}
             {group.items.map((item) => {
               if (!item.href) return null;
-              const active =
-                pathname === item.href ||
-                (item.href !== "/" && pathname.startsWith(`${item.href}/`)) ||
-                (item.href === "/settings" && inSimulator);
+              const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
               const Icon = item.icon;
               const count = item.badge && waiting ? waiting : 0;
               return (

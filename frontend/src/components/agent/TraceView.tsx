@@ -1,9 +1,9 @@
 import { Sparkles } from "lucide-react";
 import { ACTIONS, HANDOFF_REASONS, label } from "@/lib/labels";
 import type { AgentRun } from "@/lib/types";
-import { Tag } from "./ds/controls";
+import { Tag } from "../ds/controls";
 import { Collapse } from "@/components/ds/collapse";
-import { ScoreBadge, StageBadge } from "./ui";
+import { ScoreBadge, StageBadge } from "../ds/ui";
 
 /** Décision de l'agent, justification et trace des étapes du graphe (explicabilité, OB-05). */
 export default function RunView({ run }: { run: AgentRun }) {

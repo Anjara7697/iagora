@@ -1,11 +1,12 @@
 "use client";
 
+import { draftStatus } from "@/lib/messages";
 import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
 import { toast } from "@heroui/react";
 import { useState } from "react";
 import SimulationNotice from "./SimulationNotice";
-import ConversationView from "@/components/ConversationView";
-import RunView from "@/components/TraceView";
+import ConversationView from "@/components/conversations/ConversationView";
+import RunView from "@/components/agent/TraceView";
 import { Btn, ErrorText, Field, Notice, Tag, TextBox, TextLink } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
@@ -74,7 +75,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
 
   const pending = conversation?.messages.find(
     (m) =>
-      (m.metadata.draft as { status?: string } | undefined)?.status ===
+      draftStatus(m) ===
       "pending",
   );
   const stopped =

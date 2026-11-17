@@ -177,7 +177,7 @@
      "fake": {"qualification": {"intent": "other", "sentiment": "negative"}}},
     {"id": "sens_rgpd", "category": "sensible", "target": "ebihar_students",
      "message": "Je veux que vous supprimiez mes données personnelles.",
-     "intents": ["opt_out", "needs_advisor", "other"], "actions": ["human_handoff", "opt_out"], "handoff": true, "handoff_reasons": ["situation_sensible"],
+     "intents": ["opt_out", "needs_advisor", "other"], "actions": ["human_handoff", "opt_out"], "handoff": true, "handoff_reasons": ["donnees_personnelles"],
      "fake": {"qualification": {"intent": "needs_advisor"}}},
     {"id": "sens_handicap", "category": "sensible", "target": "ebihar_students",
      "message": "Je suis en situation de handicap, la formation est-elle accessible ?",

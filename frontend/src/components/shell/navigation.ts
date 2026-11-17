@@ -3,6 +3,7 @@ import {
   Bot,
   CalendarDays,
   ChartColumnBig,
+  FlaskConical,
   LayoutDashboard,
   ListChecks,
   Megaphone,
@@ -14,10 +15,10 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { canAccessSettings } from "@/lib/access";
+import { canAccessSettings, canUseSimulator } from "@/lib/access";
 import type { User } from "@/lib/types";
 
-export type NavItem = {
+type NavItem = {
   href?: string;
   label: string;
   /** Pictogramme Lucide, décoratif : le libellé porte le sens (infobulle quand le menu est réduit). */
@@ -26,12 +27,14 @@ export type NavItem = {
   /** Écran prévu, pas encore développé : affiché grisé, sans lien. */
   soon?: boolean;
   adminOnly?: boolean;
+  /** Outil de test : visible seulement si le simulateur est activé et permis à ce rôle (`canUseSimulator`). */
+  simulator?: boolean;
 };
 
 export type NavGroup = { name: string; items: NavItem[] };
 
 /** Menu de la console : intitulés en français, identiques aux titres des pages. */
-export const NAV_GROUPS: NavGroup[] = [
+const NAV_GROUPS: NavGroup[] = [
   {
     name: "Travail",
     items: [
@@ -63,6 +66,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/team", label: "Équipe", icon: UsersRound, adminOnly: true },
       { href: "/integrations", label: "Intégrations", icon: Plug, adminOnly: true },
       { href: "/settings", label: "Paramètres", icon: Settings },
+      // Entrée propre (NAV-02) : dans le Simulateur, le menu le surligne lui, et non « Paramètres ».
+      { href: "/simulator", label: "Simulateur", icon: FlaskConical, simulator: true },
     ],
   },
 ];
@@ -73,7 +78,11 @@ export function visibleGroups(user: User): NavGroup[] {
   return NAV_GROUPS.map((g) => ({
     name: g.name === "Administration" && !isAdmin ? "Réglages" : g.name,
     items: g.items.filter(
-      (i) => i.href && (isAdmin || !i.adminOnly) && (i.href !== "/settings" || canAccessSettings(user.role)),
+      (i) =>
+        i.href &&
+        (isAdmin || !i.adminOnly) &&
+        (i.href !== "/settings" || canAccessSettings(user.role)) &&
+        (!i.simulator || canUseSimulator(user.role)),
     ),
   })).filter((g) => g.items.length > 0);
 }

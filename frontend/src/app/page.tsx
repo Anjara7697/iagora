@@ -3,36 +3,27 @@
 import { Alert, Avatar, Chip } from "@heroui/react";
 import { ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
-import { LinkButton } from "@/components/ds/controls";
-import {
-  BarList,
-  EmptyText,
-  ErrorState,
-  Eyebrow,
-  KpiCard,
-  PageHeader,
-  Panel,
-  Screen,
-  cx,
-  initialsOf,
-} from "@/components/ds/layout";
+import { Collapse } from "@/components/ds/collapse";
+import { LinkButton, TextLink } from "@/components/ds/controls";
+import { EmptyText, ErrorState, Eyebrow, PageHeader, Screen, Section, cx, initialsOf } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { LevelBadge, Loading } from "@/components/ui";
+import { LevelBadge, Loading } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
-import { FUNNEL, PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
+import { PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, DashboardSummary, Page, TodoItem } from "@/lib/types";
 
 type TodoCounts = Page<TodoItem> & { counts: Record<string, number> };
 
+/** Répartition de la file sous la prochaine action (singulier, pluriel), chaque famille ouvre la file filtrée. */
 const BUCKETS = [
-  { kind: "validation", title: "Validations", hint: "Brouillons en attente", dot: "bg-warning" },
-  { kind: "escalation", title: "Escalades", hint: "Demandes de conseiller", dot: "bg-danger" },
-  { kind: "kb_gap", title: "Questions sans réponse", hint: "Réponses bloquées", dot: "bg-agent" },
-  { kind: "incident", title: "Incidents", hint: "Réception ou envoi interrompu", dot: "bg-danger" },
+  { kind: "validation", one: "validation", many: "validations" },
+  { kind: "escalation", one: "escalade", many: "escalades" },
+  { kind: "kb_gap", one: "question sans réponse", many: "questions sans réponse" },
+  { kind: "incident", one: "incident", many: "incidents" },
 ] as const;
 
 const TASK_LABELS: Record<TodoItem["kind"], string> = {
@@ -46,12 +37,17 @@ const TASK_LABELS: Record<TodoItem["kind"], string> = {
   opt_out_check: "Vérifier une opposition",
 };
 
-/** Bloc de la page avec son rang dans la cascade d'apparition (règle 9). */
+/** Bloc de la page avec son apparition en fondu (règle 9). */
 const rise = (rank: number, className?: string) => ({
   className: cx(reveal(rank).className, className),
   style: reveal(rank).style,
 });
 
+/**
+ * Aujourd'hui, page d'orientation (règle 27) : la prochaine action et la répartition de la file, les rendez-vous et
+ * les prospects à fort signal côte à côte, l'activité de l'agent en une ligne, les relances repliées. Le nombre
+ * d'éléments à traiter est dans la barre du haut ; l'entonnoir est dans le Tableau de bord (règle 28).
+ */
 export default function Home() {
   const user = useCurrentUser();
   const summary = useApi<DashboardSummary>("/dashboard/summary");
@@ -81,6 +77,12 @@ export default function Home() {
   };
   const { hour, day } = timeFormats(timeZone ?? "UTC");
   const today = timeZone ? day(new Date().toISOString()) : "";
+  // Familles présentes dans la file ; les premiers contacts sont des brouillons à relire comme les validations.
+  const buckets = BUCKETS.map((b) => {
+    const firstContacts = b.kind === "validation" ? (counts.first_contact ?? 0) : 0;
+    const count = (counts[b.kind] ?? 0) + firstContacts;
+    return { ...b, count, href: firstContacts ? "/todo" : `/todo?kind=${b.kind}` };
+  }).filter((b) => b.count > 0);
 
   return (
     <Screen>
@@ -100,19 +102,8 @@ export default function Home() {
       <PageHeader
         {...rise(0)}
         title={`Bonjour ${firstName}`}
-        subtitle={
-          // Rien plutôt que « … » tant que la file n'est pas chargée (règle 15).
-          waiting !== undefined && (
-            <>
-              {waiting === 0
-                ? "Rien ne vous attend pour le moment"
-                : `${waiting} élément${waiting > 1 ? "s" : ""} ${waiting > 1 ? "vous attendent" : "vous attend"}`}
-              {s
-                ? ` · l’agent a préparé ${s.activity.drafts_generated} brouillon${s.activity.drafts_generated > 1 ? "s" : ""} en ${s.activity.hours} h`
-                : ""}
-            </>
-          )
-        }
+        // La date du jour ; rien tant que le fuseau n'est pas connu (règle 15).
+        subtitle={today && <span className="first-letter:uppercase">{today.replace(/ \d{4}$/, "")}</span>}
       />
 
       {error && <ErrorState message={error.message} onRetry={retry} />}
@@ -132,24 +123,18 @@ export default function Home() {
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <Eyebrow>{waiting > 0 ? "Prochaine action" : "File à jour"}</Eyebrow>
               <h2 className="type-title-sm font-semibold text-foreground">
-                {next
-                  ? TASK_LABELS[next.kind]
-                  : waiting > 0
-                    ? `${waiting} élément${waiting > 1 ? "s" : ""} à traiter`
-                    : "Aucune action urgente pour le moment"}
+                {next ? TASK_LABELS[next.kind] : waiting > 0 ? "Ouvrir la file" : "Aucune action urgente pour le moment"}
               </h2>
               {next ? (
                 <p className="type-body text-muted">
-                  <span className="font-medium text-foreground">
-                    {next.prospect ? fullName(next.prospect) : next.title}
-                  </span>
+                  <span className="font-medium text-foreground">{next.prospect ? fullName(next.prospect) : next.title}</span>
                   {` · priorité ${label(PRIORITIES, next.priority).toLowerCase()}`}
                   {next.detail ? ` · ${next.detail}` : ""}
                 </p>
               ) : (
                 <p className="type-body text-muted">
                   {waiting > 0
-                    ? "Ouvrez la file pour commencer par l’élément le plus prioritaire."
+                    ? "Commencez par l’élément le plus prioritaire."
                     : "L’agent continue de surveiller les nouveaux échanges et incidents."}
                 </p>
               )}
@@ -161,56 +146,49 @@ export default function Home() {
               </LinkButton>
             )}
           </div>
+          {/* Répartition de la file en une ligne (UX-08) : chaque famille ouvre la file sur son filtre. */}
+          {buckets.length > 0 && (
+            <nav
+              aria-label="Répartition de la file"
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-separator px-5 py-3 type-body-sm sm:px-6"
+            >
+              {buckets.map((b, i) => (
+                <Fragment key={b.kind}>
+                  {i > 0 && (
+                    <span className="text-muted" aria-hidden="true">
+                      ·
+                    </span>
+                  )}
+                  <TextLink href={b.href} className="tabular-nums">
+                    {b.count} {b.count > 1 ? b.many : b.one}
+                  </TextLink>
+                </Fragment>
+              ))}
+            </nav>
+          )}
         </section>
       )}
 
-      <div {...rise(2, "flex flex-col gap-3")}>
-        <Eyebrow>Vue rapide de la file</Eyebrow>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {BUCKETS.map((b) => {
-            // Les premiers contacts (prospection) sont aussi des brouillons à relire.
-            const firstContacts = b.kind === "validation" ? (counts.first_contact ?? 0) : 0;
-            return (
-              <KpiCard
-                key={b.kind}
-                href={firstContacts ? "/todo" : `/todo?kind=${b.kind}`}
-                label={b.title}
-                dot={b.dot}
-                value={todo.error ? "—" : (counts[b.kind] ?? 0) + firstContacts}
-                loading={!todo.data && !todo.error}
-                hint={firstContacts ? `Dont ${firstContacts} premier${firstContacts > 1 ? "s" : ""} contact${firstContacts > 1 ? "s" : ""}` : b.hint}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      <div {...rise(3, "grid grid-cols-1 items-start gap-6 lg:grid-cols-2 2xl:grid-cols-3")}>
-        <div className="flex flex-col gap-6">
-          <Panel
-            label="Prochains rendez-vous"
-            title="Prochains rendez-vous"
-            action={
-              <LinkButton size="sm" variant="secondary" href="/appointments">
-                Tous les rendez-vous
-              </LinkButton>
-            }
-            bodyClassName="gap-0 px-0 py-0"
-          >
-            <div className="px-5">
-              <Loading loading={appointments.loading || !timeZone} error={appointments.error} onRetry={appointments.reload} shape="rows" />
+      <div {...rise(2, "grid grid-cols-1 items-start gap-x-8 gap-y-8 lg:grid-cols-2")}>
+        <Section
+          label="Prochains rendez-vous"
+          title="Prochains rendez-vous"
+          action={<TextLink href="/appointments" className="type-body-sm">Tous les rendez-vous</TextLink>}
+        >
+          <Loading loading={appointments.loading || !timeZone} error={appointments.error} onRetry={appointments.reload} shape="rows" />
+          {timeZone && appointments.data?.items.length === 0 && (
+            <div className="py-3">
+              <EmptyText>Aucun rendez-vous à venir.</EmptyText>
             </div>
-            {timeZone && appointments.data?.items.length === 0 && (
-              <div className="px-5 py-3">
-                <EmptyText>Aucun rendez-vous à venir.</EmptyText>
-              </div>
-            )}
-            {timeZone &&
-              appointments.data?.items.map((a) => {
+          )}
+          {timeZone && (
+            <ul className="flex flex-col divide-y divide-separator">
+              {appointments.data?.items.map((a) => {
                 const name = fullName(a.prospect);
                 const date = day(a.start_at);
                 return (
-                  <div key={a.id} className="flex flex-wrap items-center gap-3 border-b border-separator px-5 py-3.5 last:border-b-0">
+                  // En mobile, l'heure et le nom sur une ligne, le statut et la visio dessous (UX-05) : rien n'est tronqué.
+                  <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                     <span className="flex w-28 shrink-0 flex-col type-body-sm tabular-nums">
                       <time dateTime={a.start_at} className="font-medium text-foreground">
                         {hour(a.start_at)} – {hour(a.end_at)}
@@ -219,168 +197,154 @@ export default function Home() {
                         {date === today ? "Aujourd’hui" : date.replace(/ \d{4}$/, "")}
                       </span>
                     </span>
-                    <span className="flex min-w-0 flex-1 flex-col gap-1">
-                      <Link
-                        href={`/prospects/${a.prospect.id}`}
-                        className="truncate rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {name}
-                      </Link>
-                      <span>
-                        <AppointmentStatus status={a.status} />
-                      </span>
+                    <Link
+                      href={`/prospects/${a.prospect.id}`}
+                      className="min-w-0 flex-1 rounded type-body font-medium break-words text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                      {name}
+                    </Link>
+                    <span className="flex flex-wrap items-center gap-2 max-sm:basis-full max-sm:ps-31">
+                      <AppointmentStatus status={a.status} />
+                      <MeetingLink appointment={a} name={name} />
                     </span>
-                    <MeetingLink appointment={a} name={name} />
-                  </div>
+                  </li>
                 );
               })}
-            {appointments.data && appointments.data.total > appointments.data.items.length && (
-              <p className="border-t border-separator px-5 py-3 type-body-sm text-muted">
-                + {appointments.data.total - appointments.data.items.length} autre(s) rendez-vous à venir.
-              </p>
-            )}
-          </Panel>
+            </ul>
+          )}
+          {appointments.data && appointments.data.total > appointments.data.items.length && (
+            <p className="border-t border-separator py-3 type-body-sm text-muted">
+              + {appointments.data.total - appointments.data.items.length} autre(s) rendez-vous à venir.
+            </p>
+          )}
+        </Section>
 
-          <Panel
-            label="Prospects à fort signal"
-            title="Prospects à fort signal"
-            action={
-              <LinkButton size="sm" variant="secondary" href="/prospects">
-                Tous les prospects
-              </LinkButton>
-            }
-            bodyClassName="gap-1 px-2 py-2"
-          >
-            {s && s.hot_prospects.length === 0 && (
-              <div className="px-3">
-                <EmptyText>Aucun prospect qualifié pour l’instant.</EmptyText>
-              </div>
-            )}
+        <Section
+          label="Prospects à fort signal"
+          title="Prospects à fort signal"
+          action={<TextLink href="/prospects" className="type-body-sm">Tous les prospects</TextLink>}
+        >
+          {s && s.hot_prospects.length === 0 && (
+            <div className="py-3">
+              <EmptyText>Aucun prospect qualifié pour l’instant.</EmptyText>
+            </div>
+          )}
+          <ul className="flex flex-col divide-y divide-separator">
             {s?.hot_prospects.map((p) => (
-              <Link
-                key={p.id}
-                href={`/prospects/${p.id}`}
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
-              >
-                <Avatar size="sm" variant="soft" color="accent">
-                  <Avatar.Fallback>{initialsOf(p.name)}</Avatar.Fallback>
-                </Avatar>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <strong className="type-body font-medium text-foreground">{p.name}</strong>
-                    {p.level && <LevelBadge level={p.level} />}
+              <li key={p.id}>
+                <Link
+                  href={`/prospects/${p.id}`}
+                  className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 outline-none transition-colors hover:bg-surface-secondary focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <Avatar size="sm" variant="soft" color="accent">
+                    <Avatar.Fallback>{initialsOf(p.name)}</Avatar.Fallback>
+                  </Avatar>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <strong className="type-body font-medium text-foreground">{p.name}</strong>
+                      {p.level && <LevelBadge level={p.level} />}
+                    </span>
+                    <span className="type-caption text-muted">
+                      {label(STAGES, p.stage)} · score {p.total_score}
+                      {p.campaign_name ? ` · ${p.campaign_name}` : ""}
+                    </span>
                   </span>
-                  <span className="type-caption text-muted">
-                    {label(STAGES, p.stage)} · score {p.total_score}
-                    {p.campaign_name ? ` · ${p.campaign_name}` : ""}
-                  </span>
-                </span>
-                <ArrowRight className="size-4 text-muted" aria-hidden="true" />
-              </Link>
+                  <ArrowRight className="size-4 text-muted" aria-hidden="true" />
+                </Link>
+              </li>
             ))}
-          </Panel>
+          </ul>
+        </Section>
+      </div>
 
-          <Panel label="Relances programmées" title="Relances programmées" bodyClassName="gap-0 px-0 py-0">
-            {s && s.follow_ups.length === 0 && (
-              <div className="px-5 py-3">
-                <EmptyText>Aucune relance programmée.</EmptyText>
-              </div>
-            )}
-            {s?.follow_ups.map((f) => (
-              <div key={f.id} className="flex gap-3 border-b border-separator px-5 py-3.5 last:border-b-0">
-                <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-muted" aria-hidden="true">
-                  <CalendarClock className="size-4" />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/prospects/${f.prospect_id}`}
-                      className="rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-                    >
-                      <strong className="font-medium">{f.prospect_name}</strong>
-                    </Link>
-                    <span className="flex-1" />
-                    <span className="type-caption text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
-                  </span>
-                  {f.reason && <span className="type-body-sm text-foreground">{f.reason}</span>}
-                  <span className="type-caption text-muted">
-                    Annulée si le prospect répond, se désinscrit ou est transféré.
-                  </span>
-                </span>
-              </div>
-            ))}
-            {s && s.follow_ups_total > s.follow_ups.length && (
-              <p className="border-t border-separator px-5 py-3 type-body-sm text-muted">
-                + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s) programmée(s).
-              </p>
-            )}
-          </Panel>
-        </div>
-
-        <Panel
+      {s && (
+        <Section
+          {...rise(3)}
           label="Activité de l'agent"
           title={
             <span className="flex items-center gap-2">
               <span className="inline-flex size-6 items-center justify-center rounded-lg bg-agent text-agent-foreground" aria-hidden="true">
                 <Sparkles className="size-3.5" />
               </span>
-              Activité de l’agent — dernières {s?.activity.hours ?? 24} h
+              Activité de l’agent — dernières {s.activity.hours} h
             </span>
           }
         >
-          {s && (
-            <>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-5">
-                {[
-                  [s.activity.prospects_analysed, "prospects analysés"],
-                  [s.activity.drafts_generated, "brouillons générés"],
-                  [s.activity.sent_after_validation, "messages envoyés après validation"],
-                  [s.follow_ups_total, "relances programmées"],
-                  [s.activity.escalations, "escalades déclenchées"],
-                  [s.activity.errors, "erreurs techniques"],
-                ].map(([value, text]) => (
-                  <div key={String(text)} className="flex flex-col-reverse gap-1">
-                    <dt className="type-body-sm text-muted">{text}</dt>
-                    <dd className="type-title text-foreground tabular-nums">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="mt-5 border-t border-separator pt-4">
-                <Chip
-                  size="sm"
-                  variant="soft"
-                  color={s.activity.sent_without_validation === 0 ? "success" : "warning"}
-                >
-                  <Chip.Label>
-                    {s.activity.sent_without_validation === 0
-                      ? "L’agent n’a envoyé aucun message sans validation."
-                      : `${s.activity.sent_without_validation} message(s) envoyé(s) sans validation (mode automatique).`}
-                  </Chip.Label>
-                </Chip>
+          {/* Une ligne de chiffres (§5.2) ; chaque terme suit son chiffre à l'écran, après lui dans le code. */}
+          <dl className="flex flex-wrap gap-x-6 gap-y-2 py-3">
+            {[
+              [s.activity.prospects_analysed, "prospects analysés"],
+              [s.activity.drafts_generated, "brouillons générés"],
+              [s.activity.sent_after_validation, "messages envoyés après validation"],
+              [s.activity.escalations, "escalades déclenchées"],
+              [s.activity.errors, "erreurs techniques"],
+            ].map(([value, text]) => (
+              <div key={String(text)} className="flex flex-row-reverse items-baseline justify-end gap-1.5">
+                <dt className="type-body-sm text-muted">{text}</dt>
+                <dd className="type-title-sm font-semibold text-foreground tabular-nums">{value}</dd>
               </div>
-            </>
-          )}
-        </Panel>
+            ))}
+          </dl>
+          <div>
+            <Chip size="sm" variant="soft" color={s.activity.sent_without_validation === 0 ? "success" : "warning"}>
+              <Chip.Label>
+                {s.activity.sent_without_validation === 0
+                  ? "L’agent n’a envoyé aucun message sans validation."
+                  : `${s.activity.sent_without_validation} message(s) envoyé(s) sans validation (mode automatique).`}
+              </Chip.Label>
+            </Chip>
+          </div>
+        </Section>
+      )}
 
-        <Panel label="Entonnoir" title={`Entonnoir — ${s?.funnel_days ?? 30} derniers jours`} className="lg:col-span-2 2xl:col-span-1">
-          {s && s.leads === 0 && <EmptyText>Aucun prospect sur la période.</EmptyText>}
-          {s && s.leads > 0 && (
-            <div className="flex flex-col gap-4">
-              <p className="type-body-sm text-muted">
-                <strong className="font-medium text-foreground">{s.leads}</strong> prospects arrivés sur la
-                période. Répartition par étape actuelle.
+      {s && (
+        <section aria-label="Relances programmées" {...rise(3, "border-b border-separator pb-2")}>
+          {/* Relances repliées : elles se déroulent seules, on les consulte au besoin. */}
+          <Collapse
+            title={`Relances programmées (${s.follow_ups_total})`}
+            triggerClassName="w-full py-2 type-title-sm font-semibold"
+            bodyClassName="flex flex-col"
+          >
+            {s.follow_ups.length === 0 && <EmptyText>Aucune relance programmée.</EmptyText>}
+            <ul className="flex flex-col divide-y divide-separator">
+              {s.follow_ups.map((f) => (
+                <li key={f.id} className="flex gap-3 py-3">
+                  <span
+                    className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-muted"
+                    aria-hidden="true"
+                  >
+                    <CalendarClock className="size-4" />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/prospects/${f.prospect_id}`}
+                        className="rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+                      >
+                        {f.prospect_name}
+                      </Link>
+                      <span className="flex-1" />
+                      <span className="type-caption text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
+                    </span>
+                    {f.reason && <span className="type-body-sm text-foreground">{f.reason}</span>}
+                    <span className="type-caption text-muted">Annulée si le prospect répond, se désinscrit ou est transféré.</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {s.follow_ups_total > s.follow_ups.length && (
+              <p className="border-t border-separator py-3 type-body-sm text-muted">
+                + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s) programmée(s).
               </p>
-              <BarList
-                rows={FUNNEL.map((step) => ({
-                  key: step.title,
-                  label: step.title,
-                  value: step.stages.reduce((sum, st) => sum + (s.funnel[st] ?? 0), 0),
-                }))}
-              />
-            </div>
-          )}
-        </Panel>
-      </div>
+            )}
+          </Collapse>
+        </section>
+      )}
+
+      {/* L'entonnoir et les chiffres de la période sont dans le Tableau de bord (UX-09, règle 28). */}
+      <p {...rise(3, "type-body-sm")}>
+        <TextLink href="/dashboard">Entonnoir et chiffres de la période : voir le tableau de bord →</TextLink>
+      </p>
     </Screen>
   );
 }

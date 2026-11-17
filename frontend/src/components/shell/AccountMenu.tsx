@@ -3,14 +3,14 @@
 import { Avatar, Button, Popover, Separator } from "@heroui/react";
 import { ChevronDown, LogOut, Monitor, UserRound } from "lucide-react";
 import { useState } from "react";
-import { AGENT_COPY, AgentDot, useAgentControl } from "@/components/AgentStatus";
+import { AGENT_COPY, AgentDot, useAgentControl } from "@/components/agent/AgentStatus";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { LinkButton } from "@/components/ds/controls";
-import { useHasUnsentReplies } from "@/components/ReplyDrafts";
+import { useHasUnsentReplies } from "@/components/shell/ReplyDrafts";
+import { ROLE_LABELS } from "@/lib/labels";
 import type { User } from "@/lib/types";
 import ThemeSwitcher from "./ThemeSwitcher";
 
-const ROLE_LABELS = { ADMIN: "Administrateur", ADVISOR: "Conseiller", VIEWER: "Observateur" };
 
 export const displayNameOf = (username: string) =>
   username

@@ -250,12 +250,20 @@ async def cmd_kb_eval() -> int:
         title_to_slug = {d.title: d.slug for d in await knowledge.list_documents(session)}
     cases = json.loads((DEMO_KB_DIR / "eval.json").read_text(encoding="utf-8"))
     hits, hit_scores, miss_scores, failures = 0, [], [], 0
+    same_topic: list[float] = []
     for case in cases:
         passages = await kb.search_all(case["question"], case["target"], 1)
         top = passages[0] if passages else None
         score = top.score or 0.0 if top else 0.0
         slug = title_to_slug.get(top.source.split(" / ")[0]) if top else None
         retained = top is not None and score >= kb.min_score
+        if case.get("same_topic"):
+            # Même sujet, sans réponse dans les documents : le seuil ne peut pas l'écarter ;
+            # c'est l'agent qui le signale et transfère. Mesuré, jamais compté en échec.
+            same_topic.append(score)
+            print(f"ℹ [{score:.3f}] {case['question']}  → {slug or '—'}"
+                  f"{' (retenu : l’agent doit transférer)' if retained else ' (écarté)'}")  # fmt: skip
+            continue
         if case["expect"] is None:
             ok = not retained
             miss_scores.append(score)
@@ -266,11 +274,14 @@ async def cmd_kb_eval() -> int:
         print(f"{'✓' if ok else '✗'} [{score:.3f}] {case['question']}  → {slug or '—'}"
               f"{'' if retained else ' (écarté)'}")  # fmt: skip
         hits += ok
-    print(f"\n{hits}/{len(cases)} conformes — seuil actuel {kb.min_score}")
+    print(f"\n{hits}/{len(cases) - len(same_topic)} conformes — seuil actuel {kb.min_score}")
     if hit_scores and miss_scores:
         print(f"Questions pertinentes : score min {min(hit_scores):.3f} ; "
               f"hors sujet : score max {max(miss_scores):.3f}. "
               "Un bon seuil se situe entre les deux.")  # fmt: skip
+    if same_topic:
+        print(f"Même sujet sans réponse : scores {min(same_topic):.3f} à {max(same_topic):.3f}. "
+              "Le seuil ne les sépare pas des vraies réponses : l'agent les signale et transfère.")  # fmt: skip
     await _shutdown()
     return 1 if failures else 0
 

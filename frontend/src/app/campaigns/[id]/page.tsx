@@ -1,5 +1,6 @@
 "use client";
 
+import { CampaignStatusTag } from "@/components/campaign/CampaignStatusTag";
 import { Tabs, toast } from "@heroui/react";
 import { CalendarDays, Megaphone, Pause, Pencil, Play, Users } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -10,23 +11,22 @@ import CampaignProspects from "@/components/campaign/CampaignProspects";
 import { FirstContacts } from "@/components/campaign/FirstContacts";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
-import CampaignForm, { type CampaignValues } from "@/components/CampaignForm";
-import { BackLink, Btn, ErrorText, LinkButton, Tag, type Tone } from "@/components/ds/controls";
+import CampaignForm, { type CampaignValues } from "@/components/campaign/CampaignForm";
+import { BackLink, Btn, ErrorText, LinkButton } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
-import { Drawer } from "@/components/Drawer";
-import { Loading } from "@/components/ui";
+import { Drawer } from "@/components/ds/Drawer";
+import { Loading } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
 import { CAMPAIGN_TABS, campaignHref, readCampaignView, replaceUrl, type CampaignView } from "@/lib/campaignNav";
-import { CAMPAIGN_STATUS, CAMPAIGN_STATUS_EFFECT, formatPeriod, label } from "@/lib/labels";
+import { CAMPAIGN_STATUS_EFFECT, formatPeriod, label } from "@/lib/labels";
 import type { Campaign, CampaignStats, Target } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : "");
 const toIso = (value: string) => (value ? `${value}T00:00:00Z` : null);
-const STATUS_TONE: Record<string, Tone> = { active: "success", draft: "warning", inactive: "neutral" };
 
 export default function CampaignPage() {
   return (
@@ -101,7 +101,7 @@ function CampaignDetail() {
             subtitle={
               <span className="flex flex-col gap-2">
                 <span className="flex flex-wrap items-center gap-2">
-                  <Tag tone={STATUS_TONE[c.status] ?? "neutral"}>{label(CAMPAIGN_STATUS, c.status)}</Tag>
+                  <CampaignStatusTag status={c.status} />
                   <span className="inline-flex items-center gap-1.5">
                     <CalendarDays className="size-3.5" aria-hidden="true" />
                     {formatPeriod(c.start_date, c.end_date)}

@@ -18,12 +18,12 @@ import { canUseSimulator } from "@/lib/access";
 import { useSession } from "@/lib/session";
 import { useWorkQueueCount } from "@/lib/useWorkQueueCount";
 import { Button, Card, Chip, Drawer, Spinner, Tooltip } from "@heroui/react";
-import AccountMenu from "./shell/AccountMenu";
-import AppNav from "./shell/AppNav";
-import { visibleGroups } from "./shell/navigation";
-import { LinkButton } from "./ds/controls";
-import { Brand } from "./ds/Brand";
-import { CommandPalette, type Command } from "./ds/CommandPalette";
+import AccountMenu from "./AccountMenu";
+import AppNav from "./AppNav";
+import { visibleGroups } from "./navigation";
+import { LinkButton } from "../ds/controls";
+import { Brand } from "../ds/Brand";
+import { CommandPalette, type Command } from "../ds/CommandPalette";
 import { ReplyDraftsProvider } from "./ReplyDrafts";
 
 const NAV_COLLAPSED_KEY = "iagora.nav.collapsed";
@@ -144,7 +144,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Tooltip.Content>
             </Tooltip>
           </div>
-          <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} collapsed={collapsed} />
+          <AppNav groups={groups} pathname={pathname} waiting={waiting} collapsed={collapsed} />
         </aside>
         {/* Mobile et tablette : Drawer HeroUI (focus gardé dans le menu, Échap, voile et bouton Fermer). */}
         <Drawer.Backdrop isOpen={navOpen} onOpenChange={setNavOpen}>
@@ -156,7 +156,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Drawer.CloseTrigger aria-label="Fermer le menu" />
               </Drawer.Header>
-              <AppNav groups={groups} pathname={pathname} inSimulator={inSimulator} waiting={waiting} onNavigate={() => setNavOpen(false)} />
+              <AppNav groups={groups} pathname={pathname} waiting={waiting} onNavigate={() => setNavOpen(false)} />
             </Drawer.Dialog>
           </Drawer.Content>
         </Drawer.Backdrop>

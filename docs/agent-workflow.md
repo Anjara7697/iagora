@@ -74,6 +74,9 @@ graph TD;
 ### Règles de décision (ordre de priorité)
 
 1. **Désinscrit ou demande d'arrêt** → opt-out enregistré, relances annulées, aucun message (scénario 4).
+   Si le même message demande aussi quelque chose sur ses données (« supprimez mes données », RGPD) ou relève
+   d'une situation sensible (plainte, harcèlement), la conversation passe en plus au conseiller (motif
+   `donnees_personnelles` ou `situation_sensible`, priorité critique dans « À traiter »), toujours sans message.
 2. **Cas qui exigent un humain, quoi qu'il arrive** : modèle indisponible, situation sensible → transfert (F-20).
 3. **Demande de rendez-vous** (même formulée « avec un conseiller ») → l'agent organise le rendez-vous lui-même
    avec des créneaux réels (F-18). Sans agenda, le transfert a lieu juste après : le prospect n'est jamais bloqué.
@@ -96,7 +99,7 @@ Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `
 | Risque | Parade | Exigence |
 |---|---|---|
 | Le modèle invente un prix, une condition (CPF, admission), une durée, une date | Réponse **vérifiée par le code** : prix et conditions doivent figurer dans les extraits ou le catalogue, durées et dates dans les extraits ou la conversation ; un seul nouvel essai plus strict, sinon transfert | NF-10 |
-| Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée | F-20, NF-10 |
+| Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée : aucun extrait trouvé, ou extraits proches que le modèle signale comme sans réponse (`[CONSEILLER]`) ; le message n'est alors pas envoyé | F-20, NF-10 |
 | Disponibilité inventée | Aucun créneau cité s'il ne vient pas de l'agenda ; agenda absent → transfert | NF-10, F-18 |
 | Prospect désinscrit | Détection sans modèle ; envoi sortant refusé par le service même si le workflow se trompait | S-03 |
 | Premier message à une personne qui n'a rien demandé | L'agent n'écrit en premier qu'avec un consentement accordé (refus 409 sinon) ; premiers contacts étalés dans la fenêtre d'envoi | D-29 |

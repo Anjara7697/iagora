@@ -42,6 +42,13 @@ du code et de recherches dans `frontend/src` au commit `5ce9fda`.
 - Solution sans toucher l'API : dédupliquer et ne pas recharger quand le filtre change. Solution propre : des
   compteurs dans la réponse de liste, **à proposer au backend**, sans rien retirer du contrat actuel.
 
+> **Lot 7, PR 7.3 (16/11/2026)** : 28 des 45 types vérifiés par `contract.ts` sont désormais dérivés du schéma
+> (`Schemas["…"]` dans `lib/types.ts`), ceux dont le passage ne cassait aucun usage (mesuré type par type au
+> compilateur). Restent écrits à la main, et vérifiés par `contract.ts`, les 17 qui demandent d'ajuster du code :
+> par ordre d'effort mesuré, KnowledgeDocumentDetail et Membership (1 erreur), EmailConfig, TodoPage, TreatedItem,
+> TreatedPage (2), ImportReport (3), ConversationSummary, EmailStatus, ZoomSettings (4), CalendarSettings,
+> ConversationProspect (5), AgentRun (7), MetaSettings (8), Message (13), TodoItem (17), Conversation (20).
+
 **DATA-04 — Deux sources de types** · P2 · effort M
 - `lib/types.ts` : 54 types écrits à la main ; `lib/api/schema.d.ts` : 8 444 lignes générées depuis l'OpenAPI.
 - `lib/api/contract.ts` vérifie 46 correspondances à la compilation : un champ lu par la console et absent de
@@ -124,6 +131,13 @@ schéma d'API (`npm run api:check`).
 ## 8. Code à assainir
 
 Chaque élément a été cherché dans `src`, `tests` et `tests-api` ; aucun import dynamique dans le projet.
+
+> **Lot 7, PR 7.1 (16/11/2026)** : CLEAN-01 et CLEAN-03 traités sur l'inventaire refait à cette date (exports
+> morts supprimés, exports internes rendus privés ; restent exportés, à dessein, `ApiContract`, vérification
+> à la compilation, et `schema.d.ts`, généré). CLEAN-02 : `ROLE_LABELS` (une seule définition dans
+> `lib/labels.ts`), ton de statut des campagnes (`CampaignStatusTag`) ; les trois fonctions d'initiales ne
+> sont pas des doublons (découpages différents, résultats différents), elles restent. TS-01 (`RouterConfig`
+> déclaré), TS-03 (`draftStatus`), TS-04 traités ; TS-02 laissé (correct).
 
 **CLEAN-01 — Exports sans aucun usage** (une seule occurrence, leur définition) :
 

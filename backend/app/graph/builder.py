@@ -89,7 +89,12 @@ def build_workflow(deps: Deps) -> Any:
     graph.add_conditional_edges("send_message", after_send, ["schedule_followup", "finalize"])
     graph.add_edge("schedule_followup", "finalize")
     graph.add_edge("human_handoff", "finalize")
-    graph.add_edge("handle_opt_out", "close_conversation")
+    # Arrêt accompagné d'une demande à traiter (données personnelles, plainte) : transfert.
+    graph.add_conditional_edges(
+        "handle_opt_out",
+        handoff_or("close_conversation"),
+        ["human_handoff", "close_conversation"],
+    )
     graph.add_edge("close_conversation", "finalize")
     graph.add_edge("finalize", END)
     return graph.compile()
