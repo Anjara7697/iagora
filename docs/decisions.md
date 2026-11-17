@@ -288,3 +288,28 @@ qualification toujours fermée, rendez-vous rarement proposé de lui-même.
 **Mesure.** `eval-conversations` (profil lu, rendez-vous proposé à temps, types de questions, reformulations,
 offres répétées, avis d'admission), avant et après.
 
+## D-34 — Finitions de la technique de vente : promesse tenue, question non reposée
+
+*17 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** L'évaluation de conversations après D-33 confirme les progrès (questions ouvertes et alternatives,
+messages deux fois plus courts, rendez-vous proposé à temps, plus d'offre de conseiller spontanée) mais montre
+trois défauts : le modèle écrit « je préfère laisser un conseiller vous apporter cette précision » sans le signal
+`[CONSEILLER]`, si bien que personne n'est prévenu (la consigne l'y invitait) ; la question de qualification
+restée sans réponse revient à chaque message (trois fois de suite) ; un avis d'admission adouci passe encore
+(« ce qui correspond au profil recherché »).
+
+**Décision.**
+- Un renvoi vers un conseiller écrit en toutes lettres (« laisser un conseiller… », « un conseiller vous
+  précisera… », « je n'ai pas cette information ») vaut le signal : le message n'est pas envoyé et la question
+  est transférée (`question_hors_base`). Exceptions : quand des créneaux suivent la réponse dans le même message,
+  et en réponse à « je parle à un robot ? ». La consigne du modèle ne l'invite plus à écrire cette phrase.
+- Quand le dernier message de l'agent posait une question et que le prospect répond par une autre question,
+  sans rien dire de nouveau sur lui, l'agent répond sans poser de question ; la grille reprend au message
+  suivant.
+- La consigne interdit aussi « correspond au profil recherché » et « adapté », et de rapprocher les conditions
+  citées du parcours du prospect.
+
+**Mesure.** `eval-conversations` : nouvel indicateur « questions reposées » (objectif 0), avis d'admission
+élargi à la formule adoucie, transferts manqués.
+

@@ -166,8 +166,9 @@ se comparent d'un passage à l'autre :
 | Reformulations | l'agent reprend ce que le prospect vient de dire avant d'enchaîner (écoute active) |
 | Longueur des messages | médiane, et messages au-delà de 120 mots (la consigne) |
 | Offres de conseiller | « voulez-vous un conseiller ? » posé par le modèle (D-33 : jamais de lui-même), et combien de fois reposé |
-| Avis d'admission donnés | « votre profil correspond aux conditions » : l'admission revient à l'école |
+| Avis d'admission donnés | « votre profil correspond aux conditions », « au profil recherché » : l'admission revient à l'école |
 | Salutations dans les messages fixes | « Bonjour » en tête des créneaux ou de la confirmation, en pleine conversation |
+| Questions reposées | la question restée sans réponse revient au message suivant de l'agent (D-34 : objectif 0) |
 
 - **Hors ligne**, le faux modèle rejoue l'annotation de chaque tour : 100 % attendu, vérifié par la CI. Les
   conversations de suivi du contexte (`live_only`) ne sont jouées qu'avec `--live` : le faux modèle ne sait pas
