@@ -756,6 +756,12 @@ def format_markdown(
 
 
 def to_json(results: list[CaseResult], summary: Summary, **meta: Any) -> str:
+    return json.dumps(to_payload(results, summary, **meta), ensure_ascii=False, indent=2)
+
+
+def to_payload(results: list[CaseResult], summary: Summary, **meta: Any) -> dict[str, Any]:
+    """Résultats lisibles par la page Évaluation : métriques, et pour chaque cas le message joué,
+    la réponse de l'agent et les écarts."""
     rows = [
         {
             "id": r.case.id,
@@ -775,8 +781,10 @@ def to_json(results: list[CaseResult], summary: Summary, **meta: Any) -> str:
             "seconds": round(r.seconds, 3),
             "llm_calls": len(r.calls),
             "error": r.error,
+            "message": r.case.message,
+            "reply": r.reply_text,
+            "gaps": _gaps(r),
         }
         for r in results
     ]
-    payload = {"meta": meta, "summary": summary.as_dict(), "cases": rows}
-    return json.dumps(payload, ensure_ascii=False, indent=2)
+    return {"meta": meta, "summary": summary.as_dict(), "cases": rows}
