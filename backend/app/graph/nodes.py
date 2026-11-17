@@ -247,6 +247,8 @@ class WorkflowNodes:
             state.get("missing_fields", []),
             mode=mode,
             then_meeting=decision.answer_first,
+            # D-34 : une question restée sans réponse n'est pas reposée au message suivant.
+            hold_question=policy.question_unanswered(ctx.history, q, text),
         )
         messages = prompts.to_chat(ctx.history) or [
             ChatMessage(
@@ -285,13 +287,27 @@ class WorkflowNodes:
                     f"modèle indisponible : {type(exc).__name__}",
                 ),
             }
-        if prompts.defers_to_advisor(reply):
+        # D-34 : « je préfère laisser un conseiller vous apporter cette précision » écrit sans le
+        # signal vaut le signal, sauf quand des créneaux suivent (le conseiller répondra alors au
+        # rendez-vous proposé) ou en réponse à « je parle à un robot ? ».
+        in_words = (
+            mode != "nurture"
+            and bool(ctx.history)
+            and not decision.answer_first
+            and not about_agent
+            and policy.defers_to_advisor_in_words(reply)
+        )
+        if prompts.defers_to_advisor(reply) or in_words:
             # Les extraits ne répondent pas à la question : le message (« un conseiller vous
             # répondra ») n'est pas envoyé, le transfert le remplace et la promesse est tenue.
             return {
                 "needs_human": True,
                 "handoff_reason": "question_hors_base",
-                "trace": _t("generate_response", "réponse absente des extraits : transfert"),
+                "trace": _t(
+                    "generate_response",
+                    "réponse absente des extraits : transfert"
+                    + (" (renvoi au conseiller sans signal)" if in_words else ""),
+                ),
             }
         if claims or not reply:
             return {

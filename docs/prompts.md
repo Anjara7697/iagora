@@ -12,7 +12,7 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 | Nom | Type | Rôle | Utilisé par |
 |---|---|---|---|
 | `IDENTITY` | Texte fixe | L'agent écrit au nom de DATUM Academy ; c'est une IA qui ne se fait jamais passer pour un humain, ne se présente pas comme IA de lui-même (la mention sous le message le dit, D-32) et répond franchement si on le lui demande | `reply_system` |
-| `RULES` | Texte fixe | Vouvoiement, ton, interdiction d'inventer (prix, dates, durées…), aucun avis d'admission, pas d'offre de conseiller spontanée, une seule question, 80 mots au plus en 2 à 4 phrases, reprise de ce que le prospect vient de dire (écoute active), ne pas parler du fonctionnement interne (D-33) | `reply_system` |
+| `RULES` | Texte fixe | Vouvoiement, ton, interdiction d'inventer (prix, dates, durées…), aucun avis d'admission (ni « correspond au profil recherché », D-34), pas d'offre de conseiller spontanée, jamais « un conseiller vous précisera » en toutes lettres (D-34), une seule question, 80 mots au plus en 2 à 4 phrases, reprise de ce que le prospect vient de dire (écoute active), ne pas parler du fonctionnement interne (D-33) | `reply_system` |
 | `QUESTION_STYLE` | Texte fixe | Façon de poser la question de qualification selon le champ manquant : ouverte sur le projet, simple sur le parcours, alternative sur la rentrée et le format (D-33) | `reply_system` |
 | `CATALOGUE` | Texte fixe | Liste validée des trois programmes : noms et publics, **aucun chiffre** | `reply_system` |
 | `PROGRAMS` | Dictionnaire | Libellé du sujet d'intérêt selon la cible du prospect | les deux prompts système |
@@ -32,6 +32,7 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 | Conversation déjà engagée | Ne pas resaluer, ne pas se représenter |
 | Champ de profil manquant | Terminer par **une** question sur le premier champ manquant de la grille (`REQUIRED_FIELDS`, `FIELD_LABELS` dans `policy.py`), posée selon `QUESTION_STYLE` |
 | Créneaux qui suivent la réponse (`then_meeting`, D-33) | Répondre sans poser de question ni parler de rendez-vous : les créneaux réels suivent dans le même message |
+| Question précédente restée sans réponse (`hold_question`, D-34) | Répondre sans poser de question : la grille reprend au message suivant |
 
 ### Textes qui ne passent pas par le modèle
 

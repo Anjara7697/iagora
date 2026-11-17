@@ -368,6 +368,41 @@ async def test_the_advisor_signal_after_a_rejected_draft_hands_off_as_out_of_bas
     assert not any("CPF" in t and "éligible" in t for t in texts)
 
 
+async def test_an_advisor_answer_promised_without_the_signal_is_handed_off(client, env):
+    """D-34 : le modèle écrit « je préfère laisser un conseiller vous apporter cette précision »
+    sans le signal : la promesse est tenue par un vrai transfert, le message n'est pas envoyé."""
+    question = "Les cours sont-ils en français ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, question)
+    near = "La formation eBIHAR se déroule en alternance."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    deferral = "Je préfère laisser un conseiller vous apporter cette précision lors d'un échange."
+    env.llm.reply = lambda system, messages: (
+        deferral if "Extraits de la base" in system else "Le prospect demande la langue."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    texts = [m["content"] for m in (await conversation(client, cid))["messages"]]
+    assert deferral not in texts
+
+
+async def test_an_unanswered_question_is_held_for_the_next_message(client, env):
+    """D-34 : la question précédente est restée sans réponse : le modèle ne la repose pas."""
+    question = "Le programme est-il en alternance ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Qu'est-ce qui vous attire dans la data ?", role="agent")
+    await say(client, cid, question)
+    env.kb.passages = [Passage(source="faq-ebihar", text="eBIHAR se déroule en alternance.")]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "Oui, eBIHAR se déroule en alternance."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None
+    system = env.llm.generate_calls[-1][0]
+    assert "Ta question précédente est restée sans réponse" in system
+
+
 # --- NF-10 : jamais d'information inventée ---
 
 
