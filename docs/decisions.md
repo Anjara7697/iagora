@@ -256,3 +256,35 @@ relu sous responsabilité éditoriale vise les textes publiés pour informer le 
 commerciale, et une validation rapide (par lot) n'est pas une relecture éditoriale. À rouvrir seulement sur avis
 écrit du DPO.
 
+## D-33 — Technique de vente de l'agent : grille de qualification et entonnoir
+
+*17 novembre 2026 · Adoptée par le responsable du projet ; grille et prérequis à confirmer par DATUM.*
+
+**Contexte.** L'évaluation de conversations du 17/11 et l'étude des méthodes commerciales (CHAMP, SPIN,
+questionnement en entonnoir, SONCAS, profil progressif) montrent un agent qui comprend et décide bien, mais
+qualifie peu : deux informations seulement par programme, messages qui déroulent toute la fiche, conseiller
+proposé à chaque message, avis d'admission (« votre profil correspond aux conditions »), question de
+qualification toujours fermée, rendez-vous rarement proposé de lui-même.
+
+**Décision.**
+- **Grille de qualification**, recueillie une question à la fois, dans l'ordre de l'entonnoir : projet
+  (question ouverte), niveau d'études ou situation professionnelle, rentrée visée, ville ou format (sur place,
+  à distance) ; pour les entreprises, besoin et échéance. L'agent ne demande ni l'entreprise d'alternance ni le
+  besoin de financement.
+- **Façon de poser les questions** : ouverte sur le projet, alternative sur l'échéance et le format ; courte
+  reformulation de ce que le prospect vient de dire ; messages de 80 mots au plus qui répondent à la question
+  posée ; aucun avis d'admission ; pas d'offre de conseiller spontanée.
+- **Rendez-vous** : quand la grille est complète et que le prospect pose une question qui annonce une décision
+  (admission, rentrée, candidature), l'agent répond puis propose de vrais créneaux dans le même message, une
+  seule fois. Sans agenda, la réponse part seule. Le seuil de score (D-27) reste une seconde voie.
+- **« Je parle à un robot ? »** : une question sur l'interlocuteur, à laquelle l'agent répond franchement
+  (D-32), pas une demande de conseiller, sauf demande explicite d'un humain.
+- Messages écrits par le code (créneaux, confirmation) : « Bonjour » seulement au premier message de l'agent.
+- **Prérequis**, pour orienter et pour le score, jamais pour annoncer une admission : Bachelor eBIHAR dès le Bac ;
+  Master eBIHAR en M1 dès un Bac+3, en M2 dès un M1 ; Les Compagnons pour les personnes en poste, sans diplôme
+  exigé. Si le profil correspond mieux à un autre programme, l'agent le suggère en une phrase, sans insister.
+  Ces deux points (orientation, score fondé sur les prérequis) font l'objet d'une PR suivante.
+
+**Mesure.** `eval-conversations` (profil lu, rendez-vous proposé à temps, types de questions, reformulations,
+offres répétées, avis d'admission), avant et après.
+

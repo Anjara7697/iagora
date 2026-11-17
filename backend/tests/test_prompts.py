@@ -105,3 +105,28 @@ def test_the_agent_never_pretends_to_be_human_nor_introduces_itself_as_an_ai():
     assert "Ne te présente pas comme une IA de toi-même" in prompts.IDENTITY
     assert "réponds franchement que oui" in prompts.IDENTITY
     assert "assistant virtuel" not in first
+
+
+def test_sales_technique_rules_are_given_to_the_model():
+    """D-33 : messages courts, écoute active, aucun avis d'admission, pas d'offre de conseiller
+    spontanée, et une question de qualification posée selon l'entonnoir."""
+    asked = [HistoryMessage(role="prospect", content="Je suis en BTS.")]
+    text = reply(asked, missing=["start_term", "location"])
+    assert "80 mots au plus" in text and "Écoute active" in text
+    assert "N'affirme jamais qu'un profil remplit les conditions d'admission" in text
+    assert "Ne propose pas toi-même un échange ou un rendez-vous" in text
+    assert "la rentrée qu'il ou elle vise" in text and "question alternative" in text
+    assert "question ouverte sur son projet" in reply(asked, missing=["goal"])
+
+
+def test_when_slots_follow_the_answer_the_model_asks_nothing():
+    asked = [HistoryMessage(role="prospect", content="Comment se passe l'admission ?")]
+    text = prompts.reply_system(ctx(asked), {}, [], ["goal"], mode="continue", then_meeting=True)
+    assert "des créneaux pour échanger avec un conseiller suivent ta réponse" in text
+    assert "Termine par UNE question" not in text
+
+
+def test_code_written_messages_greet_only_at_the_start():
+    assert prompts.opening(ctx()).startswith("Bonjour Camille")
+    spoke = [HistoryMessage("prospect", "Bonjour"), HistoryMessage("agent", "Bonjour !")]
+    assert prompts.opening(ctx(spoke)) == ""

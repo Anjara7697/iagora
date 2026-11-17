@@ -80,13 +80,22 @@ graph TD;
 2. **Cas qui exigent un humain, quoi qu'il arrive** : modèle indisponible, situation sensible → transfert (F-20).
 3. **Demande de rendez-vous** (même formulée « avec un conseiller ») → l'agent organise le rendez-vous lui-même
    avec des créneaux réels (F-18). Sans agenda, le transfert a lieu juste après : le prospect n'est jamais bloqué.
-4. **Demande d'un humain, cas particulier, incertitude** (< 0,5) → transfert.
+4. **Demande d'un humain, cas particulier, incertitude** (< 0,5) → transfert. « Je parle à un robot ? » n'est
+   pas une demande d'humain : l'agent répond franchement (D-32, D-33).
 5. **Pas intéressé** → clôture, aucune relance.
-6. **Rendez-vous** : créneau choisi → réservation ; score ≥ 50 avec qualification complète → proposition de créneaux.
+6. **Rendez-vous** : créneau choisi → réservation. Grille de qualification complète et question qui annonce une
+   décision (admission, rentrée, candidature) → l'agent répond, puis propose de vrais créneaux dans le même
+   message, une seule fois ; sans agenda, la réponse part seule (D-33). Score ≥ 50 avec qualification complète →
+   proposition de créneaux.
 7. **Message neutre et score ≤ 24** → entretien espacé (nurturing) et relance programmée (scénario 1).
 8. Sinon → poursuite de l'échange et qualification.
 
 **Relances** : toute réponse du prospect, tout transfert à un humain et toute clôture annulent les relances en attente (F-16).
+
+**Qualification (D-33)** : une grille par programme, recueillie une question à la fois dans l'ordre de
+l'entonnoir : projet (question ouverte), niveau d'études ou situation, rentrée visée, ville ou format (questions
+alternatives). L'agent reformule brièvement ce que le prospect vient de dire, répond en 80 mots au plus, ne donne
+jamais d'avis d'admission et ne propose pas de lui-même un conseiller : les créneaux arrivent au bon moment.
 
 **Questions** : une question précise sans extrait de la base de connaissances est transférée (jamais devinée). Une
 question sur la *liste* des formations (`asks_catalogue`) est répondue grâce à la liste validée des trois programmes

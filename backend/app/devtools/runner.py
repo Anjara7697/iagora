@@ -266,6 +266,9 @@ async def observe(
         tail.append(m.content)
         if m.metadata.get("mode") not in CODE_WRITTEN_MODES:
             llm_written.append(m.content)
+        elif m.metadata.get("with_answer"):
+            # Réponse puis créneaux (D-33) : seule la réponse est rédigée par le modèle.
+            llm_written.append(m.content[: int(m.metadata.get("answer_chars") or 0)])
     return observed, tail, llm_written
 
 

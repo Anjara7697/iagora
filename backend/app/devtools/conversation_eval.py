@@ -165,7 +165,10 @@ _EXPLORE = re.compile(
     r"qu.est.ce qu|pourquoi|comment|que recherchez|qu.attendez|que souhaitez|ce qui vous"
     r"|ce que vous|qu.aimeriez"
 )
-_INFORM = re.compile(r"\bquel(le)?s?\b|combien|quand|\bou\b")
+_INFORM = re.compile(
+    r"\bquel(le)?s?\b|combien|quand|\bou\b"
+    r"|(m|nous).(indiquer|preciser|dire|communiquer)\b"  # « pourriez-vous m'indiquer votre… »
+)
 _ALTERNATIVE = re.compile(r"\w \bou\b \w")
 _REFORMULATION = re.compile(
     r"si je (comprends|resume)|vous me dites|d.apres ce que vous|vous (visez|souhaitez|cherchez"
@@ -459,6 +462,7 @@ class ConversationSummary:
     reformulations: int
     words_median: float | None
     long_messages: int
+    advisor_offers: int
     repeated_offers: int
     eligibility_verdicts: int
     template_greetings: int
@@ -497,6 +501,7 @@ class ConversationSummary:
                 "reformulations": self.reformulations,
                 "words_median": self.words_median,
                 "long_messages": self.long_messages,
+                "advisor_offers": self.advisor_offers,
                 "repeated_advisor_offers": self.repeated_offers,
                 "eligibility_verdicts": self.eligibility_verdicts,
                 "template_greetings": self.template_greetings,
@@ -547,6 +552,7 @@ def summarize(results: list[ConversationResult]) -> ConversationSummary:
         reformulations=sum(r.reformulations for r in ev),
         words_median=statistics.median(words) if words else None,
         long_messages=sum(1 for w in words if w > LONG_MESSAGE_WORDS),
+        advisor_offers=sum(r.advisor_offers for r in ev),
         repeated_offers=sum(r.repeated_offers for r in ev),
         eligibility_verdicts=sum(r.eligibility_verdicts for r in ev),
         template_greetings=sum(r.template_greetings for r in ev),
@@ -661,8 +667,8 @@ def format_markdown(
         "que le prospect vient de dire (écoute active) |",
         f"| Longueur des messages | médiane {_words(s.words_median)} ; au-delà de "
         f"{LONG_MESSAGE_WORDS} mots : {s.long_messages} | consigne : {LONG_MESSAGE_WORDS} mots au plus |",
-        f"| Offres de conseiller répétées | {s.repeated_offers} | « voulez-vous un conseiller ? » "
-        "reposé alors qu'il a déjà été proposé |",
+        f"| Offres de conseiller | {s.advisor_offers} ; répétées : {s.repeated_offers} | « voulez-vous "
+        "un conseiller ? » posé par le modèle (D-33 : jamais de lui-même) |",
         f"| Avis d'admission donnés | {s.eligibility_verdicts} | « votre profil correspond aux "
         "conditions » : l'admission revient à l'école |",
         f"| Salutations dans les messages fixes | {s.template_greetings} | « Bonjour » en tête des "

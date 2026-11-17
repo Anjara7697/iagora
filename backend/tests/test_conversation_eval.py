@@ -156,6 +156,7 @@ async def test_command_refuses_to_run_in_production(monkeypatch):
         ("Qu'est-ce qui vous attire dans la data ?", "exploration"),
         ("Pourquoi souhaitez-vous changer de métier ?", "exploration"),
         ("Pourriez-vous m'indiquer quel est votre niveau d'études ?", "information"),
+        ("Pourriez-vous m'indiquer votre niveau d'études actuel ?", "information"),
         ("Visez-vous la rentrée de septembre ou celle de l'an prochain ?", "alternative"),
         ("Souhaitez-vous que je vous mette en relation avec un conseiller ?", "fermée"),
         ("Où habitez-vous ?", "information"),
@@ -198,9 +199,11 @@ async def test_sales_indicators_are_measured_without_changing_conformity(session
     parcours, engage = results
     assert parcours.ok and engage.ok  # les indicateurs ne changent pas la conformité
     assert parcours.meeting_turn == 3  # le prospect a demandé le rendez-vous au tour 3
-    # Créneaux et confirmation sont des textes fixes qui commencent par « Bonjour ».
-    assert parcours.template_greetings == 2 and parcours.greetings_repeated == 0
-    assert engage.meeting_on_time is not None and "exploration" in engage.question_kinds
+    # Créneaux et confirmation en pleine conversation : plus de « Bonjour » (D-33).
+    assert parcours.template_greetings == 0 and parcours.greetings_repeated == 0
+    # Grille complète au tour 3 et question d'admission : réponse puis créneaux, de lui-même.
+    assert engage.meeting_turn == 3 and engage.meeting_on_time is True
+    assert "exploration" in engage.question_kinds
     summary = ce.summarize(results)
     indicators = summary.as_dict()["sales_indicators"]
     kinds = {"exploration", "information", "alternative", "fermée"}
