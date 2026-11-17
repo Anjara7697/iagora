@@ -269,6 +269,7 @@ class CaseResult:
     calls: list[LLMCall] = field(default_factory=list)
     llm_unavailable: bool = False
     error: str | None = None
+    observed: dict[str, Any] = field(default_factory=dict)  # état après le tour
 
     # Chaque vérification vaut True/False, ou None quand elle ne s'applique pas au cas.
     @property
@@ -341,47 +342,51 @@ def _configure_fake(fake: FakeLLM, case: EvalCase) -> None:
     fake.reply = case.fake.get("reply") or "Bonjour, merci pour votre message."
 
 
-async def run_case(
-    session_factory: async_sessionmaker[AsyncSession],
+async def play_turn(
+    session: AsyncSession,
     db: Any,
+    ids: tuple[int, int, str],
     case: EvalCase,
     *,
     llm: MeteredLLM,
     knowledge: KnowledgeBase,
     ablation: str | None = None,
+    calendar: FakeCalendar | None = None,
+    said: Sequence[str] = (),
 ) -> CaseResult:
+    """Joue UN message du prospect (`case.message`, ou aucun : premier contact) sur une
+    conversation existante et mesure la réponse. `said` : messages déjà échangés, qui justifient
+    les durées et dates reprises par l'agent, comme dans le workflow (NF-10)."""
+    pid, mid, cid = ids
     result = CaseResult(case)
     if isinstance(llm.inner, FakeLLM):
         _configure_fake(llm.inner, case)
     llm.reset()
     kb = RecordingKnowledge(EmptyKnowledgeBase() if ablation == "sans-rag" else knowledge)
     try:
-        async with session_factory() as session:
-            pid, mid, cid = await runner.new_demo_prospect(
-                session, db, label=EVAL_LABEL, target_code=case.target, profile=case.profile
+        if case.message is not None:
+            await conversations.add_message(
+                session, db, cid, MessageCreate(role=SenderType.PROSPECT, content=case.message)
             )
-            if case.message is not None:
-                await conversations.add_message(
-                    session, db, cid, MessageCreate(role=SenderType.PROSPECT, content=case.message)
-                )
-            start = time.perf_counter()
-            with _ablation(ablation):
-                run = await run_agent(
-                    session,
-                    db,
-                    llm=llm,
-                    calendar=FakeCalendar(),  # agenda de démonstration : aucun vrai rendez-vous
-                    knowledge=kb,
-                    conversation_id=cid,
-                    mode=AgentMode.AUTO,
-                )
-            result.seconds = time.perf_counter() - start
-            observed, tail, llm_written = await runner.observe(session, db, pid, mid, cid)
+        start = time.perf_counter()
+        with _ablation(ablation):
+            run = await run_agent(
+                session,
+                db,
+                llm=llm,
+                calendar=calendar or FakeCalendar(),  # agenda de démonstration : rien de réservé
+                knowledge=kb,
+                conversation_id=cid,
+                mode=AgentMode.AUTO,
+            )
+        result.seconds = time.perf_counter() - start
+        observed, tail, llm_written = await runner.observe(session, db, pid, mid, cid)
     except Exception as exc:  # une erreur technique est un résultat, pas un plantage de l'outil
         result.error = f"{type(exc).__name__}: {exc}"
         result.calls = list(llm.calls)
         return result
 
+    result.observed = observed
     result.intent = _intent_from_trace(run.trace)
     result.action, result.reason = run.action, run.reason
     result.handoff_reason = run.handoff_reason
@@ -392,15 +397,40 @@ async def run_case(
     result.llm_unavailable = run.handoff_reason == "llm_indisponible" or any(
         not c.ok for c in llm.calls
     )
-    # NF-10 : sources validées = extraits renvoyés, catalogue, campagne ; le message du prospect ne
-    # justifie que les durées, dates et niveaux, jamais un prix ni une condition (AUDIT-AI-001).
+    # NF-10 : sources validées = extraits renvoyés, catalogue, campagne ; les messages échangés ne
+    # justifient que les durées, dates et niveaux, jamais un prix ni une condition (AUDIT-AI-001).
     sources = [p.text for p in kb.returned] + [prompts.CATALOGUE, runner.SCENARIO_CAMPAIGN]
-    said = [case.message or ""]
+    said = [*said, case.message or ""]
     result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
     result.sent_claims_by_message = [
         _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
     ]
     return result
+
+
+async def run_case(
+    session_factory: async_sessionmaker[AsyncSession],
+    db: Any,
+    case: EvalCase,
+    *,
+    llm: MeteredLLM,
+    knowledge: KnowledgeBase,
+    ablation: str | None = None,
+) -> CaseResult:
+    """Un cas : un prospect fictif neuf et un seul message."""
+    try:
+        async with session_factory() as session:
+            ids = await runner.new_demo_prospect(
+                session, db, label=EVAL_LABEL, target_code=case.target, profile=case.profile
+            )
+            return await play_turn(
+                session, db, ids, case, llm=llm, knowledge=knowledge, ablation=ablation
+            )
+    except Exception as exc:  # une erreur technique est un résultat, pas un plantage de l'outil
+        result = CaseResult(case)
+        result.error = f"{type(exc).__name__}: {exc}"
+        result.calls = list(llm.calls)
+        return result
 
 
 async def run_eval(

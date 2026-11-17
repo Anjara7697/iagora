@@ -1,6 +1,6 @@
 # Tester l'agent
 
-Quatre outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
+Cinq outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
 (`ENVIRONMENT=production` les refuse) et ne créent que des données fictives en `@demo.example.com`.
 
 | Outil | Commande | Usage |
@@ -9,6 +9,7 @@ Quatre outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en
 | Scénarios de recette | `python -m app.cli scenario` | Rejouer des cas complets et vérifier le comportement de l'agent ; produit un rapport |
 | Simulateur de conversation | `python -m app.cli chat` | Jouer le prospect à la main et voir la décision de l'agent à chaque message |
 | Évaluation quantitative | `python -m app.cli eval-agent` | Mesurer l'agent sur un jeu de cas annotés : intention, décision, transferts, réponses sourcées, chiffres inventés, latence |
+| Évaluation de conversations | `python -m app.cli eval-conversations` | Mesurer l'agent sur des conversations de plusieurs messages : contexte suivi, informations redemandées, ton tenu, parcours mené au bout |
 
 Avec Docker : `docker compose exec backend python -m app.cli <commande>`.
 
@@ -127,6 +128,42 @@ cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vr
 - Le rapport Markdown donne la synthèse, le détail par catégorie et chaque écart (message, attendu, observé, réponse) ;
   le JSON garde les résultats bruts pour comparer plusieurs passages.
 
+## Évaluation de conversations
+
+```bash
+python -m app.cli eval-conversations                                   # faux modèle (hors ligne)
+python -m app.cli eval-conversations --live --rag-reel --pause 4 --report conv.md --json conv.json --cleanup
+python -m app.cli eval-conversations --live parcours_rdv_ebihar arret_en_cours
+```
+
+`eval-agent` mesure un message à la fois, sur un prospect neuf. `eval-conversations` joue des conversations de
+plusieurs messages (`backend/app/devtools/conversation_cases.json`) sur un même prospect fictif
+(`evalconv.*@demo.example.com`), avec le vrai workflow ; rien n'est envoyé. Chaque tour reprend exactement les
+vérifications de `eval-agent` (intention, décision, transfert, fait attendu, chiffres non sourcés) ; s'y ajoute
+ce qui ne se voit qu'à la longue :
+
+| Mesure | Ce qui est compté |
+|---|---|
+| Contexte suivi | questions de suivi (« et ça dure combien ? ») justes, sans répéter le sujet |
+| Informations redemandées | l'agent demande une information de profil que le prospect a déjà donnée |
+| Ton tenu | nouvelle salutation après le premier message, présentation comme IA sans qu'on le demande (D-32), plus d'une question par message |
+| Parcours mené au bout | état final attendu : rendez-vous réservé, désinscription, transfert, conversation ouverte |
+| Arrêts prématurés | transfert ou clôture avant le dernier message prévu |
+
+Les 8 conversations couvrent : un parcours complet jusqu'au rendez-vous réservé, des informations à ne pas
+redemander, deux conversations de suivi du contexte, une désinscription en cours de route, une question mêlant
+connu et inconnu, « je parle à un robot ? » et un prospect peu engagé. Le rapport Markdown reprend les échanges
+complets pour juger le ton à la lecture.
+
+- **Hors ligne**, le faux modèle rejoue l'annotation de chaque tour : 100 % attendu, vérifié par la CI. Les
+  conversations de suivi du contexte (`live_only`) ne sont jouées qu'avec `--live` : le faux modèle ne sait pas
+  simuler la compréhension d'une question courte.
+- Les messages du prospect sont écrits d'avance : la mesure est comparable d'un passage à l'autre, mais si
+  l'agent répond de façon inattendue, la suite peut ne plus coller. Une conversation transférée ou close avant
+  le dernier message est comptée comme arrêtée.
+- Informations redemandées, salutations et présentation comme IA sont repérées par des expressions courantes :
+  un écart signalé se relit dans les échanges du rapport.
+
 ## Nettoyage
 
-`--cleanup` (scénarios, évaluation) supprime les prospects créés par la recette sans toucher au jeu de démo.
+`--cleanup` (scénarios, évaluations) supprime les prospects créés par la recette sans toucher au jeu de démo.

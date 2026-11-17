@@ -45,7 +45,7 @@ Vue technique : [architecture.md](architecture.md).
 | Email IMAP/SMTP | Recette sur la boîte définitive de DATUM : [recette-locale.md](recette-locale.md) §4 |
 | Google Calendar + Zoom (réglés dans la console, OAuth par conseiller) | Applications OAuth Google et Zoom en HTTPS, comptes réels et recette : [calendar.md](calendar.md) |
 | Déploiement serveur (`deploy/`) | `dev` en ligne et déployé automatiquement après une CI verte ; reste la production, la copie des sauvegardes hors serveur (stockage à choisir, lot 6) et un test de restauration |
-| Qualité des réponses avec le vrai modèle | `eval-agent --live` à lancer et à suivre ([agent-testing.md](agent-testing.md)) |
+| Qualité des réponses avec le vrai modèle | `eval-agent --live` et `eval-conversations --live` à lancer et à suivre ([agent-testing.md](agent-testing.md)) |
 | Workflow n8n « prospect simulé » | Exécution sur l'instance n8n du serveur |
 | STOP et « question inconnue » avec Gemini | Recette manuelle à confirmer |
 | Meta Lead Ads | Application, permissions, page et formulaire réels à fournir puis tester avec l'outil Meta |
