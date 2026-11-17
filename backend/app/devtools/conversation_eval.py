@@ -752,9 +752,17 @@ def format_markdown(
 
 
 def to_json(results: list[ConversationResult], summary: ConversationSummary, **meta: Any) -> str:
+    return json.dumps(to_payload(results, summary, **meta), ensure_ascii=False, indent=2)
+
+
+def to_payload(
+    results: list[ConversationResult], summary: ConversationSummary, **meta: Any
+) -> dict[str, Any]:
+    """Résultats lisibles par la page Évaluation, avec l'échange complet de chaque conversation."""
     rows = [
         {
             "id": r.conversation.id,
+            "title": r.conversation.title,
             "ok": r.ok,
             "evaluable": r.evaluable,
             "skipped": r.skipped,
@@ -791,8 +799,9 @@ def to_json(results: list[ConversationResult], summary: ConversationSummary, **m
                 }
                 for t in r.turns
             ],
+            "transcript": [{"role": role, "text": text} for role, text in r.transcript],
+            "issues": _issues(r),
         }
         for r in results
     ]
-    payload = {"meta": meta, "summary": summary.as_dict(), "conversations": rows}
-    return json.dumps(payload, ensure_ascii=False, indent=2)
+    return {"meta": meta, "summary": summary.as_dict(), "conversations": rows}

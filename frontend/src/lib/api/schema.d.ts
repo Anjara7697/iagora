@@ -840,6 +840,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Runs
+         * @description Passages du plus récent au plus ancien, sans le rapport détaillé (indicateurs inclus).
+         */
+        get: operations["list_runs_api_v1_evaluations_get"];
+        put?: never;
+        /**
+         * Start Run
+         * @description Lance un passage en tâche de fond ; suivre son avancement avec `GET /evaluations/{id}`.
+         */
+        post: operations["start_run_api_v1_evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog
+         * @description Suites, cas et conversations disponibles, modèle et embeddings utilisables.
+         */
+        get: operations["catalog_api_v1_evaluations_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Report
+         * @description Ajoute à l'historique un rapport JSON produit en ligne de commande (`--json`).
+         */
+        post: operations["import_report_api_v1_evaluations_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_evaluations__run_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Run */
+        delete: operations["delete_run_api_v1_evaluations__run_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Run */
+        patch: operations["update_run_api_v1_evaluations__run_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/evaluations/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description Arrête le passage en cours ; les résultats déjà obtenus sont gardés.
+         */
+        post: operations["cancel_run_api_v1_evaluations__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -3184,6 +3287,30 @@ export interface components {
             /** Total Score */
             total_score: number;
         };
+        /** ImportPayload */
+        ImportPayload: {
+            /** File Name */
+            file_name?: string | null;
+            /** Label */
+            label: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Ran At
+             * @description Date du passage (défaut : maintenant)
+             */
+            ran_at?: string | null;
+            /**
+             * Report
+             * @description JSON écrit par --json (eval-agent, …)
+             */
+            report: {
+                [key: string]: unknown;
+            };
+        };
         /** ImportReport */
         ImportReport: {
             /**
@@ -3868,6 +3995,81 @@ export interface components {
             count: number;
             /** Reason */
             reason: string;
+        };
+        /**
+         * RunSettings
+         * @description Réglages d'un passage. Ceux qui ne concernent pas la suite choisie sont ignorés.
+         */
+        RunSettings: {
+            /** Ablation */
+            ablation?: ("sans-rag" | "sans-garde-chiffres") | null;
+            /** Categories */
+            categories?: string[];
+            /**
+             * Cleanup
+             * @description Supprimer les prospects fictifs à la fin
+             * @default true
+             */
+            cleanup: boolean;
+            /**
+             * Ids
+             * @description Vide : tout
+             */
+            ids?: string[];
+            /** Label */
+            label: string;
+            /**
+             * Live
+             * @description Vrai modèle (sinon faux modèle scripté, gratuit)
+             * @default false
+             */
+            live: boolean;
+            /**
+             * Min Score
+             * @description Seuil essayé (base)
+             */
+            min_score?: number | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Pause
+             * @description Secondes entre deux cas (quota)
+             * @default 0
+             */
+            pause: number;
+            /**
+             * Price In
+             * @description Prix par million de jetons (entrée)
+             */
+            price_in?: number | null;
+            /**
+             * Price Out
+             * @description Prix par million de jetons (sortie)
+             */
+            price_out?: number | null;
+            /**
+             * Real Rag
+             * @description Vraie recherche sur la base de démonstration
+             * @default false
+             */
+            real_rag: boolean;
+            /**
+             * Suite
+             * @enum {string}
+             */
+            suite: "agent" | "conversations" | "kb";
+        };
+        /** RunUpdate */
+        RunUpdate: {
+            /** Label */
+            label?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Ran At */
+            ran_at?: string | null;
         };
         /** RuntimeSettingsRead */
         RuntimeSettingsRead: {
@@ -6324,6 +6526,252 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    list_runs_api_v1_evaluations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    start_run_api_v1_evaluations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_evaluations_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    import_report_api_v1_evaluations_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_evaluations__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_run_api_v1_evaluations__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_run_api_v1_evaluations__run_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_api_v1_evaluations__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

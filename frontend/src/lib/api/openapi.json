@@ -3257,6 +3257,59 @@
         "title": "HotProspect",
         "type": "object"
       },
+      "ImportPayload": {
+        "properties": {
+          "file_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "ran_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date du passage (défaut : maintenant)",
+            "title": "Ran At"
+          },
+          "report": {
+            "additionalProperties": true,
+            "description": "JSON écrit par --json (eval-agent, …)",
+            "title": "Report",
+            "type": "object"
+          }
+        },
+        "required": [
+          "label",
+          "report"
+        ],
+        "title": "ImportPayload",
+        "type": "object"
+      },
       "ImportReport": {
         "properties": {
           "columns": {
@@ -5215,6 +5268,179 @@
           "count"
         ],
         "title": "RejectReason",
+        "type": "object"
+      },
+      "RunSettings": {
+        "description": "Réglages d'un passage. Ceux qui ne concernent pas la suite choisie sont ignorés.",
+        "properties": {
+          "ablation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sans-rag",
+                  "sans-garde-chiffres"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ablation"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Categories",
+            "type": "array"
+          },
+          "cleanup": {
+            "default": true,
+            "description": "Supprimer les prospects fictifs à la fin",
+            "title": "Cleanup",
+            "type": "boolean"
+          },
+          "ids": {
+            "description": "Vide : tout",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Ids",
+            "type": "array"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "live": {
+            "default": false,
+            "description": "Vrai modèle (sinon faux modèle scripté, gratuit)",
+            "title": "Live",
+            "type": "boolean"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seuil essayé (base)",
+            "title": "Min Score"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "pause": {
+            "default": 0.0,
+            "description": "Secondes entre deux cas (quota)",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Pause",
+            "type": "number"
+          },
+          "price_in": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prix par million de jetons (entrée)",
+            "title": "Price In"
+          },
+          "price_out": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prix par million de jetons (sortie)",
+            "title": "Price Out"
+          },
+          "real_rag": {
+            "default": false,
+            "description": "Vraie recherche sur la base de démonstration",
+            "title": "Real Rag",
+            "type": "boolean"
+          },
+          "suite": {
+            "enum": [
+              "agent",
+              "conversations",
+              "kb"
+            ],
+            "title": "Suite",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suite",
+          "label"
+        ],
+        "title": "RunSettings",
+        "type": "object"
+      },
+      "RunUpdate": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "ran_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ran At"
+          }
+        },
+        "title": "RunUpdate",
         "type": "object"
       },
       "RuntimeSettingsRead": {
@@ -9906,6 +10132,357 @@
         "summary": "Purge Demo Data",
         "tags": [
           "demo"
+        ]
+      }
+    },
+    "/api/v1/evaluations": {
+      "get": {
+        "description": "Passages du plus récent au plus ancien, sans le rapport détaillé (indicateurs inclus).",
+        "operationId": "list_runs_api_v1_evaluations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Runs Api V1 Evaluations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Runs",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "post": {
+        "description": "Lance un passage en tâche de fond ; suivre son avancement avec `GET /evaluations/{id}`.",
+        "operationId": "start_run_api_v1_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Run Api V1 Evaluations Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Start Run",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/catalog": {
+      "get": {
+        "description": "Suites, cas et conversations disponibles, modèle et embeddings utilisables.",
+        "operationId": "catalog_api_v1_evaluations_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Catalog Api V1 Evaluations Catalog Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Catalog",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/import": {
+      "post": {
+        "description": "Ajoute à l'historique un rapport JSON produit en ligne de commande (`--json`).",
+        "operationId": "import_report_api_v1_evaluations_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Import Report Api V1 Evaluations Import Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Import Report",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/{run_id}": {
+      "delete": {
+        "operationId": "delete_run_api_v1_evaluations__run_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Run",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "get": {
+        "operationId": "get_run_api_v1_evaluations__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Run Api V1 Evaluations  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Run",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_run_api_v1_evaluations__run_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Run Api V1 Evaluations  Run Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Run",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/{run_id}/cancel": {
+      "post": {
+        "description": "Arrête le passage en cours ; les résultats déjà obtenus sont gardés.",
+        "operationId": "cancel_run_api_v1_evaluations__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Run Api V1 Evaluations  Run Id  Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Cancel Run",
+        "tags": [
+          "evaluations"
         ]
       }
     },

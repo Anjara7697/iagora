@@ -63,7 +63,7 @@ API : `GET /knowledge/status | documents | documents/{slug}`, `PUT/DELETE /knowl
 | `kb-search "question" [--target …]` | Affiche les extraits trouvés, leur score et s'ils passent le seuil |
 | `kb-reindex` | Recalcule tous les vecteurs (après un changement de `EMBEDDING_MODEL` / fournisseur) |
 | `kb-delete <slug>` / `kb-delete --demo` | Supprime un document / tous les documents fictifs |
-| `kb-eval` | (dev) Mesure la recherche sur des questions types et aide à régler le seuil |
+| `kb-eval` | (dev) Mesure la recherche sur des questions types et aide à régler le seuil ; `--json <chemin>` pour la page Évaluation (D-35) |
 
 `seed-demo` charge aussi une base **fictive** (`backend/app/devtools/demo_kb/`) marquée `is_demo`. Ces documents ne
 servent qu'aux prospects fictifs (`@demo.example.com`), ne sont **jamais servis en production**

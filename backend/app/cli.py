@@ -114,7 +114,8 @@ def main() -> None:
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
     cal.add_argument("--advisor", help="Email du conseiller dont on teste l'agenda")
-    sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
+    kbe = sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
+    kbe.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
     ev = sub.add_parser("eval-agent", help="(dev) Mesurer l'agent sur un jeu de cas annotés")
     ev.add_argument("ids", nargs="*", help="Cas à jouer (tous par défaut)")
     ev.add_argument(
@@ -203,7 +204,7 @@ def main() -> None:
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
-        sys.exit(asyncio.run(commands.cmd_kb_eval()))
+        sys.exit(asyncio.run(commands.cmd_kb_eval(json_path=args.json_path)))
     elif args.command == "eval-conversations":
         code = asyncio.run(
             commands.cmd_eval_conversations(
