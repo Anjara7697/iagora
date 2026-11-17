@@ -76,13 +76,16 @@ Le rendu est fait par `services/email_format.py` ; les clients qui n'affichent p
 
 Le **pied de message** est ajouté à l'envoi, après le corps :
 
-1. la **mention IA** (« Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy. »),
-   pour tout message rédigé par l'agent, qu'un conseiller l'ait validé ou non (AI Act, art. 50). Un message
-   écrit à la main par un conseiller ne la porte pas ;
+1. la **mention IA**, pour tout message rédigé par l'agent (AI Act, art. 50 ; D-32) : « Message préparé avec
+   l'aide d'un assistant IA et relu par un conseiller de DATUM Academy. » si un conseiller a validé le
+   brouillon, « Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy. » s'il est parti sans
+   relecture. Un message écrit à la main par un conseiller n'en porte pas ;
 2. la phrase de **désinscription** (réponse STOP).
 
-La mention IA ne peut pas être supprimée : sa formulation se règle dans **Paramètres → Emails** (minimum 10
-caractères) et, si elle est vidée, la formulation par défaut est utilisée. Le même écran règle le **nom
+Les mentions IA ne peuvent pas être supprimées : leur formulation se règle dans **Paramètres → Emails** (minimum
+10 caractères) et, si l'une est vidée, sa formulation par défaut est utilisée. L'aperçu et le pied affiché sous
+un brouillon dans « À traiter » montrent la mention « relu par un conseiller », celle qui partira après
+validation. Le même écran règle le **nom
 affiché**, la **couleur principale** et le **logo** (adresse `https` d'une image publique, hauteur 36 px ;
 sans logo, le nom est affiché). « Voir un exemple d'email » rend un message avec les valeurs saisies, avant
 enregistrement, par le même code que l'envoi.

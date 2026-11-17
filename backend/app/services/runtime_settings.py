@@ -35,6 +35,7 @@ FIELDS = (
     "agent_extra_terms",
     "email_footer",
     "email_ai_notice",
+    "email_ai_notice_reviewed",
     "email_brand_name",
     "email_brand_color",
     "email_logo_url",

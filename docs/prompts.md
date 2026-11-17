@@ -11,7 +11,7 @@ règles importantes sont **aussi vérifiées par du code**. On ne se fie jamais 
 
 | Nom | Type | Rôle | Utilisé par |
 |---|---|---|---|
-| `IDENTITY` | Texte fixe | L'agent est l'assistant virtuel de DATUM Academy ; c'est une IA qui ne se fait jamais passer pour un humain | `reply_system` |
+| `IDENTITY` | Texte fixe | L'agent écrit au nom de DATUM Academy ; c'est une IA qui ne se fait jamais passer pour un humain, ne se présente pas comme IA de lui-même (la mention sous le message le dit, D-32) et répond franchement si on le lui demande | `reply_system` |
 | `RULES` | Texte fixe | Vouvoiement, ton, interdiction d'inventer (prix, dates, durées…), une seule question, 120 mots maximum, ne pas parler du fonctionnement interne | `reply_system` |
 | `CATALOGUE` | Texte fixe | Liste validée des trois programmes : noms et publics, **aucun chiffre** | `reply_system` |
 | `PROGRAMS` | Dictionnaire | Libellé du sujet d'intérêt selon la cible du prospect | les deux prompts système |

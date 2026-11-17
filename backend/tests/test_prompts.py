@@ -47,7 +47,7 @@ def test_no_second_greeting_or_second_introduction_once_the_agent_has_spoken():
     first = reply()
     assert "ne salue pas" not in first  # premier message : on se présente
     ongoing = reply([HistoryMessage("prospect", "bonjour"), HistoryMessage("agent", "Bonjour !")])
-    assert "ne salue pas à nouveau" in ongoing and "ne répète pas que tu es une IA" in ongoing
+    assert "ne salue pas à nouveau" in ongoing and "ne te présente pas" in ongoing
     only_prospect = reply([HistoryMessage("prospect", "bonjour")])
     assert "ne salue pas" not in only_prospect  # l'agent n'a encore rien dit
 
@@ -94,3 +94,14 @@ def test_the_advisor_signal_is_recognised_however_it_is_written():
     assert prompts.defers_to_advisor("[CONSEILLER] Je préfère laisser un conseiller répondre.")
     assert prompts.defers_to_advisor("Un conseiller vous répondra. [ Conseiller ]")
     assert not prompts.defers_to_advisor("Un conseiller peut vous recevoir en visioconférence.")
+
+
+def test_the_agent_never_pretends_to_be_human_nor_introduces_itself_as_an_ai():
+    """D-32 : la mention sous le message dit déjà qu'une IA a aidé ; dans le texte, l'agent écrit
+    au nom de l'école, ne se fait jamais passer pour un humain, répond franchement si on demande."""
+    first = reply()
+    assert "présente-toi" not in first and "au nom de DATUM Academy" in first
+    assert "ne te fais jamais passer pour un humain" in prompts.IDENTITY
+    assert "Ne te présente pas comme une IA de toi-même" in prompts.IDENTITY
+    assert "réponds franchement que oui" in prompts.IDENTITY
+    assert "assistant virtuel" not in first

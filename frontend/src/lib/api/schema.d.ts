@@ -3939,9 +3939,14 @@ export interface components {
             calendar_work_start_hour: number;
             /**
              * Email Ai Notice
-             * @default Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.
+             * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
              */
             email_ai_notice: string;
+            /**
+             * Email Ai Notice Reviewed
+             * @default Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.
+             */
+            email_ai_notice_reviewed: string;
             /**
              * Email Brand Color
              * @default #1f4fd8
@@ -4097,9 +4102,14 @@ export interface components {
             calendar_work_start_hour: number;
             /**
              * Email Ai Notice
-             * @default Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.
+             * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
              */
             email_ai_notice: string;
+            /**
+             * Email Ai Notice Reviewed
+             * @default Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.
+             */
+            email_ai_notice_reviewed: string;
             /**
              * Email Brand Color
              * @default #1f4fd8

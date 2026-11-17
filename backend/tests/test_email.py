@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from app.agents import auto
 from app.api.dependencies import get_email_client
-from app.config import Settings, get_settings
+from app.config import DEFAULT_AI_NOTICE, DEFAULT_AI_NOTICE_REVIEWED, Settings, get_settings
 from app.integrations.email.base import InboundEmail
 from app.integrations.email.parsing import parse_inbound, strip_quoted
 from app.main import app
@@ -383,7 +383,8 @@ async def test_a_validated_reply_is_sent_in_the_same_thread(env):
     assert out.in_reply_to == "<m1@acme-corp.com>"
     assert out.references == ["<old@x>", "<m1@acme-corp.com>"]
     assert out.text.startswith("Voici les informations") and "STOP" in out.text
-    assert "assistant virtuel (IA)" in out.text  # mention de transparence, art. 50 de l'AI Act
+    # Mention de transparence (AI Act, art. 50) : brouillon validé, donc « relu par un conseiller ».
+    assert DEFAULT_AI_NOTICE_REVIEWED in out.text and DEFAULT_AI_NOTICE not in out.text
     assert out.html and "Voici les informations" in out.html
     (reply,) = await env.messages("agent")
     assert reply["metadata"]["delivery"] == "sent"
@@ -410,7 +411,7 @@ async def test_advisor_messages_do_not_carry_the_ai_notice(env):
     client = FakeEmailClient()
     await env.deliver(client)
     (out,) = client.sent
-    assert "assistant virtuel" not in out.text and "STOP" in out.text
+    assert "assistant" not in out.text and "STOP" in out.text
 
 
 async def test_sending_is_disabled_by_default(env):

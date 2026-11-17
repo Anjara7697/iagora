@@ -233,3 +233,26 @@ ouverte à la fois, versions majeures ignorées ; pour les images Docker, versio
 (`python:3.12` → `3.15`). Une version majeure, ou de Python et de Node, se décide à la main, dans une PR dédiée. Les
 failles connues restent signalées à chaque PR par la tâche CI `audit` (`pip-audit`, `npm audit`).
 
+## D-32 — Transparence IA : mention selon la relecture, pas d'auto-présentation dans le texte
+
+*17 novembre 2026 · Adoptée par le responsable du projet ; formulations à faire valider par DATUM et le DPO.*
+
+**Contexte.** L'agent se présentait comme une IA dans le texte (« je suis l'assistant virtuel », « je suis une
+intelligence artificielle et… »), en plus de la mention IA ajoutée en pied de chaque email. En production, chaque
+message est relu et validé par un conseiller (D-16) : la phrase dans le texte était redondante, maladroite et
+inexacte quand c'est un conseiller qui envoie.
+
+**Décision.**
+- Dans le texte, l'agent écrit au nom de DATUM Academy, ne se présente pas comme une IA de lui-même, ne se fait
+  jamais passer pour un humain (ni prénom, ni « je suis conseiller ») et répond franchement s'il est interrogé.
+- La mention IA reste obligatoire sous tout email rédigé par l'agent (AI Act, art. 50), avec deux formulations
+  réglables dans Paramètres → Emails : « Message préparé avec l'aide d'un assistant IA et relu par un conseiller
+  de DATUM Academy. » pour un brouillon validé ; « Ce message a été rédigé par un assistant virtuel (IA) de
+  DATUM Academy. » pour un message parti sans relecture (mode automatique). Aucune des deux ne peut être vidée.
+- Un message écrit à la main par un conseiller ne porte aucune mention, comme avant.
+
+**Écarté pour l'instant.** Supprimer la mention des messages validés : l'exception de l'article 50 pour un contenu
+relu sous responsabilité éditoriale vise les textes publiés pour informer le public, pas une conversation
+commerciale, et une validation rapide (par lot) n'est pas une relecture éditoriale. À rouvrir seulement sur avis
+écrit du DPO.
+

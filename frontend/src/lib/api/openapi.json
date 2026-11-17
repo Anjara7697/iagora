@@ -5307,10 +5307,17 @@
             "type": "integer"
           },
           "email_ai_notice": {
-            "default": "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.",
+            "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
             "maxLength": 500,
             "minLength": 10,
             "title": "Email Ai Notice",
+            "type": "string"
+          },
+          "email_ai_notice_reviewed": {
+            "default": "Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Email Ai Notice Reviewed",
             "type": "string"
           },
           "email_brand_color": {
@@ -5539,10 +5546,17 @@
             "type": "integer"
           },
           "email_ai_notice": {
-            "default": "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.",
+            "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
             "maxLength": 500,
             "minLength": 10,
             "title": "Email Ai Notice",
+            "type": "string"
+          },
+          "email_ai_notice_reviewed": {
+            "default": "Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Email Ai Notice Reviewed",
             "type": "string"
           },
           "email_brand_color": {

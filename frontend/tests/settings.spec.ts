@@ -17,8 +17,9 @@ const current = {
   agent_min_confidence: 0.5,
   agent_extra_terms: "",
   email_footer: "Répondez STOP.",
-  email_ai_notice:
-    "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_ai_notice: "Ce message a été rédigé par un assistant virtuel (IA).",
+  email_ai_notice_reviewed:
+    "Message préparé avec l'aide d'un assistant IA et relu par un conseiller.",
   email_brand_name: "DATUM Academy",
   email_brand_color: "#1f4fd8",
   email_logo_url: "",
@@ -146,9 +147,12 @@ test("régler la mise en page des emails et voir un aperçu", async ({
   await page.goto("/settings");
   await goSection(page, "Emails");
   const emails = page.getByRole("region", { name: "Emails" });
-  const notice = emails.getByLabel("Mention « message rédigé avec une IA »");
-  await expect(notice).toHaveValue(/assistant virtuel/);
-  await notice.fill("Message préparé par notre assistant IA.");
+  const notice = emails.getByLabel("Mention IA, message relu par un conseiller");
+  await expect(notice).toHaveValue(/relu par un conseiller/);
+  await notice.fill("Message préparé par notre assistant IA et relu par l’équipe.");
+  await expect(
+    emails.getByLabel("Mention IA, message envoyé sans relecture"),
+  ).toHaveValue(/assistant virtuel/);
   await emails.getByLabel("Nom affiché en tête d’email").fill("École test");
   // ColorPicker HeroUI : le bouton ouvre le sélecteur, le code se saisit dans son champ.
   await emails.getByRole("button", { name: /^Couleur principale des emails : #1f4fd8/ }).click();
@@ -174,7 +178,7 @@ test("régler la mise en page des emails et voir un aperçu", async ({
     put: Record<string, unknown>;
   };
   expect(put.put).toMatchObject({
-    email_ai_notice: "Message préparé par notre assistant IA.",
+    email_ai_notice_reviewed: "Message préparé par notre assistant IA et relu par l’équipe.",
     email_brand_name: "École test",
     email_brand_color: "#0a7a4b",
     email_logo_url: "https://exemple.test/logo.png",

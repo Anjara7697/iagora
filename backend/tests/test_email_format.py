@@ -1,6 +1,6 @@
 from email import message_from_bytes, policy
 
-from app.config import DEFAULT_AI_NOTICE, Settings
+from app.config import DEFAULT_AI_NOTICE, DEFAULT_AI_NOTICE_REVIEWED, Settings
 from app.integrations.email.base import OutboundEmail
 from app.integrations.email.imap_smtp import ImapSmtpClient
 from app.services import email_format
@@ -27,6 +27,28 @@ def test_the_notice_wording_can_be_changed():
     custom = "Réponse préparée par notre assistant IA."
     out = email_format.render("Bonjour", settings(email_ai_notice=custom), ai_generated=True)
     assert custom in out.text and DEFAULT_AI_NOTICE not in out.text
+
+
+def test_a_reviewed_message_says_a_counsellor_read_it():
+    """D-32 : brouillon validé par un conseiller -> « relu par un conseiller » ; message parti sans
+    relecture (mode automatique) -> mention d'un message rédigé par l'assistant."""
+    reviewed = email_format.render("Bonjour", settings(), ai_generated=True, reviewed=True)
+    assert DEFAULT_AI_NOTICE_REVIEWED in reviewed.text and DEFAULT_AI_NOTICE not in reviewed.text
+    assert "relu par un conseiller" in reviewed.html
+    auto = email_format.render("Bonjour", settings(), ai_generated=True)
+    assert DEFAULT_AI_NOTICE in auto.text and DEFAULT_AI_NOTICE_REVIEWED not in auto.text
+
+
+def test_the_reviewed_notice_can_be_reworded_but_not_blanked_out():
+    custom = "Réponse préparée avec notre assistant IA et relue par l'équipe."
+    out = email_format.render(
+        "Bonjour", settings(email_ai_notice_reviewed=custom), ai_generated=True, reviewed=True
+    )
+    assert custom in out.text
+    blank = email_format.render(
+        "Bonjour", settings(email_ai_notice_reviewed="  "), ai_generated=True, reviewed=True
+    )
+    assert DEFAULT_AI_NOTICE_REVIEWED in blank.text
 
 
 def test_human_messages_do_not_claim_to_be_ai():

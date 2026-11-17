@@ -212,7 +212,9 @@ const settings = {
   agent_min_confidence: 0.5,
   agent_extra_terms: "",
   email_footer: "Répondez STOP pour ne plus recevoir de messages.",
-  email_ai_notice: "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_ai_notice: "Ce message a été rédigé par un assistant virtuel (IA).",
+  email_ai_notice_reviewed:
+    "Message préparé avec l'aide d'un assistant IA et relu par un conseiller.",
   email_brand_name: "DATUM Academy",
   email_brand_color: "#1f4fd8",
   email_logo_url: "",

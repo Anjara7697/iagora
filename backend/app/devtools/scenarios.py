@@ -255,7 +255,7 @@ SCENARIOS: list[Scenario] = [
         turns=[
             Turn(
                 says=None,
-                reply="Bonjour Camille, je suis l'assistant virtuel de DATUM Academy. Qu'est-ce qui vous amène ?",
+                reply="Bonjour Camille, merci pour votre intérêt pour DATUM Academy. Qu'est-ce qui vous amène ?",
                 expect=Expect(
                     action="continue_conversation",
                     handoff_reason=None,
