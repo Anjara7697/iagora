@@ -285,8 +285,20 @@ export function EmailsSection({
             />
           </Field>
           <Field
-            label="Mention « message rédigé avec une IA »"
-            note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
+            label="Mention IA, message relu par un conseiller"
+            note="Ajoutée à tout email rédigé par l’agent puis validé par un conseiller (AI Act, art. 50) : c’est le cas normal. Vous pouvez adapter la formulation, pas la supprimer."
+          >
+            <TextBox
+              value={form.email_ai_notice_reviewed}
+              rows={2}
+              minLength={10}
+              maxLength={500}
+              onChange={(e) => set("email_ai_notice_reviewed", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Mention IA, message envoyé sans relecture"
+            note="Ajoutée à un email parti sans validation (mode automatique, refusé en production pendant le pilote). Vous pouvez adapter la formulation, pas la supprimer."
           >
             <TextBox
               value={form.email_ai_notice}

@@ -469,11 +469,14 @@ async def _deliver_claimed(
     attempts = int((message.get("metadata") or {}).get("delivery_info", {}).get("attempts", 0)) + 1
     try:
         attempt.smtp_started = True
-        # La mention IA accompagne tout message rédigé par l'agent, validé ou non par un conseiller.
+        # La mention IA accompagne tout message rédigé par l'agent ; sa formulation dit s'il a été
+        # relu et validé par un conseiller (D-32).
+        draft = (message.get("metadata") or {}).get("draft") or {}
         rendered = email_format.render(
             message["content"],
             settings,
             ai_generated=message["role"] == SenderType.AGENT.value,
+            reviewed=draft.get("status") == "approved",
         )
         message_id = await client.send(
             OutboundEmail(

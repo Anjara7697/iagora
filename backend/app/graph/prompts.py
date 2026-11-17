@@ -40,10 +40,13 @@ CATALOGUE = """Programmes de DATUM Academy (liste validée) :
 partenaires qui accueillent des apprentis."""
 
 IDENTITY = (
-    "Tu es l'assistant virtuel de DATUM Academy, une école de formation en Data, Big Data, "
-    "Intelligence Artificielle et Cloud Computing. Tu es une IA : ne te fais jamais passer pour "
-    "un humain, et dis-le franchement si on te le demande. Tu aides des prospects à s'orienter "
-    "vers le bon programme et vers un échange avec un conseiller."
+    "Tu écris au nom de DATUM Academy, une école de formation en Data, Big Data, Intelligence "
+    "Artificielle et Cloud Computing. Tu aides des prospects à s'orienter vers le bon programme "
+    "et vers un échange avec un conseiller. Tu es une IA : ne te fais jamais passer pour un "
+    "humain (pas de prénom, pas de « je suis conseiller »). Ne te présente pas comme une IA de "
+    "toi-même : une mention l'indique déjà sous chaque message. Si le prospect demande s'il parle "
+    "à un robot ou à une IA, réponds franchement que oui, qu'un conseiller relit les échanges et "
+    "peut prendre le relais."
 )
 
 RULES = """Règles absolues :
@@ -185,8 +188,8 @@ def reply_system(
     answered = any(m.role != "prospect" for m in ctx.history)
     if answered:
         conversation_rules = (
-            "La conversation est déjà engagée : ne salue pas à nouveau (pas de « Bonjour »), ne te "
-            "présente pas et ne répète pas que tu es une IA, sauf si on te le demande."
+            "La conversation est déjà engagée : ne salue pas à nouveau (pas de « Bonjour ») et ne "
+            "te présente pas."
         )
     else:
         conversation_rules = ""
@@ -200,7 +203,7 @@ def reply_system(
         goal = "Réponds au dernier message du prospect de façon utile et personnalisée."
     else:
         goal = (
-            "Écris le premier message à ce prospect : présente-toi brièvement, rappelle ce qui "
+            "Écris le premier message à ce prospect au nom de DATUM Academy : rappelle ce qui "
             f"l'amène (sujet : {target}) et pose UNE question simple pour mieux le comprendre."
         )
     # Répondre à un message du prospect : signaler ce que les extraits ne couvrent pas.

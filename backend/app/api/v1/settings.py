@@ -97,5 +97,6 @@ async def preview_email(
     candidate = runtime_settings.apply(
         base, runtime_settings.to_document(base, _plain(payload), existing, None)
     )
-    rendered = email_format.render(PREVIEW_BODY, candidate, ai_generated=True)
+    # Cas normal en production (D-16) : un brouillon relu et validé par un conseiller.
+    rendered = email_format.render(PREVIEW_BODY, candidate, ai_generated=True, reviewed=True)
     return EmailPreview(html=rendered.html, text=rendered.text)

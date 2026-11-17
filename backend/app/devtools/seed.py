@@ -99,7 +99,7 @@ DEMOS = [
         messages=[
             (
                 A,
-                "Bonjour Hugo, je suis l'assistant virtuel de DATUM Academy. Qu'est-ce qui vous amène ?",
+                "Bonjour Hugo, merci pour votre intérêt pour DATUM Academy. Qu'est-ce qui vous amène ?",
             )
         ],
     ),

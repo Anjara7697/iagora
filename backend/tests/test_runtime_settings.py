@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from app.api.v1 import settings as settings_api
-from app.config import DEFAULT_AI_NOTICE, Settings, get_settings
+from app.config import DEFAULT_AI_NOTICE_REVIEWED, Settings, get_settings
 from app.graph.ports import ChatMessage, LLMConfigError, LLMUnavailableError
 from app.integrations.llm.factory import create_language_model
 from app.integrations.llm.fallback import FallbackLanguageModel
@@ -171,7 +171,8 @@ async def test_email_preview_uses_typed_values_and_saves_nothing(client, env, mo
     assert r.status_code == 200
     body = r.json()
     assert "#0a7a4b" in body["html"] and "École test" in body["html"]
-    assert DEFAULT_AI_NOTICE in body["text"] and "<li" in body["html"]
+    # Aperçu du cas normal en production : brouillon relu et validé par un conseiller (D-32).
+    assert DEFAULT_AI_NOTICE_REVIEWED in body["text"] and "<li" in body["html"]
     assert await runtime_settings.load(mongo_db) is None  # un aperçu n'enregistre rien
 
 
@@ -192,6 +193,7 @@ async def test_effective_settings_reach_the_agent_dependencies(client, env, mong
         {"calendar_timezone": "Mars/Olympus"},
         {"calendar_work_days": "1,9"},
         {"email_ai_notice": "IA"},  # la mention de transparence ne peut pas être vidée
+        {"email_ai_notice_reviewed": "IA"},
         {"email_brand_color": "bleu"},
         {"email_logo_url": "http://datum.example/logo.png"},  # https obligatoire
     ],

@@ -66,7 +66,7 @@ async def list_todo(
         kind=kind,
         limit=limit,
         offset=offset,
-        footer=email_format.footer_text(settings),
+        footer=email_format.footer_text(settings, reviewed=True),
         prospect_ids=await scope_service.prospect_ids(session, scope),
     )
 
@@ -104,7 +104,7 @@ async def get_todo_item(
         kind=None,
         limit=200,
         offset=0,
-        footer=email_format.footer_text(settings),
+        footer=email_format.footer_text(settings, reviewed=True),
         conversation_id=parts[1],
         prospect_ids=await scope_service.prospect_ids(session, scope),
     )

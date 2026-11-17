@@ -9,7 +9,13 @@ import html
 import re
 from dataclasses import dataclass
 
-from app.config import DEFAULT_AI_NOTICE, DEFAULT_BRAND_COLOR, DEFAULT_BRAND_NAME, Settings
+from app.config import (
+    DEFAULT_AI_NOTICE,
+    DEFAULT_AI_NOTICE_REVIEWED,
+    DEFAULT_BRAND_COLOR,
+    DEFAULT_BRAND_NAME,
+    Settings,
+)
 
 _URL = re.compile(r"https?://[^\s<>\"']+")
 _BULLET = re.compile(r"^\s*[-*•]\s+(.+)$")
@@ -24,19 +30,27 @@ class RenderedEmail:
     html: str
 
 
-def footer_lines(settings: Settings, *, ai_generated: bool) -> list[str]:
+def ai_notice(settings: Settings, *, reviewed: bool) -> str:
+    """Mention IA (D-32) : « relu par un conseiller » si un conseiller a validé le brouillon,
+    sinon celle d'un message parti sans relecture. Jamais vide."""
+    if reviewed:
+        return settings.email_ai_notice_reviewed.strip() or DEFAULT_AI_NOTICE_REVIEWED
+    return settings.email_ai_notice.strip() or DEFAULT_AI_NOTICE
+
+
+def footer_lines(settings: Settings, *, ai_generated: bool, reviewed: bool = False) -> list[str]:
     """Pied de message : mention IA (si l'agent a rédigé) puis phrase de désinscription."""
     lines: list[str] = []
     if ai_generated:
-        lines.append(settings.email_ai_notice.strip() or DEFAULT_AI_NOTICE)
+        lines.append(ai_notice(settings, reviewed=reviewed))
     unsubscribe = settings.email_footer.strip()
     if unsubscribe:
         lines.append(unsubscribe)
     return lines
 
 
-def footer_text(settings: Settings, *, ai_generated: bool = True) -> str:
-    return "\n".join(footer_lines(settings, ai_generated=ai_generated))
+def footer_text(settings: Settings, *, ai_generated: bool = True, reviewed: bool = False) -> str:
+    return "\n".join(footer_lines(settings, ai_generated=ai_generated, reviewed=reviewed))
 
 
 def _linkify(escaped: str, color: str) -> str:
@@ -96,9 +110,11 @@ def _brand(settings: Settings, color: str) -> str:
     )
 
 
-def render(body: str, settings: Settings, *, ai_generated: bool) -> RenderedEmail:
+def render(
+    body: str, settings: Settings, *, ai_generated: bool, reviewed: bool = False
+) -> RenderedEmail:
     """Texte brut et HTML d'un message : corps, puis pied de message séparé."""
-    lines = footer_lines(settings, ai_generated=ai_generated)
+    lines = footer_lines(settings, ai_generated=ai_generated, reviewed=reviewed)
     text = f"{body.rstrip()}\n\n-- \n" + "\n".join(lines) if lines else body
 
     color = settings.email_brand_color

@@ -106,7 +106,7 @@ Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `
 | API du modèle en panne ou quota dépassé | Nouveaux essais avec attente croissante, puis transfert avec résumé sans modèle | NF-05 |
 | Données personnelles envoyées au modèle | Prénom et informations de qualification seulement : jamais email, téléphone ni identifiants | S-01 |
 | Réponse non traçable | Chaque exécution est journalisée (noeuds, décision, justification, scores) | NF-04, OB-05 |
-| Fausse identité | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain | Transparence |
+| Fausse identité | L'agent ne se fait jamais passer pour un humain et le dit franchement si on le lui demande ; la mention IA sous chaque email rédigé par l'agent indique s'il a été relu par un conseiller (D-32) | Transparence, AI Act art. 50 |
 
 ## Changer de fournisseur de modèle de langage
 
