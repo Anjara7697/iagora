@@ -17,7 +17,7 @@ from app.agents.defaults import EmptyKnowledgeBase
 from app.config import get_settings
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
-from app.devtools import chat, evaluation, runner, seed
+from app.devtools import chat, conversation_eval, evaluation, runner, seed
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import SCENARIOS, get_scenarios
 from app.graph.ports import KnowledgeBase, LanguageModel, Passage
@@ -171,9 +171,69 @@ async def cmd_eval_agent(
     return 1 if summary.errors else 0
 
 
+async def cmd_eval_conversations(
+    ids: list[str],
+    *,
+    fake: bool,
+    real_rag: bool,
+    pause: float,
+    report: str | None,
+    json_path: str | None,
+    cleanup: bool,
+) -> int:
+    """Joue des conversations de plusieurs messages (voir `conversation_eval.py`)."""
+    rt = build_runtime(fake=fake)
+    try:
+        convs = conversation_eval.load_conversations(ids or None)
+    except KeyError as exc:
+        sys.exit(str(exc.args[0]))
+    if real_rag:
+        kb: KnowledgeBase = chat_knowledge(rt, fake=False)
+        kb_label = "recherche réelle (documents de démonstration chargés par seed-demo)"
+    else:
+        kb = evaluation.LexicalKnowledge()
+        kb_label = "base FICTIVE de démonstration, recherche lexicale"
+    print(f"Évaluation de conversations — mode {rt.mode} — {len(convs)} conversation(s)\n")
+    results = await conversation_eval.run_conversations(
+        rt.session_factory, rt.db, convs, llm=rt.llm, knowledge=kb, pause=pause,
+        on_done=lambda r: print(conversation_eval.format_console(r)),
+    )  # fmt: skip
+    summary = conversation_eval.summarize(results)
+    print(
+        f"\nConversations conformes : {summary.conform} — tours {summary.turns} — contexte "
+        f"{summary.context} — parcours {summary.end}"
+    )
+    print(
+        f"Redemandées : {summary.reasked} — salutations répétées : {summary.greetings_repeated} — "
+        f"présentation IA : {summary.ai_self_intros} — ignorées : {summary.skipped}"
+    )
+    model = f"{rt.llm.provider}/{rt.llm.model}"
+    if report:
+        Path(report).write_text(
+            conversation_eval.format_markdown(
+                results, summary, mode=rt.mode, model=model, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Rapport écrit : {report}")
+    if json_path:
+        Path(json_path).write_text(
+            conversation_eval.to_json(
+                results, summary, mode=rt.mode, model=model, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Résultats JSON écrits : {json_path}")
+    if cleanup:
+        async with rt.session_factory() as session:
+            print(f"{await cleanup_recette(session, rt.db)} prospect(s) de recette supprimé(s).")
+    await _shutdown()
+    return 1 if summary.errors else 0
+
+
 async def cleanup_recette(session: AsyncSession, db: Any) -> int:
     """Supprime les prospects créés par les scénarios et le simulateur (pas le jeu de démo)."""
-    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL]
+    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL, conversation_eval.LABEL]
     ids = list(
         await session.scalars(
             select(Prospect.id).where(
