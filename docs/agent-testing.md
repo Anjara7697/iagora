@@ -217,6 +217,22 @@ comparer deux passages et à tracer l'évolution ; une valeur absente d'un rappo
 
 `kb-eval --json <chemin>` écrit maintenant lui aussi ses résultats, importables dans la page.
 
+## Jeu de cas local (vrais documents d'une campagne)
+
+Les jeux du dépôt portent sur la base FICTIVE de démonstration. Pour mesurer l'agent sur les vrais documents d'une
+campagne sans les mettre dans Git (D-28), on écrit un jeu de cas au même format dans un fichier gardé sur le poste,
+puis on le passe avec `--cas` :
+
+```bash
+python -m app.cli kb-eval --cas ~/campagne/kb.json --json kb.json
+python -m app.cli eval-agent --live --cas ~/campagne/cas.json --pause 4 --json cas-avant.json --cleanup
+python -m app.cli eval-conversations --live --cas ~/campagne/conv.json --pause 4 --json conv-avant.json --cleanup
+```
+
+Avec `--cas`, la recherche est la vraie (documents importés dans l'application) et les documents fictifs de
+démonstration sont toujours écartés, même si `seed-demo` les a chargés : la mesure ne mélange jamais faits fictifs et
+faits réels. Les rapports `--json` s'importent ensuite dans la page Évaluation pour comparer avant et après.
+
 ## Nettoyage
 
 `--cleanup` (scénarios, évaluations) supprime les prospects créés par la recette sans toucher au jeu de démo.
