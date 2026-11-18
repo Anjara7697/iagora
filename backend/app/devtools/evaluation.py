@@ -281,6 +281,10 @@ class CaseResult:
     agent_messages: list[str] = field(default_factory=list)  # les mêmes, un par message
     llm_written: list[str] = field(default_factory=list)  # parmi eux, ceux rédigés par le modèle
     raw_claims: list[list[str]] = field(default_factory=list)  # par sortie brute du modèle
+    # Texte brut rédigé par le modèle, AVANT les garde-fous, et extraits consultés : ce qui explique
+    # un transfert ou un refus (le message envoyé ne dit pas ce que le modèle avait écrit).
+    raw_replies: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     sent_claims_by_message: list[list[str]] = field(default_factory=list)  # par message envoyé
     seconds: float = 0.0
     calls: list[LLMCall] = field(default_factory=list)
@@ -420,6 +424,8 @@ async def play_turn(
     sources = [p.text for p in kb.returned] + [prompts.CATALOGUE, runner.SCENARIO_CAMPAIGN]
     said = [*said, case.message or ""]
     result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
+    result.raw_replies = list(llm.raw_replies)
+    result.sources = list(dict.fromkeys(p.source for p in kb.returned))
     result.sent_claims_by_message = [
         _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
     ]
@@ -793,6 +799,9 @@ def to_payload(results: list[CaseResult], summary: Summary, **meta: Any) -> dict
             "handoff_ok": r.handoff_ok,
             "grounded_ok": r.grounded_ok,
             "raw_claims": r.raw_claims,
+            "reason": r.reason,
+            "raw_replies": r.raw_replies,
+            "sources": r.sources,
             "sent_claims": r.sent_claims,
             "seconds": round(r.seconds, 3),
             "llm_calls": len(r.calls),

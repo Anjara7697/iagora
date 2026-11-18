@@ -100,6 +100,8 @@ async def test_reports_show_the_exchanges(session_factory, mongo_db):
     assert "Conversations conformes" in md and "> **Prospect** :" in md and "> **Agent** :" in md
     data = json.loads(ce.to_json(results, summary, mode="hors ligne"))
     assert len(data["conversations"]) == len(CONVERSATIONS)
+    turn = next(c for c in data["conversations"] if c["id"] == "parcours_rdv_ebihar")["turns"][1]
+    assert turn["raw_replies"] and turn["sources"] and turn["reason"]
     assert data["summary"]["skipped"] == len(CONVERSATIONS) - len(OFFLINE)
 
 
