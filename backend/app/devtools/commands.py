@@ -271,7 +271,7 @@ def chat_knowledge(rt: Runtime, *, fake: bool) -> KnowledgeBase:
     if fake:
         demo_fact = Passage(
             source="demo (FICTIF)",
-            text="Le Master 2 de démonstration dure 10 mois et se suit entièrement en ligne.",
+            text="Le programme de démonstration, un Master 2 en ligne, dure 10 mois et se déroule entièrement à distance.",
         )
         return FakeKnowledge([demo_fact])
     kb = create_knowledge_base(get_settings(), rt.session_factory)

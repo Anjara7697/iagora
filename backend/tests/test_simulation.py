@@ -9,6 +9,7 @@ from app.api.dependencies import get_language_model
 from app.config import get_settings
 from app.devtools import simulation
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
+from app.devtools.scenarios import DEMO_FACT
 from app.graph.state import Qualification
 from app.main import app
 from app.models import FollowUp
@@ -22,7 +23,8 @@ from sqlalchemy import select
 @pytest.fixture
 async def model(client):
     llm = FakeLLM(
-        Qualification(intent="question"), reply="Le programme dure 18 mois en alternance."
+        Qualification(intent="question"),
+        reply=DEMO_FACT.text,
     )
     app.dependency_overrides[get_language_model] = lambda: llm
     return llm
@@ -60,16 +62,15 @@ async def test_complete_guided_journey_memory_delivery_and_booking(client, model
     steps = [
         (
             Qualification(intent="question", goal="devenir data analyst"),
-            "Le programme dure 18 mois en alternance.",
+            DEMO_FACT.text,
         ),
         (
-            Qualification(intent="interested", study_level="Bac+3", field_of_study="informatique"),
-            "Merci pour ces précisions. Avez-vous des questions sur l’alternance ?",
+            Qualification(intent="interested", study_level="M1", field_of_study="informatique"),
+            "Merci pour ces précisions. Avez-vous des questions sur le master ?",
         ),
         (
             Qualification(intent="question"),
-            "Un conseiller accompagne la recherche d’entreprise et la préparation du CV, "
-            "sans garantir de contrat.",
+            "Le Master eBIHAR de démonstration coûte 6200 euros par an.",
         ),
         (Qualification(intent="meeting_request"), ""),
         (Qualification(intent="slot_choice", chosen_slot=2), ""),
@@ -83,7 +84,7 @@ async def test_complete_guided_journey_memory_delivery_and_booking(client, model
         report = await approve(client, cid)
         assert report["exchange"]["messages"][-1]["role"] == "agent"
     p = (await client.get(f"/api/v1/prospects/{s['prospect_id']}")).json()
-    assert p["profile"]["study_level"] == "Bac+3"
+    assert p["profile"]["study_level"] == "M1"
     assert p["profile"]["goal"] == "devenir data analyst"
     assert p["campaigns"][0]["conversion_stage"] == "meeting_scheduled"
     assert len(report["appointments"]) == 1

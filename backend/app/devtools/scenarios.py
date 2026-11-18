@@ -61,7 +61,7 @@ class Scenario:
 
 DEMO_FACT = Passage(
     source="demo-ebihar (FICTIF)",
-    text="Le Master 2 de démonstration dure 10 mois et se suit entièrement en ligne.",
+    text="Le programme de démonstration, un Master 2 en ligne, dure 10 mois et se déroule entièrement à distance.",
 )
 
 SCENARIOS: list[Scenario] = [
@@ -175,7 +175,7 @@ SCENARIOS: list[Scenario] = [
             Turn(
                 says="Combien de temps dure le programme ?",
                 qualification=Qualification(intent="question"),
-                reply="Le Master 2 de démonstration dure 10 mois et se suit entièrement en ligne.",
+                reply="Le programme de démonstration, un Master 2 en ligne, dure 10 mois et se déroule entièrement à distance.",
                 expect=Expect(
                     handoff_reason=None,
                     reply=True,
