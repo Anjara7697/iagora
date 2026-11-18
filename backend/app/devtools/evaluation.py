@@ -171,6 +171,22 @@ class RecordingKnowledge:
         return found
 
 
+class ImportedDocumentsOnly:
+    """Vraie recherche limitée aux documents importés par le responsable (décision D-28).
+
+    Les cas jouent des prospects fictifs, à qui la recherche sert aussi les documents de
+    démonstration : avec un jeu de cas local (`--cas`), qui porte sur les vrais documents d'une
+    campagne, ces faits fictifs fausseraient la mesure. On les écarte donc toujours."""
+
+    def __init__(self, inner: KnowledgeBase) -> None:
+        self.inner = inner
+
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
+        return await self.inner.search(query, target_code, limit, include_demo=False)
+
+
 # --- Modèle instrumenté ---
 
 

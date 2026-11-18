@@ -116,6 +116,11 @@ def main() -> None:
     cal.add_argument("--advisor", help="Email du conseiller dont on teste l'agenda")
     kbe = sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
     kbe.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    kbe.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
     ev = sub.add_parser("eval-agent", help="(dev) Mesurer l'agent sur un jeu de cas annotés")
     ev.add_argument("ids", nargs="*", help="Cas à jouer (tous par défaut)")
     ev.add_argument(
@@ -133,6 +138,11 @@ def main() -> None:
     ev.add_argument("--pause", type=float, default=0.0, help="Secondes entre deux cas (quota)")
     ev.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
     ev.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    ev.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
     ev.add_argument(
         "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
     )
@@ -152,6 +162,11 @@ def main() -> None:
     conv.add_argument("--pause", type=float, default=0.0, help="Secondes entre deux conversations")
     conv.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
     conv.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    conv.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
     conv.add_argument(
         "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
     )
@@ -204,7 +219,9 @@ def main() -> None:
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
-        sys.exit(asyncio.run(commands.cmd_kb_eval(json_path=args.json_path)))
+        sys.exit(
+            asyncio.run(commands.cmd_kb_eval(json_path=args.json_path, cases_path=args.cases_path))
+        )
     elif args.command == "eval-conversations":
         code = asyncio.run(
             commands.cmd_eval_conversations(
@@ -215,6 +232,7 @@ def main() -> None:
                 report=args.report,
                 json_path=args.json_path,
                 cleanup=args.cleanup,
+                cases_path=args.cases_path,
             )
         )
         sys.exit(code)
@@ -232,6 +250,7 @@ def main() -> None:
                 cleanup=args.cleanup,
                 price_in=args.prix_entree,
                 price_out=args.prix_sortie,
+                cases_path=args.cases_path,
             )
         )
         sys.exit(code)

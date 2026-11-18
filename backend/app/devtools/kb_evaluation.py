@@ -43,8 +43,8 @@ class KbResult:
         return self.retained and self.slug == self.case.expect
 
 
-def load_cases() -> list[KbCase]:
-    raw = json.loads(CASES_FILE.read_text(encoding="utf-8"))
+def load_cases(path: Path = CASES_FILE) -> list[KbCase]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
     return [
         KbCase(c["question"], c["target"], c.get("expect"), bool(c.get("same_topic"))) for c in raw
     ]
