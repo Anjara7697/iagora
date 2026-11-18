@@ -104,6 +104,30 @@ async def cmd_scenarios(names: list[str], *, fake: bool, report: str | None, cle
     return 0 if ok == len(ran) else 1
 
 
+def _cases_file(cases_path: str | None) -> dict[str, Path]:
+    """Jeu de cas local (`--cas`), gardé hors Git quand il cite les vrais documents (D-28)."""
+    if cases_path is None:
+        return {}
+    path = Path(cases_path)
+    if not path.is_file():
+        sys.exit(f"Jeu de cas introuvable : {path}")
+    return {"path": path}
+
+
+LOCAL_CASES_LABEL = "documents importés uniquement (jeu de cas local, démo écartée)"
+
+
+def _eval_knowledge(rt: Runtime, *, real_rag: bool, local_cases: bool) -> tuple[KnowledgeBase, str]:
+    """Base interrogée par une évaluation. Un jeu de cas local (`--cas`) porte sur les vrais
+    documents d'une campagne : vraie recherche, sans les documents fictifs de démonstration."""
+    if local_cases:
+        return evaluation.ImportedDocumentsOnly(chat_knowledge(rt, fake=False)), LOCAL_CASES_LABEL
+    if real_rag:
+        kb = chat_knowledge(rt, fake=False)
+        return kb, "recherche réelle (documents de démonstration chargés par seed-demo)"
+    return evaluation.LexicalKnowledge(), "base FICTIVE de démonstration, recherche lexicale"
+
+
 async def cmd_eval_agent(
     ids: list[str],
     *,
@@ -117,21 +141,17 @@ async def cmd_eval_agent(
     cleanup: bool,
     price_in: float | None,
     price_out: float | None,
+    cases_path: str | None = None,
 ) -> int:
     """Mesure l'agent sur le jeu de cas annotés (voir `evaluation.py`)."""
     rt = build_runtime(fake=fake)
     try:
-        cases = evaluation.load_cases(ids or None, categories)
+        cases = evaluation.load_cases(ids or None, categories, **_cases_file(cases_path))
     except KeyError as exc:
         sys.exit(str(exc.args[0]))
     if not cases:
         sys.exit("Aucun cas ne correspond aux filtres.")
-    if real_rag:
-        kb: KnowledgeBase = chat_knowledge(rt, fake=False)
-        kb_label = "recherche réelle (documents de démonstration chargés par seed-demo)"
-    else:
-        kb = evaluation.LexicalKnowledge()
-        kb_label = "base FICTIVE de démonstration, recherche lexicale"
+    kb, kb_label = _eval_knowledge(rt, real_rag=real_rag, local_cases=cases_path is not None)
     variant = ablation or "complète"
     print(f"Évaluation de l'agent — mode {rt.mode} — variante {variant} — {len(cases)} cas\n")
     results = await evaluation.run_eval(
@@ -180,19 +200,15 @@ async def cmd_eval_conversations(
     report: str | None,
     json_path: str | None,
     cleanup: bool,
+    cases_path: str | None = None,
 ) -> int:
     """Joue des conversations de plusieurs messages (voir `conversation_eval.py`)."""
     rt = build_runtime(fake=fake)
     try:
-        convs = conversation_eval.load_conversations(ids or None)
+        convs = conversation_eval.load_conversations(ids or None, **_cases_file(cases_path))
     except KeyError as exc:
         sys.exit(str(exc.args[0]))
-    if real_rag:
-        kb: KnowledgeBase = chat_knowledge(rt, fake=False)
-        kb_label = "recherche réelle (documents de démonstration chargés par seed-demo)"
-    else:
-        kb = evaluation.LexicalKnowledge()
-        kb_label = "base FICTIVE de démonstration, recherche lexicale"
+    kb, kb_label = _eval_knowledge(rt, real_rag=real_rag, local_cases=cases_path is not None)
     print(f"Évaluation de conversations — mode {rt.mode} — {len(convs)} conversation(s)\n")
     results = await conversation_eval.run_conversations(
         rt.session_factory, rt.db, convs, llm=rt.llm, knowledge=kb, pause=pause,
@@ -299,19 +315,22 @@ async def load_demo_kb(rt: Runtime, *, reset: bool) -> None:
             print(f"  base de démo : {file.stem} {result.status.value} ({result.chunks} extraits)")
 
 
-async def cmd_kb_eval(*, json_path: str | None = None) -> int:
+async def cmd_kb_eval(*, json_path: str | None = None, cases_path: str | None = None) -> int:
     """Mesure la qualité de la recherche sur des questions types (calibrage du seuil)."""
     rt = build_runtime(fake=True)
     embeddings = require_embeddings()
     kb = PgKnowledgeBase(
-        rt.session_factory, embeddings, min_score=get_settings().rag_min_score, include_demo=True
+        rt.session_factory,
+        embeddings,
+        min_score=get_settings().rag_min_score,
+        include_demo=cases_path is None,  # jeu de cas local : vrais documents seulement
     )
     async with rt.session_factory() as session:
         title_to_slug = {d.title: d.slug for d in await knowledge.list_documents(session)}
     results = await kb_evaluation.run(
         kb,
         title_to_slug,
-        kb_evaluation.load_cases(),
+        kb_evaluation.load_cases(**_cases_file(cases_path)),
         on_done=lambda r: print(kb_evaluation.format_console(r)),
     )
     summary = kb_evaluation.summarize(results, kb.min_score)

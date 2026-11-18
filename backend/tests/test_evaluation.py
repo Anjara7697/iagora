@@ -5,7 +5,7 @@ import typing
 
 import pytest
 from app.config import Settings
-from app.devtools import commands, evaluation
+from app.devtools import commands, conversation_eval, evaluation, kb_evaluation
 from app.devtools.evaluation import CaseResult, EvalCase, LexicalKnowledge
 from app.devtools.fakes import FakeLLM
 from app.graph.ports import LLMUnavailableError
@@ -91,6 +91,36 @@ async def test_recording_knowledge_keeps_demo_documents_for_fictive_prospects():
     assert await kb.search(question, "ebihar_students") == []
     found = await kb.search(question, "ebihar_students", include_demo=True)
     assert found and kb.returned == found
+
+
+async def test_imported_documents_only_never_serves_demo_documents():
+    """`--cas` : la mesure porte sur les vrais documents d'une campagne, jamais sur les faits
+    fictifs de démonstration, même si l'agent les autorise pour son prospect fictif."""
+    kb = evaluation.ImportedDocumentsOnly(LexicalKnowledge())
+    question = "Combien de temps dure le programme eBIHAR ?"
+    assert await kb.search(question, "ebihar_students", include_demo=True) == []
+
+
+def test_local_case_files_are_loaded_from_their_path(tmp_path):
+    """Jeu de cas local (hors Git, D-28) : même format que les jeux du dépôt."""
+    agent = tmp_path / "cas.json"
+    agent.write_text(json.dumps({"cases": [{"id": "x", "category": "c", "message": "Prix ?",
+                                            "actions": ["continue_conversation"]}]}),
+                     encoding="utf-8")  # fmt: skip
+    assert [c.id for c in evaluation.load_cases(path=agent)] == ["x"]
+    convs = tmp_path / "conv.json"
+    turn = {"says": "Bonjour"}
+    convs.write_text(json.dumps({"conversations": [{"id": "y", "title": "T", "turns": [turn]}]}),
+                     encoding="utf-8")  # fmt: skip
+    assert [c.id for c in conversation_eval.load_conversations(path=convs)] == ["y"]
+    kb = tmp_path / "kb.json"
+    kb.write_text(json.dumps([{"question": "Prix ?", "target": "ebihar_students",
+                               "expect": "tarifs"}]), encoding="utf-8")  # fmt: skip
+    assert kb_evaluation.load_cases(kb)[0].expect == "tarifs"
+    assert commands._cases_file(str(agent)) == {"path": agent}
+    assert commands._cases_file(None) == {}
+    with pytest.raises(SystemExit, match="introuvable"):
+        commands._cases_file(str(tmp_path / "absent.json"))
 
 
 # --- Mesures : chiffres inventés avant / après les garde-fous, variantes d'ablation ---
