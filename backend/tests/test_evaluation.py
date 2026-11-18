@@ -8,6 +8,7 @@ from app.config import Settings
 from app.devtools import commands, conversation_eval, evaluation, kb_evaluation
 from app.devtools.evaluation import CaseResult, EvalCase, LexicalKnowledge
 from app.devtools.fakes import FakeLLM
+from app.graph import policy
 from app.graph.ports import LLMUnavailableError
 from app.graph.state import Action, Intent, Qualification
 from app.models import Prospect
@@ -43,6 +44,27 @@ def test_dataset_is_large_varied_and_well_formed():
             Qualification(**c.fake["qualification"])  # annotation valide pour le faux modèle
     assert any(c.handoff for c in CASES) and any(c.handoff is False for c in CASES)
     assert any(c.must_mention for c in CASES)
+
+
+def test_expected_facts_are_not_already_in_the_question():
+    """Un fait attendu que le prospect écrit lui-même serait « sourcé » par simple écho : la mesure
+    compterait conforme une réponse inventée (« le programme aborde ces sujets »)."""
+    echoes = [
+        (where, alt)
+        for where, said, expected in _expectations()
+        for item in expected
+        for alt in item.split("|")
+        if said and policy.normalize(alt) in policy.normalize(said)
+    ]
+    assert echoes == []
+
+
+def _expectations():
+    for c in CASES:
+        yield c.id, c.message, c.must_mention
+    for conv in conversation_eval.load_conversations():
+        for i, t in enumerate(conv.turns, 1):
+            yield f"{conv.id}#{i}", t.says, t.must_mention
 
 
 def test_cases_can_be_filtered_by_id_and_category():
