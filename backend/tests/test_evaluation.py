@@ -291,6 +291,19 @@ async def test_reports_are_readable(session_factory, mongo_db):
     assert data["meta"] == {"mode": "test"}
 
 
+async def test_reports_keep_what_the_model_wrote_before_the_guards(session_factory, mongo_db):
+    """Le rapport garde le brouillon du modèle et les extraits consultés : un transfert ou un refus
+    s'explique sans rejouer le cas (ici, un prix inventé bloqué)."""
+    results = await play(session_factory, mongo_db, ["prix_faux", "kb_duree_ebihar"])
+    data = json.loads(evaluation.to_json(results, evaluation.summarize(results), mode="test"))
+    faux, duree = data["cases"]
+    # Le brouillon refusé, puis chaque réécriture demandée par le garde-fou.
+    assert faux["raw_replies"][0] == "La formation eBIHAR coûte 4500 euros."
+    assert len(faux["raw_replies"]) == len(faux["raw_claims"]) > 1
+    assert "4500" not in faux["reply"] and faux["reason"]
+    assert duree["sources"] and all("FICTIF" in s for s in duree["sources"])
+
+
 # --- Commande complète (hors ligne) et garde production ---
 
 

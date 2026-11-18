@@ -796,6 +796,9 @@ def to_payload(
                     "grounded_ok": t.grounded_ok,
                     "sent_claims": t.sent_claims,
                     "reply": t.reply_text,
+                    "reason": t.reason,
+                    "raw_replies": t.raw_replies,
+                    "sources": t.sources,
                 }
                 for t in r.turns
             ],
