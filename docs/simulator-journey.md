@@ -43,8 +43,8 @@ serveur en production, indépendamment du drapeau d’affichage du frontend.
 
 Le scénario `qualification-meeting-v1` crée Camille, une adresse unique
 `@demo.example.com` et un rattachement à une campagne/source de démonstration.
-Le profil privé du rôle : Bac+3 en informatique, objectif data analyst,
-recherche d’alternance, crainte de ne pas trouver d’entreprise. Ces faits ne sont
+Le profil privé du rôle : M1 en informatique, objectif data analyst, vise la
+prochaine rentrée, s’inquiète du coût. Ces faits ne sont
 pas préremplis dans le profil connu de l’agent : le prospect doit les révéler.
 
 Les suggestions guident cinq échanges : besoin initial, qualification, objection,
@@ -61,7 +61,7 @@ Le parcours emploie :
 | Graphe, profil, scoring, historique, règles STOP et brouillons | Mécanismes réels de l’application |
 | Modèle | Adaptateur LLM configuré ; aucune substitution silencieuse par un faux modèle |
 | Connaissances | Deux extraits fictifs contrôlés, recherche locale simple par mots partagés ; **pas de validation du RAG/embeddings réel** |
-| Documents | Durée fictive de 18 mois en alternance ; accompagnement fictif à la recherche d’entreprise et au CV, sans garantie de contrat ; pas de tarif ni de financement documenté |
+| Documents | Durée fictive de 10 mois, entièrement en ligne ; coût fictif de 6200 euros par an ; ni financement ni rentrée documentés (l’agent doit passer la main sans inventer) |
 | Calendrier | Trois créneaux fictifs stables par session, à partir de sept jours après sa création ; réservation via le port Calendar et persistance réelle du rendez-vous |
 | Visioconférence | URL fictive `zoom.example.com`, jamais une vraie réunion |
 | Boîte du prospect | Message validé/prêt marqué `delivery=simulated` ; jamais `sent`, aucun appel SMTP |

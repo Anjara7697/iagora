@@ -118,7 +118,7 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
       <PageHeader
         {...reveal(0)}
         title="De la qualification au rendez-vous"
-        subtitle="Vous jouez Camille, titulaire d’un Bac+3 en informatique, qui souhaite devenir data analyst en alternance."
+        subtitle="Vous jouez Camille, titulaire d’un M1 en informatique, qui souhaite devenir data analyst grâce au master en ligne."
         actions={
           <Btn variant="outline" disabled={busy} onClick={() => guardDiscard(onBack)}>
             <ArrowLeft className="size-4" aria-hidden="true" />
@@ -139,9 +139,9 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
             chaque brouillon avant de jouer la réponse du prospect.
           </p>
           <p className="type-body leading-5.5 text-muted">
-            Les documents de test couvrent la durée, l’alternance et
-            l’accompagnement. Le prix et le financement sont volontairement
-            inconnus.
+            Les documents de test couvrent la durée, le format en ligne et le
+            coût. Le financement et la rentrée sont volontairement inconnus :
+            l’agent doit passer la main sans rien inventer.
           </p>
           <Btn
             variant="primary"

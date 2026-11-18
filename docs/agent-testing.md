@@ -120,6 +120,12 @@ cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vr
 - **Base de connaissances** : par défaut, la base FICTIVE de démonstration (`demo_kb/`) avec une recherche lexicale,
   déterministe et sans clé ; `--rag-reel` utilise la vraie recherche sur les documents de démonstration chargés par
   `seed-demo`. La qualité de la recherche elle-même se mesure avec `kb-eval`.
+- **Démo jumelle de la campagne (D-36)** : la fiche eBIHAR de démonstration a la même forme que les vrais documents
+  de la campagne (master en ligne, accès selon le diplôme, rentrée avec date limite d'inscription, coût et tarif
+  réduit partenaire, certifications, examens surveillés), avec des valeurs inventées, et les mêmes manques
+  (financement, CPF, paiement en plusieurs fois, admission avec une licence) : les cas eBIHAR du dépôt exercent les
+  mêmes réflexes que la campagne réelle. La mesure de la campagne elle-même se fait sur les vrais documents, avec un
+  jeu de cas local (`--cas`).
 - **Variantes d'ablation** : `sans-rag` (aucun extrait) et `sans-garde-chiffres` (vérification des chiffres désactivée
   pendant le cas) montrent ce qu'apporte chaque garde-fou. Pour comparer deux modèles, relancer avec un autre
   `LLM_MODEL` : le rapport indique le modèle utilisé.

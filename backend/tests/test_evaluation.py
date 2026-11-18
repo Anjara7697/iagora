@@ -71,8 +71,8 @@ async def test_lexical_knowledge_finds_the_fact_and_respects_the_programme():
     async def search(query: str, target: str = "ebihar_students"):
         return await kb.search(query, target, include_demo=True)
 
-    found = await search("Combien de temps dure le programme eBIHAR ?")
-    assert found and "18 mois" in found[0].text and "FICTIF" in found[0].source
+    found = await search("Combien de temps dure le Master 2 eBIHAR ?")
+    assert found and "10 mois" in found[0].text and "FICTIF" in found[0].source
     assert await search("Quel est le taux de réussite au diplôme ?") == []
     assert await search("Bonjour.") == []
     # Les Compagnons n'est pas renvoyé à un prospect eBIHAR (comme la vraie base).
@@ -97,7 +97,8 @@ async def test_recording_knowledge_keeps_demo_documents_for_fictive_prospects():
 
 
 async def test_invented_price_is_counted_raw_but_never_sent(session_factory, mongo_db):
-    [r] = await play(session_factory, mongo_db, ["prix_cout"])
+    """La base donne un tarif, le modèle en écrit un autre : compté, mais jamais envoyé."""
+    [r] = await play(session_factory, mongo_db, ["prix_faux"])
     assert any(r.raw_claims), "le modèle a écrit un prix non sourcé"
     assert r.sent_claims == [] and r.handoff_reason == "reponse_non_verifiable"
     s = evaluation.summarize([r])
@@ -116,7 +117,7 @@ async def test_invented_conditions_and_spelled_durations_are_never_sent(
 
 
 async def test_without_the_figure_check_the_invented_price_is_sent(session_factory, mongo_db):
-    [r] = await play(session_factory, mongo_db, ["prix_cout"], ablation="sans-garde-chiffres")
+    [r] = await play(session_factory, mongo_db, ["prix_faux"], ablation="sans-garde-chiffres")
     assert r.sent_claims and not r.ok
     assert evaluation.summarize([r]).sent_hallucination.ok == 1
     # La variante ne fuit pas : la vérification réelle est restaurée après le cas.
@@ -217,7 +218,7 @@ def test_cost_is_only_computed_when_prices_are_given():
 def test_grounded_answer_accepts_alternatives_and_ignores_accents():
     r = _result("kb_langue", llm_written=["Les cours sont en Français."])
     assert r.grounded_ok is True
-    r = _result("kb_admission_ebihar", llm_written=["Il faut un Bac +2."])
+    r = _result("kb_bac4_ebihar", llm_written=["Vous pouvez entrer en 2ème année."])
     assert r.grounded_ok is True
     r = _result("kb_duree_ebihar", llm_written=["Je n'ai pas cette information."])
     assert r.grounded_ok is False

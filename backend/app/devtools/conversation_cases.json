@@ -6,15 +6,15 @@
    "title": "Parcours complet : intérêt, question, rendez-vous proposé puis réservé",
    "target": "ebihar_students",
    "turns": [
-    {"says": "Bonjour, je suis en BTS SIO et je voudrais devenir data analyst.",
-     "profile_after": {"study_level": "bts", "goal": "data analyst"},
+    {"says": "Bonjour, j'ai un M1 informatique et je voudrais devenir data scientist.",
+     "profile_after": {"study_level": "m1|master 1", "goal": "data scientist"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
-     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "BTS SIO", "goal": "devenir data analyst"},
-              "reply": "Bonjour Camille, merci pour votre message. Le programme eBIHAR forme justement des data analysts en alternance. Qu'aimeriez-vous savoir en priorité ?"}},
-    {"says": "Combien de temps dure la formation eBIHAR ?", "known": ["study_level", "goal"],
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["18 mois"],
+     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "M1 informatique", "goal": "devenir data scientist"},
+              "reply": "Bonjour Camille, merci pour votre message. Le Master eBIHAR, entièrement en ligne, prépare justement aux métiers de la data et de l'IA. Qu'aimeriez-vous savoir en priorité ?"}},
+    {"says": "Combien de temps dure le Master 2 eBIHAR ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["10 mois|dix mois"],
      "fake": {"qualification": {"intent": "question"},
-              "reply": "Le programme eBIHAR dure 18 mois, en alternance : trois semaines en entreprise puis une semaine de cours."}},
+              "reply": "Le Master 2 eBIHAR dure 10 mois, entièrement en ligne."}},
     {"says": "Ça me plaît, je voudrais en parler avec un conseiller.", "known": ["study_level", "goal"],
      "intents": ["meeting_request", "needs_advisor"], "actions": ["propose_meeting"], "handoff": false,
      "fake": {"qualification": {"intent": "meeting_request", "sentiment": "positive"}}},
@@ -29,19 +29,19 @@
    "title": "Informations données au premier message : jamais redemandées",
    "target": "ebihar_students",
    "turns": [
-    {"says": "Bonjour, j'ai un Bac+3 en statistiques et je cherche une alternance en data.",
-     "profile_after": {"study_level": "bac+3|bac +3|bac 3", "goal": "alternance"},
+    {"says": "Bonjour, j'ai un M1 en statistiques et je veux me spécialiser en intelligence artificielle.",
+     "profile_after": {"study_level": "m1|master 1", "goal": "intelligence artificielle|ia"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
-     "fake": {"qualification": {"intent": "interested", "study_level": "Bac+3 statistiques", "goal": "une alternance en data"},
-              "reply": "Bonjour Camille, merci pour votre message. Votre profil correspond bien au programme eBIHAR, en alternance. Que souhaitez-vous savoir ?"}},
-    {"says": "Comment se passe le rythme de l'alternance eBIHAR ?", "known": ["study_level", "goal"],
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["semaine"],
+     "fake": {"qualification": {"intent": "interested", "study_level": "M1 statistiques", "goal": "se spécialiser en intelligence artificielle"},
+              "reply": "Bonjour Camille, merci pour votre message. Le Master eBIHAR prépare justement à l'intelligence artificielle, entièrement en ligne. Que souhaitez-vous savoir ?"}},
+    {"says": "La formation eBIHAR se fait en présentiel ou à distance ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["en ligne|distance"],
      "fake": {"qualification": {"intent": "question"},
-              "reply": "Le rythme alterne trois semaines en entreprise et une semaine de cours."}},
-    {"says": "Et après eBIHAR, quels postes occupent les diplômés ?", "known": ["study_level", "goal"],
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["data analyst|analyste"],
+              "reply": "La formation se suit entièrement en ligne, à distance, avec des classes virtuelles en direct."}},
+    {"says": "Et après eBIHAR, quels métiers peut-on faire ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["data analyst|ingenieur ia|architecte"],
      "fake": {"qualification": {"intent": "question"},
-              "reply": "Les diplômés deviennent data analyst ou analyste business intelligence dans des entreprises partenaires."}}
+              "reply": "Le master prépare aux métiers de data analyst, ingénieur IA, architecte cloud et développeur full stack."}}
    ],
    "end": {"conversation": "open"}
   },
@@ -51,39 +51,39 @@
    "target": "ebihar_students",
    "meeting_by": 3,
    "turns": [
-    {"says": "Bonjour, je termine un BTS SIO cette année et je veux travailler dans la data.",
-     "profile_after": {"study_level": "bts", "goal": "data"},
+    {"says": "Bonjour, je termine un M1 informatique cette année et je veux travailler dans l'IA.",
+     "profile_after": {"study_level": "m1|master 1", "goal": "ia"},
      "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
-     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "BTS SIO", "goal": "travailler dans la data"},
-              "reply": "Bonjour Camille, merci pour votre message. Le programme eBIHAR prépare aux métiers de la data en alternance. Qu'est-ce qui vous attire le plus dans ce domaine ?"}},
-    {"says": "Quelles sont les conditions d'admission pour eBIHAR ?", "known": ["study_level", "goal"],
-     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["bac+2|bac +2|bac 2"],
+     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "M1 informatique", "goal": "travailler dans l'IA"},
+              "reply": "Bonjour Camille, merci pour votre message. Le Master eBIHAR prépare aux métiers de l'IA et de la data, entièrement en ligne. Qu'est-ce qui vous attire le plus dans ce domaine ?"}},
+    {"says": "Est-ce qu'on peut entrer directement en Master 2 eBIHAR avec un M1 ?", "known": ["study_level", "goal"],
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["master 2|m2"],
      "fake": {"qualification": {"intent": "question", "sentiment": "positive"},
-              "reply": "L'admission est ouverte dès un Bac+2, sur dossier et entretien avec un conseiller pédagogique."}},
-    {"says": "Je vise la rentrée de septembre, plutôt à distance. Comment se passe l'admission en eBIHAR ?", "known": ["study_level", "goal"],
-     "profile_after": {"start_term": "septembre", "location": "distance"},
+              "reply": "Le Master 2 eBIHAR est accessible directement à un titulaire d'un Master 1 en informatique ou en statistiques."}},
+    {"says": "Je vise la rentrée de novembre 2027, à distance bien sûr. Comment se passe l'inscription en eBIHAR ?", "known": ["study_level", "goal"],
+     "profile_after": {"start_term": "novembre|2027", "location": "distance"},
      "intents": ["question"], "actions": ["propose_meeting", "continue_conversation"], "handoff": false,
-     "fake": {"qualification": {"intent": "question", "sentiment": "positive", "start_term": "septembre", "location": "à distance"},
-              "reply": "Vous visez donc la rentrée de septembre. L'admission se fait sur dossier puis entretien avec un conseiller pédagogique."}},
-    {"says": "Et jusqu'à quand peut-on déposer sa candidature pour eBIHAR ?", "known": ["study_level", "goal", "start_term", "location"],
+     "fake": {"qualification": {"intent": "question", "sentiment": "positive", "start_term": "novembre 2027", "location": "à distance"},
+              "reply": "Vous visez donc la rentrée de novembre 2027. Pour s'inscrire au master, les inscriptions sont possibles toute l'année sur le site www.ecole-demo.example."}},
+    {"says": "Et jusqu'à quand peut-on s'inscrire en eBIHAR ?", "known": ["study_level", "goal", "start_term", "location"],
      "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false,
      "fake": {"qualification": {"intent": "question", "sentiment": "positive"},
-              "reply": "Les candidatures sont ouvertes jusqu'au 30 juin."}}
+              "reply": "Les inscriptions sont possibles toute l'année."}}
    ],
    "end": {"conversation": "open"}
   },
   {
    "id": "suivi_contexte_duree",
-   "title": "Contexte : « et ça dure combien ? » après une question sur l'admission",
+   "title": "Contexte : « et ça dure combien ? », puis « et ça coûte combien ? », après une question sur l'admission",
    "target": "ebihar_students",
    "live_only": true,
    "turns": [
-    {"says": "Quelles sont les conditions d'admission pour eBIHAR ?",
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["bac+2|bac +2|bac 2"]},
+    {"says": "Peut-on entrer directement en Master 2 eBIHAR avec un M1 informatique ?",
+     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["master 2|m2"]},
     {"says": "Et ça dure combien de temps ?", "context": true,
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["18 mois"]},
-    {"says": "Et les candidatures, c'est jusqu'à quand ?", "context": true,
-     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["30 juin"]}
+     "intents": ["question"], "actions": ["continue_conversation"], "handoff": false, "must_mention": ["10 mois|dix mois"]},
+    {"says": "Et ça coûte combien ?", "context": true,
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["6200|6 200"]}
    ],
    "end": {"conversation": "open"}
   },
@@ -167,6 +167,51 @@
               "reply": "Très bien, prenez le temps qu'il vous faut. Je reste disponible si une question vous vient."}}
    ],
    "end": {"stage_in": ["new", "to_qualify", "contacted", "in_conversation", "qualified", "to_follow_up", "lost"]}
+  },
+  {
+   "id": "salarie_partenaire",
+   "title": "Salarié de l'entreprise partenaire : tarif réduit donné à la demande",
+   "target": "ebihar_students",
+   "turns": [
+    {"says": "Bonjour, je suis salarié chez Nuvola Systems et le Master eBIHAR m'intéresse.",
+     "profile_after": {"current_situation": "nuvola|salarie"},
+     "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
+     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "current_situation": "salarié chez Nuvola Systems"},
+              "reply": "Bonjour Camille, merci pour votre message. Le Master eBIHAR se suit entièrement en ligne, ce qui se concilie bien avec un emploi. Quel est votre projet ?"}},
+    {"says": "Est-ce qu'il y a un tarif réduit pour les salariés de Nuvola Systems ?", "known": ["current_situation"],
+     "intents": ["question"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["3900|3 900"],
+     "fake": {"qualification": {"intent": "question"},
+              "reply": "Oui : pour un salarié de Nuvola Systems qui présente 3 certificats Nuvola, le coût est réduit à 3 900 euros par an."}}
+   ],
+   "end": {"conversation": "open"}
+  },
+  {
+   "id": "rentree_decalee",
+   "title": "Veut commencer en janvier : la prochaine rentrée est annoncée, sans rien inventer",
+   "target": "ebihar_students",
+   "turns": [
+    {"says": "Bonjour, je voudrais commencer le Master eBIHAR en janvier, c'est possible ? Quand commence la prochaine rentrée ?",
+     "intents": ["question", "interested"], "actions": ["continue_conversation", "propose_meeting"], "handoff": false, "must_mention": ["novembre 2027"],
+     "fake": {"qualification": {"intent": "question", "start_term": "janvier"},
+              "reply": "Bonjour Camille, merci pour votre message. La prochaine rentrée commence en novembre 2027 ; les inscriptions sont ouvertes toute l'année."}}
+   ],
+   "end": {"conversation": "open"}
+  },
+  {
+   "id": "admission_licence",
+   "title": "Titulaire d'une licence : l'admission n'est pas écrite, jamais d'avis inventé",
+   "target": "ebihar_students",
+   "turns": [
+    {"says": "Bonjour, j'ai une licence en informatique et le Master eBIHAR m'intéresse.",
+     "profile_after": {"study_level": "licence"},
+     "intents": ["interested", "question"], "actions": ["continue_conversation", "propose_meeting", "nurture"], "handoff": false,
+     "fake": {"qualification": {"intent": "interested", "sentiment": "positive", "study_level": "licence informatique"},
+              "reply": "Bonjour Camille, merci pour votre message. Qu'est-ce qui vous attire dans le Master eBIHAR ?"}},
+    {"says": "Est-ce que je suis admissible avec ma licence ?", "context": true, "known": ["study_level"],
+     "intents": ["question"], "actions": ["continue_conversation", "human_handoff", "propose_meeting"], "handoff": null,
+     "fake": {"qualification": {"intent": "question"}}}
+   ],
+   "end": {}
   }
  ]
 }
