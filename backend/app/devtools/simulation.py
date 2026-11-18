@@ -23,8 +23,8 @@ from app.services.prospects import get_prospect
 VERSION = "qualification-meeting-v1"
 GUIDE = [
     "Bonjour, je cherche une formation pour devenir data analyst. Comment se déroule le programme ?",
-    "J’ai un Bac+3 en informatique et je souhaite travailler en alternance.",
-    "Je crains de ne pas trouver d’entreprise. Quel accompagnement proposez-vous ?",
+    "J’ai un M1 en informatique et je vise la prochaine rentrée.",
+    "C’est un vrai budget pour moi : combien coûte le master ?",
     "Je voudrais prendre rendez-vous avec un conseiller.",
     "Le deuxième créneau me convient.",
 ]
@@ -123,8 +123,8 @@ async def run(
             [
                 DEMO_FACT,
                 Passage(
-                    source="Accompagnement (FICTIF)",
-                    text="Dans ce programme de démonstration en alternance, un conseiller accompagne la recherche d’entreprise et la préparation du CV, sans garantir de contrat.",
+                    source="Coût (FICTIF)",
+                    text="Le Master eBIHAR de démonstration coûte 6200 euros par an.",
                 ),
             ]
         ),
@@ -222,7 +222,7 @@ async def report(session: AsyncSession, db: Any, cid: str) -> dict[str, Any]:
         "limits": [
             "Pas de transport email réel",
             "Pas de temps accéléré ni de recette des relances",
-            "Documents fictifs : durée, alternance et accompagnement ; tarif et financement non documentés",
+            "Documents fictifs : durée, format en ligne et coût ; financement et rentrée non documentés",
             "Un rendez-vous réservé ne constitue pas une conversion commerciale",
         ],
     }

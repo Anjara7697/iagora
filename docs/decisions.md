@@ -336,3 +336,27 @@ le suivi du projet et le mémoire, il faut un historique lisible et des comparai
 **Suite.** L'interface (partie 1b), puis les prospects simulés par un second modèle (partie 2), branchés sur la
 même page comme une suite supplémentaire, entièrement réglable.
 
+
+## D-36 — Démonstration eBIHAR jumelle de la campagne
+
+*18 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Les efforts portent sur la campagne eBIHAR à venir. Ses documents officiels restent hors de Git
+(D-28), mais les tests du dépôt jouaient un eBIHAR fictif très différent (alternance, rentrée et candidatures à date
+fixe, tarifs réservés au conseiller) : ils n'exerçaient pas les réflexes que la campagne demande.
+
+**Décision.**
+- La fiche eBIHAR de démonstration est **jumelle** des vrais documents : mêmes sujets et même forme (master en ligne,
+  accès selon le diplôme, rentrée et date limite d'inscription, coût et tarif réduit pour les salariés d'un
+  partenaire, certifications, examens surveillés), **valeurs inventées** (10 mois, 6200 euros, novembre, partenaire
+  « Nuvola Systems »…), et **mêmes manques** (financement, CPF, paiement en plusieurs fois, admission avec une
+  licence) : l'agent doit y répondre ou passer la main exactement comme sur la vraie campagne.
+- Le prix est donné quand le prospect le demande et que la base le contient ; la FAQ de démonstration ne renvoie
+  plus les tarifs au conseiller.
+- Les cas et conversations eBIHAR du dépôt suivent la même grille que le jeu de cas local de la campagne ; la mesure
+  de la campagne elle-même se fait sur les vrais documents avec ce jeu local (`--cas`).
+- Les vrais faits ne passent jamais dans la démonstration (D-28).
+
+**Conséquences.** Les mesures faites sur l'ancienne démonstration ne sont plus comparables aux nouvelles : une
+nouvelle mesure de référence est faite avant toute modification de l'agent. Les démonstrations Les Compagnons et
+Master en alternance sont revues avec la liste des programmes.
