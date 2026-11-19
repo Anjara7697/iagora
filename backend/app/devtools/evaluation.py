@@ -716,13 +716,13 @@ def _gaps(r: CaseResult) -> list[str]:
     if r.sent_claims:
         gaps.append(f"chiffres non sourcés envoyés : {r.sent_claims}")
     if r.format_ok is False:
-        want = []
+        expected = []
         if c.subject is not None:
-            want.append("avec objet" if c.subject else "sans objet")
+            expected.append("avec objet" if c.subject else "sans objet")
         if c.words:
-            want.append(f"{'-'.join(map(str, c.words))} mots")
+            expected.append(f"{'-'.join(map(str, c.words))} mots")
         got = f"{'objet' if r.subject else 'pas d’objet'}, {r.word_count} mots"
-        gaps.append(f"forme du canal {c.channel} : {got} (attendu : {', '.join(want)})")
+        gaps.append(f"forme du canal {c.channel} : {got} (attendu : {', '.join(expected)})")
     return gaps
 
 
