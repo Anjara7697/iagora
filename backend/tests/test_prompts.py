@@ -154,3 +154,28 @@ def test_code_written_messages_greet_only_at_the_start():
     assert prompts.opening(ctx()).startswith("Bonjour Camille")
     spoke = [HistoryMessage("prospect", "Bonjour"), HistoryMessage("agent", "Bonjour !")]
     assert prompts.opening(ctx(spoke)) == ""
+
+
+def test_cases_and_indicative_facts_are_answered_not_handed_off():
+    """D-37 : une fiche qui donne plusieurs cas (M2 en 1 an avec un M1, parcours en 2 ans…) ou
+    un tarif indicatif répond à la question : pas de signal « question sans réponse »."""
+    system = reply([HistoryMessage("prospect", "Combien de temps dure le master ?")])
+    assert "plusieurs cas" in system and "indicative" in system
+    assert "même selon les cas ou à titre indicatif" in system
+
+
+def test_the_catalogue_never_describes_the_content_of_a_programme():
+    """Sans extrait, « le programme aborde ces sujets » serait inventé : la liste ne donne que des
+    noms et des publics."""
+    assert "n'en déduis jamais le contenu" in reply()
+
+
+def test_known_profile_fields_are_listed_as_never_to_be_asked():
+    system = prompts.reply_system(
+        ctx([HistoryMessage("prospect", "J'ai une licence en informatique.")]),
+        {"study_level": "licence en informatique"},
+        [],
+        ["goal"],
+        mode="continue",
+    )
+    assert "Tu connais déjà son niveau d'études : ne pose aucune question à ce sujet" in system

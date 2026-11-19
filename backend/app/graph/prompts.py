@@ -25,7 +25,7 @@ _MONTHS = [
 ]  # fmt: skip
 
 PROGRAMS = {
-    "ebihar_students": "le programme eBIHAR (étudiants)",
+    "ebihar_students": "le Master eBIHAR en ligne (étudiants)",
     "compagnons_pros": "le programme Les Compagnons (professionnels en montée en compétences)",
     "master_candidates": "le Master eBIHAR (candidats en recherche d'alternance)",
     "master_companies": "le Master eBIHAR (entreprises partenaires accueillant des apprentis)",
@@ -34,7 +34,8 @@ PROGRAMS = {
 # Liste validée des programmes (cahier des charges §2) : noms et publics uniquement. Aucun prix,
 # durée ni condition : ces informations ne viennent que de la base de connaissances (NF-10).
 CATALOGUE = """Programmes de DATUM Academy (liste validée) :
-- eBIHAR : pour les étudiants.
+- eBIHAR : Master of Science en ligne en intelligence artificielle et big data, pour les \
+étudiants.
 - Les Compagnons : pour les professionnels qui veulent monter en compétences.
 - Master eBIHAR : pour les étudiants en recherche d'alternance, et pour les entreprises \
 partenaires qui accueillent des apprentis."""
@@ -55,6 +56,12 @@ de promesse, pas de formule marketing générique.
 - N'invente JAMAIS une information : prix, tarifs, dates, durées, conditions d'admission, \
 financements, diplômes, taux de réussite, disponibilités. Appuie-toi uniquement sur les extraits \
 fournis ci-dessous : ce qui n'y figure pas, tu ne l'écris pas.
+- La liste des formations ne donne que des noms et des publics : n'en déduis jamais le contenu \
+d'un programme (cours, matières, compétences, outils). Sans extrait sur ce contenu, n'en dis rien.
+- Quand les extraits donnent plusieurs cas (selon le diplôme, le parcours ou la situation), \
+réponds avec le cas qui concerne le prospect, ou cite brièvement les cas : la réponse existe. Une \
+information que les extraits présentent comme indicative ou susceptible d'évoluer se donne telle \
+quelle, en le précisant.
 - N'affirme jamais qu'un profil remplit les conditions d'admission, qu'il est éligible, qu'il \
 « correspond » au programme ou « au profil recherché », ni qu'il est « adapté » : l'admission est \
 décidée par l'école. Tu peux citer les conditions telles qu'écrites dans les extraits, sans les \
@@ -165,9 +172,10 @@ sans détail précis (ex. « quelles formations proposez-vous ? »).
 particulier, réclamation, situation sensible). Une demande de rendez-vous ne l'exige pas.
 - confidence : ta confiance dans cette lecture, de 0 à 1.
 - chosen_slot : numéro du créneau choisi, seulement si intent = slot_choice.
-- Champs de profil (study_level, goal, start_term pour la rentrée visée, location pour la ville \
-ou le format sur place / à distance, etc.) : seulement ce que le prospect dit explicitement dans \
-ses messages ; sinon laisse vide.
+- Champs de profil (study_level pour le diplôme obtenu ou en cours, goal, current_situation pour \
+la situation actuelle en études ou en poste, start_term pour la rentrée visée, location pour la \
+ville ou le format sur place / à distance, etc.) : seulement ce que le prospect dit explicitement \
+dans ses messages ; sinon laisse vide.
 Informations déjà connues :
 {known_profile(ctx, profile)}
 Créneaux proposés en attente de réponse :
@@ -183,7 +191,8 @@ ADVISOR_RULE = (
     "Questions sans réponse : si le prospect pose une question précise dont la réponse ne "
     "figure ni dans les extraits ni dans la liste des formations, commence ton message par "
     f"{ADVISOR_MARKER} : un conseiller "
-    "reprendra la conversation. N'utilise jamais ce signal si les extraits répondent."
+    "reprendra la conversation. N'utilise jamais ce signal si les extraits répondent, même selon "
+    "les cas ou à titre indicatif."
 )
 
 
@@ -197,8 +206,8 @@ def defers_to_advisor(reply: str) -> bool:
 QUESTION_STYLE = {
     "goal": "une question ouverte sur son projet ou ce qui l'attire (ex. « Qu'est-ce qui vous "
     "attire dans la data ? »)",
-    "current_situation": "une question ouverte sur son poste actuel et ce qu'il ou elle aimerait "
-    "faire évoluer",
+    "current_situation": "une question simple sur sa situation actuelle (en études ou en poste) "
+    "et ce qu'il ou elle aimerait faire évoluer",
     "study_level": "une question simple sur son parcours (diplôme en cours ou obtenu)",
     "field_of_study": "une question simple sur son domaine d'études",
     "start_term": "une question alternative sur la rentrée visée (ex. « Plutôt la prochaine "
@@ -267,6 +276,10 @@ def reply_system(
         ask = f"Termine par UNE question sur {label} : {style}."
     else:
         ask = "Ne pose pas de question de qualification."
+    known = [FIELD_LABELS[k] for k, v in profile.items() if v and k in FIELD_LABELS]
+    if known:
+        # Un diplôme déjà donné (« une licence ») ne se redemande pas sous une autre forme.
+        ask += f" Tu connais déjà {', '.join(known)} : ne pose aucune question à ce sujet."
     return f"""{IDENTITY}
 
 {RULES}
