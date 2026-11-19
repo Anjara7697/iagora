@@ -765,3 +765,12 @@ def test_mark_unseen_from_clears_the_seen_flag_of_that_sender(monkeypatch):
     assert asyncio.run(client.mark_unseen_from("moi@gmail.com")) == 2
     assert [a[0] for a in fake.stored] == [b"4", b"7"]
     assert all(a[1:] == ("-FLAGS", "(\\Seen)") for a in fake.stored)
+
+
+def test_the_first_email_uses_the_subject_written_by_the_agent_or_the_fallback():
+    """D-38 : premier contact, aucun email du prospect à reprendre : l'objet de l'agent, sinon
+    l'objet de secours."""
+    message = {"role": "agent", "created_at": None, "metadata": {"subject": "Jean, votre projet"}}
+    assert email_sync._thread_headers({"messages": []}, message) == ("Jean, votre projet", None, [])
+    plain = {"role": "agent", "created_at": None, "metadata": {}}
+    assert email_sync._thread_headers({"messages": []}, plain)[0] == email_sync.DEFAULT_SUBJECT
