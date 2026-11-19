@@ -148,6 +148,10 @@ async def update_campaign(
     campaign = await get_campaign(session, campaign_id)
     changes = data.model_dump(exclude_unset=True)
     target_codes = changes.pop("target_codes", None)
+    if "email_subject" in changes:
+        changes["email_subject"] = " ".join((changes["email_subject"] or "").split()) or None
+    if changes.get("resources") is None:
+        changes.pop("resources", None)
     for field, value in changes.items():
         setattr(campaign, field, value)
     if target_codes is not None:

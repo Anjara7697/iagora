@@ -499,6 +499,32 @@ def _canonical(text: str) -> str:
     return re.sub(r"(?<=\d)\s?pour ?cent\b", "%", text)
 
 
+# Liens (D-39) : un lien n'est envoyé que s'il figure dans les ressources de la campagne ou dans les
+# sources validées ; un lien inventé par le modèle (page, formulaire, document) est bloqué.
+_LINK = re.compile(r"(?:https?://|www\.)[^\s<>()\[\]\"'«»]+", re.IGNORECASE)
+
+
+def _link_key(link: str) -> str:
+    key = link.rstrip(_TRAILING_LINK).lower()
+    key = re.sub(r"^https?://", "", key)
+    key = re.sub(r"^www\.", "", key)
+    return key.rstrip("/")
+
+
+_TRAILING_LINK = ".,;:!?)»"
+
+
+def links_in(text: str) -> list[str]:
+    return [m.group(0).rstrip(_TRAILING_LINK) for m in _LINK.finditer(text)]
+
+
+def unlisted_links(reply: str, allowed: list[str]) -> list[str]:
+    """Liens de la réponse absents des ressources et des sources validées (comparés sans le
+    protocole, le « www. » ni la barre finale)."""
+    keys = {_link_key(link) for text in allowed for link in links_in(text)}
+    return list(dict.fromkeys(link for link in links_in(reply) if _link_key(link) not in keys))
+
+
 def _extra_terms(terms: tuple[str, ...]) -> re.Pattern[str] | None:
     """Termes ajoutés par l'administrateur, comparés sans accents ni majuscules."""
     words = [re.escape(normalize(t.strip())) for t in terms if t.strip()]

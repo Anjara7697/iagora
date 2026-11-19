@@ -752,6 +752,29 @@ test("fiche : un onglet s'ouvre par lien direct, une valeur inconnue revient à 
   await expect(page.getByRole("main").getByRole("link", { name: "Campagnes", exact: true })).toHaveAttribute("href", "/campaigns");
 });
 
+test("réglages : objet du premier email et liens validés pour l'agent", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  const panel = page.getByRole("region", { name: "Pour l’agent" });
+  await panel.getByLabel("Objet du premier email").fill("{prénom}, votre projet et le Master eBIHAR");
+  await panel.getByRole("button", { name: "Ajouter un lien" }).click();
+  await panel.getByLabel("Nom du lien 1").fill("Inscription");
+  await panel.getByLabel("Adresse (https://)").fill("http://datum.example");
+  await expect(panel.getByText("Chaque lien a besoin d’un nom et d’une adresse complète en https://.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Enregistrer pour l’agent" })).toBeDisabled();
+  await panel.getByLabel("Adresse (https://)").fill("https://www.datumacademy.com/fr/masters/eBIHAR");
+  await panel.getByLabel("Quand le proposer").fill("quand le prospect veut s’inscrire");
+  await panel.getByRole("button", { name: "Enregistrer pour l’agent" }).click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PATCH" && "resources" in (r.body as object))?.body)
+    .toEqual({
+      email_subject: "{prénom}, votre projet et le Master eBIHAR",
+      resources: [
+        { label: "Inscription", url: "https://www.datumacademy.com/fr/masters/eBIHAR", usage: "quand le prospect veut s’inscrire" },
+      ],
+    });
+});
+
 test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {
   await mockApi(page);
   const many = Array.from({ length: 25 }, (_, i) =>

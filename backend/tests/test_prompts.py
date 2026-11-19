@@ -212,3 +212,37 @@ def test_the_subject_line_is_split_from_the_message_and_cleaned():
     )
     long_subject, _ = prompts.split_subject("Objet : " + "mot " * 40 + "\nCorps")
     assert len(long_subject) <= prompts.SUBJECT_MAX_CHARS and long_subject.endswith("…")
+
+
+def test_campaign_links_are_the_only_links_offered_to_the_model():
+    with_links = ProspectContext(
+        **{
+            **ctx().__dict__,
+            "campaign_resources": [
+                {
+                    "label": "Inscription",
+                    "url": "https://datum.example/i",
+                    "usage": "pour s'inscrire",
+                }
+            ],
+        }
+    )
+    system = prompts.reply_system(with_links, {}, [], [], mode="continue")
+    assert "- Inscription : https://datum.example/i (à proposer : pour s'inscrire)" in system
+    assert "n'écris aucun autre lien" in system
+    assert "n'écris aucun lien qui ne figure pas dans les extraits" in reply()
+
+
+def test_the_imposed_subject_takes_the_first_name():
+    def subject(text, first_name="Camille"):
+        return prompts.imposed_subject(
+            ProspectContext(
+                **{**ctx().__dict__, "campaign_subject": text, "first_name": first_name}
+            )
+        )
+
+    assert subject("{prénom}, votre projet et le Master eBIHAR") == (
+        "Camille, votre projet et le Master eBIHAR"
+    )
+    assert subject("{prenom}, le Master eBIHAR", first_name=None) == "le Master eBIHAR"
+    assert subject("  ") is None and subject(None) is None

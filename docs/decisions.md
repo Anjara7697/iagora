@@ -412,3 +412,24 @@ n'ont ni la même longueur ni la même forme ; l'objet décide de l'ouverture de
 
 **Suite.** Ressources de campagne (fichiers et liens validés, garde-fou des liens), puis design de l'email DATUM et
 pièces jointes.
+
+## D-39 — Ressources de campagne : liens validés et objet imposé
+
+*19 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Un email de prospection contient souvent un lien (inscription, programme, webinaire). Rien
+n'empêchait le modèle d'inventer une adresse, et chaque campagne doit pouvoir fixer ce qu'elle partage.
+
+**Décision.**
+- Chaque campagne porte ses **liens validés** (nom, adresse en https, quand le proposer ; 20 au plus) et un
+  **objet imposé** facultatif pour le premier email (« {prénom} » remplacé par le prénom), réglés par
+  l'administrateur dans Réglages → « Pour l'agent ».
+- L'agent reçoit ces liens avec la consigne de n'en proposer un que s'il répond au besoin du prospect, en
+  recopiant l'adresse exacte ; il choisit lui-même, et en mode assisté le conseiller voit le lien dans le
+  brouillon.
+- **Garde-fou** : un lien qui ne figure ni dans les liens de la campagne ni dans les sources validées est traité
+  comme une information non sourcée (nouvel essai plus strict, puis transfert) : jamais envoyé.
+- L'objet imposé remplace celui de l'agent ; sans objet imposé, l'objet de l'agent (D-38), sinon l'objet de
+  secours.
+
+**Suite.** Fichiers joints (brochure…) avec le design de l'email DATUM, dans la PR suivante.

@@ -668,6 +668,35 @@ async def test_the_first_contact_email_carries_the_subject_written_by_the_agent(
     assert last["metadata"]["subject"] == "Jean, votre projet et le Master eBIHAR"
 
 
+async def test_campaign_subject_and_links_reach_the_agent_and_invented_links_are_blocked(
+    client, env
+):
+    """D-39 : l'objet imposé remplace celui de l'agent ; un lien hors ressources ne part jamais."""
+    pid, mid, cid = await lead(client, None, consent_granted=True)
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    link = {"label": "Inscription", "url": "https://datum.example/inscription", "usage": ""}
+    await client.patch(
+        f"{API}/campaigns/{campaign_id}",
+        json={"email_subject": "{prénom}, votre projet data", "resources": [link]},
+    )
+    env.llm.reply = (
+        "Objet : autre objet\n\nBonjour Jean, inscrivez-vous : https://datum.example/inscription"
+    )
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert last["metadata"]["subject"] == "Jean, votre projet data"
+    assert out["reply"].endswith("https://datum.example/inscription")
+    assert "https://datum.example/inscription" in env.llm.generate_calls[0][0]
+
+    pid, mid, cid = await lead(client, "Où puis-je m'inscrire ?")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Inscrivez-vous ici : https://datum-promo.example/offre"
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"  # lien inventé : jamais envoyé
+    retry = [system for system, _ in env.llm.generate_calls if "ATTENTION" in system]
+    assert retry and "datum-promo.example/offre" in retry[-1]  # le nouvel essai l'interdit
+
+
 async def test_a_subject_line_is_never_kept_outside_the_first_contact_email(client, env):
     pid, mid, cid = await lead(client, "Bonjour, je regarde vos formations.")
     env.llm.qualification = Qualification(intent="interested")
