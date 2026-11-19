@@ -67,14 +67,15 @@ def test_sensitive_messages_flagged():
 
 def test_missing_fields_depend_on_target_and_never_ask_known_data():
     # Grille D-33, dans l'ordre de l'entonnoir : projet, situation, rentrée, lieu ou format.
-    grid = ["goal", "study_level", "start_term", "location"]
+    # D-37 : eBIHAR se suit en ligne, la situation remplace le format.
+    grid = ["goal", "study_level", "current_situation", "start_term"]
     assert policy.missing_fields({}, "ebihar_students") == grid
     assert policy.missing_fields({"study_level": "Bac+3"}, "ebihar_students") == [
         "goal",
+        "current_situation",
         "start_term",
-        "location",
     ]
-    full = {"study_level": "x", "goal": "y", "start_term": "septembre", "location": "Paris"}
+    full = {"study_level": "x", "goal": "y", "current_situation": "étudiant", "start_term": "2027"}
     assert policy.missing_fields(full, "ebihar_students") == []
     assert policy.missing_fields({"goal": "  "}, None) == ["goal"]
     assert policy.missing_fields({}, "compagnons_pros") == [
@@ -298,6 +299,18 @@ def test_grounded_figures_are_accepted():
     assert policy.ungrounded_claims("Elle dure 18 mois et coûte 4 500 euros.", sources) == []
     assert policy.ungrounded_claims("La rentrée a lieu le 15 septembre.", sources) == []
     assert policy.ungrounded_claims("Bonjour Jean, je vous écoute.", []) == []
+
+
+def test_agreement_of_a_committing_term_is_accepted_when_its_base_form_is_sourced():
+    """« gratuites » est sourcé par « gratuit » ; sans source, il reste bloqué (NF-10)."""
+    sources = ["Les parcours Associate : cours et examen gratuits."]
+    for reply in (
+        "Les examens sont gratuits.",
+        "Les certifications sont gratuites.",
+        "C'est gratuit.",
+    ):
+        assert policy.ungrounded_claims(reply, sources) == []
+    assert policy.ungrounded_claims("Les certifications sont gratuites.", ["Tarif : sur devis."])
 
 
 def test_slot_formatting_uses_paris_time():

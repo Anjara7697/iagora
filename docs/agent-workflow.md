@@ -94,8 +94,11 @@ graph TD;
 
 **Qualification (D-33)** : une grille par programme, recueillie une question à la fois dans l'ordre de
 l'entonnoir : projet (question ouverte), niveau d'études ou situation, rentrée visée, ville ou format (questions
-alternatives). L'agent reformule brièvement ce que le prospect vient de dire, répond en 80 mots au plus, ne donne
-jamais d'avis d'admission et ne propose pas de lui-même un conseiller : les créneaux arrivent au bon moment.
+alternatives). Pour eBIHAR, master en ligne (D-37) : projet, diplôme, situation actuelle, rentrée visée. L'agent
+reformule brièvement ce que le prospect vient de dire, répond en 80 mots au plus, ne donne jamais d'avis
+d'admission, ne redemande jamais une information connue et ne propose pas de lui-même un conseiller : les
+créneaux arrivent au bon moment. Quand les extraits donnent plusieurs cas ou une information indicative, il
+répond avec le cas du prospect au lieu de transférer.
 
 **Questions** : une question précise sans extrait de la base de connaissances est transférée (jamais devinée). Une
 question sur la *liste* des formations (`asks_catalogue`) est répondue grâce à la liste validée des trois programmes

@@ -23,11 +23,12 @@ MIN_CONFIDENCE = 0.5  # en dessous : lecture du modèle trop incertaine, on tran
 # (AUDIT-BIZ-001).
 SLOT_MIN_NOTICE = timedelta(minutes=15)
 
-# Grille de qualification par cible (F-09, décision D-33) : une question à la fois, jamais
-# répétée, dans l'ordre de l'entonnoir : le projet d'abord (question ouverte), puis la situation,
-# la rentrée visée et le lieu ou le format (questions alternatives).
+# Grille de qualification par cible (F-09, décisions D-33 et D-37) : une question à la fois,
+# jamais répétée, dans l'ordre de l'entonnoir : le projet d'abord (question ouverte), puis la
+# situation, la rentrée visée et le lieu ou le format (questions alternatives). eBIHAR se suit en
+# ligne : le format ne se demande pas, la situation (en études, en poste) le remplace.
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "ebihar_students": ("goal", "study_level", "start_term", "location"),
+    "ebihar_students": ("goal", "study_level", "current_situation", "start_term"),
     "compagnons_pros": ("goal", "current_situation", "start_term", "location"),
     "master_candidates": ("goal", "study_level", "start_term", "location"),
     "master_companies": ("company_need", "availability"),
@@ -37,7 +38,7 @@ DEFAULT_REQUIRED = ("goal",)
 FIELD_LABELS = {
     "study_level": "son niveau d'études",
     "field_of_study": "son domaine d'études",
-    "current_situation": "sa situation professionnelle actuelle",
+    "current_situation": "sa situation actuelle (en études ou en poste)",
     "goal": "ce qu'il ou elle recherche (son projet)",
     "availability": "ses disponibilités ou l'échéance visée",
     "company_need": "les profils ou compétences recherchés par l'entreprise",
@@ -468,6 +469,11 @@ _TERMS = re.compile(
 )
 
 
+# Marques d'accord d'un terme qui engage l'école (« gratuit », « gratuits », « gratuites »,
+# « éligibles ») : le terme est sourcé si sa forme de base figure dans les sources.
+_AGREEMENT = re.compile(r"(?:es|e|s)$")
+
+
 def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
@@ -508,6 +514,9 @@ def ungrounded_claims(
         checks.append((extra, validated))
     for pattern, haystack in checks:
         for match in pattern.finditer(text):
-            if _compact(_canonical(match.group(0))) not in haystack:
+            found = _compact(_canonical(match.group(0)))
+            if pattern is _TERMS:
+                found = _AGREEMENT.sub("", found)  # « gratuites » est sourcé par « gratuit »
+            if found not in haystack:
                 bad.append(match.group(0).strip())
     return list(dict.fromkeys(bad))

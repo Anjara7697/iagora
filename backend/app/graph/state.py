@@ -53,7 +53,8 @@ class Qualification(BaseModel):
         False,
         description=(
             "Vrai si le prospect demande quelles formations ou quels programmes existent, sans "
-            "demander de détail précis (durée, prix, admission, financement)"
+            "demander de détail précis (durée, prix, admission, financement). Une question sur le "
+            "contenu d'un programme (cours, matières) n'en est pas une"
         ),
     )
     chosen_slot: int | None = Field(
@@ -61,7 +62,9 @@ class Qualification(BaseModel):
     )
     study_level: str | None = Field(None, description="Niveau d'études, si le prospect l'indique")
     field_of_study: str | None = Field(None, description="Domaine d'études")
-    current_situation: str | None = Field(None, description="Situation professionnelle actuelle")
+    current_situation: str | None = Field(
+        None, description="Situation actuelle : en études, en poste (et chez qui, s'il le dit)…"
+    )
     goal: str | None = Field(None, description="Objectif du prospect (ce qu'il recherche)")
     availability: str | None = Field(None, description="Disponibilités ou échéances indiquées")
     start_term: str | None = Field(

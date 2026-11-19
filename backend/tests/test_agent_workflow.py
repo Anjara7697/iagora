@@ -231,7 +231,12 @@ async def test_missing_calendar_never_invents_availability(client, env, calendar
 
 async def _qualified_prospect(client, env):
     """Prospect dont la grille D-33 est complète et qui a déjà échangé avec l'agent."""
-    profile = {"goal": "data", "study_level": "BTS", "start_term": "septembre", "location": "Paris"}
+    profile = {
+        "goal": "data",
+        "study_level": "BTS",
+        "current_situation": "étudiant",
+        "start_term": "septembre",
+    }
     pid, mid, cid = await lead(client, "Bonjour", profile=profile)
     await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
     await say(client, cid, "Comment se passe l'admission ?")
@@ -594,7 +599,8 @@ async def test_profile_is_enriched_and_known_data_is_never_asked_again(
         profile = (await s.get(Prospect, pid)).profile
     assert profile["study_level"] == "Bac+3" and profile["field_of_study"] == "informatique"
     system = env.llm.generate_calls[-1][0]
-    assert "son niveau d'études" not in system  # déjà connu : jamais redemandé
+    assert "UNE question sur son niveau d'études" not in system  # déjà connu : jamais redemandé
+    assert "Tu connais déjà son niveau d'études" in system  # ni sous une autre forme
     assert "ce qu'il ou elle recherche" in system  # reste à qualifier : UNE seule question
     assert "Pose au maximum UNE question" in system
     assert any(
@@ -604,14 +610,18 @@ async def test_profile_is_enriched_and_known_data_is_never_asked_again(
     await say(client, cid, "Je veux devenir data analyst.", role="prospect")
     env.llm.qualification = Qualification(intent="interested", goal="devenir data analyst")
     await run(client, cid)
-    # Grille D-33 : la rentrée visée vient ensuite, par une question alternative.
+    # Grille D-37 : la situation vient ensuite, puis la rentrée, par une question alternative.
+    asked = env.llm.generate_calls[-1][0]
+    assert "UNE question sur sa situation actuelle" in asked
+
+    await say(client, cid, "Je suis encore étudiant.", role="prospect")
+    env.llm.qualification = Qualification(intent="interested", current_situation="étudiant")
+    await run(client, cid)
     asked = env.llm.generate_calls[-1][0]
     assert "la rentrée qu'il ou elle vise" in asked and "question alternative" in asked
 
-    await say(client, cid, "Septembre prochain, plutôt à distance.", role="prospect")
-    env.llm.qualification = Qualification(
-        intent="interested", start_term="septembre", location="à distance"
-    )
+    await say(client, cid, "Septembre prochain.", role="prospect")
+    env.llm.qualification = Qualification(intent="interested", start_term="septembre")
     second = (await run(client, cid)).json()
     assert "Ne pose pas de question de qualification" in env.llm.generate_calls[-1][0]
     reasons = {e["reason"] for e in (await history(client, mid))["score_events"]}

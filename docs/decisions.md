@@ -360,3 +360,31 @@ fixe, tarifs réservés au conseiller) : ils n'exerçaient pas les réflexes que
 **Conséquences.** Les mesures faites sur l'ancienne démonstration ne sont plus comparables aux nouvelles : une
 nouvelle mesure de référence est faite avant toute modification de l'agent. Les démonstrations Les Compagnons et
 Master en alternance sont revues avec la liste des programmes.
+
+## D-37 — Agent adapté à la campagne eBIHAR (master en ligne)
+
+*19 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Mesure de la campagne eBIHAR sur les vrais documents (jeu de cas local, `--cas`, modèle
+`gemini-3.5-flash-lite` seul) : après import des fiches, 27 cas sur 29 et 5 conversations sur 7 conformes, aucun
+chiffre inventé envoyé. Écarts restants : transferts inutiles quand une fiche donne plusieurs cas (durée selon le
+diplôme) ou un tarif indicatif, niveau d'études redemandé à un prospect qui avait donné son diplôme, esquive ou
+contenu de programme déduit de la seule liste des formations, « gratuites » refusé quand la source dit « gratuit ».
+
+**Décision.**
+- **Grille eBIHAR** : projet, diplôme, situation actuelle (en études ou en poste), rentrée visée. eBIHAR se suit
+  en ligne : la question sur le lieu ou le format est retirée.
+- **Liste des programmes** : seule la ligne eBIHAR change (« Master of Science en ligne en intelligence
+  artificielle et big data, pour les étudiants ») ; Les Compagnons et le Master en alternance restent tels quels
+  jusqu'à confirmation par DATUM.
+- **Réponse selon les cas** : quand les extraits donnent plusieurs cas ou une information indicative, l'agent
+  répond avec le cas du prospect ou cite les cas, au lieu de signaler une question sans réponse.
+- **Pas de contenu déduit de la liste des formations** : sans extrait, l'agent ne décrit ni cours ni matières ;
+  une question sur le contenu n'est pas une demande de catalogue.
+- **Profil connu** : les informations déjà données sont rappelées au modèle comme à ne jamais redemander, même
+  sous une autre forme.
+- **Garde-fou** : un terme qui engage l'école est sourcé si sa forme de base figure dans les sources
+  (« gratuites » par « gratuit ») ; sans source, il reste bloqué.
+
+**Mesure.** Même jeu de cas local et même modèle qu'avant ce changement ; démonstration jumelle (D-36) pour la
+non-régression.
