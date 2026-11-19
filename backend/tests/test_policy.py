@@ -313,6 +313,17 @@ def test_agreement_of_a_committing_term_is_accepted_when_its_base_form_is_source
     assert policy.ungrounded_claims("Les certifications sont gratuites.", ["Tarif : sur devis."])
 
 
+def test_a_spelled_out_duration_is_sourced_by_the_same_duration_in_figures():
+    """« un ou deux ans » est sourcé par « 1 an ou 2 ans » ; « deux ans » reste bloqué quand la
+    source dit autre chose (AUDIT-AI-001)."""
+    sources = ["Le Master 1 et le Master 2 se suivent sur 1 an ou 2 ans."]
+    assert policy.ungrounded_claims("Ils se suivent sur un ou deux ans.", sources) == []
+    assert policy.ungrounded_claims("Elle dure dix-huit mois.", ["Elle dure 18 mois."]) == []
+    assert policy.ungrounded_claims("Le parcours dure deux ans.", ["Il dure 6 mois."]) == [
+        "deux ans"
+    ]
+
+
 def test_slot_formatting_uses_paris_time():
     # 1er mars 2027 = lundi ; 13h UTC = 14h à Paris (hiver).
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"

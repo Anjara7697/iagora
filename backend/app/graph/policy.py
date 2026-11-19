@@ -478,9 +478,22 @@ def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
 
+_NUMBER_WORDS = {
+    "deux": "2", "trois": "3", "quatre": "4", "cinq": "5", "six": "6", "sept": "7", "huit": "8",
+    "neuf": "9", "dix": "10", "onze": "11", "douze": "12", "quinze": "15", "seize": "16",
+    "dix-huit": "18", "vingt": "20", "vingt-quatre": "24", "trente": "30", "quarante-huit": "48",
+}  # fmt: skip
+_SPELLED_DURATION = re.compile(
+    r"\b(" + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True)) + r")\s"
+    r"(?=(?:ans?|annees?|mois|semaines?|jours?|heures?)\b)"
+)
+
+
 def _canonical(text: str) -> str:
-    """Écritures équivalentes d'un montant ramenées à une seule (texte déjà `normalize`) :
-    « 7 000 euros », « 7.000 € » et « 7000 eur » deviennent « 7000€ » ; « 5 pour cent », « 5% »."""
+    """Écritures équivalentes d'un montant ou d'une durée ramenées à une seule (texte déjà
+    `normalize`) : « 7 000 euros », « 7.000 € » et « 7000 eur » deviennent « 7000€ » ;
+    « 5 pour cent », « 5% » ; « deux ans », « 2 ans » (la source écrit souvent en chiffres)."""
+    text = _SPELLED_DURATION.sub(lambda m: _NUMBER_WORDS[m.group(1)] + " ", text)
     text = re.sub(r"(?<=\d)[ .\u00a0\u202f](?=\d{3}(?!\d))", "", text)
     text = re.sub(r"(?<=\d)\s?(?:euros?|eur)\b", "€", text)
     return re.sub(r"(?<=\d)\s?pour ?cent\b", "%", text)
