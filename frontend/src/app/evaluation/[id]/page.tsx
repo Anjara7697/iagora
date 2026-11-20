@@ -1,13 +1,13 @@
 "use client";
 
-import { Tabs, toast } from "@heroui/react";
-import { GitCompareArrows, Pencil, Printer, SearchX, Trash2 } from "lucide-react";
+import { ProgressBar, Tabs, toast } from "@heroui/react";
+import { GitCompareArrows, Pencil, Printer, Trash2 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { BackLink, Btn, ErrorText, LinkButton, Notice } from "@/components/ds/controls";
-import { EmptyPanel, ErrorState, PageHeader, Screen } from "@/components/ds/layout";
+import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Skeleton } from "@/components/ds/ui";
 import IndicatorTable from "@/components/evaluation/IndicatorTable";
@@ -92,7 +92,8 @@ function Run() {
     return (
       <Screen>
         <BackLink href="/evaluation">Évaluation</BackLink>
-        <EmptyPanel icon={SearchX} title="Passage introuvable" description="Il a peut-être été supprimé." />
+        {/* Titre de la page (h1), comme la page introuvable de la console. */}
+        <PageHeader title="Passage introuvable" subtitle="Il a peut-être été supprimé de l’historique." />
       </Screen>
     );
   }
@@ -190,12 +191,16 @@ function Run() {
             <Notice tone="info">
               <div className="flex w-full flex-col gap-2">
                 <span>{`${data.progress.done} sur ${data.progress.total} joués, ${data.progress.ok} conformes. La page se met à jour seule.`}</span>
-                <progress
-                  className="h-1.5 w-full overflow-hidden rounded-full accent-accent"
-                  value={data.progress.done}
-                  max={Math.max(1, data.progress.total)}
+                <ProgressBar
                   aria-label="Avancement du passage"
-                />
+                  value={data.progress.done}
+                  maxValue={Math.max(1, data.progress.total)}
+                  size="sm"
+                >
+                  <ProgressBar.Track>
+                    <ProgressBar.Fill />
+                  </ProgressBar.Track>
+                </ProgressBar>
               </div>
             </Notice>
           )}

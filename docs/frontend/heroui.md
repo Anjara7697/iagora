@@ -241,6 +241,13 @@ un écran connu de la console, jamais une adresse externe).
     et arrêt d'urgence en `Alert` (l'arrêt avec « Ouvrir la page Agent ») ; suppression des données fictives par
     `ConfirmDialog` ; création, décisions et suppression confirmées par Toast ; un message préparé et non envoyé est
     protégé (`useDiscardGuard`).
+    **Évaluation** (`app/evaluation`, `components/evaluation/`), l'autre outil de test : onglets dans l'adresse,
+    historique en `DataTable` avec `ListToolbar` (lignes à deux niveaux en mobile), évolution d'un indicateur en
+    `DataTable` dont la ligne ouvre le passage, avancement d'un passage en `ProgressBar` HeroUI ; import et
+    modification en panneau latéral, annulation et suppression par `ConfirmDialog`. Une seule action principale :
+    « Lancer une évaluation » dans l'en-tête, sauf dans l'onglet Lancer où c'est le bouton du formulaire. Les
+    titres des onglets et des sections sont des `h2` sous le `h1` de la page (audit strict dans
+    `tests/evaluation.spec.ts`).
 
 **Premiers contacts** (`components/campaign/FirstContacts.tsx`, `components/todo/FirstContactBatch.tsx`)
 

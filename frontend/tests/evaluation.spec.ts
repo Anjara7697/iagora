@@ -183,6 +183,7 @@ test("lancer avec le vrai modèle demande une confirmation qui annonce les appel
   await expect(page).toHaveURL(new RegExp(`/evaluation/${NEW}$`));
   expect(calls.posts[0].body).toMatchObject({ suite: "conversations", label: "Mesure D-34", live: true, pause: 4, ids: [], cleanup: true });
   await expect(page.getByText("1 sur 2 joués, 1 conformes.")).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Avancement du passage" })).toHaveAttribute("aria-valuetext", /^50\s%$/);
   await expect(page.getByRole("button", { name: "Annuler le passage" })).toBeVisible();
 });
 
@@ -220,4 +221,32 @@ test("réservée aux administrateurs", async ({ page }) => {
   await open(page);
   await expect(page.getByText("L’évaluation de l’agent est réservée aux administrateurs.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Évaluation" })).toHaveCount(0);
+});
+
+test("normalisation : un seul bouton primaire, titres hiérarchisés, audit strict sur chaque écran", async ({ page }) => {
+  await mockApi(page);
+  const primaries = () => page.getByRole("main").locator(".button--primary").filter({ visible: true });
+  await open(page);
+  for (const [tab, name] of [["history", "Historique"], ["launch", "Lancer"], ["compare", "Comparer"], ["evolution", "Évolution"]] as const) {
+    await page.goto(tab === "history" ? "/evaluation" : `/evaluation?tab=${tab}`);
+    await expect(page.getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
+    await page.waitForLoadState("networkidle");
+    // Une seule action principale par écran ; dans Lancer, c'est le bouton du formulaire.
+    await expect(primaries()).toHaveCount(1);
+    if (tab === "launch") await expect(primaries()).toHaveText("Lancer l’évaluation");
+    await auditA11y(page, `évaluation : ${name}`, [], { strict: true });
+  }
+  // Évolution : tableau de la console, la ligne ouvre le passage.
+  await page.getByRole("row", { name: /conv-avant-2/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/evaluation/${A}$`));
+  // Détail d'un passage (servi par l'API simulée pour B) : titre, indicateurs en h2, audit strict.
+  await page.goto(`/evaluation/${B}`);
+  await expect(page.getByRole("heading", { level: 1, name: /conv-apres-1/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await auditA11y(page, "évaluation : passage", [], { strict: true });
+  // Passage introuvable : titre de page, retour à l'historique.
+  await page.goto(`/evaluation/${"e".repeat(32)}`);
+  await expect(page.getByRole("heading", { level: 1, name: "Passage introuvable" })).toBeVisible();
+  await auditA11y(page, "évaluation : passage introuvable", [], { strict: true });
 });

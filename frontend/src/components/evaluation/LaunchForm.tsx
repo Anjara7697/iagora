@@ -247,6 +247,7 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
         title={`Éléments joués : ${played.length} sur ${items.length}`}
         className="rounded-lg border border-border px-4 py-3"
         triggerClassName="w-full type-body"
+        headingLevel={2}
       >
         <div className="mt-3 flex flex-col gap-2">
           <div className="flex gap-2">

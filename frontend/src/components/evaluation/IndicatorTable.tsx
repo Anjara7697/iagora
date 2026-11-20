@@ -37,7 +37,7 @@ export default function IndicatorTable({ runs }: { runs: [EvalRun] | [EvalRun, E
     <div className="flex flex-col gap-5">
       {groups.map((group) => (
         <section key={group} aria-label={group} className="flex flex-col">
-          <h3 className="border-b border-separator pb-2 type-body font-semibold text-foreground">{group}</h3>
+          <h2 className="border-b border-separator pb-2 type-body font-semibold text-foreground">{group}</h2>
           {/* Largeurs fixes : les colonnes restent alignées d'un groupe à l'autre. */}
           <table className="w-full table-fixed type-body-sm">
             <colgroup>

@@ -19,6 +19,7 @@ export function Collapse({
   triggerClassName,
   bodyClassName,
   triggerProps,
+  headingLevel = 3,
   children,
 }: {
   title: ReactNode;
@@ -30,6 +31,8 @@ export function Collapse({
   triggerClassName?: string;
   bodyClassName?: string;
   triggerProps?: Record<`data-${string}`, string | number>;
+  /** Niveau du titre (h3 par défaut) : à régler pour suivre la hiérarchie de la page (WCAG 1.3.1). */
+  headingLevel?: 2 | 3 | 4;
   children: ReactNode;
 }) {
   return (
@@ -39,7 +42,7 @@ export function Collapse({
       onExpandedChange={onOpenChange}
       className={className}
     >
-      <Disclosure.Heading>
+      <Disclosure.Heading level={headingLevel}>
         <Disclosure.Trigger
           {...(triggerProps as ComponentProps<typeof Disclosure.Trigger>)}
           className={cx(

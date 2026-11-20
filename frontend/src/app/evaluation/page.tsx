@@ -102,10 +102,13 @@ function Evaluation() {
               <Upload className="size-4" aria-hidden="true" />
               Importer un rapport
             </Btn>
-            <Btn variant="primary" onClick={() => navigate({ tab: "launch" })}>
-              <Play className="size-4" aria-hidden="true" />
-              Lancer une évaluation
-            </Btn>
+            {/* Une seule action principale par écran : dans l'onglet Lancer, c'est le bouton du formulaire. */}
+            {view.tab !== "launch" && (
+              <Btn variant="primary" onClick={() => navigate({ tab: "launch" })}>
+                <Play className="size-4" aria-hidden="true" />
+                Lancer une évaluation
+              </Btn>
+            )}
           </>
         }
       />
@@ -158,7 +161,7 @@ function Evaluation() {
                   <Btn variant="secondary" onClick={() => setImporting(true)}>
                     Importer un rapport
                   </Btn>
-                  <Btn variant="primary" onClick={() => navigate({ tab: "launch" })}>
+                  <Btn variant="secondary" onClick={() => navigate({ tab: "launch" })}>
                     Lancer une évaluation
                   </Btn>
                 </div>
