@@ -74,7 +74,7 @@ export default function EmailBanner({ onChange }: { onChange?: () => void }) {
     <div className="flex flex-col gap-2">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- image locale (blob), pas d'optimisation Next utile
-        <img src={src} alt="Bandeau actuel des emails" className="w-full max-w-[600px] rounded-md border border-separator" />
+        <img src={src} alt="Bandeau actuel des emails" className="w-full max-w-[600px] rounded-sm border border-separator" />
       ) : (
         <p className="type-body-sm text-muted">Aucun bandeau chargé : le bandeau dessiné (ou l’image hébergée) est utilisé.</p>
       )}
