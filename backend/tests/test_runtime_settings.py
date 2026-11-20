@@ -155,6 +155,10 @@ async def test_email_layout_settings_reach_the_emails(client, env, mongo_db):
         "email_brand_name": "DATUM Academy",
         "email_brand_color": "#123456",
         "email_logo_url": "https://datum.example/logo.png",
+        "email_header_tagline": "Nous ouvrons la voie aux leaders IT de demain",
+        "email_signature_team": "L'équipe admissions",
+        "email_contact_email": "contact@datum.example",
+        "email_social_links": "LinkedIn | https://linkedin.example/datum\nSite | https://datum.example",
     }
     assert (await client.put(f"{API}/settings", json=form)).status_code == 204
     shown = (await client.get(f"{API}/settings")).json()
@@ -163,6 +167,8 @@ async def test_email_layout_settings_reach_the_emails(client, env, mongo_db):
     out = email_format.render("Bonjour", eff, ai_generated=True)
     assert "Message préparé par notre assistant IA." in out.text
     assert "#123456" in out.html and "https://datum.example/logo.png" in out.html
+    assert "Nous ouvrons la voie" in out.html and "mailto:contact@datum.example" in out.html
+    assert "Site : https://datum.example" in out.text
 
 
 async def test_email_preview_uses_typed_values_and_saves_nothing(client, env, mongo_db):
@@ -196,6 +202,9 @@ async def test_effective_settings_reach_the_agent_dependencies(client, env, mong
         {"email_ai_notice_reviewed": "IA"},
         {"email_brand_color": "bleu"},
         {"email_logo_url": "http://datum.example/logo.png"},  # https obligatoire
+        {"email_header_image_url": "http://datum.example/bandeau.png"},
+        {"email_contact_email": "contact"},
+        {"email_social_links": "LinkedIn https://linkedin.example"},  # « Libellé | https://… »
     ],
 )
 async def test_incoherent_values_are_refused(client, env, change):

@@ -112,3 +112,44 @@ def test_text_only_message_stays_plain():
     client = ImapSmtpClient(settings(email_smtp_host="smtp.test"))
     msg = client._build(OutboundEmail(to_address="a@b.test", subject="x", text="Bonjour"))
     assert msg.get_content_type() == "text/plain"
+
+
+DATUM = {
+    "email_brand_name": "Datum Academy",
+    "email_header_tagline": "Nous ouvrons la voie aux leaders IT de demain",
+    "email_signature_team": "L'équipe admissions",
+    "email_signature_org": "Datum Academy",
+    "email_contact_email": "contact@datum.example",
+    "email_postal_address": "ESTIA 2 Technopole\n97 allée de l'École, 64210 Bidart",
+    "email_social_links": (
+        "LinkedIn | https://linkedin.example/datum\nSite | https://datum.example\nmauvais lien"
+    ),
+}
+
+
+def test_datum_design_header_signature_and_links():
+    """D-40 : bandeau sombre avec la phrase d'accroche, signature de l'école et liens du pied, en
+    HTML comme en texte brut ; une ligne de lien mal écrite est ignorée."""
+    out = email_format.render("Bonjour Camille,\n\nMerci.", settings(**DATUM), ai_generated=True)
+    assert "Nous ouvrons la voie aux leaders IT de demain" in out.html
+    assert "L&#x27;équipe admissions" in out.html or "L'équipe admissions" in out.html
+    assert 'href="mailto:contact@datum.example"' in out.html
+    assert 'href="https://linkedin.example/datum"' in out.html and ">Site</a>" in out.html
+    assert "mauvais lien" not in out.html and "64210 Bidart" in out.html
+    signature, _, notices = out.text.partition("\n-- \n")
+    assert "L'équipe admissions\nDatum Academy\ncontact@datum.example" in signature
+    assert "LinkedIn : https://linkedin.example/datum" in signature
+    assert DEFAULT_AI_NOTICE in notices
+
+
+def test_a_banner_image_replaces_the_drawn_header_and_everything_is_escaped():
+    cfg = settings(
+        **{**DATUM, "email_header_tagline": "<b>accroche</b>", "email_signature_team": "<script>"},
+        email_header_image_url="https://datum.example/bandeau.png",
+    )
+    html = email_format.render("Bonjour", cfg, ai_generated=True).html
+    assert 'src="https://datum.example/bandeau.png"' in html and 'alt="Datum Academy"' in html
+    assert "<script>" not in html and "&lt;script&gt;" in html
+    unsafe = settings(email_header_image_url="http://datum.example/x.png", email_contact_email="x")
+    html = email_format.render("Bonjour", unsafe, ai_generated=True).html
+    assert "x.png" not in html and "mailto:" not in html

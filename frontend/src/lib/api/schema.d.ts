@@ -4199,6 +4199,11 @@ export interface components {
              */
             email_brand_name: string;
             /**
+             * Email Contact Email
+             * @default
+             */
+            email_contact_email: string;
+            /**
              * Email Create Unknown Senders
              * @default true
              */
@@ -4209,6 +4214,16 @@ export interface components {
              */
             email_footer: string;
             /**
+             * Email Header Image Url
+             * @default
+             */
+            email_header_image_url: string;
+            /**
+             * Email Header Tagline
+             * @default
+             */
+            email_header_tagline: string;
+            /**
              * Email Logo Url
              * @default
              */
@@ -4218,6 +4233,27 @@ export interface components {
              * @default 60
              */
             email_poll_seconds: number;
+            /**
+             * Email Postal Address
+             * @default
+             */
+            email_postal_address: string;
+            /**
+             * Email Signature Org
+             * @default
+             */
+            email_signature_org: string;
+            /**
+             * Email Signature Team
+             * @default
+             */
+            email_signature_team: string;
+            /**
+             * Email Social Links
+             * @description Un lien par ligne : « Libellé | https://… »
+             * @default
+             */
+            email_social_links: string;
             /**
              * Embedding Model
              * @description Lecture seule : en changer impose kb-reindex
@@ -4362,6 +4398,11 @@ export interface components {
              */
             email_brand_name: string;
             /**
+             * Email Contact Email
+             * @default
+             */
+            email_contact_email: string;
+            /**
              * Email Create Unknown Senders
              * @default true
              */
@@ -4372,6 +4413,16 @@ export interface components {
              */
             email_footer: string;
             /**
+             * Email Header Image Url
+             * @default
+             */
+            email_header_image_url: string;
+            /**
+             * Email Header Tagline
+             * @default
+             */
+            email_header_tagline: string;
+            /**
              * Email Logo Url
              * @default
              */
@@ -4381,6 +4432,27 @@ export interface components {
              * @default 60
              */
             email_poll_seconds: number;
+            /**
+             * Email Postal Address
+             * @default
+             */
+            email_postal_address: string;
+            /**
+             * Email Signature Org
+             * @default
+             */
+            email_signature_org: string;
+            /**
+             * Email Signature Team
+             * @default
+             */
+            email_signature_team: string;
+            /**
+             * Email Social Links
+             * @description Un lien par ligne : « Libellé | https://… »
+             * @default
+             */
+            email_social_links: string;
             /**
              * Follow Up Max Per Silence
              * @default 3

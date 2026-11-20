@@ -433,3 +433,23 @@ n'empêchait le modèle d'inventer une adresse, et chaque campagne doit pouvoir 
   secours.
 
 **Suite.** Fichiers joints (brochure…) avec le design de l'email DATUM, dans la PR suivante.
+
+## D-40 — Design des emails de l'école (modèle DATUM)
+
+*20 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Les emails de l'agent avaient une mise en page simple (nom, liseré). DATUM a un modèle d'email :
+bandeau sombre avec le logo et une phrase d'accroche, corps clair, signature de l'équipe avec contact, adresse et
+liens des réseaux.
+
+**Décision.**
+- **Gabarit dans le code**, sur ce modèle : bandeau (image https de l'école si renseignée, sinon bandeau dessiné
+  aux couleurs de l'école avec le nom ou le logo et la phrase d'accroche, lisible sans images), corps, signature
+  de l'école (équipe, établissement, email de contact, adresse, liens « Libellé | https://… »), puis mention IA et
+  désinscription. Le texte brut reprend la signature et les liens.
+- **Contenu dans Paramètres → Emails** (base de données, hors Git, D-28) ; l'aperçu de Paramètres le montre avec
+  les valeurs saisies.
+- Sécurité inchangée : tout texte est échappé, seules les adresses https et un email de contact valide sont
+  repris, la couleur est validée.
+
+**Suite.** Image du bandeau intégrée à l'email (sans hébergement) et fichiers joints de campagne (PR suivante).

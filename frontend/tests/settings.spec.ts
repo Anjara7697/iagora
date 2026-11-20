@@ -23,6 +23,13 @@ const current = {
   email_brand_name: "DATUM Academy",
   email_brand_color: "#1f4fd8",
   email_logo_url: "",
+  email_header_image_url: "",
+  email_header_tagline: "",
+  email_signature_team: "",
+  email_signature_org: "",
+  email_contact_email: "",
+  email_postal_address: "",
+  email_social_links: "",
   email_create_unknown_senders: true,
   email_poll_seconds: 60,
   calendar_timezone: "Europe/Paris",
@@ -164,6 +171,10 @@ test("régler la mise en page des emails et voir un aperçu", async ({
   await emails
     .getByLabel("Logo (adresse https, facultatif)")
     .fill("https://exemple.test/logo.png");
+  // Design DATUM (D-40) : phrase d'accroche, signature et liens du pied.
+  await emails.getByLabel("Phrase d’accroche du bandeau").fill("Nous ouvrons la voie aux leaders IT de demain");
+  await emails.getByLabel("Signature : équipe").fill("L’équipe admissions");
+  await emails.getByLabel("Liens du pied d’email").fill("LinkedIn | https://linkedin.example/datum");
   await emails.getByRole("button", { name: "Voir un exemple d’email" }).click();
   await expect(
     page
@@ -182,6 +193,9 @@ test("régler la mise en page des emails et voir un aperçu", async ({
     email_brand_name: "École test",
     email_brand_color: "#0a7a4b",
     email_logo_url: "https://exemple.test/logo.png",
+    email_header_tagline: "Nous ouvrons la voie aux leaders IT de demain",
+    email_signature_team: "L’équipe admissions",
+    email_social_links: "LinkedIn | https://linkedin.example/datum",
   });
   // L'aperçu d'email est un document isolé (iframe sans script), hors de l'interface.
   await auditA11y(page, "paramètres (emails)", [".email-preview"]);
