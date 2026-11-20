@@ -122,11 +122,11 @@ def signature_lines(settings: Settings) -> list[str]:
     return [x for x in lines if x]
 
 
-def _header(settings: Settings, color: str) -> str:
-    """En-tête (D-40) : le bandeau de l'école s'il est renseigné, sinon un bandeau sombre aux
-    couleurs de l'école (logo ou nom, phrase d'accroche), lisible même sans images."""
+def _header(settings: Settings, color: str, banner_src: str | None = None) -> str:
+    """En-tête (D-40, D-41) : le bandeau chargé (intégré à l'email) ou hébergé par l'école, sinon un
+    bandeau sombre aux couleurs de l'école (logo ou nom, phrase d'accroche), lisible sans images."""
     name = html.escape(settings.email_brand_name.strip() or DEFAULT_BRAND_NAME)
-    banner = _https(settings.email_header_image_url)
+    banner = _inline_src(banner_src) or _https(settings.email_header_image_url)
     if banner:
         return (
             f'<tr><td style="padding:0;"><img src="{html.escape(banner)}" alt="{name}" width="600" '
@@ -153,6 +153,14 @@ def _header(settings: Settings, color: str) -> str:
         f"background-image:linear-gradient(135deg,{color} 0%,{_HEADER} 70%);"
         f'border-radius:8px 8px 0 0;">{mark}{tagline_html}</td></tr>'
     )
+
+
+def _inline_src(value: str | None) -> str | None:
+    """Image intégrée : `cid:` à l'envoi, `data:image/…;base64,` dans l'aperçu de Paramètres."""
+    if not value:
+        return None
+    ok = re.fullmatch(r"cid:[\w.@-]+|data:image/(?:png|jpeg);base64,[A-Za-z0-9+/=]+", value)
+    return value if ok else None
 
 
 def _signature(settings: Settings, color: str) -> str:
@@ -195,7 +203,12 @@ def _signature(settings: Settings, color: str) -> str:
 
 
 def render(
-    body: str, settings: Settings, *, ai_generated: bool, reviewed: bool = False
+    body: str,
+    settings: Settings,
+    *,
+    ai_generated: bool,
+    reviewed: bool = False,
+    banner_src: str | None = None,
 ) -> RenderedEmail:
     """Texte brut et HTML d'un message (D-40) : en-tête de l'école, corps, signature de l'école,
     puis mention IA et désinscription. Le texte brut reste la version de référence."""
@@ -237,7 +250,7 @@ def render(
         '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
         'style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e3e6ea;'
         'border-radius:8px;">'
-        f"{_header(settings, color)}"
+        f"{_header(settings, color, banner_src)}"
         f'<tr><td style="padding:26px 28px 10px;font-family:{_FONT};font-size:15px;'
         f'line-height:1.6;color:#1f2933;">{_body_html(body, color)}</td></tr>'
         f"{_signature(settings, color)}"

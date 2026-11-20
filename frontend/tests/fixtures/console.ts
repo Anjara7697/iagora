@@ -403,6 +403,9 @@ function respond(path: string, query: URLSearchParams): unknown {
   }
 }
 
+/** Ressources volontairement absentes de ce jeu de données : un 404 est leur réponse prévue. */
+const ABSENT = new Set(["/settings/email/banner"]);
+
 /** Branche l'API simulée sur la page ; renvoie la liste des requêtes restées sans réponse prévue. */
 export async function mockConsole(target: Page): Promise<string[]> {
   const unexpected: string[] = [];
@@ -412,7 +415,7 @@ export async function mockConsole(target: Page): Promise<string[]> {
     const path = url.pathname.replace(/^.*\/api\/v1/, "");
     const body = request.method() === "GET" ? respond(path, url.searchParams) : undefined;
     if (body === undefined) {
-      unexpected.push(`${request.method()} ${path}${url.search}`);
+      if (!(request.method() === "GET" && ABSENT.has(path))) unexpected.push(`${request.method()} ${path}${url.search}`);
       await route.fulfill({ status: 404, json: { detail: "Introuvable" } });
       return;
     }

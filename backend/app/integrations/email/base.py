@@ -33,6 +33,8 @@ class OutboundEmail:
     in_reply_to: str | None = None
     references: list[str] = field(default_factory=list)
     html: str | None = None  # version mise en page ; le texte reste la version de référence
+    # Images de la version HTML, intégrées au message (D-41) : (cid, type, octets).
+    inline_images: list[tuple[str, str, bytes]] = field(default_factory=list)
 
 
 class EmailClient(Protocol):

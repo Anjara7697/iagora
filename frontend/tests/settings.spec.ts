@@ -52,6 +52,7 @@ async function mockApi(
   role = "ADMIN",
   opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean } = {},
 ) {
+  let banner = false;
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -77,6 +78,19 @@ async function mockApi(
       body = opts.llmFails
         ? { ok: false, model: "gemini-2.5-flash", detail: "clé refusée" }
         : { ok: true, model: "gemini-2.5-flash", detail: "ok" };
+    } else if (path === "/settings/email/banner") {
+      // Bandeau chargé (D-41) : absent jusqu'à l'envoi d'une image, puis renvoyé tel quel.
+      if (request.method() === "PUT") {
+        calls.push({ banner: request.headers()["content-type"] ?? "" });
+        banner = true;
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      if (banner) {
+        await route.fulfill({ status: 200, contentType: "image/png", body: PNG });
+        return;
+      }
+      code = 404;
     } else if (path === "/settings/email/preview") {
       calls.push({ preview: request.postDataJSON() });
       body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
@@ -87,6 +101,12 @@ async function mockApi(
     await route.fulfill({ status: code, json: body });
   });
 }
+
+/** Image PNG minimale (1 × 1 pixel transparent). */
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
 
 /** Affiche une catégorie de paramètres depuis la navigation latérale. */
 async function goSection(page: Page, name: string) {
@@ -510,4 +530,21 @@ test("la barre d'enregistrement suit le contenu, sans le recouvrir", async ({ pa
   const region = page.getByRole("region", { name: "Emails", exact: true });
   const [regionBox, barBox] = [await region.boundingBox(), await bar.boundingBox()];
   expect(barBox!.y).toBeGreaterThanOrEqual(regionBox!.y + regionBox!.height);
+});
+
+test("bandeau chargé : envoyé à l'API puis affiché, au format et au poids vérifiés", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=emails");
+  const emails = page.getByRole("region", { name: "Emails", exact: true });
+  await expect(emails.getByText(/Aucun bandeau chargé/)).toBeVisible();
+  const input = emails.locator('input[type="file"]');
+  await input.setInputFiles({ name: "bandeau.gif", mimeType: "image/gif", buffer: PNG });
+  await expect(emails.getByText("Format refusé : PNG ou JPEG seulement.")).toBeVisible();
+  expect(calls).toEqual([]);
+  await input.setInputFiles({ name: "bandeau.png", mimeType: "image/png", buffer: PNG });
+  await expect(emails.getByRole("img", { name: "Bandeau actuel des emails" })).toBeVisible();
+  expect(calls).toEqual([{ banner: expect.stringContaining("multipart/form-data") }]);
+  await expect(emails.getByRole("button", { name: "Retirer le bandeau" })).toBeVisible();
 });

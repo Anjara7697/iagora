@@ -206,6 +206,15 @@ class ImapSmtpClient:
         msg.set_content(email.text)
         if email.html:
             msg.add_alternative(email.html, subtype="html")
+            html_part = msg.get_body(preferencelist=("html",))
+            for cid, content_type, data in email.inline_images:
+                if html_part is None:
+                    break
+                maintype, _, subtype = content_type.partition("/")
+                # Image intégrée (multipart/related) : affichée sans être téléchargée d'un serveur.
+                html_part.add_related(
+                    data, maintype=maintype, subtype=subtype, cid=f"<{cid}>", disposition="inline"
+                )
         return msg
 
     def _send(self, email: OutboundEmail) -> str:

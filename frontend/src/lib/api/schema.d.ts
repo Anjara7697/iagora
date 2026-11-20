@@ -1616,6 +1616,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/email/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Banner
+         * @description Bandeau chargé (D-41), pour l'afficher dans Paramètres ; 404 s'il n'y en a pas.
+         */
+        get: operations["get_banner_api_v1_settings_email_banner_get"];
+        /** Upload Banner */
+        put: operations["upload_banner_api_v1_settings_email_banner_put"];
+        post?: never;
+        /** Delete Banner */
+        delete: operations["delete_banner_api_v1_settings_email_banner_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/email/preview": {
         parameters: {
             query?: never;
@@ -2257,6 +2279,14 @@ export interface components {
             scope: string;
             /** Username */
             username: string;
+        };
+        /** Body_upload_banner_api_v1_settings_email_banner_put */
+        Body_upload_banner_api_v1_settings_email_banner_put: {
+            /**
+             * File
+             * @description PNG ou JPEG, 400 ko au plus, 600 px de large
+             */
+            file: string;
         };
         /** Breakdown */
         Breakdown: {
@@ -8209,6 +8239,77 @@ export interface operations {
         };
     };
     reset_runtime_settings_api_v1_settings_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_banner_api_v1_settings_email_banner_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                };
+            };
+        };
+    };
+    upload_banner_api_v1_settings_email_banner_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_banner_api_v1_settings_email_banner_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_banner_api_v1_settings_email_banner_delete: {
         parameters: {
             query?: never;
             header?: never;

@@ -453,3 +453,22 @@ liens des réseaux.
   repris, la couleur est validée.
 
 **Suite.** Image du bandeau intégrée à l'email (sans hébergement) et fichiers joints de campagne (PR suivante).
+
+## D-41 — Bandeau chargé dans Paramètres et intégré à l'email
+
+*20 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Le bandeau de l'école est une image. Une image hébergée (D-40) demande une adresse https publique,
+et beaucoup de messageries bloquent les images distantes par défaut. L'école n'a pas forcément d'hébergement.
+
+**Décision.**
+- **Chargement dans Paramètres → Emails** : PNG ou JPEG, 400 ko au plus, vérifié sur son contenu (pas seulement
+  l'extension). Gardé en base de données (hors Git, D-28), remplaçable et retirable.
+- **Intégré à chaque email** comme image liée au message (`multipart/related`, `cid:`) : rien à héberger, et
+  l'image s'affiche sans téléchargement distant dans la plupart des messageries.
+- Ordre de priorité du bandeau : image chargée, sinon image https, sinon bandeau dessiné (D-40).
+- L'aperçu de Paramètres montre l'email avec le bandeau chargé. Seules les sources `cid:` et les images PNG/JPEG
+  intégrées sont acceptées ; toute autre source est ignorée.
+
+**Suite.** Fichiers joints de campagne (brochure), joints par l'agent selon le besoin et visibles dans les
+brouillons (PR suivante).
