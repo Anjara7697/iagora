@@ -567,3 +567,15 @@ def test_an_unanswered_question_is_recognised():
     statement = [HistoryMessage("agent", "Le programme dure 18 mois."), asked[1]]
     assert not policy.question_unanswered(statement, question, said)
     assert not policy.question_unanswered([asked[1]], question, said)  # l'agent n'a rien dit
+
+
+def test_a_document_announced_without_attachment_is_flagged():
+    """D-42 : « ci-joint » sans document joint est une promesse non tenue : jamais envoyée."""
+    for text in (
+        "Vous trouverez ci-joint la brochure.",
+        "Je vous envoie la brochure en pièce jointe.",
+        "La brochure est jointe à ce message.",
+    ):
+        assert policy.attachment_claims(text, []) == ["document annoncé sans pièce jointe"]
+        assert policy.attachment_claims(text, [{"id": "f1"}]) == []
+    assert policy.attachment_claims("Votre CV nous est bien parvenu.", []) == []

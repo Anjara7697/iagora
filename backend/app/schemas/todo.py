@@ -19,6 +19,15 @@ TodoKind = Literal[
 Priority = Literal["critical", "high", "medium", "low"]
 
 
+class TodoAttachment(BaseModel):
+    """Document de campagne joint par l'agent (D-42), visible avant validation."""
+
+    id: str
+    label: str
+    filename: str | None = None
+    campaign_id: int | None = None
+
+
 class TodoDraft(BaseModel):
     message_id: str
     content: str
@@ -28,6 +37,9 @@ class TodoDraft(BaseModel):
     subject: str | None = Field(None, description="Objet de l'email qui partira")
     footer: str | None = Field(
         None, description="Pied de message ajouté automatiquement (non modifiable)"
+    )
+    attachments: list[TodoAttachment] = Field(
+        [], description="Documents de la campagne joints à l'email (D-42)"
     )
 
 

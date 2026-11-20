@@ -81,7 +81,7 @@ class Env:
         doc = await self.conversation()
         return [m for m in doc["messages"] if m["role"] == role]
 
-    async def approved_reply(self, text="Voici les informations demandées."):
+    async def approved_reply(self, text="Voici les informations demandées.", **metadata):
         """Un brouillon de l'agent validé par un conseiller (prêt à partir)."""
         doc = await self.conversation()
         message = {
@@ -90,7 +90,7 @@ class Env:
             "content": text,
             "external_message_id": None,
             "created_at": datetime.now(UTC),
-            "metadata": {"delivery": "draft", "draft": {"status": "pending"}},
+            "metadata": {"delivery": "draft", "draft": {"status": "pending"}, **metadata},
         }
         await self.db[conversations.COLLECTION].update_one(
             {"_id": doc["_id"]}, {"$push": {"messages": message}}
@@ -814,3 +814,60 @@ def test_an_embedded_image_travels_with_the_html_version():
     image = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
     assert image["Content-ID"] == "<bandeau@iagora>" and image.get_payload(decode=True) == PNG
     assert parsed.get_body(preferencelist=("plain",)).get_content().strip() == "Bonjour"
+
+
+PDF = b"%PDF-1.7\n" + b"0" * 64
+
+
+async def test_the_documents_chosen_by_the_agent_are_attached_to_the_email(env):
+    """D-42 : la brochure de la campagne part en pièce jointe, avec son nom de fichier."""
+    from app.services import campaign_files
+
+    saved = await campaign_files.save_file(
+        env.db, 1, PDF, "brochure.pdf", "Brochure du programme", "", None
+    )
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply(attachments=[{"id": saved["id"], "label": saved["label"]}])
+    client = FakeEmailClient()
+    await env.deliver(client)
+    (out,) = client.sent
+    assert out.attachments == [("brochure.pdf", "application/pdf", PDF)]
+
+
+async def test_a_document_removed_from_the_campaign_blocks_the_email(env):
+    """D-42 : le message annonce peut-être le document : il ne part pas sans lui."""
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply(attachments=[{"id": "disparu", "label": "Brochure"}])
+    client = FakeEmailClient()
+    report = await env.deliver(client)
+    assert client.sent == [] and report.blocked == 1
+    (reply,) = await env.messages("agent")
+    assert reply["metadata"]["delivery"] == "blocked"
+    assert "Brochure" in reply["metadata"]["delivery_info"]["reason"]
+
+
+def test_an_attached_document_travels_with_the_message():
+    from email import message_from_bytes
+    from email import policy as email_policy
+
+    from app.integrations.email.base import OutboundEmail
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+
+    sender = ImapSmtpClient(settings(email_smtp_host="smtp.test"))
+    msg = sender._build(
+        OutboundEmail(
+            to_address="a@b.test",
+            subject="x",
+            text="Bonjour",
+            html='<img src="cid:bandeau@iagora"><p>Bonjour</p>',
+            inline_images=[("bandeau@iagora", "image/png", PNG)],
+            attachments=[("Brochure eBIHAR.pdf", "application/pdf", PDF)],
+        )
+    )
+    parsed = message_from_bytes(msg.as_bytes(), policy=email_policy.default)
+    assert parsed.get_content_type() == "multipart/mixed"
+    (doc,) = list(parsed.iter_attachments())
+    assert doc.get_filename() == "Brochure eBIHAR.pdf" and doc.get_payload(decode=True) == PDF
+    assert parsed.get_body(preferencelist=("plain",)).get_content().strip() == "Bonjour"
+    image = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
+    assert image["Content-ID"] == "<bandeau@iagora>"  # le bandeau reste intégré au HTML

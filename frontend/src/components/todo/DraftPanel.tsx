@@ -2,13 +2,13 @@
 
 /** Brouillon de l'agent à relire : texte exact qui partira, modification, et décision (valider, régénérer, refuser). */
 
-import { Check, Pencil, RefreshCw } from "lucide-react";
+import { Check, Paperclip, Pencil, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { Btn, ErrorText, Field, Notice, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, download } from "@/lib/api";
 import { CHANNELS, label } from "@/lib/labels";
 import { notifyWorkQueueChanged } from "@/lib/workQueue";
 import { Box } from "@/components/ds/card";
@@ -96,6 +96,32 @@ export function DraftPanel({
           />
         ) : (
           <div className="type-body leading-6 whitespace-pre-wrap text-foreground">{text}</div>
+        )}
+        {(draft.attachments ?? []).length > 0 && (
+          <ul className="flex flex-col gap-1.5" aria-label="Pièces jointes">
+            {(draft.attachments ?? []).map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-secondary px-4 py-2.5">
+                <Paperclip className="size-4 text-muted" aria-hidden="true" />
+                <span className="min-w-0 flex-1 type-body text-foreground">
+                  Pièce jointe : <strong className="font-medium">{a.label}</strong>
+                  {a.filename ? <span className="text-muted"> ({a.filename})</span> : null}
+                </span>
+                {a.campaign_id != null && (
+                  <Btn
+                    size="sm"
+                    variant="tertiary"
+                    onClick={() =>
+                      void download(`/campaigns/${a.campaign_id}/files/${a.id}`, a.filename ?? a.label).catch((err) =>
+                        setError(err instanceof ApiError ? err.message : "Document introuvable"),
+                      )
+                    }
+                  >
+                    Relire le document
+                  </Btn>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
         {draft.footer && (
           <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary px-4 py-3">

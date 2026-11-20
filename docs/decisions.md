@@ -472,3 +472,28 @@ et beaucoup de messageries bloquent les images distantes par défaut. L'école n
 
 **Suite.** Fichiers joints de campagne (brochure), joints par l'agent selon le besoin et visibles dans les
 brouillons (PR suivante).
+
+## D-42 — Documents de campagne joints par l'agent
+
+*20 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Le premier email de prospection doit pouvoir porter la brochure du programme. Les ressources se
+règlent par campagne (D-39), et l'agent décide quand les utiliser.
+
+**Décision.**
+- **Documents par campagne**, chargés dans l'onglet Réglages de la campagne (administrateur) : PDF, PNG ou JPEG,
+  vérifiés sur leur contenu, 4 Mo au plus (sous la taille maximale d'une requête), 5 documents au plus, un nom
+  unique pour l'agent et « quand le joindre ». Gardés en base de données (hors Git, D-28) ; chacun peut les
+  télécharger pour les relire.
+- **L'agent choisit** : sur l'email seulement, il reçoit la liste des documents et en joint un (deux au plus)
+  quand il répond au besoin du prospect, par une ligne « Pièce jointe : <nom exact> » retirée du message. Un nom
+  inconnu n'est jamais joint. Sur la messagerie, aucune pièce jointe.
+- **Garde-fou** : un message qui annonce un document (« ci-joint », « en pièce jointe ») sans document joint est
+  refusé comme une information non sourcée (nouvel essai plus strict, puis transfert au conseiller).
+- **Visible avant validation** : en mode assisté, le brouillon montre la pièce jointe et permet de la relire ; le
+  fil de la conversation l'indique sous le message.
+- **À l'envoi**, le document est rechargé et joint à l'email. S'il a été retiré de la campagne entre-temps, le
+  message est bloqué (il l'annonce peut-être) au lieu de partir sans lui.
+
+**Suite.** Mesurer le premier contact avec la brochure ; retirer une pièce jointe depuis le brouillon si le besoin
+apparaît.

@@ -74,6 +74,7 @@ async function mockApi(
   const calls: Calls = { requests: [], queries: [] };
   let current = campaign(opts.status ? { status: opts.status } : {});
   let prepared = false;
+  let files: { id: string; label: string; usage: string; filename: string; content_type: string; size: number; created_at: string }[] = [];
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -174,6 +175,28 @@ async function mockApi(
             "9 prospect(s) proviennent de cette source : elle ne peut pas être retirée",
         };
       } else body = current;
+    } else if (path === "/campaigns/1/files" && method === "GET") body = files;
+    else if (path === "/campaigns/1/files" && method === "POST") {
+      const sent = request.postDataBuffer()?.toString("latin1") ?? "";
+      const field = (name: string) => sent.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)`))?.[1] ?? "";
+      const added = {
+        id: `f${files.length + 1}`,
+        label: field("label"),
+        usage: field("usage"),
+        filename: sent.match(/filename="([^"]+)"/)?.[1] ?? "document",
+        content_type: "application/pdf",
+        size: 1_200_000,
+        created_at: "2026-11-20T09:00:00Z",
+      };
+      calls.requests.push({ method, path, body: { label: added.label, usage: added.usage, filename: added.filename } });
+      files = [...files, added];
+      code = 201;
+      body = added;
+    } else if (path.startsWith("/campaigns/1/files/") && method === "DELETE") {
+      calls.requests.push({ method, path, body: null });
+      files = files.filter((f) => `/campaigns/1/files/${f.id}` !== path);
+      code = 204;
+      body = null;
     } else if (path === "/targets") body = TARGET_LIST;
     else if (path === "/advisors")
       body = {
@@ -773,6 +796,29 @@ test("réglages : objet du premier email et liens validés pour l'agent", async 
         { label: "Inscription", url: "https://www.datumacademy.com/fr/masters/eBIHAR", usage: "quand le prospect veut s’inscrire" },
       ],
     });
+});
+
+test("réglages : documents que l'agent peut joindre, ajoutés puis retirés", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  const panel = page.getByRole("region", { name: "Documents à joindre" });
+  await expect(panel.getByText("Aucun document.")).toBeVisible();
+  await panel.getByLabel("Fichier").setInputFiles({ name: "image.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+  await expect(panel.getByText("Format refusé : PDF, PNG ou JPEG seulement.")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Ajouter le document" })).toBeDisabled();
+  await panel.getByLabel("Fichier").setInputFiles({ name: "brochure.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7") });
+  await expect(panel.getByLabel("Nom pour l’agent")).toHaveValue("brochure");
+  await panel.getByLabel("Nom pour l’agent").fill("Brochure du programme");
+  await panel.getByLabel("Quand le joindre").fill("quand le prospect demande le programme");
+  await panel.getByRole("button", { name: "Ajouter le document" }).click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "POST" && r.path === "/campaigns/1/files")?.body)
+    .toEqual({ label: "Brochure du programme", usage: "quand le prospect demande le programme", filename: "brochure.pdf" });
+  await expect(panel.getByText("Brochure du programme")).toBeVisible();
+  await expect(panel.getByText("brochure.pdf · 1,2 Mo · à joindre : quand le prospect demande le programme")).toBeVisible();
+  await panel.getByRole("button", { name: "Retirer Brochure du programme" }).click();
+  await expect(panel.getByText("Aucun document.")).toBeVisible();
+  await expect.poll(() => calls.requests.some((r) => r.method === "DELETE" && r.path === "/campaigns/1/files/f1")).toBe(true);
 });
 
 test("liste : pagination côté serveur, page dans l'URL et chiffres clés au-delà d'une page", async ({ page }) => {

@@ -7,6 +7,7 @@ seuils sont des valeurs de conception ajustables après validation métier.
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -523,6 +524,20 @@ def unlisted_links(reply: str, allowed: list[str]) -> list[str]:
     protocole, le « www. » ni la barre finale)."""
     keys = {_link_key(link) for text in allowed for link in links_in(text)}
     return list(dict.fromkeys(link for link in links_in(reply) if _link_key(link) not in keys))
+
+
+_ANNOUNCED_ATTACHMENT = re.compile(
+    r"\bci[- ]?joint(?:e|s|es)?\b|\ben pi[eè]ces? jointes?\b|\bjoint(?:e|s|es)? (?:à|a) "
+    r"(?:ce|cet) (?:message|e-?mail|mail|courriel)\b",
+    re.IGNORECASE,
+)
+
+
+def attachment_claims(reply: str, attached: Sequence[object]) -> list[str]:
+    """Un document annoncé (« ci-joint », « en pièce jointe ») sans document joint (D-42)."""
+    if attached or not _ANNOUNCED_ATTACHMENT.search(reply):
+        return []
+    return ["document annoncé sans pièce jointe"]
 
 
 def _extra_terms(terms: tuple[str, ...]) -> re.Pattern[str] | None:

@@ -407,6 +407,51 @@ export interface paths {
         patch: operations["update_campaign_api_v1_campaigns__campaign_id__patch"];
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Campaign Files
+         * @description Documents que l'agent peut joindre aux emails de cette campagne (D-42).
+         */
+        get: operations["list_campaign_files_api_v1_campaigns__campaign_id__files_get"];
+        put?: never;
+        /** Upload Campaign File */
+        post: operations["upload_campaign_file_api_v1_campaigns__campaign_id__files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/files/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Campaign File
+         * @description Le document tel qu'il part en pièce jointe, pour le relire avant de valider un brouillon.
+         */
+        get: operations["download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Campaign File
+         * @description Retire le document : un brouillon qui le joignait ne partira plus (D-42).
+         */
+        delete: operations["delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/first-contacts": {
         parameters: {
             query?: never;
@@ -2288,6 +2333,25 @@ export interface components {
              */
             file: string;
         };
+        /** Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post */
+        Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post: {
+            /**
+             * File
+             * @description PDF, PNG ou JPEG, 4 Mo au plus
+             */
+            file: string;
+            /**
+             * Label
+             * @description Nom donné à l'agent
+             */
+            label: string;
+            /**
+             * Usage
+             * @description Quand le joindre
+             * @default
+             */
+            usage: string;
+        };
         /** Breakdown */
         Breakdown: {
             /** Count */
@@ -2386,6 +2450,32 @@ export interface components {
             status: components["schemas"]["CampaignStatus"];
             /** Target Codes */
             target_codes?: string[];
+        };
+        /**
+         * CampaignFileRead
+         * @description Document de campagne que l'agent peut joindre à un email (D-42), sans son contenu.
+         */
+        CampaignFileRead: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Size */
+            size: number;
+            /**
+             * Usage
+             * @default
+             */
+            usage: string;
         };
         /** CampaignMembershipRead */
         CampaignMembershipRead: {
@@ -4795,8 +4885,28 @@ export interface components {
             /** Temporary Password */
             temporary_password: string;
         };
+        /**
+         * TodoAttachment
+         * @description Document de campagne joint par l'agent (D-42), visible avant validation.
+         */
+        TodoAttachment: {
+            /** Campaign Id */
+            campaign_id?: number | null;
+            /** Filename */
+            filename?: string | null;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
         /** TodoDraft */
         TodoDraft: {
+            /**
+             * Attachments
+             * @description Documents de la campagne joints à l'email (D-42)
+             * @default []
+             */
+            attachments: components["schemas"]["TodoAttachment"][];
             /** Confidence */
             confidence?: number | null;
             /** Content */
@@ -5888,6 +5998,137 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CampaignRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_campaign_files_api_v1_campaigns__campaign_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFileRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_campaign_file_api_v1_campaigns__campaign_id__files_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "application/pdf": unknown;
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

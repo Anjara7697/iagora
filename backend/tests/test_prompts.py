@@ -246,3 +246,39 @@ def test_the_imposed_subject_takes_the_first_name():
     )
     assert subject("{prenom}, le Master eBIHAR", first_name=None) == "le Master eBIHAR"
     assert subject("  ") is None and subject(None) is None
+
+
+BROCHURE = {"id": "f1", "label": "Brochure du programme", "usage": "quand il veut le programme"}
+CALENDRIER = {"id": "f2", "label": "Calendrier", "usage": ""}
+TARIFS = {"id": "f3", "label": "Tarifs", "usage": ""}
+
+
+def test_campaign_documents_are_offered_on_email_only():
+    """D-42 : les documents de la campagne sont proposés au modèle sur l'email, jamais ailleurs."""
+    with_files = ProspectContext(**{**ctx().__dict__, "campaign_files": [BROCHURE]})
+    system = prompts.reply_system(with_files, {}, [], [], mode="continue")
+    assert "- Brochure du programme (à joindre : quand il veut le programme)" in system
+    assert "« Pièce jointe : <nom exact> »" in system
+    assert "Pièces jointes : aucune" in reply()
+    messaging = ProspectContext(
+        **{**ctx().__dict__, "channel": "whatsapp", "campaign_files": [BROCHURE]}
+    )
+    other = prompts.reply_system(messaging, {}, [], [], mode="continue")
+    assert "Brochure du programme" not in other and "impossibles sur ce canal" in other
+
+
+def test_the_attachment_line_names_campaign_documents_only():
+    files = [BROCHURE, CALENDRIER, TARIFS]
+    text = "Bonjour Camille,\nVoici le programme.\n\n**Pièce jointe :** « brochure du programme »"
+    assert prompts.split_attachments(text, files) == (
+        [BROCHURE],
+        "Bonjour Camille,\nVoici le programme.",
+    )
+    unknown = "Bonjour\nPièce jointe : Plaquette secrète"
+    assert prompts.split_attachments(unknown, files) == ([], "Bonjour")  # nom inconnu : rien
+    many = "Bonjour\nPièces jointes : Calendrier, Tarifs; Brochure du programme"
+    attached, body = prompts.split_attachments(many, files)
+    assert attached == [CALENDRIER, TARIFS] and body == "Bonjour"  # deux au plus
+    plain = "Votre pièce jointe : le CV est bien reçu, merci."
+    assert prompts.split_attachments(plain, files) == ([], plain)
+    assert prompts.split_attachments("PJ : Calendrier", []) == ([], "")

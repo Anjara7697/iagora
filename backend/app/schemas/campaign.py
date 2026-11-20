@@ -14,6 +14,18 @@ class SourceInput(BaseModel):
     external_id: str | None = Field(None, max_length=255)
 
 
+class CampaignFileRead(BaseModel):
+    """Document de campagne que l'agent peut joindre à un email (D-42), sans son contenu."""
+
+    id: str
+    label: str
+    usage: str = ""
+    filename: str
+    content_type: str
+    size: int
+    created_at: datetime
+
+
 class CampaignResource(BaseModel):
     """Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle."""
 

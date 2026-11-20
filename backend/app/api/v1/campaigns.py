@@ -1,6 +1,7 @@
 from typing import Annotated
+from urllib.parse import quote
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 
 from app.api.dependencies import (
     ADMIN_ONLY,
@@ -14,6 +15,7 @@ from app.api.dependencies import (
 from app.models.enums import CampaignStatus
 from app.schemas.campaign import (
     CampaignCreate,
+    CampaignFileRead,
     CampaignOverview,
     CampaignOwnershipUpdate,
     CampaignRead,
@@ -24,7 +26,7 @@ from app.schemas.campaign import (
     TargetRead,
 )
 from app.schemas.common import Page
-from app.services import campaign_ownership, first_contacts
+from app.services import campaign_files, campaign_ownership, first_contacts
 from app.services import campaigns as service
 from app.services import scope as scope_service
 
@@ -113,6 +115,65 @@ async def remove_campaign_source(
     """Détache une source ; refusé (409) si des prospects en proviennent."""
     campaign = await service.remove_source(session, campaign_id, source_id)
     return await service.to_read(session, campaign)
+
+
+@router.get("/{campaign_id}/files", response_model=list[CampaignFileRead])
+async def list_campaign_files(
+    campaign_id: int, session: DbSession, db: MongoDb
+) -> list[CampaignFileRead]:
+    """Documents que l'agent peut joindre aux emails de cette campagne (D-42)."""
+    await service.get_campaign(session, campaign_id)
+    return [CampaignFileRead(**f) for f in await campaign_files.list_files(db, campaign_id)]
+
+
+@router.post(
+    "/{campaign_id}/files",
+    response_model=CampaignFileRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[ADMIN_ONLY],
+)
+async def upload_campaign_file(
+    campaign_id: int,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+    file: Annotated[UploadFile, File(description="PDF, PNG ou JPEG, 4 Mo au plus")],
+    label: Annotated[str, Form(max_length=120, description="Nom donné à l'agent")],
+    usage: Annotated[str, Form(max_length=300, description="Quand le joindre")] = "",
+) -> CampaignFileRead:
+    await service.get_campaign(session, campaign_id)
+    data = await file.read(campaign_files.MAX_BYTES + 1)
+    saved = await campaign_files.save_file(
+        db, campaign_id, data, file.filename or "", label, usage, user.id
+    )
+    return CampaignFileRead(**saved)
+
+
+@router.get(
+    "/{campaign_id}/files/{file_id}",
+    responses={200: {"content": {"application/pdf": {}, "image/png": {}, "image/jpeg": {}}}},
+)
+async def download_campaign_file(campaign_id: int, file_id: str, db: MongoDb) -> Response:
+    """Le document tel qu'il part en pièce jointe, pour le relire avant de valider un brouillon."""
+    found = await campaign_files.load_file(db, file_id, campaign_id)
+    return Response(
+        found.data,
+        media_type=found.content_type,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(found.filename)}",
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.delete(
+    "/{campaign_id}/files/{file_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[ADMIN_ONLY],
+)
+async def delete_campaign_file(campaign_id: int, file_id: str, db: MongoDb) -> None:
+    """Retire le document : un brouillon qui le joignait ne partira plus (D-42)."""
+    await campaign_files.delete_file(db, campaign_id, file_id)
 
 
 targets_router = APIRouter(prefix="/targets", tags=["campaigns"], dependencies=[ANY_ROLE])

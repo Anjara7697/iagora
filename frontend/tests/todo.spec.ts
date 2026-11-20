@@ -654,6 +654,7 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
                 ...draftItem.draft,
                 subject: "Re: Financement du Master",
                 footer: "Répondez STOP pour ne plus recevoir de messages.",
+                attachments: [{ id: "f1", label: "Brochure du programme", filename: "brochure.pdf", campaign_id: 1 }],
               },
             },
           ],
@@ -681,6 +682,11 @@ test("brouillon : objet, pied de message non modifiable et exécution à valider
     draft.getByText("Répondez STOP pour ne plus recevoir de messages."),
   ).toBeVisible();
   await expect(draft.getByText("pied de message compris")).toBeVisible();
+  // D-42 : le document joint par l'agent est visible et se relit avant validation.
+  const attachments = draft.getByRole("list", { name: "Pièces jointes" });
+  await expect(attachments.getByText("Brochure du programme")).toBeVisible();
+  await expect(attachments.getByText("(brochure.pdf)")).toBeVisible();
+  await expect(attachments.getByRole("button", { name: "Relire le document" })).toBeVisible();
   await page.getByText("Sources, confiance et contexte", { exact: true }).click();
   await expect(page.getByText("À valider", { exact: true })).toBeVisible();
 });

@@ -215,6 +215,9 @@ class ImapSmtpClient:
                 html_part.add_related(
                     data, maintype=maintype, subtype=subtype, cid=f"<{cid}>", disposition="inline"
                 )
+        for filename, content_type, data in email.attachments:
+            maintype, _, subtype = content_type.partition("/")
+            msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=filename)
         return msg
 
     def _send(self, email: OutboundEmail) -> str:

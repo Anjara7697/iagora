@@ -341,6 +341,8 @@ function respond(path: string, query: URLSearchParams): unknown {
       ];
     case "/campaigns/1":
       return campaign;
+    case "/campaigns/1/files":
+      return [];
     case "/campaigns/1/stats":
       return {
         prospects: 12,
