@@ -142,6 +142,9 @@ class ProspectContext:
     # Prospect fictif (@demo.example.com) : seul à pouvoir recevoir des extraits des documents
     # fictifs de démonstration (AUDIT-AI-002).
     is_demo: bool = False
+    # Campagne (D-39) : objet imposé du premier email et liens validés que l'agent peut partager.
+    campaign_subject: str | None = None
+    campaign_resources: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

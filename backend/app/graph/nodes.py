@@ -257,6 +257,8 @@ class WorkflowNodes:
         ]
         sources = [p.text for p in passages]
         sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
+        # D-39 : seuls les liens des ressources de la campagne et des sources peuvent partir.
+        allowed_links = sources + [str(r.get("url", "")) for r in ctx.campaign_resources]
         conversation = [m.content for m in ctx.history]
 
         claims: list[str] = []
@@ -266,7 +268,7 @@ class WorkflowNodes:
             if not prompts.defers_to_advisor(reply):
                 claims = policy.ungrounded_claims(
                     reply, sources, conversation=conversation, extra_terms=extra
-                )
+                ) + policy.unlisted_links(reply, allowed_links)
             if claims:  # un seul nouvel essai, plus strict
                 reply = (
                     await self.deps.llm.generate(
@@ -275,7 +277,7 @@ class WorkflowNodes:
                 ).strip()
                 claims = policy.ungrounded_claims(
                     reply, sources, conversation=conversation, extra_terms=extra
-                )
+                ) + policy.unlisted_links(reply, allowed_links)
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {
@@ -314,6 +316,8 @@ class WorkflowNodes:
         subject, reply = prompts.split_subject(reply)
         if state["trigger"] != "first_contact" or not prompts.is_email(ctx.channel):
             subject = None
+        elif imposed := prompts.imposed_subject(ctx):
+            subject = imposed  # la campagne impose l'objet (D-39)
         if claims or not reply:
             return {
                 "needs_human": True,

@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, true
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, UniqueConstraint, text, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -33,6 +34,12 @@ class Campaign(TimestampMixin, Base):
     )
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Premier contact (D-39) : objet d'email imposé (sinon écrit par l'agent) et ressources validées
+    # que l'agent peut partager (liens : nom, adresse, quand l'utiliser).
+    email_subject: Mapped[str | None] = mapped_column(String(200))
+    resources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, server_default=text("'[]'")
+    )
 
 
 class CampaignTarget(Base):

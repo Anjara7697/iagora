@@ -96,7 +96,12 @@ class DbGateway:
         row = (
             await session.execute(
                 select(
-                    CampaignProspect, Campaign.name, Source.name, Campaign.responsible_advisor_id
+                    CampaignProspect,
+                    Campaign.name,
+                    Source.name,
+                    Campaign.responsible_advisor_id,
+                    Campaign.email_subject,
+                    Campaign.resources,
                 )
                 .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
                 .join(Campaign, Campaign.id == CampaignSource.campaign_id)
@@ -148,6 +153,8 @@ class DbGateway:
             is_demo=is_demo_email(prospect.email),
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),
+            campaign_subject=row[4] if row else None,
+            campaign_resources=list(row[5] or []) if row else [],
             history=[
                 HistoryMessage(
                     role=m["role"],

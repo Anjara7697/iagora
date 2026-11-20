@@ -116,6 +116,33 @@ def channel_rule(channel: str | None, *, first_contact: bool) -> str:
     )
 
 
+def resources_block(resources: Sequence[dict[str, Any]]) -> str:
+    """Liens validés de la campagne (D-39), seuls liens que le modèle peut écrire."""
+    if not resources:
+        return "Liens : n'écris aucun lien qui ne figure pas dans les extraits."
+    lines = [
+        f"- {_inline(r.get('label', ''))} : {r.get('url', '')}"
+        + (f" (à proposer : {_inline(r['usage'])})" if r.get("usage") else "")
+        for r in resources
+    ]
+    return (
+        "Liens validés de la campagne : propose-en un seulement s'il répond au besoin du prospect, "
+        "en recopiant l'adresse exacte ; n'écris aucun autre lien.\n" + "\n".join(lines)
+    )
+
+
+def imposed_subject(ctx: ProspectContext) -> str | None:
+    """Objet imposé par la campagne (D-39), avec le prénom à la place de « {prénom} »."""
+    subject = " ".join((ctx.campaign_subject or "").split())
+    if not subject:
+        return None
+    name = (ctx.first_name or "").strip()
+    for marker in ("{prénom}", "{prenom}"):
+        subject = subject.replace(marker, name)
+    subject = re.sub(r"^[\s,;:–-]+|[\s,;:–-]+$", "", subject).strip()
+    return subject[:SUBJECT_MAX_CHARS] or None
+
+
 def split_subject(reply: str) -> tuple[str | None, str]:
     """Sépare la ligne « Objet : … » écrite par le modèle du corps du message. L'objet est mis sur
     une ligne, sans guillemets ni mise en forme, et borné ; sans ligne d'objet : (None, message)."""
@@ -342,6 +369,8 @@ Ce que l'on sait de lui :
 Extraits de la base de connaissances validée (seule source de faits précis) :
 {knowledge}
 
+{resources_block(ctx.campaign_resources)}
+
 Mission : {goal}
 {ask}
 {advisor_rule}
@@ -351,7 +380,8 @@ Mission : {goal}
 def strict_retry_note(claims: Sequence[str]) -> str:
     return (
         "\n\nATTENTION : ta réponse précédente contenait des informations non présentes dans les "
-        f"extraits ({', '.join(claims)}). Réécris-la SANS aucun chiffre, prix, durée, date, ni "
-        "condition d'admission ou de financement (CPF, éligibilité, gratuité…) qui ne figure pas "
-        f"dans les extraits. Si l'information manque, commence ton message par {ADVISOR_MARKER}."
+        f"extraits ({', '.join(claims)}). Réécris-la SANS aucun chiffre, prix, durée, date, lien "
+        "ni condition d'admission ou de financement (CPF, éligibilité, gratuité…) absent des "
+        "extraits ou des liens validés. Si l'information manque, commence ton message par "
+        f"{ADVISOR_MARKER}."
     )

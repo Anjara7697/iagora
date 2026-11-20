@@ -170,3 +170,37 @@ async def test_only_administrators_change_campaigns(make_client):
         assert (
             await other.patch(f"/api/v1/campaigns/{camp['id']}", json={"target_codes": []})
         ).status_code == 403
+
+
+async def test_campaign_resources_and_imposed_subject_are_saved_and_validated(client):
+    """D-39 : liens validés (https seulement) et objet du premier email, modifiables ensemble."""
+    cid = (await _create(client)).json()["id"]
+    link = {
+        "label": "  Inscription  au master ",
+        "url": "https://www.datumacademy.com/fr/masters/eBIHAR",
+        "usage": "quand le prospect veut s'inscrire",
+    }
+    r = await client.patch(
+        f"/api/v1/campaigns/{cid}",
+        json={"email_subject": "  {prénom}, le Master  ", "resources": [link]},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["email_subject"] == "{prénom}, le Master"
+    assert body["resources"] == [{**link, "label": "Inscription au master"}]
+    for bad in (
+        "http://datum.example",
+        "javascript:alert(1)",
+        "https://a b.example",
+        "datum.example",
+    ):
+        refused = await client.patch(
+            f"/api/v1/campaigns/{cid}", json={"resources": [{"label": "x", "url": bad}]}
+        )
+        assert refused.status_code == 422, bad
+    kept = (await client.patch(f"/api/v1/campaigns/{cid}", json={"name": "Renommée"})).json()
+    assert kept["resources"][0]["url"].startswith("https://")  # non modifiées si absentes
+    cleared = (
+        await client.patch(f"/api/v1/campaigns/{cid}", json={"email_subject": " ", "resources": []})
+    ).json()
+    assert cleared["email_subject"] is None and cleared["resources"] == []

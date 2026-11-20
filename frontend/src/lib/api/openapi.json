@@ -1125,6 +1125,17 @@
             ],
             "title": "Description"
           },
+          "email_subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Subject"
+          },
           "end_date": {
             "anyOf": [
               {
@@ -1144,6 +1155,14 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CampaignResource"
+            },
+            "title": "Resources",
+            "type": "array"
           },
           "responsible_advisor_active": {
             "anyOf": [
@@ -1228,6 +1247,41 @@
         "title": "CampaignRead",
         "type": "object"
       },
+      "CampaignResource": {
+        "description": "Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle.",
+        "properties": {
+          "label": {
+            "examples": [
+              "Inscription au Master eBIHAR"
+            ],
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "examples": [
+              "https://www.datumacademy.com/fr/masters/eBIHAR"
+            ],
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
+          },
+          "usage": {
+            "default": "",
+            "description": "Quand l'agent doit le proposer",
+            "maxLength": 300,
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "CampaignResource",
+        "type": "object"
+      },
       "CampaignStats": {
         "description": "Tableau de bord d'une campagne : entonnoir, niveaux d'intérêt et sources (F-01, F-13).",
         "properties": {
@@ -1305,6 +1359,19 @@
             ],
             "title": "Description"
           },
+          "email_subject": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Objet imposé du premier email ; vide : écrit par l'agent",
+            "title": "Email Subject"
+          },
           "end_date": {
             "anyOf": [
               {
@@ -1329,6 +1396,22 @@
               }
             ],
             "title": "Name"
+          },
+          "resources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CampaignResource"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Remplace l'ensemble des ressources",
+            "title": "Resources"
           },
           "start_date": {
             "anyOf": [

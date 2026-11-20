@@ -2441,12 +2441,19 @@ export interface components {
             created_at: string;
             /** Description */
             description: string | null;
+            /** Email Subject */
+            email_subject?: string | null;
             /** End Date */
             end_date: string | null;
             /** Id */
             id: number;
             /** Name */
             name: string;
+            /**
+             * Resources
+             * @default []
+             */
+            resources: components["schemas"]["CampaignResource"][];
             /** Responsible Advisor Active */
             responsible_advisor_active?: boolean | null;
             /** Responsible Advisor Id */
@@ -2471,6 +2478,28 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * CampaignResource
+         * @description Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle.
+         */
+        CampaignResource: {
+            /**
+             * Label
+             * @example Inscription au Master eBIHAR
+             */
+            label: string;
+            /**
+             * Url
+             * @example https://www.datumacademy.com/fr/masters/eBIHAR
+             */
+            url: string;
+            /**
+             * Usage
+             * @description Quand l'agent doit le proposer
+             * @default
+             */
+            usage: string;
         };
         /**
          * CampaignStats
@@ -2511,10 +2540,20 @@ export interface components {
         CampaignUpdate: {
             /** Description */
             description?: string | null;
+            /**
+             * Email Subject
+             * @description Objet imposé du premier email ; vide : écrit par l'agent
+             */
+            email_subject?: string | null;
             /** End Date */
             end_date?: string | null;
             /** Name */
             name?: string | null;
+            /**
+             * Resources
+             * @description Remplace l'ensemble des ressources
+             */
+            resources?: components["schemas"]["CampaignResource"][] | null;
             /** Start Date */
             start_date?: string | null;
             status?: components["schemas"]["CampaignStatus"] | null;

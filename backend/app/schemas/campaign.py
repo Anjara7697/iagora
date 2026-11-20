@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums import CampaignStatus
 
@@ -11,6 +12,28 @@ class SourceInput(BaseModel):
     type: str = Field(max_length=50, examples=["ads", "form", "landing_page", "webinar", "import"])
     platform: str = Field(max_length=50, examples=["linkedin", "meta", "web"])
     external_id: str | None = Field(None, max_length=255)
+
+
+class CampaignResource(BaseModel):
+    """Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle."""
+
+    label: str = Field(min_length=1, max_length=120, examples=["Inscription au Master eBIHAR"])
+    url: str = Field(max_length=500, examples=["https://www.datumacademy.com/fr/masters/eBIHAR"])
+    usage: str = Field("", max_length=300, description="Quand l'agent doit le proposer")
+
+    @field_validator("label", "usage")
+    @classmethod
+    def _one_line(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @field_validator("url")
+    @classmethod
+    def _https(cls, value: str) -> str:
+        value = value.strip()
+        parts = urlsplit(value)
+        if parts.scheme != "https" or not parts.netloc or any(c.isspace() for c in value):
+            raise ValueError("Adresse attendue en https://…")
+        return value
 
 
 class _CampaignDates(BaseModel):
@@ -37,6 +60,12 @@ class CampaignUpdate(_CampaignDates):
     description: str | None = None
     status: CampaignStatus | None = None
     target_codes: list[str] | None = Field(None, description="Remplace l'ensemble des cibles")
+    email_subject: str | None = Field(
+        None, max_length=200, description="Objet imposé du premier email ; vide : écrit par l'agent"
+    )
+    resources: list[CampaignResource] | None = Field(
+        None, max_length=20, description="Remplace l'ensemble des ressources"
+    )
 
 
 class SourceRead(BaseModel):
@@ -73,6 +102,8 @@ class CampaignRead(BaseModel):
     updated_at: datetime
     targets: list[TargetRead] = []
     sources: list[SourceRead] = []
+    email_subject: str | None = None
+    resources: list[CampaignResource] = []
 
 
 class CampaignOwnershipUpdate(BaseModel):

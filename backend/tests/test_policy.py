@@ -324,6 +324,25 @@ def test_a_spelled_out_duration_is_sourced_by_the_same_duration_in_figures():
     ]
 
 
+def test_only_listed_links_can_be_sent():
+    """D-39 : un lien inventé est bloqué ; celui des ressources ou des sources passe, quelle que
+    soit son écriture (protocole, « www. », barre finale, ponctuation)."""
+    allowed = [
+        "Inscription : https://www.datumacademy.com/fr/masters/eBIHAR/",
+        "Site : www.datum.academy",
+    ]
+    ok = "Inscription : https://datumacademy.com/fr/masters/eBIHAR. Ou www.datum.academy !"
+    assert policy.unlisted_links(ok, allowed) == []
+    invented = (
+        "Le formulaire : https://www.datumacademy.com/inscription-rapide (ou www.datum-promo.fr)"
+    )
+    assert policy.unlisted_links(invented, allowed) == [
+        "https://www.datumacademy.com/inscription-rapide",
+        "www.datum-promo.fr",
+    ]
+    assert policy.unlisted_links("Sans lien.", []) == []
+
+
 def test_slot_formatting_uses_paris_time():
     # 1er mars 2027 = lundi ; 13h UTC = 14h à Paris (hiver).
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"
