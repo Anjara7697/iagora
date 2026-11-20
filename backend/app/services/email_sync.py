@@ -353,7 +353,9 @@ def _thread_headers(
         and m["created_at"] <= message["created_at"]
     ]
     if not previous:
-        return DEFAULT_SUBJECT, None, []
+        # Premier contact : l'objet écrit par l'agent (D-38), sinon l'objet de secours.
+        subject = ((message.get("metadata") or {}).get("subject") or "").strip()
+        return (subject or DEFAULT_SUBJECT)[:300], None, []
     last = max(previous, key=lambda m: m["created_at"])
     info = (last.get("metadata") or {}).get("email") or {}
     subject = (info.get("subject") or "").strip() or DEFAULT_SUBJECT

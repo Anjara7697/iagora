@@ -179,3 +179,36 @@ def test_known_profile_fields_are_listed_as_never_to_be_asked():
         mode="continue",
     )
     assert "Tu connais déjà son niveau d'études : ne pose aucune question à ce sujet" in system
+
+
+def test_email_first_contact_asks_for_a_personalised_subject_and_a_prospecting_length():
+    """D-38 : l'email de premier contact a un objet et la longueur d'un email de prospection."""
+    system = prompts.reply_system(ctx(), {}, [], ["goal"], mode="continue")
+    assert "Canal : email de prospection" in system and "« Objet : … »" in system
+    assert "120 à 180 mots" in system and "Personnalise l'accroche" in system
+    answer = reply([HistoryMessage("prospect", "Bonjour")])
+    assert "Canal : email." in answer and "80 mots au plus" in answer and "Objet" not in answer
+
+
+def test_a_messaging_channel_gets_short_messages_without_subject():
+    messaging = ProspectContext(**{**ctx().__dict__, "channel": "facebook"})
+    system = prompts.reply_system(messaging, {}, [], ["goal"], mode="continue")
+    assert "Canal : messagerie" in system and "50 mots au plus" in system
+    assert "Objet" not in system and not prompts.is_email("linkedin")
+
+
+def test_the_subject_line_is_split_from_the_message_and_cleaned():
+    assert prompts.split_subject("Objet : « Jean, votre projet data »\n\nBonjour Jean,") == (
+        "Jean, votre projet data",
+        "Bonjour Jean,",
+    )
+    assert prompts.split_subject("**Objet :** Le Master en ligne\nBonjour") == (
+        "Le Master en ligne",
+        "Bonjour",
+    )
+    assert prompts.split_subject("Bonjour Jean, objet : rien") == (
+        None,
+        "Bonjour Jean, objet : rien",
+    )
+    long_subject, _ = prompts.split_subject("Objet : " + "mot " * 40 + "\nCorps")
+    assert len(long_subject) <= prompts.SUBJECT_MAX_CHARS and long_subject.endswith("…")

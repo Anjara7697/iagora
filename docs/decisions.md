@@ -388,3 +388,27 @@ contenu de programme déduit de la seule liste des formations, « gratuites » r
 
 **Mesure.** Même jeu de cas local et même modèle qu'avant ce changement ; démonstration jumelle (D-36) pour la
 non-régression.
+
+## D-38 — Premier contact selon le canal : objet d'email et longueur
+
+*19 novembre 2026 · Adoptée par le responsable du projet.*
+
+**Contexte.** Le premier contact était écrit de la même façon quel que soit le canal, et chaque email de
+prospection partait avec l'objet fixe « DATUM Academy ». Un email de prospection et un message de messagerie
+n'ont ni la même longueur ni la même forme ; l'objet décide de l'ouverture de l'email.
+
+**Décision.**
+- **Consigne de canal** donnée au modèle : email de premier contact avec une ligne « Objet : … » (10 mots au
+  plus, personnalisé), une accroche liée à ce que l'on sait du prospect, puis une question, en 120 à 180 mots ;
+  réponse par email en 80 mots au plus ; messagerie (Messenger, Instagram, LinkedIn…) en 2 ou 3 phrases,
+  50 mots au plus, sans objet. Un canal inconnu est traité comme une messagerie.
+- **Objet écrit par l'agent** : la ligne « Objet : » est séparée du message, nettoyée et bornée, vérifiée par le
+  garde-fou avec le message (NF-10), puis utilisée à l'envoi ; sans objet, l'objet de secours « DATUM Academy ».
+  Une campagne pourra imposer son propre objet (PR des ressources de campagne).
+- **Personnalisation** : l'accroche s'appuie sur le profil et la source du contact ; si l'on ne sait rien, le
+  message reste général, sans rien supposer.
+- **Mesure** : les cas indiquent leur canal ; l'évaluation contrôle l'objet attendu et la longueur
+  (indicateur « Forme selon le canal »).
+
+**Suite.** Ressources de campagne (fichiers et liens validés, garde-fou des liens), puis design de l'email DATUM et
+pièces jointes.

@@ -197,6 +197,7 @@ _INDICATORS: dict[str, list[_Spec]] = {
         ("handoff_missed", "Transferts manqués", "Conformité", "handoff.missed", "n", "down"),
         ("handoff_unneeded", "Transferts inutiles", "Conformité", "handoff.unneeded", "n", "down"),
         ("grounded", "Réponses sourcées", "Exactitude", "grounded_answers", "rate", "up"),
+        ("channel_format", "Forme selon le canal", "Style", "channel_format", "rate", "up"),
         (
             "ungrounded_raw",
             "Chiffres non sourcés (bruts)",

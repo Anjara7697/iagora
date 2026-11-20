@@ -309,6 +309,11 @@ class WorkflowNodes:
                     + (" (renvoi au conseiller sans signal)" if in_words else ""),
                 ),
             }
+        # D-38 : l'email de premier contact porte un objet écrit par le modèle (vérifié avec le
+        # message par le garde-fou ci-dessus) ; ailleurs, une ligne « Objet : » est retirée.
+        subject, reply = prompts.split_subject(reply)
+        if state["trigger"] != "first_contact" or not prompts.is_email(ctx.channel):
+            subject = None
         if claims or not reply:
             return {
                 "needs_human": True,
@@ -324,6 +329,7 @@ class WorkflowNodes:
                 "mode": mode,
                 "sources": [p.source for p in passages],
                 "confidence": q.confidence if q is not None else None,
+                **({"subject": subject} if subject else {}),
             },
             "needs_human": False,
             "trace": _t(

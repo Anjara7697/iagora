@@ -120,6 +120,9 @@ cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vr
 - **Base de connaissances** : par défaut, la base FICTIVE de démonstration (`demo_kb/`) avec une recherche lexicale,
   déterministe et sans clé ; `--rag-reel` utilise la vraie recherche sur les documents de démonstration chargés par
   `seed-demo`. La qualité de la recherche elle-même se mesure avec `kb-eval`.
+- **Forme selon le canal (D-38)** : un cas peut indiquer `channel` (canal de la conversation, `email` par défaut),
+  `subject` (objet d'email attendu ou non) et `words` ([min, max] mots du message de l'agent) ; l'indicateur
+  « Forme selon le canal » les compte, et un écart apparaît dans le rapport.
 - **Démo jumelle de la campagne (D-36)** : la fiche eBIHAR de démonstration a la même forme que les vrais documents
   de la campagne (master en ligne, accès selon le diplôme, rentrée avec date limite d'inscription, coût et tarif
   réduit partenaire, certifications, examens surveillés), avec des valeurs inventées, et les mêmes manques

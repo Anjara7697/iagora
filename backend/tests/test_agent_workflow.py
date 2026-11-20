@@ -658,6 +658,25 @@ async def test_first_contact_writes_an_introduction(client, env):
     assert (await history(client, mid))["score_events"] == []  # aucun signal d'engagement
 
 
+async def test_the_first_contact_email_carries_the_subject_written_by_the_agent(client, env):
+    """D-38 : la ligne « Objet : » devient l'objet de l'email, le corps part sans elle."""
+    pid, mid, cid = await lead(client, None, consent_granted=True)
+    env.llm.reply = "Objet : Jean, votre projet et le Master eBIHAR\n\nBonjour Jean, merci."
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Bonjour Jean, merci." and last["content"] == "Bonjour Jean, merci."
+    assert last["metadata"]["subject"] == "Jean, votre projet et le Master eBIHAR"
+
+
+async def test_a_subject_line_is_never_kept_outside_the_first_contact_email(client, env):
+    pid, mid, cid = await lead(client, "Bonjour, je regarde vos formations.")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Objet : Votre demande\nMerci pour votre message, Jean."
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Merci pour votre message, Jean." and "subject" not in last["metadata"]
+
+
 async def test_run_can_target_a_prospect_and_opens_the_conversation(client, env):
     pid, mid, cid = await lead(client, None, consent_granted=True)
     out = await client.post(f"{API}/agent/runs", json={"prospect_id": pid})

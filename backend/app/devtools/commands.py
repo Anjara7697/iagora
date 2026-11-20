@@ -161,7 +161,8 @@ async def cmd_eval_agent(
     summary = evaluation.summarize(results, price_in=price_in, price_out=price_out)
     print(
         f"\nConformes : {summary.conform} — intention {summary.intent} — décision "
-        f"{summary.decision} — transfert {summary.handoff} — sourcées {summary.grounded}"
+        f"{summary.decision} — transfert {summary.handoff} — sourcées {summary.grounded} — "
+        f"forme {summary.channel_format}"
     )
     print(
         f"Chiffres non sourcés : bruts {summary.raw_hallucination}, envoyés "

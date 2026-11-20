@@ -70,6 +70,11 @@ class EvalCase:
     must_mention: list[str] = field(default_factory=list)  # « a|b » : l'un ou l'autre
     profile: dict[str, str] = field(default_factory=dict)
     fake: dict[str, Any] = field(default_factory=dict)  # comportement du faux modèle
+    # Forme selon le canal (D-38) : canal de la conversation, objet d'email attendu ou non,
+    # nombre de mots du message de l'agent [min, max].
+    channel: str = "email"
+    subject: bool | None = None
+    words: list[int] = field(default_factory=list)
 
 
 def load_cases(
@@ -285,6 +290,7 @@ class CaseResult:
     # un transfert ou un refus (le message envoyé ne dit pas ce que le modèle avait écrit).
     raw_replies: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
+    subject: str | None = None  # objet de l'email envoyé par l'agent, s'il y en a un
     sent_claims_by_message: list[list[str]] = field(default_factory=list)  # par message envoyé
     seconds: float = 0.0
     calls: list[LLMCall] = field(default_factory=list)
@@ -332,8 +338,24 @@ class CaseResult:
         return self.error is None and not self.llm_unavailable
 
     @property
+    def word_count(self) -> int:
+        return len(" ".join(self.llm_written).split())
+
+    @property
+    def format_ok(self) -> bool | None:
+        """Forme attendue sur ce canal : objet présent ou absent, longueur du message (D-38)."""
+        if self.case.subject is None and not self.case.words:
+            return None
+        if self.handed_off:
+            return False
+        if self.case.subject is not None and (self.subject is not None) != self.case.subject:
+            return False
+        low, high = (self.case.words + [0, 10_000])[:2]
+        return low <= self.word_count <= high
+
+    @property
     def ok(self) -> bool:
-        checks = [self.intent_ok, self.action_ok, self.handoff_ok, self.grounded_ok]
+        checks = [self.intent_ok, self.action_ok, self.handoff_ok, self.grounded_ok, self.format_ok]
         return self.evaluable and not self.sent_claims and all(c is not False for c in checks)
 
 
@@ -425,6 +447,9 @@ async def play_turn(
     said = [*said, case.message or ""]
     result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
     result.raw_replies = list(llm.raw_replies)
+    conv = await conversations.get_conversation(db, cid)
+    last_agent = next((m for m in reversed(conv.messages) if m.role != SenderType.PROSPECT), None)
+    result.subject = (last_agent.metadata.get("subject") if last_agent else None) or None
     result.sources = list(dict.fromkeys(p.source for p in kb.returned))
     result.sent_claims_by_message = [
         _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
@@ -445,7 +470,12 @@ async def run_case(
     try:
         async with session_factory() as session:
             ids = await runner.new_demo_prospect(
-                session, db, label=EVAL_LABEL, target_code=case.target, profile=case.profile
+                session,
+                db,
+                label=EVAL_LABEL,
+                target_code=case.target,
+                profile=case.profile,
+                channel=case.channel,
             )
             return await play_turn(
                 session, db, ids, case, llm=llm, knowledge=knowledge, ablation=ablation
@@ -528,6 +558,7 @@ class Summary:
     handoff_missed: int
     handoff_unneeded: int
     grounded: Rate
+    channel_format: Rate  # objet et longueur attendus sur le canal (D-38)
     raw_outputs: int
     raw_with_claims: int
     sent_messages: int
@@ -569,6 +600,7 @@ class Summary:
                 "unneeded": self.handoff_unneeded,
             },
             "grounded_answers": rate(self.grounded),
+            "channel_format": rate(self.channel_format),
             "ungrounded_raw": rate(self.raw_hallucination),
             "ungrounded_sent": rate(self.sent_hallucination),
             "latency_seconds": {
@@ -620,6 +652,7 @@ def summarize(
         handoff_missed=sum(1 for r in with_handoff if r.case.handoff and not r.handed_off),
         handoff_unneeded=sum(1 for r in with_handoff if not r.case.handoff and r.handed_off),
         grounded=_rate([r.grounded_ok for r in ev]),
+        channel_format=_rate([r.format_ok for r in ev]),
         raw_outputs=len(raw),
         raw_with_claims=sum(1 for c in raw if c),
         sent_messages=len(sent),
@@ -650,7 +683,9 @@ def format_console(r: CaseResult) -> str:
     line = (
         f" {'OK' if r.ok else 'KO'}  {r.case.id:<28} intention {_mark(r.intent_ok)} "
         f"décision {_mark(r.action_ok)} transfert {_mark(r.handoff_ok)} "
-        f"sourcé {_mark(r.grounded_ok)}  {r.seconds:.1f} s"
+        f"sourcé {_mark(r.grounded_ok)}"
+        + (f" forme {_mark(r.format_ok)}" if r.format_ok is not None else "")
+        + f"  {r.seconds:.1f} s"
     )
     if r.sent_claims:
         line += f"\n        chiffres non sourcés envoyés : {r.sent_claims}"
@@ -680,6 +715,14 @@ def _gaps(r: CaseResult) -> list[str]:
         gaps.append(f"réponse sans « {' ; '.join(c.must_mention)} »")
     if r.sent_claims:
         gaps.append(f"chiffres non sourcés envoyés : {r.sent_claims}")
+    if r.format_ok is False:
+        expected = []
+        if c.subject is not None:
+            expected.append("avec objet" if c.subject else "sans objet")
+        if c.words:
+            expected.append(f"{'-'.join(map(str, c.words))} mots")
+        got = f"{'objet' if r.subject else 'pas d’objet'}, {r.word_count} mots"
+        gaps.append(f"forme du canal {c.channel} : {got} (attendu : {', '.join(expected)})")
     return gaps
 
 
@@ -709,6 +752,7 @@ def format_markdown(
         f"| Transferts attendus réalisés | {s.handoff_correct}/{s.handoff_expected} | "
         f"manqués : {s.handoff_missed} ; inutiles : {s.handoff_unneeded} |",
         f"| Réponses sourcées | {s.grounded} | la réponse contient le fait attendu de la base |",
+        f"| Forme selon le canal | {s.channel_format} | objet d'email et longueur attendus |",
         f"| Sorties brutes avec chiffre non sourcé | {s.raw_hallucination} | "
         "texte du modèle AVANT les garde-fous |",
         f"| Messages envoyés avec chiffre non sourcé | {s.sent_hallucination} | "
@@ -802,6 +846,10 @@ def to_payload(results: list[CaseResult], summary: Summary, **meta: Any) -> dict
             "reason": r.reason,
             "raw_replies": r.raw_replies,
             "sources": r.sources,
+            "channel": r.case.channel,
+            "subject": r.subject,
+            "words": r.word_count,
+            "format_ok": r.format_ok,
             "sent_claims": r.sent_claims,
             "seconds": round(r.seconds, 3),
             "llm_calls": len(r.calls),
