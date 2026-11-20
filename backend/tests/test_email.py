@@ -774,3 +774,43 @@ def test_the_first_email_uses_the_subject_written_by_the_agent_or_the_fallback()
     assert email_sync._thread_headers({"messages": []}, message) == ("Jean, votre projet", None, [])
     plain = {"role": "agent", "created_at": None, "metadata": {}}
     assert email_sync._thread_headers({"messages": []}, plain)[0] == email_sync.DEFAULT_SUBJECT
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+async def test_the_uploaded_banner_is_embedded_in_the_sent_email(env):
+    """D-41 : le bandeau chargé part dans le message (image intégrée), sans hébergement."""
+    from app.services import email_assets
+
+    await email_assets.save_banner(env.db, PNG, "bandeau.png", None)
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    client = FakeEmailClient()
+    await env.deliver(client)
+    (out,) = client.sent
+    assert out.inline_images == [(email_assets.BANNER_CID, "image/png", PNG)]
+    assert f'src="cid:{email_assets.BANNER_CID}"' in out.html
+
+
+def test_an_embedded_image_travels_with_the_html_version():
+    from email import message_from_bytes
+    from email import policy as email_policy
+
+    from app.integrations.email.base import OutboundEmail
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+
+    sender = ImapSmtpClient(settings(email_smtp_host="smtp.test"))
+    msg = sender._build(
+        OutboundEmail(
+            to_address="a@b.test",
+            subject="x",
+            text="Bonjour",
+            html='<img src="cid:bandeau@iagora">',
+            inline_images=[("bandeau@iagora", "image/png", PNG)],
+        )
+    )
+    parsed = message_from_bytes(msg.as_bytes(), policy=email_policy.default)
+    image = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
+    assert image["Content-ID"] == "<bandeau@iagora>" and image.get_payload(decode=True) == PNG
+    assert parsed.get_body(preferencelist=("plain",)).get_content().strip() == "Bonjour"

@@ -1,9 +1,10 @@
 """Paramètres de l'agent (administrateur) : IA, relances, emails, disponibilités."""
 
 import asyncio
+import base64
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 
 from app.api.dependencies import ADMIN_ONLY, CurrentUser, MongoDb
 from app.config import Settings, get_settings
@@ -15,7 +16,8 @@ from app.schemas.runtime_settings import (
     RuntimeSettingsRead,
     RuntimeSettingsWrite,
 )
-from app.services import email_format, runtime_settings
+from app.services import email_assets, email_format, runtime_settings
+from app.services.errors import ValidationFailure
 
 PREVIEW_BODY = (
     "Bonjour Camille,\n\nMerci pour votre message. Voici deux créneaux possibles avec un "
@@ -97,6 +99,44 @@ async def preview_email(
     candidate = runtime_settings.apply(
         base, runtime_settings.to_document(base, _plain(payload), existing, None)
     )
-    # Cas normal en production (D-16) : un brouillon relu et validé par un conseiller.
-    rendered = email_format.render(PREVIEW_BODY, candidate, ai_generated=True, reviewed=True)
+    # Cas normal en production (D-16) : un brouillon relu et validé par un conseiller. Le bandeau
+    # chargé est intégré à l'aperçu comme il le sera au message (D-41).
+    banner = await email_assets.load_banner(db)
+    src = (
+        f"data:{banner.content_type};base64,{base64.b64encode(banner.data).decode()}"
+        if banner
+        else None
+    )
+    rendered = email_format.render(
+        PREVIEW_BODY, candidate, ai_generated=True, reviewed=True, banner_src=src
+    )
     return EmailPreview(html=rendered.html, text=rendered.text)
+
+
+@router.get("/email/banner", responses={200: {"content": {"image/png": {}, "image/jpeg": {}}}})
+async def get_banner(db: MongoDb) -> Response:
+    """Bandeau chargé (D-41), pour l'afficher dans Paramètres ; 404 s'il n'y en a pas."""
+    banner = await email_assets.load_banner(db)
+    if banner is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Aucun bandeau chargé")
+    return Response(
+        banner.data, media_type=banner.content_type, headers={"Cache-Control": "no-store"}
+    )
+
+
+@router.put("/email/banner", status_code=status.HTTP_204_NO_CONTENT)
+async def upload_banner(
+    db: MongoDb,
+    user: CurrentUser,
+    file: Annotated[UploadFile, File(description="PNG ou JPEG, 400 ko au plus, 600 px de large")],
+) -> None:
+    data = await file.read(email_assets.MAX_BANNER_BYTES + 1)
+    try:
+        await email_assets.save_banner(db, data, file.filename or "", user.id)
+    except ValidationFailure as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+
+@router.delete("/email/banner", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_banner(db: MongoDb) -> None:
+    await email_assets.delete_banner(db)

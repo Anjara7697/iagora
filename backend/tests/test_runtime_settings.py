@@ -264,3 +264,33 @@ async def test_agent_thresholds_are_saved_validated_and_applied(client, mongo_db
     # Incohérent (entretien >= rendez-vous) ou hors bornes : refusé.
     for bad in ({"agent_nurture_max_score": 40}, {"agent_min_confidence": 0.05}):
         assert (await client.put(f"{API}/settings", json={**tuned, **bad})).status_code == 422
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+async def test_the_banner_is_uploaded_shown_in_the_preview_and_removed(client, env):
+    """D-41 : bandeau chargé dans Paramètres (PNG ou JPEG, poids limité), repris dans l'aperçu."""
+    assert (await client.get(f"{API}/settings/email/banner")).status_code == 404
+    files = {"file": ("bandeau.png", PNG, "image/png")}
+    assert (await client.put(f"{API}/settings/email/banner", files=files)).status_code == 204
+    shown = await client.get(f"{API}/settings/email/banner")
+    assert shown.status_code == 200 and shown.content == PNG
+    assert shown.headers["content-type"] == "image/png"
+    preview = (await client.post(f"{API}/settings/email/preview", json=FORM)).json()
+    assert 'src="data:image/png;base64,' in preview["html"]
+    assert (await client.delete(f"{API}/settings/email/banner")).status_code == 204
+    assert (await client.get(f"{API}/settings/email/banner")).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "name,data",
+    [
+        ("bandeau.gif", b"GIF89a" + b"\x00" * 10),  # format refusé, quel que soit le nom
+        ("faux.png", b"<svg onload=alert(1)>"),
+        ("lourd.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 400_001),
+    ],
+)
+async def test_a_banner_that_is_not_a_light_png_or_jpeg_is_refused(client, env, name, data):
+    files = {"file": (name, data, "image/png")}
+    assert (await client.put(f"{API}/settings/email/banner", files=files)).status_code == 422

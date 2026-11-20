@@ -3,6 +3,7 @@
 import { FlaskConical, Mail, Sparkles } from "lucide-react";
 import { Btn, ColorChoice, ErrorText, FilterChip, LinkButton, Notice, NumberInput, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ActionsBar, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
+import EmailBanner from "@/components/settings/EmailBanner";
 import type { RuntimeSettings } from "@/lib/types";
 
 /** Sections de l'écran Paramètres (une carte par catégorie). L'état du formulaire reste dans la page :
@@ -336,9 +337,15 @@ export function EmailsSection({
               onChange={(e) => set("email_logo_url", e.target.value)}
             />
           </Field>
+          <InfoRow
+            label="Bandeau chargé"
+            note="Recommandé : l’image est intégrée à chaque email, sans hébergement, et s’affiche même quand les images distantes sont bloquées. Elle remplace le bandeau hébergé et le bandeau dessiné."
+          >
+            <EmailBanner />
+          </InfoRow>
           <Field
-            label="Bandeau (image https, facultatif)"
-            note="Image publique de 600 px de large, hébergée par l’école. Vide : un bandeau aux couleurs de l’école, avec le nom (ou le logo) et la phrase d’accroche."
+            label="Bandeau hébergé (image https, facultatif)"
+            note="Sans bandeau chargé : image publique de 600 px de large, hébergée par l’école. Vide : un bandeau aux couleurs de l’école, avec le nom (ou le logo) et la phrase d’accroche."
           >
             <TextInput
               type="url"

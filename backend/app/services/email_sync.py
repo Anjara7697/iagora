@@ -36,6 +36,7 @@ from app.services import (
     agent_settings,
     application_intake,
     conversations,
+    email_assets,
     email_format,
     enrollment_intake,
     follow_ups,
@@ -474,11 +475,13 @@ async def _deliver_claimed(
         # La mention IA accompagne tout message rédigé par l'agent ; sa formulation dit s'il a été
         # relu et validé par un conseiller (D-32).
         draft = (message.get("metadata") or {}).get("draft") or {}
+        banner = await email_assets.load_banner(db)
         rendered = email_format.render(
             message["content"],
             settings,
             ai_generated=message["role"] == SenderType.AGENT.value,
             reviewed=draft.get("status") == "approved",
+            banner_src=f"cid:{email_assets.BANNER_CID}" if banner else None,
         )
         message_id = await client.send(
             OutboundEmail(
@@ -488,6 +491,9 @@ async def _deliver_claimed(
                 html=rendered.html,
                 in_reply_to=in_reply_to,
                 references=references,
+                inline_images=(
+                    [(email_assets.BANNER_CID, banner.content_type, banner.data)] if banner else []
+                ),
             )
         )
     except Exception as exc:  # EmailError, mais aussi en-tête invalide : jamais bloqué en `sending`

@@ -153,3 +153,13 @@ def test_a_banner_image_replaces_the_drawn_header_and_everything_is_escaped():
     unsafe = settings(email_header_image_url="http://datum.example/x.png", email_contact_email="x")
     html = email_format.render("Bonjour", unsafe, ai_generated=True).html
     assert "x.png" not in html and "mailto:" not in html
+
+
+def test_an_embedded_banner_comes_first_and_only_safe_sources_are_kept():
+    cfg = settings(email_header_image_url="https://datum.example/bandeau.png")
+    html = email_format.render(
+        "Bonjour", cfg, ai_generated=True, banner_src="cid:bandeau@iagora"
+    ).html
+    assert 'src="cid:bandeau@iagora"' in html and "datum.example/bandeau.png" not in html
+    unsafe = email_format.render("Bonjour", cfg, ai_generated=True, banner_src="javascript:x").html
+    assert "javascript:" not in unsafe and "datum.example/bandeau.png" in unsafe
