@@ -1,10 +1,10 @@
 "use client";
 
 import { ChartLine } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { Field, SelectBox } from "@/components/ds/controls";
 import { EmptyPanel } from "@/components/ds/layout";
+import { DataTable, Table } from "@/components/ds/table";
 import { SUITES, formatNumber, formatRunDate, indicatorOf, runHref, type EvalRun, type EvaluationView, type Suite } from "@/lib/evaluation";
 
 const W = 720;
@@ -154,7 +154,7 @@ export default function EvolutionView({
       </div>
 
       <div className="flex flex-col gap-1">
-        <h3 className="type-body font-semibold text-foreground">{current.label}</h3>
+        <h2 className="type-body font-semibold text-foreground">{current.label}</h2>
         <p className="type-caption text-muted">{`${SUITES[suite]} · ${sense}`}</p>
       </div>
       {points.length === 0 ? (
@@ -164,29 +164,24 @@ export default function EvolutionView({
       )}
 
       {points.length > 0 && (
-        <table className="w-full type-body-sm">
-          <caption className="sr-only">{`${current.label} par passage`}</caption>
-          <thead>
-            <tr className="border-b border-separator text-left text-muted">
-              <th scope="col" className="py-2 pr-3 font-normal">Passage</th>
-              <th scope="col" className="py-2 pr-3 font-normal">Date</th>
-              <th scope="col" className="py-2 text-right font-normal">Valeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...points].reverse().map((p) => (
-              <tr key={p.run.id} className="border-b border-separator/60 last:border-0">
-                <th scope="row" className="py-2 pr-3 text-left font-normal">
-                  <Link className="text-foreground underline-offset-2 hover:underline" href={runHref(p.run.id)}>
-                    {p.run.label}
-                  </Link>
-                </th>
-                <td className="py-2 pr-3 whitespace-nowrap text-muted tabular-nums">{formatRunDate(p.run.ran_at)}</td>
-                <td className="py-2 text-right whitespace-nowrap tabular-nums">{p.display}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        // Tableau des valeurs (règle 4) : toute la ligne ouvre le passage.
+        <DataTable
+          label={`${current.label} par passage`}
+          minWidth={420}
+          columns={[
+            { id: "run", label: "Passage" },
+            { id: "date", label: "Date" },
+            { id: "value", label: "Valeur", className: "text-right" },
+          ]}
+        >
+          {[...points].reverse().map((p) => (
+            <Table.Row key={p.run.id} id={p.run.id} href={runHref(p.run.id)} className="cursor-pointer">
+              <Table.Cell>{p.run.label}</Table.Cell>
+              <Table.Cell className="whitespace-nowrap text-muted tabular-nums">{formatRunDate(p.run.ran_at)}</Table.Cell>
+              <Table.Cell className="text-right whitespace-nowrap tabular-nums">{p.display}</Table.Cell>
+            </Table.Row>
+          ))}
+        </DataTable>
       )}
     </section>
   );

@@ -3,7 +3,7 @@
 import { CheckCircle2, CircleSlash, Gauge, MessagesSquare, XCircle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Drawer } from "@/components/ds/Drawer";
-import { FilterChipGroup, Tag } from "@/components/ds/controls";
+import { ErrorText, FilterChipGroup, Tag } from "@/components/ds/controls";
 import { EmptyPanel, cx } from "@/components/ds/layout";
 import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
 import { ListToolbar, countLabel } from "@/components/ds/toolbar";
@@ -143,7 +143,7 @@ function Conversations({ rows, item, onItem, onlyGaps, onOnlyGaps }: { rows: Con
               <Verdict ok={open.ok} skipped={!!open.skipped} />
               <span className="type-caption text-muted">{open.id}</span>
             </div>
-            {open.error && <p className="type-body-sm text-danger">{`Erreur technique : ${open.error}`}</p>}
+            {open.error && <ErrorText>{`Erreur technique : ${open.error}`}</ErrorText>}
             <section aria-label="Écarts" className="flex flex-col gap-2">
               <h3 className="type-body font-semibold">Écarts</h3>
               <Issues items={open.issues ?? []} />
