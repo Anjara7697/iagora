@@ -5642,6 +5642,13 @@
             "title": "Email Brand Name",
             "type": "string"
           },
+          "email_contact_email": {
+            "default": "",
+            "maxLength": 120,
+            "pattern": "^([^@\\s]+@[^@\\s]+\\.[a-zA-Z]{2,})?$",
+            "title": "Email Contact Email",
+            "type": "string"
+          },
           "email_create_unknown_senders": {
             "default": true,
             "title": "Email Create Unknown Senders",
@@ -5651,6 +5658,19 @@
             "default": "",
             "maxLength": 1000,
             "title": "Email Footer",
+            "type": "string"
+          },
+          "email_header_image_url": {
+            "default": "",
+            "maxLength": 500,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Email Header Image Url",
+            "type": "string"
+          },
+          "email_header_tagline": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Email Header Tagline",
             "type": "string"
           },
           "email_logo_url": {
@@ -5666,6 +5686,32 @@
             "minimum": 10.0,
             "title": "Email Poll Seconds",
             "type": "integer"
+          },
+          "email_postal_address": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Email Postal Address",
+            "type": "string"
+          },
+          "email_signature_org": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Org",
+            "type": "string"
+          },
+          "email_signature_team": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Team",
+            "type": "string"
+          },
+          "email_social_links": {
+            "default": "",
+            "description": "Un lien par ligne : « Libellé | https://… »",
+            "maxLength": 1000,
+            "pattern": "^(\\s*[^|\\n]+\\|\\s*https://\\S+\\s*(\\n|$))*$",
+            "title": "Email Social Links",
+            "type": "string"
           },
           "embedding_model": {
             "description": "Lecture seule : en changer impose kb-reindex",
@@ -5881,6 +5927,13 @@
             "title": "Email Brand Name",
             "type": "string"
           },
+          "email_contact_email": {
+            "default": "",
+            "maxLength": 120,
+            "pattern": "^([^@\\s]+@[^@\\s]+\\.[a-zA-Z]{2,})?$",
+            "title": "Email Contact Email",
+            "type": "string"
+          },
           "email_create_unknown_senders": {
             "default": true,
             "title": "Email Create Unknown Senders",
@@ -5890,6 +5943,19 @@
             "default": "",
             "maxLength": 1000,
             "title": "Email Footer",
+            "type": "string"
+          },
+          "email_header_image_url": {
+            "default": "",
+            "maxLength": 500,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Email Header Image Url",
+            "type": "string"
+          },
+          "email_header_tagline": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Email Header Tagline",
             "type": "string"
           },
           "email_logo_url": {
@@ -5905,6 +5971,32 @@
             "minimum": 10.0,
             "title": "Email Poll Seconds",
             "type": "integer"
+          },
+          "email_postal_address": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Email Postal Address",
+            "type": "string"
+          },
+          "email_signature_org": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Org",
+            "type": "string"
+          },
+          "email_signature_team": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Team",
+            "type": "string"
+          },
+          "email_social_links": {
+            "default": "",
+            "description": "Un lien par ligne : « Libellé | https://… »",
+            "maxLength": 1000,
+            "pattern": "^(\\s*[^|\\n]+\\|\\s*https://\\S+\\s*(\\n|$))*$",
+            "title": "Email Social Links",
+            "type": "string"
           },
           "follow_up_max_per_silence": {
             "default": 3,

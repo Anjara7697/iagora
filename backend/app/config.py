@@ -122,6 +122,15 @@ class Settings(BaseSettings):
     email_brand_name: str = DEFAULT_BRAND_NAME
     email_brand_color: str = DEFAULT_BRAND_COLOR
     email_logo_url: str = ""
+    # Design DATUM (D-40) : bandeau (image https, sinon bandeau aux couleurs de l'école avec la
+    # phrase d'accroche) et signature de l'école sous chaque email ; liens « Libellé | https://… ».
+    email_header_image_url: str = ""
+    email_header_tagline: str = ""
+    email_signature_team: str = ""
+    email_signature_org: str = ""
+    email_contact_email: str = ""
+    email_postal_address: str = ""
+    email_social_links: str = ""
 
     # Rendez-vous : `none` (l'agent transfère les demandes au conseiller), `google` (Google Calendar
     # du conseiller + visioconférence Zoom) ou `demo` (créneaux fictifs, hors production).

@@ -336,6 +336,65 @@ export function EmailsSection({
               onChange={(e) => set("email_logo_url", e.target.value)}
             />
           </Field>
+          <Field
+            label="Bandeau (image https, facultatif)"
+            note="Image publique de 600 px de large, hébergée par l’école. Vide : un bandeau aux couleurs de l’école, avec le nom (ou le logo) et la phrase d’accroche."
+          >
+            <TextInput
+              type="url"
+              placeholder="https://…/bandeau.png"
+              value={form.email_header_image_url}
+              onChange={(e) => set("email_header_image_url", e.target.value)}
+            />
+          </Field>
+          <Field label="Phrase d’accroche du bandeau" note="ex. « Nous ouvrons la voie aux leaders IT de demain ».">
+            <TextInput
+              value={form.email_header_tagline}
+              maxLength={160}
+              onChange={(e) => set("email_header_tagline", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : équipe" note="En gras sous chaque email, ex. « L’équipe admissions ».">
+            <TextInput
+              value={form.email_signature_team}
+              maxLength={80}
+              onChange={(e) => set("email_signature_team", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : établissement">
+            <TextInput
+              value={form.email_signature_org}
+              maxLength={80}
+              onChange={(e) => set("email_signature_org", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : email de contact">
+            <TextInput
+              type="email"
+              value={form.email_contact_email}
+              maxLength={120}
+              onChange={(e) => set("email_contact_email", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : adresse" note="Une ligne par ligne d’adresse.">
+            <TextBox
+              value={form.email_postal_address}
+              rows={2}
+              maxLength={300}
+              onChange={(e) => set("email_postal_address", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Liens du pied d’email"
+            note="Un lien par ligne : « Libellé | https://… », ex. « LinkedIn | https://www.linkedin.com/company/… »."
+          >
+            <TextBox
+              value={form.email_social_links}
+              rows={4}
+              maxLength={1000}
+              onChange={(e) => set("email_social_links", e.target.value)}
+            />
+          </Field>
           <InfoRow
             label="Aperçu"
             note="Rendu par le même code que l’envoi, avec les réglages saisis (non enregistrés)."

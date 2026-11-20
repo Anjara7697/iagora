@@ -22,6 +22,9 @@ _BULLET = re.compile(r"^\s*[-*•]\s+(.+)$")
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 _TRAILING = ".,;:!?)»"
 _FONT = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+_HEADER = "#0b3a4c"  # bleu nuit du bandeau, sous la couleur de l'école (aperçu DATUM)
+_SIGNATURE_BG = "#e8eff3"
+_EMAIL = re.compile(r"^[^@\s<>\"']+@[^@\s<>\"']+\.[a-zA-Z]{2,}$")
 
 
 @dataclass(frozen=True)
@@ -96,26 +99,114 @@ def _body_html(body: str, color: str) -> str:
     return "".join(blocks)
 
 
-def _brand(settings: Settings, color: str) -> str:
+def _https(value: str) -> str | None:
+    value = value.strip()
+    return value if value.startswith("https://") and not re.search(r"[\s\"'<>]", value) else None
+
+
+def social_links(settings: Settings) -> list[tuple[str, str]]:
+    """Liens du pied (D-40) : une ligne « Libellé | https://… » par lien, les autres ignorées."""
+    links = []
+    for line in settings.email_social_links.splitlines():
+        label, _, url = line.partition("|")
+        if label.strip() and (safe := _https(url)):
+            links.append((label.strip(), safe))
+    return links
+
+
+def signature_lines(settings: Settings) -> list[str]:
+    """Signature de l'école sous le message (D-40) : équipe, établissement, contact, adresse."""
+    lines = [settings.email_signature_team.strip(), settings.email_signature_org.strip()]
+    lines.append(settings.email_contact_email.strip())
+    lines += [x.strip() for x in settings.email_postal_address.splitlines()]
+    return [x for x in lines if x]
+
+
+def _header(settings: Settings, color: str) -> str:
+    """En-tête (D-40) : le bandeau de l'école s'il est renseigné, sinon un bandeau sombre aux
+    couleurs de l'école (logo ou nom, phrase d'accroche), lisible même sans images."""
     name = html.escape(settings.email_brand_name.strip() or DEFAULT_BRAND_NAME)
-    logo = settings.email_logo_url.strip()
-    if logo.startswith("https://"):
+    banner = _https(settings.email_header_image_url)
+    if banner:
         return (
-            f'<img src="{html.escape(logo)}" alt="{name}" height="36" '
-            'style="display:block;border:0;height:36px;max-width:220px;width:auto;">'
+            f'<tr><td style="padding:0;"><img src="{html.escape(banner)}" alt="{name}" width="600" '
+            'style="display:block;border:0;width:100%;max-width:600px;height:auto;'
+            'border-radius:8px 8px 0 0;"></td></tr>'
         )
+    logo = _https(settings.email_logo_url)
+    mark = (
+        f'<img src="{html.escape(logo)}" alt="{name}" height="40" '
+        'style="display:block;border:0;height:40px;max-width:240px;width:auto;">'
+        if logo
+        else f'<span style="font-family:{_FONT};font-size:26px;font-weight:800;'
+        f'letter-spacing:0.5px;color:#ffffff;">{name}</span>'
+    )
+    tagline = settings.email_header_tagline.strip()
+    tagline_html = (
+        f'<p style="margin:10px 0 0;font-family:{_FONT};font-size:13px;color:#d7e6ee;">'
+        f"{html.escape(tagline, quote=False)}</p>"
+        if tagline
+        else ""
+    )
     return (
-        f'<span style="font-family:{_FONT};font-size:18px;font-weight:700;color:{color};">'
-        f"{name}</span>"
+        f'<tr><td bgcolor="{_HEADER}" style="padding:26px 28px;background:{_HEADER};'
+        f"background-image:linear-gradient(135deg,{color} 0%,{_HEADER} 70%);"
+        f'border-radius:8px 8px 0 0;">{mark}{tagline_html}</td></tr>'
+    )
+
+
+def _signature(settings: Settings, color: str) -> str:
+    team = settings.email_signature_team.strip()
+    org = settings.email_signature_org.strip()
+    contact = settings.email_contact_email.strip()
+    address = [x.strip() for x in settings.email_postal_address.splitlines() if x.strip()]
+    links = social_links(settings)
+    if not (team or org or contact or address or links):
+        return ""
+    parts = []
+    if team:
+        parts.append(
+            f'<p style="margin:0 0 2px;font-size:15px;font-weight:700;color:{_HEADER};">'
+            f"{html.escape(team, quote=False)}</p>"
+        )
+    if org:
+        parts.append(
+            f'<p style="margin:0 0 10px;color:#5b6670;">{html.escape(org, quote=False)}</p>'
+        )
+    if contact and _EMAIL.match(contact):
+        safe = html.escape(contact)
+        parts.append(
+            f'<p style="margin:0 0 2px;"><a href="mailto:{safe}" '
+            f'style="color:{color};text-decoration:none;">{safe}</a></p>'
+        )
+    for line in address:
+        parts.append(f'<p style="margin:0;color:#5b6670;">{html.escape(line, quote=False)}</p>')
+    if links:
+        anchors = ' <span style="color:#a0aab3;">·</span> '.join(
+            f'<a href="{html.escape(url)}" style="color:{color};text-decoration:none;">'
+            f"{html.escape(label, quote=False)}</a>"
+            for label, url in links
+        )
+        parts.append(f'<p style="margin:12px 0 0;">{anchors}</p>')
+    return (
+        f'<tr><td bgcolor="{_SIGNATURE_BG}" style="padding:22px 28px;background:{_SIGNATURE_BG};'
+        f'font-family:{_FONT};font-size:13px;line-height:1.55;">{"".join(parts)}</td></tr>'
     )
 
 
 def render(
     body: str, settings: Settings, *, ai_generated: bool, reviewed: bool = False
 ) -> RenderedEmail:
-    """Texte brut et HTML d'un message : corps, puis pied de message séparé."""
+    """Texte brut et HTML d'un message (D-40) : en-tête de l'école, corps, signature de l'école,
+    puis mention IA et désinscription. Le texte brut reste la version de référence."""
     lines = footer_lines(settings, ai_generated=ai_generated, reviewed=reviewed)
-    text = f"{body.rstrip()}\n\n-- \n" + "\n".join(lines) if lines else body
+    signature = signature_lines(settings)
+    links_text = [f"{label} : {url}" for label, url in social_links(settings)]
+    text = body.rstrip()
+    if signature or links_text:
+        text += "\n\n" + "\n".join(signature + links_text)
+    if lines:
+        text += "\n\n-- \n" + "\n".join(lines)
 
     color = settings.email_brand_color
     if not _COLOR.match(color):
@@ -131,9 +222,8 @@ def render(
             )
         footer_html += f'<p style="margin:0 0 6px;">{badge}{html.escape(line, quote=False)}</p>'
     footer_block = (
-        '<tr><td style="padding:0 28px 22px;">'
-        '<div style="border-top:1px solid #e3e6ea;padding-top:14px;'
-        f'font-family:{_FONT};font-size:12px;line-height:1.5;color:#6b7280;">{footer_html}</div></td></tr>'
+        f'<tr><td style="padding:14px 28px 20px;font-family:{_FONT};font-size:12px;'
+        f'line-height:1.5;color:#6b7280;">{footer_html}</td></tr>'
         if footer_html
         else ""
     )
@@ -146,10 +236,11 @@ def render(
         'style="background:#f4f5f7;"><tr><td align="center" style="padding:24px 12px;">'
         '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
         'style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e3e6ea;'
-        f'border-top:4px solid {color};border-radius:8px;">'
-        f'<tr><td style="padding:22px 28px 6px;">{_brand(settings, color)}</td></tr>'
-        f'<tr><td style="padding:14px 28px 10px;font-family:{_FONT};font-size:15px;'
+        'border-radius:8px;">'
+        f"{_header(settings, color)}"
+        f'<tr><td style="padding:26px 28px 10px;font-family:{_FONT};font-size:15px;'
         f'line-height:1.6;color:#1f2933;">{_body_html(body, color)}</td></tr>'
+        f"{_signature(settings, color)}"
         f"{footer_block}"
         "</table></td></tr></table></body></html>"
     )
