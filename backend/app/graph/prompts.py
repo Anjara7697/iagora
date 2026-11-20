@@ -131,6 +131,51 @@ def resources_block(resources: Sequence[dict[str, Any]]) -> str:
     )
 
 
+MAX_ATTACHMENTS = 2
+_ATTACHMENT_LINE = re.compile(
+    r"^[\s*_>-]*(?:pi[eè]ces?\s+jointes?|pj)[\s*_]*:\s*(.+?)[\s*_]*$", re.IGNORECASE
+)
+
+
+def files_block(files: Sequence[dict[str, Any]], channel: str | None) -> str:
+    """Documents de la campagne que le modèle peut joindre à un email (D-42)."""
+    if not is_email(channel):
+        return "Pièces jointes : impossibles sur ce canal ; n'annonce aucun document joint."
+    if not files:
+        return "Pièces jointes : aucune ; n'annonce aucun document joint."
+    lines = [
+        f"- {_inline(f.get('label', ''))}"
+        + (f" (à joindre : {_inline(f['usage'])})" if f.get("usage") else "")
+        for f in files
+    ]
+    return (
+        "Documents de la campagne : joins-en un seulement s'il répond au besoin du prospect, en "
+        "ajoutant à la toute fin du message une ligne « Pièce jointe : <nom exact> » "
+        f"({MAX_ATTACHMENTS} au plus). N'annonce jamais un document sans cette ligne.\n"
+        + "\n".join(lines)
+    )
+
+
+def split_attachments(
+    reply: str, files: Sequence[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], str]:
+    """Retire les lignes « Pièce jointe : … » du message et renvoie les documents de la campagne
+    qu'elles désignent (nom exact, sans majuscules ; un nom inconnu n'est jamais joint)."""
+    by_name = {" ".join(str(f.get("label", "")).split()).casefold(): f for f in files}
+    chosen: list[dict[str, Any]] = []
+    kept: list[str] = []
+    for line in reply.strip().splitlines():
+        match = _ATTACHMENT_LINE.match(line)
+        if not match:
+            kept.append(line)
+            continue
+        for name in re.split(r"[;,]", match.group(1)):
+            found = by_name.get(" ".join(name.strip(" \"'«»*.").split()).casefold())
+            if found is not None and found not in chosen and len(chosen) < MAX_ATTACHMENTS:
+                chosen.append(found)
+    return chosen, "\n".join(kept).strip()
+
+
 def imposed_subject(ctx: ProspectContext) -> str | None:
     """Objet imposé par la campagne (D-39), avec le prénom à la place de « {prénom} »."""
     subject = " ".join((ctx.campaign_subject or "").split())
@@ -370,6 +415,7 @@ Extraits de la base de connaissances validée (seule source de faits précis) :
 {knowledge}
 
 {resources_block(ctx.campaign_resources)}
+{files_block(ctx.campaign_files, ctx.channel)}
 
 Mission : {goal}
 {ask}

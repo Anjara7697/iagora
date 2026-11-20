@@ -145,6 +145,9 @@ class ProspectContext:
     # Campagne (D-39) : objet imposé du premier email et liens validés que l'agent peut partager.
     campaign_subject: str | None = None
     campaign_resources: list[dict[str, Any]] = field(default_factory=list)
+    # Documents de la campagne (D-42) que l'agent peut joindre à un email : id, label, usage,
+    # filename, campaign_id.
+    campaign_files: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

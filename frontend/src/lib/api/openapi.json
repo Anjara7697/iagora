@@ -643,6 +643,35 @@
         "title": "Body_upload_banner_api_v1_settings_email_banner_put",
         "type": "object"
       },
+      "Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PDF, PNG ou JPEG, 4 Mo au plus",
+            "title": "File",
+            "type": "string"
+          },
+          "label": {
+            "description": "Nom donné à l'agent",
+            "maxLength": 120,
+            "title": "Label",
+            "type": "string"
+          },
+          "usage": {
+            "default": "",
+            "description": "Quand le joindre",
+            "maxLength": 300,
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "label"
+        ],
+        "title": "Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post",
+        "type": "object"
+      },
       "Breakdown": {
         "properties": {
           "count": {
@@ -928,6 +957,51 @@
           "name"
         ],
         "title": "CampaignCreate",
+        "type": "object"
+      },
+      "CampaignFileRead": {
+        "description": "Document de campagne que l'agent peut joindre à un email (D-42), sans son contenu.",
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "usage": {
+            "default": "",
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "filename",
+          "content_type",
+          "size",
+          "created_at"
+        ],
+        "title": "CampaignFileRead",
         "type": "object"
       },
       "CampaignMembershipRead": {
@@ -6850,8 +6924,58 @@
         "title": "TemporaryPassword",
         "type": "object"
       },
+      "TodoAttachment": {
+        "description": "Document de campagne joint par l'agent (D-42), visible avant validation.",
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "TodoAttachment",
+        "type": "object"
+      },
       "TodoDraft": {
         "properties": {
+          "attachments": {
+            "default": [],
+            "description": "Documents de la campagne joints à l'email (D-42)",
+            "items": {
+              "$ref": "#/components/schemas/TodoAttachment"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
           "confidence": {
             "anyOf": [
               {
@@ -8996,6 +9120,219 @@
           }
         ],
         "summary": "Update Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/files": {
+      "get": {
+        "description": "Documents que l'agent peut joindre aux emails de cette campagne (D-42).",
+        "operationId": "list_campaign_files_api_v1_campaigns__campaign_id__files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignFileRead"
+                  },
+                  "title": "Response List Campaign Files Api V1 Campaigns  Campaign Id  Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Campaign Files",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "operationId": "upload_campaign_file_api_v1_campaigns__campaign_id__files_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignFileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upload Campaign File",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/files/{file_id}": {
+      "delete": {
+        "description": "Retire le document : un brouillon qui le joignait ne partira plus (D-42).",
+        "operationId": "delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Campaign File",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "get": {
+        "description": "Le document tel qu'il part en pièce jointe, pour le relire avant de valider un brouillon.",
+        "operationId": "download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/pdf": {},
+              "image/jpeg": {},
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Download Campaign File",
         "tags": [
           "campaigns"
         ]

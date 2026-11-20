@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CampaignAgentFiles from "@/components/campaign/CampaignAgentFiles";
 import CampaignAgentResources from "@/components/campaign/CampaignAgentResources";
 import CampaignOwnership from "@/components/campaign/CampaignOwnership";
 import { Btn, CheckCardGroup, Tag } from "@/components/ds/controls";
@@ -70,6 +71,7 @@ export default function CampaignSettings({
         busy={busy}
         onPatch={onPatch}
       />
+      <CampaignAgentFiles campaignId={campaign.id} canEdit={canEdit} />
     </div>
   );
 }

@@ -697,6 +697,49 @@ async def test_campaign_subject_and_links_reach_the_agent_and_invented_links_are
     assert retry and "datum-promo.example/offre" in retry[-1]  # le nouvel essai l'interdit
 
 
+async def test_the_agent_attaches_a_campaign_document_and_never_announces_a_missing_one(
+    client, env
+):
+    """D-42 : la ligne « Pièce jointe : » désigne un document de la campagne, retiré du texte et
+    joint au message ; « ci-joint » sans document n'est jamais envoyé."""
+    pid, mid, cid = await lead(client, "Avez-vous le programme détaillé ?")
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    saved = (
+        await client.post(
+            f"{API}/campaigns/{campaign_id}/files",
+            files={"file": ("brochure.pdf", b"%PDF-1.7\n" + b"0" * 32, "application/pdf")},
+            data={"label": "Brochure du programme", "usage": "quand il veut le programme"},
+        )
+    ).json()
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = (
+        "Bonjour Jean, voici le programme ci-joint.\nPièce jointe : Brochure du programme"
+    )
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Bonjour Jean, voici le programme ci-joint." == last["content"]
+    assert last["metadata"]["attachments"] == [
+        {
+            "id": saved["id"],
+            "label": "Brochure du programme",
+            "filename": "brochure.pdf",
+            "campaign_id": campaign_id,
+        }
+    ]
+    assert (
+        "- Brochure du programme (à joindre : quand il veut le programme)"
+        in (env.llm.generate_calls[0][0])
+    )
+
+    pid, mid, cid = await lead(client, "Pouvez-vous m'envoyer la brochure ?")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Bonjour Jean, vous trouverez la brochure ci-jointe."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"  # promesse sans document
+    retry = [system for system, _ in env.llm.generate_calls if "ATTENTION" in system]
+    assert retry and "document annoncé sans pièce jointe" in retry[-1]
+
+
 async def test_a_subject_line_is_never_kept_outside_the_first_contact_email(client, env):
     pid, mid, cid = await lead(client, "Bonjour, je regarde vos formations.")
     env.llm.qualification = Qualification(intent="interested")

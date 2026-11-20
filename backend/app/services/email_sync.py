@@ -35,6 +35,7 @@ from app.services import (
     agent_events,
     agent_settings,
     application_intake,
+    campaign_files,
     conversations,
     email_assets,
     email_format,
@@ -42,7 +43,7 @@ from app.services import (
     follow_ups,
 )
 from app.services.agent_settings import AgentMode
-from app.services.errors import ConflictError
+from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 from app.services.send_window import in_send_window
 
@@ -468,6 +469,19 @@ async def _deliver_claimed(
             report.skipped += 1
             report.notes.append("message automatique remis en brouillon pour validation")
             return
+    # D-42 : documents joints par l'agent ; un document retiré de la campagne entre-temps bloque
+    # l'envoi (le message l'annonce peut-être) au lieu de partir sans lui.
+    attachments: list[tuple[str, str, bytes]] = []
+    for item in (message.get("metadata") or {}).get("attachments") or []:
+        try:
+            found = await campaign_files.load_file(db, str(item.get("id", "")))
+        except NotFoundError:
+            label = str(item.get("label") or "document")
+            reason = f"pièce jointe retirée de la campagne : {label}"
+            await _finish(db, conv_id, message, "blocked", reason=reason, at=_now())
+            report.blocked += 1
+            return
+        attachments.append((found.filename, found.content_type, found.data))
     subject, in_reply_to, references = _thread_headers(doc, message)
     attempts = int((message.get("metadata") or {}).get("delivery_info", {}).get("attempts", 0)) + 1
     try:
@@ -494,6 +508,7 @@ async def _deliver_claimed(
                 inline_images=(
                     [(email_assets.BANNER_CID, banner.content_type, banner.data)] if banner else []
                 ),
+                attachments=attachments,
             )
         )
     except Exception as exc:  # EmailError, mais aussi en-tête invalide : jamais bloqué en `sending`

@@ -204,3 +204,57 @@ async def test_campaign_resources_and_imposed_subject_are_saved_and_validated(cl
         await client.patch(f"/api/v1/campaigns/{cid}", json={"email_subject": " ", "resources": []})
     ).json()
     assert cleared["email_subject"] is None and cleared["resources"] == []
+
+
+PDF = b"%PDF-1.7\n" + b"0" * 64
+
+
+async def test_campaign_documents_are_uploaded_listed_downloaded_and_removed(make_client):
+    """D-42 : documents de campagne (PDF, PNG, JPEG) vérifiés sur leur contenu, gardés en base."""
+    from app.models.enums import UserRole
+
+    admin = await make_client(UserRole.ADMIN)
+    cid = (await _create(admin)).json()["id"]
+    url = f"/api/v1/campaigns/{cid}/files"
+    r = await admin.post(
+        url,
+        files={"file": ("brochure.pdf", PDF, "application/pdf")},
+        data={"label": "  Brochure  du programme ", "usage": "quand il demande le programme"},
+    )
+    assert r.status_code == 201
+    saved = r.json()
+    assert saved["label"] == "Brochure du programme" and saved["filename"] == "brochure.pdf"
+    assert saved["content_type"] == "application/pdf" and saved["size"] == len(PDF)
+    assert [f["id"] for f in (await admin.get(url)).json()] == [saved["id"]]
+    download = await admin.get(f"{url}/{saved['id']}")
+    assert download.status_code == 200 and download.content == PDF
+    assert download.headers["content-type"] == "application/pdf"
+    assert "brochure.pdf" in download.headers["content-disposition"]
+
+    refusals = [
+        ({"file": ("x.gif", b"GIF89a" + b"0" * 20, "image/gif")}, {"label": "Gif"}, 422),
+        ({"file": ("faux.pdf", b"pas un pdf", "application/pdf")}, {"label": "Faux"}, 422),
+        ({"file": ("gros.pdf", PDF + b"0" * 4_000_000, "application/pdf")}, {"label": "Gros"}, 422),
+        ({"file": ("vide.pdf", PDF, "application/pdf")}, {"label": "   "}, 422),
+        ({"file": ("b.pdf", PDF, "application/pdf")}, {"label": "brochure DU programme"}, 409),
+    ]
+    for files, data, expected in refusals:
+        assert (await admin.post(url, files=files, data=data)).status_code == expected, data
+    for n in range(4):  # 5 documents au plus par campagne
+        ok = await admin.post(
+            url, files={"file": (f"{n}.pdf", PDF, "application/pdf")}, data={"label": f"Doc {n}"}
+        )
+        assert ok.status_code == 201
+    sixth = {"file": ("6.pdf", PDF, "application/pdf")}
+    assert (await admin.post(url, files=sixth, data={"label": "Doc 6"})).status_code == 409
+
+    for role in (UserRole.ADVISOR, UserRole.VIEWER):
+        other = await make_client(role)
+        assert (await other.get(url)).status_code == 200  # visible pour relire un brouillon
+        assert (await other.post(url, files=sixth, data={"label": "Autre"})).status_code == 403
+        assert (await other.delete(f"{url}/{saved['id']}")).status_code == 403
+
+    assert (await admin.delete(f"{url}/{saved['id']}")).status_code == 204
+    assert (await admin.get(f"{url}/{saved['id']}")).status_code == 404
+    assert (await admin.delete(f"{url}/{saved['id']}")).status_code == 404
+    assert (await admin.get(f"/api/v1/campaigns/{cid + 999}/files")).status_code == 404

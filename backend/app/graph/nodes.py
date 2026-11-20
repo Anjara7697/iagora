@@ -52,6 +52,13 @@ def _t(node: str, summary: str) -> list[TraceEntry]:
     return [TraceEntry(node=node, summary=summary)]
 
 
+def _attachment(found: dict[str, Any]) -> dict[str, Any]:
+    """Document joint, tel qu'il est gardé avec le message (D-42) : l'envoi le recharge par son
+    identifiant ; le conseiller le voit et peut le relire dans le brouillon."""
+    keys = ("id", "label", "filename", "campaign_id")
+    return {key: found[key] for key in keys if found.get(key) is not None}
+
+
 class WorkflowNodes:
     def __init__(self, deps: Deps) -> None:
         self.deps = deps
@@ -260,24 +267,39 @@ class WorkflowNodes:
         # D-39 : seuls les liens des ressources de la campagne et des sources peuvent partir.
         allowed_links = sources + [str(r.get("url", "")) for r in ctx.campaign_resources]
         conversation = [m.content for m in ctx.history]
+        # D-42 : documents joignables, sur l'email seulement ; la ligne « Pièce jointe : » est
+        # retirée du message avant toute vérification.
+        files = ctx.campaign_files if prompts.is_email(ctx.channel) else []
 
         claims: list[str] = []
+        attached: list[dict[str, Any]] = []
         try:
-            reply = (await self.deps.llm.generate(system, messages)).strip()
+            attached, reply = prompts.split_attachments(
+                await self.deps.llm.generate(system, messages), files
+            )
             extra = self.deps.tuning.extra_terms
             if not prompts.defers_to_advisor(reply):
-                claims = policy.ungrounded_claims(
-                    reply, sources, conversation=conversation, extra_terms=extra
-                ) + policy.unlisted_links(reply, allowed_links)
+                claims = (
+                    policy.ungrounded_claims(
+                        reply, sources, conversation=conversation, extra_terms=extra
+                    )
+                    + policy.unlisted_links(reply, allowed_links)
+                    + policy.attachment_claims(reply, attached)
+                )
             if claims:  # un seul nouvel essai, plus strict
-                reply = (
+                attached, reply = prompts.split_attachments(
                     await self.deps.llm.generate(
                         system + prompts.strict_retry_note(claims), messages
+                    ),
+                    files,
+                )
+                claims = (
+                    policy.ungrounded_claims(
+                        reply, sources, conversation=conversation, extra_terms=extra
                     )
-                ).strip()
-                claims = policy.ungrounded_claims(
-                    reply, sources, conversation=conversation, extra_terms=extra
-                ) + policy.unlisted_links(reply, allowed_links)
+                    + policy.unlisted_links(reply, allowed_links)
+                    + policy.attachment_claims(reply, attached)
+                )
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {
@@ -334,11 +356,14 @@ class WorkflowNodes:
                 "sources": [p.source for p in passages],
                 "confidence": q.confidence if q is not None else None,
                 **({"subject": subject} if subject else {}),
+                **({"attachments": [_attachment(f) for f in attached]} if attached else {}),
             },
             "needs_human": False,
             "trace": _t(
                 "generate_response",
-                f"réponse générée ({len(reply.split())} mots, {len(passages)} extrait(s))",
+                f"réponse générée ({len(reply.split())} mots, {len(passages)} extrait(s)"
+                + (f", joint : {', '.join(f['label'] for f in attached)}" if attached else "")
+                + ")",
             ),
         }
 

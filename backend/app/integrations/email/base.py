@@ -35,6 +35,8 @@ class OutboundEmail:
     html: str | None = None  # version mise en page ; le texte reste la version de référence
     # Images de la version HTML, intégrées au message (D-41) : (cid, type, octets).
     inline_images: list[tuple[str, str, bytes]] = field(default_factory=list)
+    # Documents joints (D-42) : (nom du fichier, type, octets).
+    attachments: list[tuple[str, str, bytes]] = field(default_factory=list)
 
 
 class EmailClient(Protocol):
