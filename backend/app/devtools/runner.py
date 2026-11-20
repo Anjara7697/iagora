@@ -92,8 +92,10 @@ async def new_demo_prospect(
     target_code: str = "ebihar_students",
     profile: dict[str, Any] | None = None,
     first_name: str = "Camille",
+    channel: str = "email",
 ) -> tuple[int, int, str]:
-    """Prospect fictif + conversation ouverte sur l'email. Retourne (prospect, rattachement, conversation)."""
+    """Prospect fictif + conversation ouverte sur `channel` (l'email par défaut). Retourne
+    (prospect, rattachement, conversation)."""
     campaign_id, source_id = await ensure_demo_campaign(session)
     token = secrets.token_hex(3)
     prospect, _, _ = await prospects.ingest_prospect(
@@ -113,7 +115,7 @@ async def new_demo_prospect(
     )
     memberships = await prospects.get_memberships(session, prospect.id)
     conv, _ = await conversations.create_conversation(
-        session, db, ConversationCreate(prospect_id=prospect.id, channel="email")
+        session, db, ConversationCreate(prospect_id=prospect.id, channel=channel)
     )
     return prospect.id, memberships[0].id, conv.id
 
@@ -266,6 +268,9 @@ async def observe(
         tail.append(m.content)
         if m.metadata.get("mode") not in CODE_WRITTEN_MODES:
             llm_written.append(m.content)
+        elif m.metadata.get("with_answer"):
+            # Réponse puis créneaux (D-33) : seule la réponse est rédigée par le modèle.
+            llm_written.append(m.content[: int(m.metadata.get("answer_chars") or 0)])
     return observed, tail, llm_written
 
 

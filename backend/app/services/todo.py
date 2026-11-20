@@ -17,6 +17,7 @@ from app.database.collections import AGENT_RUNS as RUNS
 from app.schemas.conversation import ConversationProspect
 from app.schemas.todo import (
     Priority,
+    TodoAttachment,
     TodoDraft,
     TodoItem,
     TodoKind,
@@ -164,6 +165,11 @@ async def list_todo(
                         created_at=_aware(message["created_at"]) or datetime.now(UTC),
                         subject=_reply_subject(doc) if doc["channel"] == "email" else None,
                         footer=footer if doc["channel"] == "email" else None,
+                        attachments=[
+                            TodoAttachment(**a)
+                            for a in meta.get("attachments") or []
+                            if isinstance(a, dict) and a.get("id") and a.get("label")
+                        ],
                     ),
                     recommendation=TodoRecommendation(
                         action=(

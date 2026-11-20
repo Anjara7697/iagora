@@ -42,7 +42,7 @@ déjà protégé dans le code et de ce que DATUM doit encore décider.
 | Traçabilité | Chaque décision de l'agent est journalisée avec sa justification ; chaque changement de score ou d'étape a un auteur | `agent_runs`, `score_events`, `stage_events` |
 | Minimisation vers le modèle | Pas de coordonnées envoyées au LLM | `graph/prompts.py` |
 | Exactitude | Aucun prix, date ou durée inventés : vérification par le code, sinon transfert | `policy.py::ungrounded_claims` |
-| Transparence | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain ; la **mention IA** est ajoutée par le code à chaque email rédigé par l'agent, sans pouvoir être supprimée | `prompts.py::IDENTITY`, `services/email_format.py` |
+| Transparence | L'agent ne se fait jamais passer pour un humain et répond franchement s'il est interrogé ; la **mention IA** est ajoutée par le code à chaque email rédigé par l'agent, sans pouvoir être supprimée : « relu par un conseiller » si le brouillon a été validé, sinon « rédigé par un assistant virtuel » (D-32) | `prompts.py::IDENTITY`, `services/email_format.py` |
 | Pas de scraping (S-08) | Uniquement les API officielles | [decisions.md](decisions.md) D-11 |
 | Sécurité | JWT, rôles, argon2, limitation des connexions, garde-fous de production, bases non exposées, secrets hors Git | [architecture.md](architecture.md) |
 | Droit à l'effacement | Effacement définitif par un administrateur (fiche, échanges, rendez-vous, relances, conversation et traces de l'agent), liste de suppression par empreinte pour ne pas recontacter ; commande de purge par durée, sans exécution automatique | `services/erasure.py`, [effacement-rgpd.md](effacement-rgpd.md) |
@@ -53,11 +53,15 @@ déjà protégé dans le code et de ce que DATUM doit encore décider.
 ### 3.1 Mention IA systématique (AI Act, art. 50 ; tâche 27 du cahier des charges) : faite
 
 Tout email rédigé par l'agent porte, dans son pied de message, une mention IA ajoutée **par le code** à
-l'envoi (`services/email_format.py`), après validation éventuelle du conseiller : l'agent n'a donc pas à
-y penser et un conseiller ne peut pas l'oublier. Elle ne peut pas être désactivée ; sa formulation se règle
-dans Paramètres → Emails. Les messages écrits à la main par un conseiller ne la portent pas. Des tests
-vérifient sa présence dans l'email envoyé (texte et HTML) et son absence sur un message humain.
-**À faire valider par DATUM** : la formulation exacte.
+l'envoi (`services/email_format.py`) : l'agent n'a donc pas à y penser et un conseiller ne peut pas
+l'oublier. Deux formulations (D-32) : « Message préparé avec l'aide d'un assistant IA et relu par un
+conseiller de DATUM Academy. » quand un conseiller a validé le brouillon, le cas normal en production ;
+« Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy. » pour un message parti sans
+relecture. Elles ne peuvent pas être désactivées ; leur formulation se règle dans Paramètres → Emails. Les
+messages écrits à la main par un conseiller n'en portent pas. Dans le texte, l'agent ne se présente pas comme
+une IA de lui-même, mais ne se fait jamais passer pour un humain et le dit franchement si on le lui demande.
+Des tests vérifient les deux mentions (texte et HTML) et leur absence sur un message humain.
+**À faire valider par DATUM et le DPO** : les deux formulations.
 
 ### 3.2 Droit à l'effacement et durée de conservation : effacement fait, durée à décider
 

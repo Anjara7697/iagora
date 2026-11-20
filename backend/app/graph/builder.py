@@ -47,7 +47,25 @@ _ROUTES = {
 
 
 def route_action(state: SalesAgentState) -> str:
-    return _ROUTES[state["decision"].action]
+    decision = state["decision"]
+    if decision.action is Action.PROPOSE_MEETING and decision.answer_first:
+        return "generate_response"  # D-33 : répondre d'abord, les créneaux suivent
+    return _ROUTES[decision.action]
+
+
+def after_reply(state: SalesAgentState) -> str:
+    if state.get("needs_human"):
+        return "human_handoff"
+    if state["decision"].action is Action.PROPOSE_MEETING:
+        return "get_calendar_slots"
+    return "send_message"
+
+
+def after_slots(state: SalesAgentState) -> str:
+    if state.get("needs_human"):
+        return "human_handoff"
+    # Réponse déjà rédigée mais pas de créneau (agenda absent) : la réponse part seule.
+    return "propose_meeting" if state.get("slots") else "send_message"
 
 
 def handoff_or(next_node: str) -> Any:
@@ -77,10 +95,12 @@ def build_workflow(deps: Deps) -> Any:
 
     graph.add_conditional_edges("decide_next_action", route_action, sorted(set(_ROUTES.values())))
     graph.add_conditional_edges(
-        "generate_response", handoff_or("send_message"), ["human_handoff", "send_message"]
+        "generate_response",
+        after_reply,
+        ["human_handoff", "get_calendar_slots", "send_message"],
     )
     graph.add_conditional_edges(
-        "get_calendar_slots", handoff_or("propose_meeting"), ["human_handoff", "propose_meeting"]
+        "get_calendar_slots", after_slots, ["human_handoff", "propose_meeting", "send_message"]
     )
     graph.add_conditional_edges(
         "book_meeting", handoff_or("send_message"), ["human_handoff", "send_message"]

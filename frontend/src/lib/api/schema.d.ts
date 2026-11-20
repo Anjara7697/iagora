@@ -407,6 +407,51 @@ export interface paths {
         patch: operations["update_campaign_api_v1_campaigns__campaign_id__patch"];
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Campaign Files
+         * @description Documents que l'agent peut joindre aux emails de cette campagne (D-42).
+         */
+        get: operations["list_campaign_files_api_v1_campaigns__campaign_id__files_get"];
+        put?: never;
+        /** Upload Campaign File */
+        post: operations["upload_campaign_file_api_v1_campaigns__campaign_id__files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/{campaign_id}/files/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Campaign File
+         * @description Le document tel qu'il part en pièce jointe, pour le relire avant de valider un brouillon.
+         */
+        get: operations["download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Campaign File
+         * @description Retire le document : un brouillon qui le joignait ne partira plus (D-42).
+         */
+        delete: operations["delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/first-contacts": {
         parameters: {
             query?: never;
@@ -835,6 +880,109 @@ export interface paths {
          *     Refusé en production : cette opération est un outil de recette.
          */
         delete: operations["purge_demo_data_api_v1_demo_data_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Runs
+         * @description Passages du plus récent au plus ancien, sans le rapport détaillé (indicateurs inclus).
+         */
+        get: operations["list_runs_api_v1_evaluations_get"];
+        put?: never;
+        /**
+         * Start Run
+         * @description Lance un passage en tâche de fond ; suivre son avancement avec `GET /evaluations/{id}`.
+         */
+        post: operations["start_run_api_v1_evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catalog
+         * @description Suites, cas et conversations disponibles, modèle et embeddings utilisables.
+         */
+        get: operations["catalog_api_v1_evaluations_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Report
+         * @description Ajoute à l'historique un rapport JSON produit en ligne de commande (`--json`).
+         */
+        post: operations["import_report_api_v1_evaluations_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_evaluations__run_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Run */
+        delete: operations["delete_run_api_v1_evaluations__run_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Run */
+        patch: operations["update_run_api_v1_evaluations__run_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/evaluations/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description Arrête le passage en cours ; les résultats déjà obtenus sont gardés.
+         */
+        post: operations["cancel_run_api_v1_evaluations__run_id__cancel_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1513,6 +1661,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/email/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Banner
+         * @description Bandeau chargé (D-41), pour l'afficher dans Paramètres ; 404 s'il n'y en a pas.
+         */
+        get: operations["get_banner_api_v1_settings_email_banner_get"];
+        /** Upload Banner */
+        put: operations["upload_banner_api_v1_settings_email_banner_put"];
+        post?: never;
+        /** Delete Banner */
+        delete: operations["delete_banner_api_v1_settings_email_banner_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/email/preview": {
         parameters: {
             query?: never;
@@ -2155,6 +2325,33 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** Body_upload_banner_api_v1_settings_email_banner_put */
+        Body_upload_banner_api_v1_settings_email_banner_put: {
+            /**
+             * File
+             * @description PNG ou JPEG, 400 ko au plus, 600 px de large
+             */
+            file: string;
+        };
+        /** Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post */
+        Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post: {
+            /**
+             * File
+             * @description PDF, PNG ou JPEG, 4 Mo au plus
+             */
+            file: string;
+            /**
+             * Label
+             * @description Nom donné à l'agent
+             */
+            label: string;
+            /**
+             * Usage
+             * @description Quand le joindre
+             * @default
+             */
+            usage: string;
+        };
         /** Breakdown */
         Breakdown: {
             /** Count */
@@ -2254,6 +2451,32 @@ export interface components {
             /** Target Codes */
             target_codes?: string[];
         };
+        /**
+         * CampaignFileRead
+         * @description Document de campagne que l'agent peut joindre à un email (D-42), sans son contenu.
+         */
+        CampaignFileRead: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Size */
+            size: number;
+            /**
+             * Usage
+             * @default
+             */
+            usage: string;
+        };
         /** CampaignMembershipRead */
         CampaignMembershipRead: {
             /** Assigned Advisor Id */
@@ -2338,12 +2561,19 @@ export interface components {
             created_at: string;
             /** Description */
             description: string | null;
+            /** Email Subject */
+            email_subject?: string | null;
             /** End Date */
             end_date: string | null;
             /** Id */
             id: number;
             /** Name */
             name: string;
+            /**
+             * Resources
+             * @default []
+             */
+            resources: components["schemas"]["CampaignResource"][];
             /** Responsible Advisor Active */
             responsible_advisor_active?: boolean | null;
             /** Responsible Advisor Id */
@@ -2368,6 +2598,28 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * CampaignResource
+         * @description Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle.
+         */
+        CampaignResource: {
+            /**
+             * Label
+             * @example Inscription au Master eBIHAR
+             */
+            label: string;
+            /**
+             * Url
+             * @example https://www.datumacademy.com/fr/masters/eBIHAR
+             */
+            url: string;
+            /**
+             * Usage
+             * @description Quand l'agent doit le proposer
+             * @default
+             */
+            usage: string;
         };
         /**
          * CampaignStats
@@ -2408,10 +2660,20 @@ export interface components {
         CampaignUpdate: {
             /** Description */
             description?: string | null;
+            /**
+             * Email Subject
+             * @description Objet imposé du premier email ; vide : écrit par l'agent
+             */
+            email_subject?: string | null;
             /** End Date */
             end_date?: string | null;
             /** Name */
             name?: string | null;
+            /**
+             * Resources
+             * @description Remplace l'ensemble des ressources
+             */
+            resources?: components["schemas"]["CampaignResource"][] | null;
             /** Start Date */
             start_date?: string | null;
             status?: components["schemas"]["CampaignStatus"] | null;
@@ -3184,6 +3446,30 @@ export interface components {
             /** Total Score */
             total_score: number;
         };
+        /** ImportPayload */
+        ImportPayload: {
+            /** File Name */
+            file_name?: string | null;
+            /** Label */
+            label: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Ran At
+             * @description Date du passage (défaut : maintenant)
+             */
+            ran_at?: string | null;
+            /**
+             * Report
+             * @description JSON écrit par --json (eval-agent, …)
+             */
+            report: {
+                [key: string]: unknown;
+            };
+        };
         /** ImportReport */
         ImportReport: {
             /**
@@ -3869,6 +4155,81 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * RunSettings
+         * @description Réglages d'un passage. Ceux qui ne concernent pas la suite choisie sont ignorés.
+         */
+        RunSettings: {
+            /** Ablation */
+            ablation?: ("sans-rag" | "sans-garde-chiffres") | null;
+            /** Categories */
+            categories?: string[];
+            /**
+             * Cleanup
+             * @description Supprimer les prospects fictifs à la fin
+             * @default true
+             */
+            cleanup: boolean;
+            /**
+             * Ids
+             * @description Vide : tout
+             */
+            ids?: string[];
+            /** Label */
+            label: string;
+            /**
+             * Live
+             * @description Vrai modèle (sinon faux modèle scripté, gratuit)
+             * @default false
+             */
+            live: boolean;
+            /**
+             * Min Score
+             * @description Seuil essayé (base)
+             */
+            min_score?: number | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Pause
+             * @description Secondes entre deux cas (quota)
+             * @default 0
+             */
+            pause: number;
+            /**
+             * Price In
+             * @description Prix par million de jetons (entrée)
+             */
+            price_in?: number | null;
+            /**
+             * Price Out
+             * @description Prix par million de jetons (sortie)
+             */
+            price_out?: number | null;
+            /**
+             * Real Rag
+             * @description Vraie recherche sur la base de démonstration
+             * @default false
+             */
+            real_rag: boolean;
+            /**
+             * Suite
+             * @enum {string}
+             */
+            suite: "agent" | "conversations" | "kb";
+        };
+        /** RunUpdate */
+        RunUpdate: {
+            /** Label */
+            label?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Ran At */
+            ran_at?: string | null;
+        };
         /** RuntimeSettingsRead */
         RuntimeSettingsRead: {
             /**
@@ -3939,9 +4300,14 @@ export interface components {
             calendar_work_start_hour: number;
             /**
              * Email Ai Notice
-             * @default Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.
+             * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
              */
             email_ai_notice: string;
+            /**
+             * Email Ai Notice Reviewed
+             * @default Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.
+             */
+            email_ai_notice_reviewed: string;
             /**
              * Email Brand Color
              * @default #1f4fd8
@@ -3953,6 +4319,11 @@ export interface components {
              */
             email_brand_name: string;
             /**
+             * Email Contact Email
+             * @default
+             */
+            email_contact_email: string;
+            /**
              * Email Create Unknown Senders
              * @default true
              */
@@ -3963,6 +4334,16 @@ export interface components {
              */
             email_footer: string;
             /**
+             * Email Header Image Url
+             * @default
+             */
+            email_header_image_url: string;
+            /**
+             * Email Header Tagline
+             * @default
+             */
+            email_header_tagline: string;
+            /**
              * Email Logo Url
              * @default
              */
@@ -3972,6 +4353,27 @@ export interface components {
              * @default 60
              */
             email_poll_seconds: number;
+            /**
+             * Email Postal Address
+             * @default
+             */
+            email_postal_address: string;
+            /**
+             * Email Signature Org
+             * @default
+             */
+            email_signature_org: string;
+            /**
+             * Email Signature Team
+             * @default
+             */
+            email_signature_team: string;
+            /**
+             * Email Social Links
+             * @description Un lien par ligne : « Libellé | https://… »
+             * @default
+             */
+            email_social_links: string;
             /**
              * Embedding Model
              * @description Lecture seule : en changer impose kb-reindex
@@ -4097,9 +4499,14 @@ export interface components {
             calendar_work_start_hour: number;
             /**
              * Email Ai Notice
-             * @default Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.
+             * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
              */
             email_ai_notice: string;
+            /**
+             * Email Ai Notice Reviewed
+             * @default Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.
+             */
+            email_ai_notice_reviewed: string;
             /**
              * Email Brand Color
              * @default #1f4fd8
@@ -4111,6 +4518,11 @@ export interface components {
              */
             email_brand_name: string;
             /**
+             * Email Contact Email
+             * @default
+             */
+            email_contact_email: string;
+            /**
              * Email Create Unknown Senders
              * @default true
              */
@@ -4121,6 +4533,16 @@ export interface components {
              */
             email_footer: string;
             /**
+             * Email Header Image Url
+             * @default
+             */
+            email_header_image_url: string;
+            /**
+             * Email Header Tagline
+             * @default
+             */
+            email_header_tagline: string;
+            /**
              * Email Logo Url
              * @default
              */
@@ -4130,6 +4552,27 @@ export interface components {
              * @default 60
              */
             email_poll_seconds: number;
+            /**
+             * Email Postal Address
+             * @default
+             */
+            email_postal_address: string;
+            /**
+             * Email Signature Org
+             * @default
+             */
+            email_signature_org: string;
+            /**
+             * Email Signature Team
+             * @default
+             */
+            email_signature_team: string;
+            /**
+             * Email Social Links
+             * @description Un lien par ligne : « Libellé | https://… »
+             * @default
+             */
+            email_social_links: string;
             /**
              * Follow Up Max Per Silence
              * @default 3
@@ -4442,8 +4885,28 @@ export interface components {
             /** Temporary Password */
             temporary_password: string;
         };
+        /**
+         * TodoAttachment
+         * @description Document de campagne joint par l'agent (D-42), visible avant validation.
+         */
+        TodoAttachment: {
+            /** Campaign Id */
+            campaign_id?: number | null;
+            /** Filename */
+            filename?: string | null;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
         /** TodoDraft */
         TodoDraft: {
+            /**
+             * Attachments
+             * @description Documents de la campagne joints à l'email (D-42)
+             * @default []
+             */
+            attachments: components["schemas"]["TodoAttachment"][];
             /** Confidence */
             confidence?: number | null;
             /** Content */
@@ -5547,6 +6010,137 @@ export interface operations {
             };
         };
     };
+    list_campaign_files_api_v1_campaigns__campaign_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFileRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_campaign_file_api_v1_campaigns__campaign_id__files_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFileRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "application/pdf": unknown;
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     preview_first_contacts_api_v1_campaigns__campaign_id__first_contacts_get: {
         parameters: {
             query?: never;
@@ -6314,6 +6908,252 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    list_runs_api_v1_evaluations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    start_run_api_v1_evaluations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_evaluations_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    import_report_api_v1_evaluations_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_evaluations__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_run_api_v1_evaluations__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_run_api_v1_evaluations__run_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_api_v1_evaluations__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7640,6 +8480,77 @@ export interface operations {
         };
     };
     reset_runtime_settings_api_v1_settings_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_banner_api_v1_settings_email_banner_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                };
+            };
+        };
+    };
+    upload_banner_api_v1_settings_email_banner_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_banner_api_v1_settings_email_banner_put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_banner_api_v1_settings_email_banner_delete: {
         parameters: {
             query?: never;
             header?: never;

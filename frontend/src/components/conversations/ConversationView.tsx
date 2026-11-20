@@ -130,6 +130,9 @@ export default function ConversationView({
                 {Array.isArray(sources) && sources.length > 0 && (
                   <div className="type-caption text-muted">Sources : {sources.join(" ; ")}</div>
                 )}
+                {attachmentNames(m.metadata.attachments) && (
+                  <div className="type-caption text-muted">Pièce jointe : {attachmentNames(m.metadata.attachments)}</div>
+                )}
               </div>
               {fromProspect && <div className="type-caption text-muted">Reçu</div>}
               {line && (
@@ -141,4 +144,13 @@ export default function ConversationView({
       })}
     </div>
   );
+}
+
+/** Documents de la campagne joints au message par l'agent (D-42), par leur nom. */
+function attachmentNames(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const names = value
+    .map((a) => (a && typeof a === "object" && "label" in a ? String((a as { label: unknown }).label) : ""))
+    .filter(Boolean);
+  return names.length ? names.join(", ") : null;
 }

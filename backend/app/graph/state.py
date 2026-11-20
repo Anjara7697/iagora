@@ -53,7 +53,8 @@ class Qualification(BaseModel):
         False,
         description=(
             "Vrai si le prospect demande quelles formations ou quels programmes existent, sans "
-            "demander de détail précis (durée, prix, admission, financement)"
+            "demander de détail précis (durée, prix, admission, financement). Une question sur le "
+            "contenu d'un programme (cours, matières) n'en est pas une"
         ),
     )
     chosen_slot: int | None = Field(
@@ -61,9 +62,17 @@ class Qualification(BaseModel):
     )
     study_level: str | None = Field(None, description="Niveau d'études, si le prospect l'indique")
     field_of_study: str | None = Field(None, description="Domaine d'études")
-    current_situation: str | None = Field(None, description="Situation professionnelle actuelle")
+    current_situation: str | None = Field(
+        None, description="Situation actuelle : en études, en poste (et chez qui, s'il le dit)…"
+    )
     goal: str | None = Field(None, description="Objectif du prospect (ce qu'il recherche)")
     availability: str | None = Field(None, description="Disponibilités ou échéances indiquées")
+    start_term: str | None = Field(
+        None, description="Rentrée ou date de début visée, si le prospect l'indique"
+    )
+    location: str | None = Field(
+        None, description="Ville ou format souhaité (sur place, à distance), si indiqué"
+    )
     company_need: str | None = Field(None, description="Besoin de l'entreprise (profils cherchés)")
 
     def profile_updates(self) -> dict[str, str]:
@@ -74,6 +83,8 @@ class Qualification(BaseModel):
             "goal",
             "availability",
             "company_need",
+            "start_term",
+            "location",
         )
         return {k: v.strip() for k in keys if (v := getattr(self, k)) and v.strip()}
 
@@ -82,6 +93,9 @@ class Qualification(BaseModel):
 class Decision:
     action: Action
     reason: str  # justification en clair : toute décision automatisée est expliquée (OB-05)
+    # PROPOSE_MEETING seulement : répondre d'abord à la question, puis proposer les créneaux dans
+    # le même message (D-33).
+    answer_first: bool = False
 
 
 @dataclass(frozen=True)

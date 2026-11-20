@@ -5,9 +5,10 @@ import typing
 
 import pytest
 from app.config import Settings
-from app.devtools import commands, evaluation
+from app.devtools import commands, conversation_eval, evaluation, kb_evaluation
 from app.devtools.evaluation import CaseResult, EvalCase, LexicalKnowledge
 from app.devtools.fakes import FakeLLM
+from app.graph import policy
 from app.graph.ports import LLMUnavailableError
 from app.graph.state import Action, Intent, Qualification
 from app.models import Prospect
@@ -45,6 +46,27 @@ def test_dataset_is_large_varied_and_well_formed():
     assert any(c.must_mention for c in CASES)
 
 
+def test_expected_facts_are_not_already_in_the_question():
+    """Un fait attendu que le prospect écrit lui-même serait « sourcé » par simple écho : la mesure
+    compterait conforme une réponse inventée (« le programme aborde ces sujets »)."""
+    echoes = [
+        (where, alt)
+        for where, said, expected in _expectations()
+        for item in expected
+        for alt in item.split("|")
+        if said and policy.normalize(alt) in policy.normalize(said)
+    ]
+    assert echoes == []
+
+
+def _expectations():
+    for c in CASES:
+        yield c.id, c.message, c.must_mention
+    for conv in conversation_eval.load_conversations():
+        for i, t in enumerate(conv.turns, 1):
+            yield f"{conv.id}#{i}", t.says, t.must_mention
+
+
 def test_cases_can_be_filtered_by_id_and_category():
     assert [c.id for c in evaluation.load_cases(["opt_stop"])] == ["opt_stop"]
     assert {c.category for c in evaluation.load_cases(categories=["sensible"])} == {"sensible"}
@@ -71,8 +93,8 @@ async def test_lexical_knowledge_finds_the_fact_and_respects_the_programme():
     async def search(query: str, target: str = "ebihar_students"):
         return await kb.search(query, target, include_demo=True)
 
-    found = await search("Combien de temps dure le programme eBIHAR ?")
-    assert found and "18 mois" in found[0].text and "FICTIF" in found[0].source
+    found = await search("Combien de temps dure le Master 2 eBIHAR ?")
+    assert found and "10 mois" in found[0].text and "FICTIF" in found[0].source
     assert await search("Quel est le taux de réussite au diplôme ?") == []
     assert await search("Bonjour.") == []
     # Les Compagnons n'est pas renvoyé à un prospect eBIHAR (comme la vraie base).
@@ -93,11 +115,42 @@ async def test_recording_knowledge_keeps_demo_documents_for_fictive_prospects():
     assert found and kb.returned == found
 
 
+async def test_imported_documents_only_never_serves_demo_documents():
+    """`--cas` : la mesure porte sur les vrais documents d'une campagne, jamais sur les faits
+    fictifs de démonstration, même si l'agent les autorise pour son prospect fictif."""
+    kb = evaluation.ImportedDocumentsOnly(LexicalKnowledge())
+    question = "Combien de temps dure le programme eBIHAR ?"
+    assert await kb.search(question, "ebihar_students", include_demo=True) == []
+
+
+def test_local_case_files_are_loaded_from_their_path(tmp_path):
+    """Jeu de cas local (hors Git, D-28) : même format que les jeux du dépôt."""
+    agent = tmp_path / "cas.json"
+    agent.write_text(json.dumps({"cases": [{"id": "x", "category": "c", "message": "Prix ?",
+                                            "actions": ["continue_conversation"]}]}),
+                     encoding="utf-8")  # fmt: skip
+    assert [c.id for c in evaluation.load_cases(path=agent)] == ["x"]
+    convs = tmp_path / "conv.json"
+    turn = {"says": "Bonjour"}
+    convs.write_text(json.dumps({"conversations": [{"id": "y", "title": "T", "turns": [turn]}]}),
+                     encoding="utf-8")  # fmt: skip
+    assert [c.id for c in conversation_eval.load_conversations(path=convs)] == ["y"]
+    kb = tmp_path / "kb.json"
+    kb.write_text(json.dumps([{"question": "Prix ?", "target": "ebihar_students",
+                               "expect": "tarifs"}]), encoding="utf-8")  # fmt: skip
+    assert kb_evaluation.load_cases(kb)[0].expect == "tarifs"
+    assert commands._cases_file(str(agent)) == {"path": agent}
+    assert commands._cases_file(None) == {}
+    with pytest.raises(SystemExit, match="introuvable"):
+        commands._cases_file(str(tmp_path / "absent.json"))
+
+
 # --- Mesures : chiffres inventés avant / après les garde-fous, variantes d'ablation ---
 
 
 async def test_invented_price_is_counted_raw_but_never_sent(session_factory, mongo_db):
-    [r] = await play(session_factory, mongo_db, ["prix_cout"])
+    """La base donne un tarif, le modèle en écrit un autre : compté, mais jamais envoyé."""
+    [r] = await play(session_factory, mongo_db, ["prix_faux"])
     assert any(r.raw_claims), "le modèle a écrit un prix non sourcé"
     assert r.sent_claims == [] and r.handoff_reason == "reponse_non_verifiable"
     s = evaluation.summarize([r])
@@ -116,7 +169,7 @@ async def test_invented_conditions_and_spelled_durations_are_never_sent(
 
 
 async def test_without_the_figure_check_the_invented_price_is_sent(session_factory, mongo_db):
-    [r] = await play(session_factory, mongo_db, ["prix_cout"], ablation="sans-garde-chiffres")
+    [r] = await play(session_factory, mongo_db, ["prix_faux"], ablation="sans-garde-chiffres")
     assert r.sent_claims and not r.ok
     assert evaluation.summarize([r]).sent_hallucination.ok == 1
     # La variante ne fuit pas : la vérification réelle est restaurée après le cas.
@@ -217,7 +270,7 @@ def test_cost_is_only_computed_when_prices_are_given():
 def test_grounded_answer_accepts_alternatives_and_ignores_accents():
     r = _result("kb_langue", llm_written=["Les cours sont en Français."])
     assert r.grounded_ok is True
-    r = _result("kb_admission_ebihar", llm_written=["Il faut un Bac +2."])
+    r = _result("kb_bac4_ebihar", llm_written=["Vous pouvez entrer en 2ème année."])
     assert r.grounded_ok is True
     r = _result("kb_duree_ebihar", llm_written=["Je n'ai pas cette information."])
     assert r.grounded_ok is False
@@ -236,6 +289,19 @@ async def test_reports_are_readable(session_factory, mongo_db):
     data = json.loads(evaluation.to_json(results, s, mode="test"))
     assert data["summary"]["cases"] == 3 and len(data["cases"]) == 3
     assert data["meta"] == {"mode": "test"}
+
+
+async def test_reports_keep_what_the_model_wrote_before_the_guards(session_factory, mongo_db):
+    """Le rapport garde le brouillon du modèle et les extraits consultés : un transfert ou un refus
+    s'explique sans rejouer le cas (ici, un prix inventé bloqué)."""
+    results = await play(session_factory, mongo_db, ["prix_faux", "kb_duree_ebihar"])
+    data = json.loads(evaluation.to_json(results, evaluation.summarize(results), mode="test"))
+    faux, duree = data["cases"]
+    # Le brouillon refusé, puis chaque réécriture demandée par le garde-fou.
+    assert faux["raw_replies"][0] == "La formation eBIHAR coûte 4500 euros."
+    assert len(faux["raw_replies"]) == len(faux["raw_claims"]) > 1
+    assert "4500" not in faux["reply"] and faux["reason"]
+    assert duree["sources"] and all("FICTIF" in s for s in duree["sources"])
 
 
 # --- Commande complète (hors ligne) et garde production ---

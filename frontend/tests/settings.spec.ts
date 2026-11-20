@@ -17,11 +17,19 @@ const current = {
   agent_min_confidence: 0.5,
   agent_extra_terms: "",
   email_footer: "Répondez STOP.",
-  email_ai_notice:
-    "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_ai_notice: "Ce message a été rédigé par un assistant virtuel (IA).",
+  email_ai_notice_reviewed:
+    "Message préparé avec l'aide d'un assistant IA et relu par un conseiller.",
   email_brand_name: "DATUM Academy",
   email_brand_color: "#1f4fd8",
   email_logo_url: "",
+  email_header_image_url: "",
+  email_header_tagline: "",
+  email_signature_team: "",
+  email_signature_org: "",
+  email_contact_email: "",
+  email_postal_address: "",
+  email_social_links: "",
   email_create_unknown_senders: true,
   email_poll_seconds: 60,
   calendar_timezone: "Europe/Paris",
@@ -44,6 +52,7 @@ async function mockApi(
   role = "ADMIN",
   opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean } = {},
 ) {
+  let banner = false;
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -69,6 +78,19 @@ async function mockApi(
       body = opts.llmFails
         ? { ok: false, model: "gemini-2.5-flash", detail: "clé refusée" }
         : { ok: true, model: "gemini-2.5-flash", detail: "ok" };
+    } else if (path === "/settings/email/banner") {
+      // Bandeau chargé (D-41) : absent jusqu'à l'envoi d'une image, puis renvoyé tel quel.
+      if (request.method() === "PUT") {
+        calls.push({ banner: request.headers()["content-type"] ?? "" });
+        banner = true;
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      if (banner) {
+        await route.fulfill({ status: 200, contentType: "image/png", body: PNG });
+        return;
+      }
+      code = 404;
     } else if (path === "/settings/email/preview") {
       calls.push({ preview: request.postDataJSON() });
       body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
@@ -79,6 +101,12 @@ async function mockApi(
     await route.fulfill({ status: code, json: body });
   });
 }
+
+/** Image PNG minimale (1 × 1 pixel transparent). */
+const PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
 
 /** Affiche une catégorie de paramètres depuis la navigation latérale. */
 async function goSection(page: Page, name: string) {
@@ -146,9 +174,12 @@ test("régler la mise en page des emails et voir un aperçu", async ({
   await page.goto("/settings");
   await goSection(page, "Emails");
   const emails = page.getByRole("region", { name: "Emails" });
-  const notice = emails.getByLabel("Mention « message rédigé avec une IA »");
-  await expect(notice).toHaveValue(/assistant virtuel/);
-  await notice.fill("Message préparé par notre assistant IA.");
+  const notice = emails.getByLabel("Mention IA, message relu par un conseiller");
+  await expect(notice).toHaveValue(/relu par un conseiller/);
+  await notice.fill("Message préparé par notre assistant IA et relu par l’équipe.");
+  await expect(
+    emails.getByLabel("Mention IA, message envoyé sans relecture"),
+  ).toHaveValue(/assistant virtuel/);
   await emails.getByLabel("Nom affiché en tête d’email").fill("École test");
   // ColorPicker HeroUI : le bouton ouvre le sélecteur, le code se saisit dans son champ.
   await emails.getByRole("button", { name: /^Couleur principale des emails : #1f4fd8/ }).click();
@@ -160,6 +191,10 @@ test("régler la mise en page des emails et voir un aperçu", async ({
   await emails
     .getByLabel("Logo (adresse https, facultatif)")
     .fill("https://exemple.test/logo.png");
+  // Design DATUM (D-40) : phrase d'accroche, signature et liens du pied.
+  await emails.getByLabel("Phrase d’accroche du bandeau").fill("Nous ouvrons la voie aux leaders IT de demain");
+  await emails.getByLabel("Signature : équipe").fill("L’équipe admissions");
+  await emails.getByLabel("Liens du pied d’email").fill("LinkedIn | https://linkedin.example/datum");
   await emails.getByRole("button", { name: "Voir un exemple d’email" }).click();
   await expect(
     page
@@ -174,10 +209,13 @@ test("régler la mise en page des emails et voir un aperçu", async ({
     put: Record<string, unknown>;
   };
   expect(put.put).toMatchObject({
-    email_ai_notice: "Message préparé par notre assistant IA.",
+    email_ai_notice_reviewed: "Message préparé par notre assistant IA et relu par l’équipe.",
     email_brand_name: "École test",
     email_brand_color: "#0a7a4b",
     email_logo_url: "https://exemple.test/logo.png",
+    email_header_tagline: "Nous ouvrons la voie aux leaders IT de demain",
+    email_signature_team: "L’équipe admissions",
+    email_social_links: "LinkedIn | https://linkedin.example/datum",
   });
   // L'aperçu d'email est un document isolé (iframe sans script), hors de l'interface.
   await auditA11y(page, "paramètres (emails)", [".email-preview"]);
@@ -492,4 +530,21 @@ test("la barre d'enregistrement suit le contenu, sans le recouvrir", async ({ pa
   const region = page.getByRole("region", { name: "Emails", exact: true });
   const [regionBox, barBox] = [await region.boundingBox(), await bar.boundingBox()];
   expect(barBox!.y).toBeGreaterThanOrEqual(regionBox!.y + regionBox!.height);
+});
+
+test("bandeau chargé : envoyé à l'API puis affiché, au format et au poids vérifiés", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=emails");
+  const emails = page.getByRole("region", { name: "Emails", exact: true });
+  await expect(emails.getByText(/Aucun bandeau chargé/)).toBeVisible();
+  const input = emails.locator('input[type="file"]');
+  await input.setInputFiles({ name: "bandeau.gif", mimeType: "image/gif", buffer: PNG });
+  await expect(emails.getByText("Format refusé : PNG ou JPEG seulement.")).toBeVisible();
+  expect(calls).toEqual([]);
+  await input.setInputFiles({ name: "bandeau.png", mimeType: "image/png", buffer: PNG });
+  await expect(emails.getByRole("img", { name: "Bandeau actuel des emails" })).toBeVisible();
+  expect(calls).toEqual([{ banner: expect.stringContaining("multipart/form-data") }]);
+  await expect(emails.getByRole("button", { name: "Retirer le bandeau" })).toBeVisible();
 });

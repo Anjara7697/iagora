@@ -520,6 +520,7 @@ export function FileInput({
   emptyLabel = "Aucun fichier choisi",
   buttonLabel = "Choisir un fichier",
   "aria-describedby": describedBy,
+  "aria-label": ariaLabel,
 }: {
   id?: string;
   accept?: string;
@@ -528,6 +529,8 @@ export function FileInput({
   emptyLabel?: string;
   buttonLabel?: string;
   "aria-describedby"?: string;
+  /** Nom accessible du champ quand aucune étiquette `<label for>` ne le désigne. */
+  "aria-label"?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
@@ -537,6 +540,7 @@ export function FileInput({
         id={id}
         type="file"
         accept={accept}
+        aria-label={ariaLabel}
         aria-describedby={describedBy}
         tabIndex={-1}
         className="sr-only"

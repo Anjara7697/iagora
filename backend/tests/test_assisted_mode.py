@@ -234,3 +234,29 @@ async def test_auto_mode_is_refused_in_production(client, mongo_db, monkeypatch)
     refused = await client.put(f"{API}/agent/mode", json={"mode": "auto"})
     assert refused.status_code == 409 and "production" in refused.json()["detail"]
     assert (await client.put(f"{API}/agent/mode", json={"mode": "manual"})).status_code == 200
+
+
+async def test_the_draft_shows_the_documents_the_agent_attached(client, assisted):
+    """D-42 : le conseiller voit, avant de valider, le document joint par l'agent."""
+    pid, mid, cid = await lead(client, "Avez-vous une brochure ?")
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    saved = (
+        await client.post(
+            f"{API}/campaigns/{campaign_id}/files",
+            files={"file": ("brochure.pdf", b"%PDF-1.7\n" + b"0" * 32, "application/pdf")},
+            data={"label": "Brochure"},
+        )
+    ).json()
+    assisted.llm.qualification = Qualification(intent="interested")
+    assisted.llm.reply = "Bonjour Jean, voici la brochure.\nPièce jointe : Brochure"
+    await run(client, cid)
+    (item,) = (await todo(client))["items"]
+    assert item["draft"]["content"] == "Bonjour Jean, voici la brochure."
+    assert item["draft"]["attachments"] == [
+        {
+            "id": saved["id"],
+            "label": "Brochure",
+            "filename": "brochure.pdf",
+            "campaign_id": campaign_id,
+        }
+    ]

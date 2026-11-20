@@ -114,7 +114,13 @@ def main() -> None:
         "calendar-check", help="Tester l'agenda et Zoom (rien n'est réservé) ; --advisor <email>"
     )
     cal.add_argument("--advisor", help="Email du conseiller dont on teste l'agenda")
-    sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
+    kbe = sub.add_parser("kb-eval", help="(dev) Évaluer la recherche sur des questions types")
+    kbe.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    kbe.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
     ev = sub.add_parser("eval-agent", help="(dev) Mesurer l'agent sur un jeu de cas annotés")
     ev.add_argument("ids", nargs="*", help="Cas à jouer (tous par défaut)")
     ev.add_argument(
@@ -133,10 +139,37 @@ def main() -> None:
     ev.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
     ev.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
     ev.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
+    ev.add_argument(
         "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
     )
     ev.add_argument("--prix-entree", type=float, help="Prix par million de jetons en entrée")
     ev.add_argument("--prix-sortie", type=float, help="Prix par million de jetons en sortie")
+    conv = sub.add_parser(
+        "eval-conversations",
+        help="(dev) Mesurer l'agent sur des conversations de plusieurs messages",
+    )
+    conv.add_argument("ids", nargs="*", help="Conversations à jouer (toutes par défaut)")
+    conv.add_argument(
+        "--live", action="store_true", help="Utiliser le vrai modèle (par défaut : faux modèle)"
+    )
+    conv.add_argument(
+        "--rag-reel", action="store_true", help="Vraie recherche sur la base de démonstration"
+    )
+    conv.add_argument("--pause", type=float, default=0.0, help="Secondes entre deux conversations")
+    conv.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
+    conv.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    conv.add_argument(
+        "--cas",
+        dest="cases_path",
+        help="Jeu de cas local, hors Git (vrais documents : recherche réelle, démo écartée)",
+    )
+    conv.add_argument(
+        "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
+    )
     args = parser.parse_args()
 
     if args.command == "seed-demo":
@@ -186,7 +219,23 @@ def main() -> None:
     elif args.command == "calendar-check":
         sys.exit(asyncio.run(agent_commands.cmd_calendar_check(args.advisor)))
     elif args.command == "kb-eval":
-        sys.exit(asyncio.run(commands.cmd_kb_eval()))
+        sys.exit(
+            asyncio.run(commands.cmd_kb_eval(json_path=args.json_path, cases_path=args.cases_path))
+        )
+    elif args.command == "eval-conversations":
+        code = asyncio.run(
+            commands.cmd_eval_conversations(
+                args.ids,
+                fake=not args.live,
+                real_rag=args.rag_reel,
+                pause=args.pause,
+                report=args.report,
+                json_path=args.json_path,
+                cleanup=args.cleanup,
+                cases_path=args.cases_path,
+            )
+        )
+        sys.exit(code)
     elif args.command == "eval-agent":
         code = asyncio.run(
             commands.cmd_eval_agent(
@@ -201,6 +250,7 @@ def main() -> None:
                 cleanup=args.cleanup,
                 price_in=args.prix_entree,
                 price_out=args.prix_sortie,
+                cases_path=args.cases_path,
             )
         )
         sys.exit(code)

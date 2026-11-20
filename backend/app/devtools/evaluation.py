@@ -70,6 +70,11 @@ class EvalCase:
     must_mention: list[str] = field(default_factory=list)  # « a|b » : l'un ou l'autre
     profile: dict[str, str] = field(default_factory=dict)
     fake: dict[str, Any] = field(default_factory=dict)  # comportement du faux modèle
+    # Forme selon le canal (D-38) : canal de la conversation, objet d'email attendu ou non,
+    # nombre de mots du message de l'agent [min, max].
+    channel: str = "email"
+    subject: bool | None = None
+    words: list[int] = field(default_factory=list)
 
 
 def load_cases(
@@ -171,6 +176,22 @@ class RecordingKnowledge:
         return found
 
 
+class ImportedDocumentsOnly:
+    """Vraie recherche limitée aux documents importés par le responsable (décision D-28).
+
+    Les cas jouent des prospects fictifs, à qui la recherche sert aussi les documents de
+    démonstration : avec un jeu de cas local (`--cas`), qui porte sur les vrais documents d'une
+    campagne, ces faits fictifs fausseraient la mesure. On les écarte donc toujours."""
+
+    def __init__(self, inner: KnowledgeBase) -> None:
+        self.inner = inner
+
+    async def search(
+        self, query: str, target_code: str | None, limit: int = 4, *, include_demo: bool = False
+    ) -> list[Passage]:
+        return await self.inner.search(query, target_code, limit, include_demo=False)
+
+
 # --- Modèle instrumenté ---
 
 
@@ -262,13 +283,20 @@ class CaseResult:
     handoff_reason: str | None = None
     handed_off: bool = False
     reply_text: str = ""  # messages de l'agent après le dernier message du prospect
+    agent_messages: list[str] = field(default_factory=list)  # les mêmes, un par message
     llm_written: list[str] = field(default_factory=list)  # parmi eux, ceux rédigés par le modèle
     raw_claims: list[list[str]] = field(default_factory=list)  # par sortie brute du modèle
+    # Texte brut rédigé par le modèle, AVANT les garde-fous, et extraits consultés : ce qui explique
+    # un transfert ou un refus (le message envoyé ne dit pas ce que le modèle avait écrit).
+    raw_replies: list[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
+    subject: str | None = None  # objet de l'email envoyé par l'agent, s'il y en a un
     sent_claims_by_message: list[list[str]] = field(default_factory=list)  # par message envoyé
     seconds: float = 0.0
     calls: list[LLMCall] = field(default_factory=list)
     llm_unavailable: bool = False
     error: str | None = None
+    observed: dict[str, Any] = field(default_factory=dict)  # état après le tour
 
     # Chaque vérification vaut True/False, ou None quand elle ne s'applique pas au cas.
     @property
@@ -310,8 +338,24 @@ class CaseResult:
         return self.error is None and not self.llm_unavailable
 
     @property
+    def word_count(self) -> int:
+        return len(" ".join(self.llm_written).split())
+
+    @property
+    def format_ok(self) -> bool | None:
+        """Forme attendue sur ce canal : objet présent ou absent, longueur du message (D-38)."""
+        if self.case.subject is None and not self.case.words:
+            return None
+        if self.handed_off:
+            return False
+        if self.case.subject is not None and (self.subject is not None) != self.case.subject:
+            return False
+        low, high = (self.case.words + [0, 10_000])[:2]
+        return low <= self.word_count <= high
+
+    @property
     def ok(self) -> bool:
-        checks = [self.intent_ok, self.action_ok, self.handoff_ok, self.grounded_ok]
+        checks = [self.intent_ok, self.action_ok, self.handoff_ok, self.grounded_ok, self.format_ok]
         return self.evaluable and not self.sent_claims and all(c is not False for c in checks)
 
 
@@ -341,6 +385,78 @@ def _configure_fake(fake: FakeLLM, case: EvalCase) -> None:
     fake.reply = case.fake.get("reply") or "Bonjour, merci pour votre message."
 
 
+async def play_turn(
+    session: AsyncSession,
+    db: Any,
+    ids: tuple[int, int, str],
+    case: EvalCase,
+    *,
+    llm: MeteredLLM,
+    knowledge: KnowledgeBase,
+    ablation: str | None = None,
+    calendar: FakeCalendar | None = None,
+    said: Sequence[str] = (),
+) -> CaseResult:
+    """Joue UN message du prospect (`case.message`, ou aucun : premier contact) sur une
+    conversation existante et mesure la réponse. `said` : messages déjà échangés, qui justifient
+    les durées et dates reprises par l'agent, comme dans le workflow (NF-10)."""
+    pid, mid, cid = ids
+    result = CaseResult(case)
+    if isinstance(llm.inner, FakeLLM):
+        _configure_fake(llm.inner, case)
+    llm.reset()
+    kb = RecordingKnowledge(EmptyKnowledgeBase() if ablation == "sans-rag" else knowledge)
+    try:
+        if case.message is not None:
+            await conversations.add_message(
+                session, db, cid, MessageCreate(role=SenderType.PROSPECT, content=case.message)
+            )
+        start = time.perf_counter()
+        with _ablation(ablation):
+            run = await run_agent(
+                session,
+                db,
+                llm=llm,
+                calendar=calendar or FakeCalendar(),  # agenda de démonstration : rien de réservé
+                knowledge=kb,
+                conversation_id=cid,
+                mode=AgentMode.AUTO,
+            )
+        result.seconds = time.perf_counter() - start
+        observed, tail, llm_written = await runner.observe(session, db, pid, mid, cid)
+    except Exception as exc:  # une erreur technique est un résultat, pas un plantage de l'outil
+        result.error = f"{type(exc).__name__}: {exc}"
+        result.calls = list(llm.calls)
+        return result
+
+    result.observed = observed
+    result.intent = _intent_from_trace(run.trace)
+    result.action, result.reason = run.action, run.reason
+    result.handoff_reason = run.handoff_reason
+    result.handed_off = run.handoff_reason is not None or observed["conversation"] == "handed_off"
+    result.agent_messages = list(reversed(tail))
+    result.reply_text = "\n".join(result.agent_messages)
+    result.llm_written = list(reversed(llm_written))
+    result.calls = list(llm.calls)
+    result.llm_unavailable = run.handoff_reason == "llm_indisponible" or any(
+        not c.ok for c in llm.calls
+    )
+    # NF-10 : sources validées = extraits renvoyés, catalogue, campagne ; les messages échangés ne
+    # justifient que les durées, dates et niveaux, jamais un prix ni une condition (AUDIT-AI-001).
+    sources = [p.text for p in kb.returned] + [prompts.CATALOGUE, runner.SCENARIO_CAMPAIGN]
+    said = [*said, case.message or ""]
+    result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
+    result.raw_replies = list(llm.raw_replies)
+    conv = await conversations.get_conversation(db, cid)
+    last_agent = next((m for m in reversed(conv.messages) if m.role != SenderType.PROSPECT), None)
+    result.subject = (last_agent.metadata.get("subject") if last_agent else None) or None
+    result.sources = list(dict.fromkeys(p.source for p in kb.returned))
+    result.sent_claims_by_message = [
+        _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
+    ]
+    return result
+
+
 async def run_case(
     session_factory: async_sessionmaker[AsyncSession],
     db: Any,
@@ -350,57 +466,25 @@ async def run_case(
     knowledge: KnowledgeBase,
     ablation: str | None = None,
 ) -> CaseResult:
-    result = CaseResult(case)
-    if isinstance(llm.inner, FakeLLM):
-        _configure_fake(llm.inner, case)
-    llm.reset()
-    kb = RecordingKnowledge(EmptyKnowledgeBase() if ablation == "sans-rag" else knowledge)
+    """Un cas : un prospect fictif neuf et un seul message."""
     try:
         async with session_factory() as session:
-            pid, mid, cid = await runner.new_demo_prospect(
-                session, db, label=EVAL_LABEL, target_code=case.target, profile=case.profile
+            ids = await runner.new_demo_prospect(
+                session,
+                db,
+                label=EVAL_LABEL,
+                target_code=case.target,
+                profile=case.profile,
+                channel=case.channel,
             )
-            if case.message is not None:
-                await conversations.add_message(
-                    session, db, cid, MessageCreate(role=SenderType.PROSPECT, content=case.message)
-                )
-            start = time.perf_counter()
-            with _ablation(ablation):
-                run = await run_agent(
-                    session,
-                    db,
-                    llm=llm,
-                    calendar=FakeCalendar(),  # agenda de démonstration : aucun vrai rendez-vous
-                    knowledge=kb,
-                    conversation_id=cid,
-                    mode=AgentMode.AUTO,
-                )
-            result.seconds = time.perf_counter() - start
-            observed, tail, llm_written = await runner.observe(session, db, pid, mid, cid)
+            return await play_turn(
+                session, db, ids, case, llm=llm, knowledge=knowledge, ablation=ablation
+            )
     except Exception as exc:  # une erreur technique est un résultat, pas un plantage de l'outil
+        result = CaseResult(case)
         result.error = f"{type(exc).__name__}: {exc}"
         result.calls = list(llm.calls)
         return result
-
-    result.intent = _intent_from_trace(run.trace)
-    result.action, result.reason = run.action, run.reason
-    result.handoff_reason = run.handoff_reason
-    result.handed_off = run.handoff_reason is not None or observed["conversation"] == "handed_off"
-    result.reply_text = "\n".join(reversed(tail))
-    result.llm_written = list(reversed(llm_written))
-    result.calls = list(llm.calls)
-    result.llm_unavailable = run.handoff_reason == "llm_indisponible" or any(
-        not c.ok for c in llm.calls
-    )
-    # NF-10 : sources validées = extraits renvoyés, catalogue, campagne ; le message du prospect ne
-    # justifie que les durées, dates et niveaux, jamais un prix ni une condition (AUDIT-AI-001).
-    sources = [p.text for p in kb.returned] + [prompts.CATALOGUE, runner.SCENARIO_CAMPAIGN]
-    said = [case.message or ""]
-    result.raw_claims = [_ungrounded_claims(r, sources, conversation=said) for r in llm.raw_replies]
-    result.sent_claims_by_message = [
-        _ungrounded_claims(t, sources, conversation=said) for t in result.llm_written
-    ]
-    return result
 
 
 async def run_eval(
@@ -474,6 +558,7 @@ class Summary:
     handoff_missed: int
     handoff_unneeded: int
     grounded: Rate
+    channel_format: Rate  # objet et longueur attendus sur le canal (D-38)
     raw_outputs: int
     raw_with_claims: int
     sent_messages: int
@@ -515,6 +600,7 @@ class Summary:
                 "unneeded": self.handoff_unneeded,
             },
             "grounded_answers": rate(self.grounded),
+            "channel_format": rate(self.channel_format),
             "ungrounded_raw": rate(self.raw_hallucination),
             "ungrounded_sent": rate(self.sent_hallucination),
             "latency_seconds": {
@@ -566,6 +652,7 @@ def summarize(
         handoff_missed=sum(1 for r in with_handoff if r.case.handoff and not r.handed_off),
         handoff_unneeded=sum(1 for r in with_handoff if not r.case.handoff and r.handed_off),
         grounded=_rate([r.grounded_ok for r in ev]),
+        channel_format=_rate([r.format_ok for r in ev]),
         raw_outputs=len(raw),
         raw_with_claims=sum(1 for c in raw if c),
         sent_messages=len(sent),
@@ -596,7 +683,9 @@ def format_console(r: CaseResult) -> str:
     line = (
         f" {'OK' if r.ok else 'KO'}  {r.case.id:<28} intention {_mark(r.intent_ok)} "
         f"décision {_mark(r.action_ok)} transfert {_mark(r.handoff_ok)} "
-        f"sourcé {_mark(r.grounded_ok)}  {r.seconds:.1f} s"
+        f"sourcé {_mark(r.grounded_ok)}"
+        + (f" forme {_mark(r.format_ok)}" if r.format_ok is not None else "")
+        + f"  {r.seconds:.1f} s"
     )
     if r.sent_claims:
         line += f"\n        chiffres non sourcés envoyés : {r.sent_claims}"
@@ -626,6 +715,14 @@ def _gaps(r: CaseResult) -> list[str]:
         gaps.append(f"réponse sans « {' ; '.join(c.must_mention)} »")
     if r.sent_claims:
         gaps.append(f"chiffres non sourcés envoyés : {r.sent_claims}")
+    if r.format_ok is False:
+        expected = []
+        if c.subject is not None:
+            expected.append("avec objet" if c.subject else "sans objet")
+        if c.words:
+            expected.append(f"{'-'.join(map(str, c.words))} mots")
+        got = f"{'objet' if r.subject else 'pas d’objet'}, {r.word_count} mots"
+        gaps.append(f"forme du canal {c.channel} : {got} (attendu : {', '.join(expected)})")
     return gaps
 
 
@@ -655,6 +752,7 @@ def format_markdown(
         f"| Transferts attendus réalisés | {s.handoff_correct}/{s.handoff_expected} | "
         f"manqués : {s.handoff_missed} ; inutiles : {s.handoff_unneeded} |",
         f"| Réponses sourcées | {s.grounded} | la réponse contient le fait attendu de la base |",
+        f"| Forme selon le canal | {s.channel_format} | objet d'email et longueur attendus |",
         f"| Sorties brutes avec chiffre non sourcé | {s.raw_hallucination} | "
         "texte du modèle AVANT les garde-fous |",
         f"| Messages envoyés avec chiffre non sourcé | {s.sent_hallucination} | "
@@ -724,6 +822,12 @@ def format_markdown(
 
 
 def to_json(results: list[CaseResult], summary: Summary, **meta: Any) -> str:
+    return json.dumps(to_payload(results, summary, **meta), ensure_ascii=False, indent=2)
+
+
+def to_payload(results: list[CaseResult], summary: Summary, **meta: Any) -> dict[str, Any]:
+    """Résultats lisibles par la page Évaluation : métriques, et pour chaque cas le message joué,
+    la réponse de l'agent et les écarts."""
     rows = [
         {
             "id": r.case.id,
@@ -739,12 +843,21 @@ def to_json(results: list[CaseResult], summary: Summary, **meta: Any) -> str:
             "handoff_ok": r.handoff_ok,
             "grounded_ok": r.grounded_ok,
             "raw_claims": r.raw_claims,
+            "reason": r.reason,
+            "raw_replies": r.raw_replies,
+            "sources": r.sources,
+            "channel": r.case.channel,
+            "subject": r.subject,
+            "words": r.word_count,
+            "format_ok": r.format_ok,
             "sent_claims": r.sent_claims,
             "seconds": round(r.seconds, 3),
             "llm_calls": len(r.calls),
             "error": r.error,
+            "message": r.case.message,
+            "reply": r.reply_text,
+            "gaps": _gaps(r),
         }
         for r in results
     ]
-    payload = {"meta": meta, "summary": summary.as_dict(), "cases": rows}
-    return json.dumps(payload, ensure_ascii=False, indent=2)
+    return {"meta": meta, "summary": summary.as_dict(), "cases": rows}

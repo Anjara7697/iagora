@@ -1,6 +1,6 @@
 # Tester l'agent
 
-Quatre outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
+Cinq outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en production**
 (`ENVIRONMENT=production` les refuse) et ne créent que des données fictives en `@demo.example.com`.
 
 | Outil | Commande | Usage |
@@ -9,6 +9,7 @@ Quatre outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en
 | Scénarios de recette | `python -m app.cli scenario` | Rejouer des cas complets et vérifier le comportement de l'agent ; produit un rapport |
 | Simulateur de conversation | `python -m app.cli chat` | Jouer le prospect à la main et voir la décision de l'agent à chaque message |
 | Évaluation quantitative | `python -m app.cli eval-agent` | Mesurer l'agent sur un jeu de cas annotés : intention, décision, transferts, réponses sourcées, chiffres inventés, latence |
+| Évaluation de conversations | `python -m app.cli eval-conversations` | Mesurer l'agent sur des conversations de plusieurs messages : contexte suivi, informations redemandées, ton tenu, parcours mené au bout |
 
 Avec Docker : `docker compose exec backend python -m app.cli <commande>`.
 
@@ -119,6 +120,15 @@ cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vr
 - **Base de connaissances** : par défaut, la base FICTIVE de démonstration (`demo_kb/`) avec une recherche lexicale,
   déterministe et sans clé ; `--rag-reel` utilise la vraie recherche sur les documents de démonstration chargés par
   `seed-demo`. La qualité de la recherche elle-même se mesure avec `kb-eval`.
+- **Forme selon le canal (D-38)** : un cas peut indiquer `channel` (canal de la conversation, `email` par défaut),
+  `subject` (objet d'email attendu ou non) et `words` ([min, max] mots du message de l'agent) ; l'indicateur
+  « Forme selon le canal » les compte, et un écart apparaît dans le rapport.
+- **Démo jumelle de la campagne (D-36)** : la fiche eBIHAR de démonstration a la même forme que les vrais documents
+  de la campagne (master en ligne, accès selon le diplôme, rentrée avec date limite d'inscription, coût et tarif
+  réduit partenaire, certifications, examens surveillés), avec des valeurs inventées, et les mêmes manques
+  (financement, CPF, paiement en plusieurs fois, admission avec une licence) : les cas eBIHAR du dépôt exercent les
+  mêmes réflexes que la campagne réelle. La mesure de la campagne elle-même se fait sur les vrais documents, avec un
+  jeu de cas local (`--cas`).
 - **Variantes d'ablation** : `sans-rag` (aucun extrait) et `sans-garde-chiffres` (vérification des chiffres désactivée
   pendant le cas) montrent ce qu'apporte chaque garde-fou. Pour comparer deux modèles, relancer avec un autre
   `LLM_MODEL` : le rapport indique le modèle utilisé.
@@ -127,6 +137,111 @@ cas est joué sur un prospect fictif neuf (`eval.*@demo.example.com`) avec le vr
 - Le rapport Markdown donne la synthèse, le détail par catégorie et chaque écart (message, attendu, observé, réponse) ;
   le JSON garde les résultats bruts pour comparer plusieurs passages.
 
+## Évaluation de conversations
+
+```bash
+python -m app.cli eval-conversations                                   # faux modèle (hors ligne)
+python -m app.cli eval-conversations --live --rag-reel --pause 4 --report conv.md --json conv.json --cleanup
+python -m app.cli eval-conversations --live parcours_rdv_ebihar arret_en_cours
+```
+
+`eval-agent` mesure un message à la fois, sur un prospect neuf. `eval-conversations` joue des conversations de
+plusieurs messages (`backend/app/devtools/conversation_cases.json`) sur un même prospect fictif
+(`evalconv.*@demo.example.com`), avec le vrai workflow ; rien n'est envoyé. Chaque tour reprend exactement les
+vérifications de `eval-agent` (intention, décision, transfert, fait attendu, chiffres non sourcés) ; s'y ajoute
+ce qui ne se voit qu'à la longue :
+
+| Mesure | Ce qui est compté |
+|---|---|
+| Contexte suivi | questions de suivi (« et ça dure combien ? ») justes, sans répéter le sujet |
+| Informations redemandées | l'agent demande une information de profil que le prospect a déjà donnée |
+| Ton tenu | nouvelle salutation après le premier message, présentation comme IA sans qu'on le demande (D-32), plus d'une question par message |
+| Parcours mené au bout | état final attendu : rendez-vous réservé, désinscription, transfert, conversation ouverte |
+| Profil lu juste | après un tour annoté (`profile_after`), les informations de qualification extraites (niveau, projet, situation…) sont les bonnes |
+| Arrêts prématurés | transfert ou clôture avant le dernier message prévu |
+
+Les 9 conversations couvrent : un parcours complet jusqu'au rendez-vous réservé, un prospect engagé qui ne demande
+pas de rendez-vous, des informations à ne pas redemander, deux conversations de suivi du contexte, une
+désinscription en cours de route, une question mêlant connu et inconnu, « je parle à un robot ? » et un prospect
+peu engagé. Le rapport Markdown reprend les échanges complets pour juger le ton à la lecture.
+
+**Qualification et technique de vente** : des indicateurs, hors conformité, décrivent la façon de prospecter et
+se comparent d'un passage à l'autre :
+
+| Indicateur | Ce qui est compté |
+|---|---|
+| Rendez-vous proposé à temps | l'agent propose un rendez-vous de lui-même au plus tard au tour prévu (`meeting_by`) |
+| Questions posées | par type : exploration (projet, motivation), information (un fait), alternative (X ou Y), fermée (oui/non) |
+| Reformulations | l'agent reprend ce que le prospect vient de dire avant d'enchaîner (écoute active) |
+| Longueur des messages | médiane, et messages au-delà de 120 mots (la consigne) |
+| Offres de conseiller | « voulez-vous un conseiller ? » posé par le modèle (D-33 : jamais de lui-même), et combien de fois reposé |
+| Avis d'admission donnés | « votre profil correspond aux conditions », « au profil recherché » : l'admission revient à l'école |
+| Salutations dans les messages fixes | « Bonjour » en tête des créneaux ou de la confirmation, en pleine conversation |
+| Questions reposées | la question restée sans réponse revient au message suivant de l'agent (D-34 : objectif 0) |
+
+- **Hors ligne**, le faux modèle rejoue l'annotation de chaque tour : 100 % attendu, vérifié par la CI. Les
+  conversations de suivi du contexte (`live_only`) ne sont jouées qu'avec `--live` : le faux modèle ne sait pas
+  simuler la compréhension d'une question courte.
+- Les messages du prospect sont écrits d'avance : la mesure est comparable d'un passage à l'autre, mais si
+  l'agent répond de façon inattendue, la suite peut ne plus coller. Une conversation transférée ou close avant
+  le dernier message est comptée comme arrêtée.
+- Informations redemandées, salutations et présentation comme IA sont repérées par des expressions courantes :
+  un écart signalé se relit dans les échanges du rapport.
+
+## Page Évaluation
+
+Les trois évaluations se lancent aussi depuis l'application (D-35), avec les mêmes fonctions et donc les mêmes
+chiffres que la ligne de commande. Réservé aux administrateurs, refusé en production.
+
+Dans la console, **Évaluation** (menu Administration, sous Simulateur) :
+
+- **Historique** : tous les passages, lancés ou importés, filtrables par suite ; une ligne ouvre le passage.
+- **Lancer** : suite, nom et notes, faux ou vrai modèle, vraie recherche, pause, éléments joués, catégories, variante,
+  prix, seuil essayé, nettoyage. Avec le vrai modèle, une confirmation annonce le nombre d'appels estimé.
+- **Comparer** : deux passages d'une même suite côte à côte, chaque indicateur avec son écart et son sens
+  (« en progrès », « en recul », « inchangé ») ; par défaut l'avant-dernier et le dernier.
+- **Évolution** : la courbe d'un indicateur, du premier passage au dernier, avec le tableau des valeurs.
+- **Un passage** (`/evaluation/<id>`) : avancement en direct, annulation, indicateurs regroupés, puis le détail :
+  chaque conversation avec ses écarts et l'échange complet, chaque cas avec le message et la réponse, chaque question
+  avec le document trouvé. « Comparer au précédent », « Imprimer » (sans le menu, pour une annexe), modifier le nom,
+  la date ou les notes, supprimer.
+- **Importer un rapport** : le fichier `--json` d'une évaluation en ligne de commande ; nom et date du fichier
+  proposés.
+
+### API
+
+| Route | Rôle |
+|---|---|
+| `GET /evaluations/catalog` | Suites, cas, conversations et questions disponibles ; vrai modèle et embeddings utilisables ou non |
+| `POST /evaluations` | Lance un passage en tâche de fond (un seul à la fois, `409` sinon) ; réglages : `suite`, `label`, `notes`, `live`, `real_rag`, `pause`, `ids`, `categories`, `ablation`, `price_in`, `price_out`, `min_score`, `cleanup` |
+| `GET /evaluations` | Historique, du plus récent au plus ancien, avec les indicateurs (sans le rapport détaillé) |
+| `GET /evaluations/{id}` | Passage complet : réglages, avancement (`progress`) pendant qu'il tourne, rapport, indicateurs |
+| `POST /evaluations/{id}/cancel` | Arrête le passage ; les résultats déjà obtenus sont gardés (`cancelled`) |
+| `POST /evaluations/import` | Ajoute un rapport `--json` de la ligne de commande (`eval-agent`, `eval-conversations`, `kb-eval`) ; l'échange des anciens rapports de conversations est reconstitué |
+| `PATCH /evaluations/{id}`, `DELETE /evaluations/{id}` | Renommer, dater, annoter ; supprimer |
+
+États d'un passage : `running`, `done`, `cancelled`, `failed` (erreur affichée), `interrupted` (API redémarrée
+pendant le passage). Les indicateurs normalisés (`key`, `label`, `group`, `value`, `display`, `better`) servent à
+comparer deux passages et à tracer l'évolution ; une valeur absente d'un rapport plus ancien vaut `n/a`.
+
+`kb-eval --json <chemin>` écrit maintenant lui aussi ses résultats, importables dans la page.
+
+## Jeu de cas local (vrais documents d'une campagne)
+
+Les jeux du dépôt portent sur la base FICTIVE de démonstration. Pour mesurer l'agent sur les vrais documents d'une
+campagne sans les mettre dans Git (D-28), on écrit un jeu de cas au même format dans un fichier gardé sur le poste,
+puis on le passe avec `--cas` :
+
+```bash
+python -m app.cli kb-eval --cas ~/campagne/kb.json --json kb.json
+python -m app.cli eval-agent --live --cas ~/campagne/cas.json --pause 4 --json cas-avant.json --cleanup
+python -m app.cli eval-conversations --live --cas ~/campagne/conv.json --pause 4 --json conv-avant.json --cleanup
+```
+
+Avec `--cas`, la recherche est la vraie (documents importés dans l'application) et les documents fictifs de
+démonstration sont toujours écartés, même si `seed-demo` les a chargés : la mesure ne mélange jamais faits fictifs et
+faits réels. Les rapports `--json` s'importent ensuite dans la page Évaluation pour comparer avant et après.
+
 ## Nettoyage
 
-`--cleanup` (scénarios, évaluation) supprime les prospects créés par la recette sans toucher au jeu de démo.
+`--cleanup` (scénarios, évaluations) supprime les prospects créés par la recette sans toucher au jeu de démo.

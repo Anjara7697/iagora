@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 from app.graph import policy
-from app.graph.ports import ProspectContext
+from app.graph.ports import HistoryMessage, ProspectContext
 from app.graph.prompts import format_slot
 from app.graph.state import Action, Qualification
 from app.models.enums import ConversionStage as S
@@ -66,11 +66,24 @@ def test_sensitive_messages_flagged():
 
 
 def test_missing_fields_depend_on_target_and_never_ask_known_data():
-    assert policy.missing_fields({}, "ebihar_students") == ["study_level", "goal"]
-    assert policy.missing_fields({"study_level": "Bac+3"}, "ebihar_students") == ["goal"]
-    assert policy.missing_fields({"study_level": "x", "goal": "y"}, "ebihar_students") == []
+    # Grille D-33, dans l'ordre de l'entonnoir : projet, situation, rentrée, lieu ou format.
+    # D-37 : eBIHAR se suit en ligne, la situation remplace le format.
+    grid = ["goal", "study_level", "current_situation", "start_term"]
+    assert policy.missing_fields({}, "ebihar_students") == grid
+    assert policy.missing_fields({"study_level": "Bac+3"}, "ebihar_students") == [
+        "goal",
+        "current_situation",
+        "start_term",
+    ]
+    full = {"study_level": "x", "goal": "y", "current_situation": "étudiant", "start_term": "2027"}
+    assert policy.missing_fields(full, "ebihar_students") == []
     assert policy.missing_fields({"goal": "  "}, None) == ["goal"]
-    assert policy.missing_fields({}, "compagnons_pros") == ["current_situation", "goal"]
+    assert policy.missing_fields({}, "compagnons_pros") == [
+        "goal",
+        "current_situation",
+        "start_term",
+        "location",
+    ]
 
 
 # --- Signaux de score ---
@@ -288,6 +301,48 @@ def test_grounded_figures_are_accepted():
     assert policy.ungrounded_claims("Bonjour Jean, je vous écoute.", []) == []
 
 
+def test_agreement_of_a_committing_term_is_accepted_when_its_base_form_is_sourced():
+    """« gratuites » est sourcé par « gratuit » ; sans source, il reste bloqué (NF-10)."""
+    sources = ["Les parcours Associate : cours et examen gratuits."]
+    for reply in (
+        "Les examens sont gratuits.",
+        "Les certifications sont gratuites.",
+        "C'est gratuit.",
+    ):
+        assert policy.ungrounded_claims(reply, sources) == []
+    assert policy.ungrounded_claims("Les certifications sont gratuites.", ["Tarif : sur devis."])
+
+
+def test_a_spelled_out_duration_is_sourced_by_the_same_duration_in_figures():
+    """« un ou deux ans » est sourcé par « 1 an ou 2 ans » ; « deux ans » reste bloqué quand la
+    source dit autre chose (AUDIT-AI-001)."""
+    sources = ["Le Master 1 et le Master 2 se suivent sur 1 an ou 2 ans."]
+    assert policy.ungrounded_claims("Ils se suivent sur un ou deux ans.", sources) == []
+    assert policy.ungrounded_claims("Elle dure dix-huit mois.", ["Elle dure 18 mois."]) == []
+    assert policy.ungrounded_claims("Le parcours dure deux ans.", ["Il dure 6 mois."]) == [
+        "deux ans"
+    ]
+
+
+def test_only_listed_links_can_be_sent():
+    """D-39 : un lien inventé est bloqué ; celui des ressources ou des sources passe, quelle que
+    soit son écriture (protocole, « www. », barre finale, ponctuation)."""
+    allowed = [
+        "Inscription : https://www.datumacademy.com/fr/masters/eBIHAR/",
+        "Site : www.datum.academy",
+    ]
+    ok = "Inscription : https://datumacademy.com/fr/masters/eBIHAR. Ou www.datum.academy !"
+    assert policy.unlisted_links(ok, allowed) == []
+    invented = (
+        "Le formulaire : https://www.datumacademy.com/inscription-rapide (ou www.datum-promo.fr)"
+    )
+    assert policy.unlisted_links(invented, allowed) == [
+        "https://www.datumacademy.com/inscription-rapide",
+        "www.datum-promo.fr",
+    ]
+    assert policy.unlisted_links("Sans lien.", []) == []
+
+
 def test_slot_formatting_uses_paris_time():
     # 1er mars 2027 = lundi ; 13h UTC = 14h à Paris (hiver).
     assert format_slot(make_slots(1)[0]) == "lundi 1 mars à 14h00"
@@ -424,3 +479,103 @@ def test_requests_about_personal_data_are_recognised():
         assert policy.asks_about_personal_data(text), text
     assert not policy.asks_about_personal_data("STOP")
     assert not policy.asks_about_personal_data("Quelles données sont étudiées en cours ?")
+
+
+# --- Technique de vente (D-33) ---
+
+
+def test_questions_about_the_agent_and_next_step_questions_are_recognised():
+    assert policy.asks_about_agent("Je parle à un robot ou à une vraie personne ?")
+    assert policy.asks_about_agent("Vous êtes une IA ?")
+    assert not policy.asks_about_agent("Je veux parler à un humain, vous êtes un robot ?")
+    assert not policy.asks_about_agent("Le programme est-il éligible au CPF ?")
+    assert not policy.asks_about_agent("Je suis un robot de cuisine.")  # pas une question
+    assert policy.asks_next_step("Comment se passe l'admission ?")
+    assert policy.asks_next_step("Jusqu'à quand puis-je candidater ?")
+    assert policy.asks_next_step("La rentrée est en septembre ?")
+    assert not policy.asks_next_step("Les cours sont-ils en français ?")
+
+
+def test_a_complete_grid_and_a_next_step_question_lead_to_slots_after_the_answer():
+    q = Qualification(intent="question")
+    s = state(q, total=10, missing=[])
+    s["inbound_text"] = "Comment se passe l'admission ?"
+    d = policy.decide(s)
+    assert d.action is Action.PROPOSE_MEETING and d.answer_first
+    # Grille incomplète : on répond et on continue de qualifier.
+    s_missing = state(q, total=10, missing=["start_term"])
+    s_missing["inbound_text"] = "Comment se passe l'admission ?"
+    assert policy.decide(s_missing).action is Action.CONTINUE_CONVERSATION
+    # Pas de question qui annonce une décision : pas de rendez-vous imposé.
+    s_other = state(q, total=10, missing=[])
+    s_other["inbound_text"] = "Les cours sont-ils en français ?"
+    assert policy.decide(s_other).action is Action.CONTINUE_CONVERSATION
+    # Créneaux déjà proposés : on ne les repropose pas.
+    s_done = state(q, total=10, missing=[], stage=S.MEETING_PROPOSED)
+    s_done["inbound_text"] = "Comment se passe l'admission ?"
+    assert policy.decide(s_done).action is Action.CONTINUE_CONVERSATION
+
+
+def test_a_question_about_the_agent_is_answered_not_nurtured():
+    s = state(Qualification(intent="other"), total=5, missing=["goal"])
+    s["inbound_text"] = "Je parle à un robot ?"
+    assert policy.decide(s).action is Action.CONTINUE_CONVERSATION
+
+
+# --- Finitions (D-34) ---
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "Concernant la langue d'enseignement, je préfère laisser un conseiller vous apporter cette "
+        "précision lors d'un échange.",
+        "Un conseiller vous précisera le tarif.",
+        "Un conseiller de DATUM Academy vous répondra.",
+        "Le rythme dépend de l'entreprise : un conseiller pourra vous le confirmer.",
+        "Je n'ai pas cette information.",
+    ],
+)
+def test_an_advisor_answer_promised_in_words_is_recognised(reply):
+    assert policy.defers_to_advisor_in_words(reply)
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        "La sélection comprend un entretien avec un conseiller pédagogique.",
+        "Un conseiller relit nos échanges et peut prendre le relais à tout moment.",
+        "Je transmets votre demande à un conseiller, qui reprendra la conversation avec vous.",
+        "Un conseiller peut vous recevoir en visioconférence.",
+    ],
+)
+def test_mentioning_an_advisor_is_not_a_promise_to_answer(reply):
+    assert not policy.defers_to_advisor_in_words(reply)
+
+
+def test_an_unanswered_question_is_recognised():
+    asked = [
+        HistoryMessage("agent", "Plutôt la prochaine rentrée, ou une suivante ?"),
+        HistoryMessage("prospect", "Les cours sont-ils en français ?"),
+    ]
+    question = Qualification(intent="question")
+    said = asked[1].content
+    assert policy.question_unanswered(asked, question, said)
+    answered = Qualification(intent="interested", start_term="la prochaine rentrée")
+    assert not policy.question_unanswered(asked, answered, "La prochaine, et c'est en français ?")
+    assert not policy.question_unanswered(asked, question, "D'accord.")  # pas une autre question
+    statement = [HistoryMessage("agent", "Le programme dure 18 mois."), asked[1]]
+    assert not policy.question_unanswered(statement, question, said)
+    assert not policy.question_unanswered([asked[1]], question, said)  # l'agent n'a rien dit
+
+
+def test_a_document_announced_without_attachment_is_flagged():
+    """D-42 : « ci-joint » sans document joint est une promesse non tenue : jamais envoyée."""
+    for text in (
+        "Vous trouverez ci-joint la brochure.",
+        "Je vous envoie la brochure en pièce jointe.",
+        "La brochure est jointe à ce message.",
+    ):
+        assert policy.attachment_claims(text, []) == ["document annoncé sans pièce jointe"]
+        assert policy.attachment_claims(text, [{"id": "f1"}]) == []
+    assert policy.attachment_claims("Votre CV nous est bien parvenu.", []) == []

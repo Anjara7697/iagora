@@ -47,7 +47,7 @@ def test_no_second_greeting_or_second_introduction_once_the_agent_has_spoken():
     first = reply()
     assert "ne salue pas" not in first  # premier message : on se présente
     ongoing = reply([HistoryMessage("prospect", "bonjour"), HistoryMessage("agent", "Bonjour !")])
-    assert "ne salue pas à nouveau" in ongoing and "ne répète pas que tu es une IA" in ongoing
+    assert "ne salue pas à nouveau" in ongoing and "ne te présente pas" in ongoing
     only_prospect = reply([HistoryMessage("prospect", "bonjour")])
     assert "ne salue pas" not in only_prospect  # l'agent n'a encore rien dit
 
@@ -94,3 +94,191 @@ def test_the_advisor_signal_is_recognised_however_it_is_written():
     assert prompts.defers_to_advisor("[CONSEILLER] Je préfère laisser un conseiller répondre.")
     assert prompts.defers_to_advisor("Un conseiller vous répondra. [ Conseiller ]")
     assert not prompts.defers_to_advisor("Un conseiller peut vous recevoir en visioconférence.")
+
+
+def test_the_agent_never_pretends_to_be_human_nor_introduces_itself_as_an_ai():
+    """D-32 : la mention sous le message dit déjà qu'une IA a aidé ; dans le texte, l'agent écrit
+    au nom de l'école, ne se fait jamais passer pour un humain, répond franchement si on demande."""
+    first = reply()
+    assert "présente-toi" not in first and "au nom de DATUM Academy" in first
+    assert "ne te fais jamais passer pour un humain" in prompts.IDENTITY
+    assert "Ne te présente pas comme une IA de toi-même" in prompts.IDENTITY
+    assert "réponds franchement que oui" in prompts.IDENTITY
+    assert "assistant virtuel" not in first
+
+
+def test_sales_technique_rules_are_given_to_the_model():
+    """D-33 : messages courts, écoute active, aucun avis d'admission, pas d'offre de conseiller
+    spontanée, et une question de qualification posée selon l'entonnoir."""
+    asked = [HistoryMessage(role="prospect", content="Je suis en BTS.")]
+    text = reply(asked, missing=["start_term", "location"])
+    assert "80 mots au plus" in text and "Écoute active" in text
+    assert "N'affirme jamais qu'un profil remplit les conditions d'admission" in text
+    assert "Ne propose pas toi-même un échange ou un rendez-vous" in text
+    assert "la rentrée qu'il ou elle vise" in text and "question alternative" in text
+    assert "question ouverte sur son projet" in reply(asked, missing=["goal"])
+
+
+def test_the_model_never_promises_an_advisor_answer_in_words():
+    """D-34 : « je préfère laisser un conseiller vous répondre » écrit sans le signal laissait la
+    question sans transfert ; la consigne renvoie au signal, et l'avis adouci est interdit."""
+    system = reply([HistoryMessage("prospect", "Les cours sont-ils en français ?")])
+    assert "laisser un conseiller la donner" not in system
+    assert "N'écris jamais qu'un conseiller « précisera »" in system
+    assert "« au profil recherché »" in system and prompts.ADVISOR_MARKER in system
+
+
+def test_an_unanswered_question_is_not_asked_again():
+    """D-34 : le prospect n'a pas répondu à la question précédente : pas de question ce tour-ci."""
+    spoke = [
+        HistoryMessage("agent", "Plutôt la prochaine rentrée, ou une suivante ?"),
+        HistoryMessage("prospect", "Les cours sont-ils en français ?"),
+    ]
+    held = prompts.reply_system(
+        ctx(spoke), {}, [], ["start_term"], mode="continue", hold_question=True
+    )
+    assert "Ta question précédente est restée sans réponse" in held
+    assert "Termine par UNE question" not in held
+    asked = prompts.reply_system(ctx(spoke), {}, [], ["start_term"], mode="continue")
+    assert "Termine par UNE question sur" in asked
+
+
+def test_when_slots_follow_the_answer_the_model_asks_nothing():
+    asked = [HistoryMessage(role="prospect", content="Comment se passe l'admission ?")]
+    text = prompts.reply_system(ctx(asked), {}, [], ["goal"], mode="continue", then_meeting=True)
+    assert "des créneaux pour échanger avec un conseiller suivent ta réponse" in text
+    assert "Termine par UNE question" not in text
+
+
+def test_code_written_messages_greet_only_at_the_start():
+    assert prompts.opening(ctx()).startswith("Bonjour Camille")
+    spoke = [HistoryMessage("prospect", "Bonjour"), HistoryMessage("agent", "Bonjour !")]
+    assert prompts.opening(ctx(spoke)) == ""
+
+
+def test_cases_and_indicative_facts_are_answered_not_handed_off():
+    """D-37 : une fiche qui donne plusieurs cas (M2 en 1 an avec un M1, parcours en 2 ans…) ou
+    un tarif indicatif répond à la question : pas de signal « question sans réponse »."""
+    system = reply([HistoryMessage("prospect", "Combien de temps dure le master ?")])
+    assert "plusieurs cas" in system and "indicative" in system
+    assert "même selon les cas ou à titre indicatif" in system
+
+
+def test_the_catalogue_never_describes_the_content_of_a_programme():
+    """Sans extrait, « le programme aborde ces sujets » serait inventé : la liste ne donne que des
+    noms et des publics."""
+    assert "n'en déduis jamais le contenu" in reply()
+
+
+def test_known_profile_fields_are_listed_as_never_to_be_asked():
+    system = prompts.reply_system(
+        ctx([HistoryMessage("prospect", "J'ai une licence en informatique.")]),
+        {"study_level": "licence en informatique"},
+        [],
+        ["goal"],
+        mode="continue",
+    )
+    assert "Tu connais déjà son niveau d'études : ne pose aucune question à ce sujet" in system
+
+
+def test_email_first_contact_asks_for_a_personalised_subject_and_a_prospecting_length():
+    """D-38 : l'email de premier contact a un objet et la longueur d'un email de prospection."""
+    system = prompts.reply_system(ctx(), {}, [], ["goal"], mode="continue")
+    assert "Canal : email de prospection" in system and "« Objet : … »" in system
+    assert "120 à 180 mots" in system and "Personnalise l'accroche" in system
+    answer = reply([HistoryMessage("prospect", "Bonjour")])
+    assert "Canal : email." in answer and "80 mots au plus" in answer and "Objet" not in answer
+
+
+def test_a_messaging_channel_gets_short_messages_without_subject():
+    messaging = ProspectContext(**{**ctx().__dict__, "channel": "facebook"})
+    system = prompts.reply_system(messaging, {}, [], ["goal"], mode="continue")
+    assert "Canal : messagerie" in system and "50 mots au plus" in system
+    assert "Objet" not in system and not prompts.is_email("linkedin")
+
+
+def test_the_subject_line_is_split_from_the_message_and_cleaned():
+    assert prompts.split_subject("Objet : « Jean, votre projet data »\n\nBonjour Jean,") == (
+        "Jean, votre projet data",
+        "Bonjour Jean,",
+    )
+    assert prompts.split_subject("**Objet :** Le Master en ligne\nBonjour") == (
+        "Le Master en ligne",
+        "Bonjour",
+    )
+    assert prompts.split_subject("Bonjour Jean, objet : rien") == (
+        None,
+        "Bonjour Jean, objet : rien",
+    )
+    long_subject, _ = prompts.split_subject("Objet : " + "mot " * 40 + "\nCorps")
+    assert len(long_subject) <= prompts.SUBJECT_MAX_CHARS and long_subject.endswith("…")
+
+
+def test_campaign_links_are_the_only_links_offered_to_the_model():
+    with_links = ProspectContext(
+        **{
+            **ctx().__dict__,
+            "campaign_resources": [
+                {
+                    "label": "Inscription",
+                    "url": "https://datum.example/i",
+                    "usage": "pour s'inscrire",
+                }
+            ],
+        }
+    )
+    system = prompts.reply_system(with_links, {}, [], [], mode="continue")
+    assert "- Inscription : https://datum.example/i (à proposer : pour s'inscrire)" in system
+    assert "n'écris aucun autre lien" in system
+    assert "n'écris aucun lien qui ne figure pas dans les extraits" in reply()
+
+
+def test_the_imposed_subject_takes_the_first_name():
+    def subject(text, first_name="Camille"):
+        return prompts.imposed_subject(
+            ProspectContext(
+                **{**ctx().__dict__, "campaign_subject": text, "first_name": first_name}
+            )
+        )
+
+    assert subject("{prénom}, votre projet et le Master eBIHAR") == (
+        "Camille, votre projet et le Master eBIHAR"
+    )
+    assert subject("{prenom}, le Master eBIHAR", first_name=None) == "le Master eBIHAR"
+    assert subject("  ") is None and subject(None) is None
+
+
+BROCHURE = {"id": "f1", "label": "Brochure du programme", "usage": "quand il veut le programme"}
+CALENDRIER = {"id": "f2", "label": "Calendrier", "usage": ""}
+TARIFS = {"id": "f3", "label": "Tarifs", "usage": ""}
+
+
+def test_campaign_documents_are_offered_on_email_only():
+    """D-42 : les documents de la campagne sont proposés au modèle sur l'email, jamais ailleurs."""
+    with_files = ProspectContext(**{**ctx().__dict__, "campaign_files": [BROCHURE]})
+    system = prompts.reply_system(with_files, {}, [], [], mode="continue")
+    assert "- Brochure du programme (à joindre : quand il veut le programme)" in system
+    assert "« Pièce jointe : <nom exact> »" in system
+    assert "Pièces jointes : aucune" in reply()
+    messaging = ProspectContext(
+        **{**ctx().__dict__, "channel": "whatsapp", "campaign_files": [BROCHURE]}
+    )
+    other = prompts.reply_system(messaging, {}, [], [], mode="continue")
+    assert "Brochure du programme" not in other and "impossibles sur ce canal" in other
+
+
+def test_the_attachment_line_names_campaign_documents_only():
+    files = [BROCHURE, CALENDRIER, TARIFS]
+    text = "Bonjour Camille,\nVoici le programme.\n\n**Pièce jointe :** « brochure du programme »"
+    assert prompts.split_attachments(text, files) == (
+        [BROCHURE],
+        "Bonjour Camille,\nVoici le programme.",
+    )
+    unknown = "Bonjour\nPièce jointe : Plaquette secrète"
+    assert prompts.split_attachments(unknown, files) == ([], "Bonjour")  # nom inconnu : rien
+    many = "Bonjour\nPièces jointes : Calendrier, Tarifs; Brochure du programme"
+    attached, body = prompts.split_attachments(many, files)
+    assert attached == [CALENDRIER, TARIFS] and body == "Bonjour"  # deux au plus
+    plain = "Votre pièce jointe : le CV est bien reçu, merci."
+    assert prompts.split_attachments(plain, files) == ([], plain)
+    assert prompts.split_attachments("PJ : Calendrier", []) == ([], "")

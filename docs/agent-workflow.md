@@ -80,13 +80,25 @@ graph TD;
 2. **Cas qui exigent un humain, quoi qu'il arrive** : modèle indisponible, situation sensible → transfert (F-20).
 3. **Demande de rendez-vous** (même formulée « avec un conseiller ») → l'agent organise le rendez-vous lui-même
    avec des créneaux réels (F-18). Sans agenda, le transfert a lieu juste après : le prospect n'est jamais bloqué.
-4. **Demande d'un humain, cas particulier, incertitude** (< 0,5) → transfert.
+4. **Demande d'un humain, cas particulier, incertitude** (< 0,5) → transfert. « Je parle à un robot ? » n'est
+   pas une demande d'humain : l'agent répond franchement (D-32, D-33).
 5. **Pas intéressé** → clôture, aucune relance.
-6. **Rendez-vous** : créneau choisi → réservation ; score ≥ 50 avec qualification complète → proposition de créneaux.
+6. **Rendez-vous** : créneau choisi → réservation. Grille de qualification complète et question qui annonce une
+   décision (admission, rentrée, candidature) → l'agent répond, puis propose de vrais créneaux dans le même
+   message, une seule fois ; sans agenda, la réponse part seule (D-33). Score ≥ 50 avec qualification complète →
+   proposition de créneaux.
 7. **Message neutre et score ≤ 24** → entretien espacé (nurturing) et relance programmée (scénario 1).
 8. Sinon → poursuite de l'échange et qualification.
 
 **Relances** : toute réponse du prospect, tout transfert à un humain et toute clôture annulent les relances en attente (F-16).
+
+**Qualification (D-33)** : une grille par programme, recueillie une question à la fois dans l'ordre de
+l'entonnoir : projet (question ouverte), niveau d'études ou situation, rentrée visée, ville ou format (questions
+alternatives). Pour eBIHAR, master en ligne (D-37) : projet, diplôme, situation actuelle, rentrée visée. L'agent
+reformule brièvement ce que le prospect vient de dire, répond en 80 mots au plus, ne donne jamais d'avis
+d'admission, ne redemande jamais une information connue et ne propose pas de lui-même un conseiller : les
+créneaux arrivent au bon moment. Quand les extraits donnent plusieurs cas ou une information indicative, il
+répond avec le cas du prospect au lieu de transférer.
 
 **Questions** : une question précise sans extrait de la base de connaissances est transférée (jamais devinée). Une
 question sur la *liste* des formations (`asks_catalogue`) est répondue grâce à la liste validée des trois programmes
@@ -99,14 +111,14 @@ Les seuils sont des valeurs de conception (CdC §4.2), regroupées en tête de `
 | Risque | Parade | Exigence |
 |---|---|---|
 | Le modèle invente un prix, une condition (CPF, admission), une durée, une date | Réponse **vérifiée par le code** : prix et conditions doivent figurer dans les extraits ou le catalogue, durées et dates dans les extraits ou la conversation ; un seul nouvel essai plus strict, sinon transfert | NF-10 |
-| Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée : aucun extrait trouvé, ou extraits proches que le modèle signale comme sans réponse (`[CONSEILLER]`) ; le message n'est alors pas envoyé | F-20, NF-10 |
+| Question hors base de connaissances | Transfert au conseiller, jamais de réponse devinée : aucun extrait trouvé, ou extraits proches que le modèle signale comme sans réponse (`[CONSEILLER]`, ou renvoi au conseiller écrit en toutes lettres, D-34) ; le message n'est alors pas envoyé | F-20, NF-10 |
 | Disponibilité inventée | Aucun créneau cité s'il ne vient pas de l'agenda ; agenda absent → transfert | NF-10, F-18 |
 | Prospect désinscrit | Détection sans modèle ; envoi sortant refusé par le service même si le workflow se trompait | S-03 |
 | Premier message à une personne qui n'a rien demandé | L'agent n'écrit en premier qu'avec un consentement accordé (refus 409 sinon) ; premiers contacts étalés dans la fenêtre d'envoi | D-29 |
 | API du modèle en panne ou quota dépassé | Nouveaux essais avec attente croissante, puis transfert avec résumé sans modèle | NF-05 |
 | Données personnelles envoyées au modèle | Prénom et informations de qualification seulement : jamais email, téléphone ni identifiants | S-01 |
 | Réponse non traçable | Chaque exécution est journalisée (noeuds, décision, justification, scores) | NF-04, OB-05 |
-| Fausse identité | L'agent se présente comme assistant virtuel et ne se fait jamais passer pour un humain | Transparence |
+| Fausse identité | L'agent ne se fait jamais passer pour un humain et le dit franchement si on le lui demande ; la mention IA sous chaque email rédigé par l'agent indique s'il a été relu par un conseiller (D-32) | Transparence, AI Act art. 50 |
 
 ## Changer de fournisseur de modèle de langage
 

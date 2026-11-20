@@ -3,6 +3,7 @@
 import { FlaskConical, Mail, Sparkles } from "lucide-react";
 import { Btn, ColorChoice, ErrorText, FilterChip, LinkButton, Notice, NumberInput, SelectBox, TextBox, TextInput } from "@/components/ds/controls";
 import { ActionsBar, InfoRow, SettingRow as Field, SettingsCard, Toggle } from "@/components/ds/settings";
+import EmailBanner from "@/components/settings/EmailBanner";
 import type { RuntimeSettings } from "@/lib/types";
 
 /** Sections de l'écran Paramètres (une carte par catégorie). L'état du formulaire reste dans la page :
@@ -285,8 +286,20 @@ export function EmailsSection({
             />
           </Field>
           <Field
-            label="Mention « message rédigé avec une IA »"
-            note="Ajoutée à tout email rédigé par l’agent (AI Act, art. 50). Vous pouvez adapter la formulation, pas la supprimer."
+            label="Mention IA, message relu par un conseiller"
+            note="Ajoutée à tout email rédigé par l’agent puis validé par un conseiller (AI Act, art. 50) : c’est le cas normal. Vous pouvez adapter la formulation, pas la supprimer."
+          >
+            <TextBox
+              value={form.email_ai_notice_reviewed}
+              rows={2}
+              minLength={10}
+              maxLength={500}
+              onChange={(e) => set("email_ai_notice_reviewed", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Mention IA, message envoyé sans relecture"
+            note="Ajoutée à un email parti sans validation (mode automatique, refusé en production pendant le pilote). Vous pouvez adapter la formulation, pas la supprimer."
           >
             <TextBox
               value={form.email_ai_notice}
@@ -322,6 +335,71 @@ export function EmailsSection({
               placeholder="https://…/logo.png"
               value={form.email_logo_url}
               onChange={(e) => set("email_logo_url", e.target.value)}
+            />
+          </Field>
+          <InfoRow
+            label="Bandeau chargé"
+            note="Recommandé : l’image est intégrée à chaque email, sans hébergement, et s’affiche même quand les images distantes sont bloquées. Elle remplace le bandeau hébergé et le bandeau dessiné."
+          >
+            <EmailBanner />
+          </InfoRow>
+          <Field
+            label="Bandeau hébergé (image https, facultatif)"
+            note="Sans bandeau chargé : image publique de 600 px de large, hébergée par l’école. Vide : un bandeau aux couleurs de l’école, avec le nom (ou le logo) et la phrase d’accroche."
+          >
+            <TextInput
+              type="url"
+              placeholder="https://…/bandeau.png"
+              value={form.email_header_image_url}
+              onChange={(e) => set("email_header_image_url", e.target.value)}
+            />
+          </Field>
+          <Field label="Phrase d’accroche du bandeau" note="ex. « Nous ouvrons la voie aux leaders IT de demain ».">
+            <TextInput
+              value={form.email_header_tagline}
+              maxLength={160}
+              onChange={(e) => set("email_header_tagline", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : équipe" note="En gras sous chaque email, ex. « L’équipe admissions ».">
+            <TextInput
+              value={form.email_signature_team}
+              maxLength={80}
+              onChange={(e) => set("email_signature_team", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : établissement">
+            <TextInput
+              value={form.email_signature_org}
+              maxLength={80}
+              onChange={(e) => set("email_signature_org", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : email de contact">
+            <TextInput
+              type="email"
+              value={form.email_contact_email}
+              maxLength={120}
+              onChange={(e) => set("email_contact_email", e.target.value)}
+            />
+          </Field>
+          <Field label="Signature : adresse" note="Une ligne par ligne d’adresse.">
+            <TextBox
+              value={form.email_postal_address}
+              rows={2}
+              maxLength={300}
+              onChange={(e) => set("email_postal_address", e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Liens du pied d’email"
+            note="Un lien par ligne : « Libellé | https://… », ex. « LinkedIn | https://www.linkedin.com/company/… »."
+          >
+            <TextBox
+              value={form.email_social_links}
+              rows={4}
+              maxLength={1000}
+              onChange={(e) => set("email_social_links", e.target.value)}
             />
           </Field>
           <InfoRow

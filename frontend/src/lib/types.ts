@@ -63,6 +63,9 @@ export type MetaSettings = {
 };
 export type Campaign = Schemas["CampaignRead"];
 export type CampaignStats = Schemas["CampaignStats"];
+/** Document de campagne que l'agent peut joindre à un email (D-42). */
+export type CampaignFile = Schemas["CampaignFileRead"];
+export type DraftAttachment = Schemas["TodoAttachment"];
 export type CampaignOverview = Schemas["CampaignOverview"];
 
 export type Message = {
@@ -197,6 +200,8 @@ export type TodoItem = {
     created_at: string;
     subject?: string | null;
     footer?: string | null;
+    /** Documents de la campagne joints par l'agent (D-42). */
+    attachments?: DraftAttachment[];
   } | null;
   handoff: HandoffSheet | null;
   recommendation: {

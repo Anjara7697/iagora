@@ -7,10 +7,11 @@ seuils sont des valeurs de conception ajustables après validation métier.
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from app.graph.ports import PolicyTuning
+from app.graph.ports import HistoryMessage, PolicyTuning
 from app.graph.state import Action, Decision, Qualification, SalesAgentState
 from app.models.enums import ConversionStage, ScoringSignal
 
@@ -23,11 +24,14 @@ MIN_CONFIDENCE = 0.5  # en dessous : lecture du modèle trop incertaine, on tran
 # (AUDIT-BIZ-001).
 SLOT_MIN_NOTICE = timedelta(minutes=15)
 
-# Informations de qualification attendues par cible (F-09) : peu de questions, jamais répétées.
+# Grille de qualification par cible (F-09, décisions D-33 et D-37) : une question à la fois,
+# jamais répétée, dans l'ordre de l'entonnoir : le projet d'abord (question ouverte), puis la
+# situation, la rentrée visée et le lieu ou le format (questions alternatives). eBIHAR se suit en
+# ligne : le format ne se demande pas, la situation (en études, en poste) le remplace.
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
-    "ebihar_students": ("study_level", "goal"),
-    "compagnons_pros": ("current_situation", "goal"),
-    "master_candidates": ("study_level", "availability"),
+    "ebihar_students": ("goal", "study_level", "current_situation", "start_term"),
+    "compagnons_pros": ("goal", "current_situation", "start_term", "location"),
+    "master_candidates": ("goal", "study_level", "start_term", "location"),
     "master_companies": ("company_need", "availability"),
 }
 DEFAULT_REQUIRED = ("goal",)
@@ -35,10 +39,12 @@ DEFAULT_REQUIRED = ("goal",)
 FIELD_LABELS = {
     "study_level": "son niveau d'études",
     "field_of_study": "son domaine d'études",
-    "current_situation": "sa situation professionnelle actuelle",
+    "current_situation": "sa situation actuelle (en études ou en poste)",
     "goal": "ce qu'il ou elle recherche (son projet)",
     "availability": "ses disponibilités ou l'échéance visée",
     "company_need": "les profils ou compétences recherchés par l'entreprise",
+    "start_term": "la rentrée qu'il ou elle vise",
+    "location": "le lieu ou le format souhaité (ville, sur place ou à distance)",
 }
 
 
@@ -91,9 +97,69 @@ _PERSONAL_DATA = [
 ]
 
 
+# « Je parle à un robot ? » : une question sur l'interlocuteur, à laquelle l'agent répond
+# franchement (D-32), pas une demande de conseiller.
+_ASKS_ABOUT_AGENT = re.compile(
+    r"\b(robot|bot|chatbot|une ia|l.ia|intelligence artificielle|une machine"
+    r"|vraie personne|un humain|une personne reelle)\b"
+)
+_DEMANDS_HUMAN = re.compile(
+    r"(parler|echanger|discuter) (a|avec) (un|une|quelqu.un|le|la) ?(humain|conseill|personne|vrai)"
+    r"|passez.moi|je (veux|voudrais|prefere|souhaite) (un|une|parler a un) ?(humain|conseill)"
+)
+# Question qui annonce une décision : admission, candidature, inscription, rentrée.
+_NEXT_STEP = re.compile(
+    r"admission|admis\b|candidat|inscri|rentree|dossier|date limite|postuler|commencer"
+    r"|demarr|entretien|prochaine session|quand (ca|cela) commence"
+)
+
+
+def asks_about_agent(text: str) -> bool:
+    t = normalize(text)
+    return "?" in text and bool(_ASKS_ABOUT_AGENT.search(t)) and not _DEMANDS_HUMAN.search(t)
+
+
+def asks_next_step(text: str) -> bool:
+    return bool(_NEXT_STEP.search(normalize(text)))
+
+
 def asks_about_personal_data(text: str) -> bool:
     t = normalize(text)
     return any(re.search(p, t) for p in _PERSONAL_DATA)
+
+
+# Renvoi vers un conseiller écrit sans le signal `[CONSEILLER]` (« je préfère laisser un conseiller
+# vous apporter cette précision », « un conseiller vous précisera… ») : la réponse manque, il faut
+# un vrai transfert pour tenir la promesse (D-34).
+_INFO_VERBS = r"(donn|precis|apport|indiqu|confirm|communiqu|detaill|repond|expliqu|renseign)"
+_ADVISOR = r"\b(un|le|votre|nos|des) conseillers?(?: [\w.]+){0,3}? "
+_PRONOUNS = r"(vous |nous )?(la |le |les |l.|en |y )?"
+_DEFERS = re.compile(
+    r"laisser (a )?(un|le|votre|nos) conseill"
+    rf"|{_ADVISOR}{_PRONOUNS}{_INFO_VERBS}(era|eront|ra|ront)\b"
+    rf"|{_ADVISOR}(pourra|pourront|saura|sauront|va|vont) {_PRONOUNS}{_INFO_VERBS}(er|re)\b"
+    r"|je n.ai pas (cette |l.|d.|de )?(information|precision|reponse)"
+    r"|je ne dispose pas (de cette|de l.|d.)"
+)
+
+
+def defers_to_advisor_in_words(reply: str) -> bool:
+    """Le message renvoie une information à un conseiller, en toutes lettres."""
+    return bool(_DEFERS.search(normalize(reply)))
+
+
+def question_unanswered(
+    history: list[HistoryMessage], qualification: Qualification | None, inbound: str
+) -> bool:
+    """Le dernier message de l'agent posait une question et le prospect y a répondu par une autre
+    question, sans rien dire de nouveau sur lui : reposer la même question serait insistant
+    (D-34), on la garde pour le message suivant."""
+    if "?" not in inbound:
+        return False  # « d'accord », « bonjour » : la question peut être reposée
+    last = next((m for m in reversed(history) if m.role != "prospect"), None)
+    if last is None or "?" not in last.content:
+        return False
+    return qualification is None or not qualification.profile_updates()
 
 
 _MEETING = [r"rendez[- ]?vous", r"\brdv\b", r"creneau", r"disponibilites?\b"]
@@ -266,6 +332,22 @@ def decide(state: SalesAgentState, tuning: PolicyTuning = DEFAULT_TUNING) -> Dec
     if stage not in _ADVANCED_STAGES:
         if q is not None and q.intent == "meeting_declined":
             return Decision(Action.NURTURE, "Rendez-vous refusé : relance programmée")
+        # D-33 : grille complète et question qui annonce une décision (admission, rentrée,
+        # candidature) -> l'agent répond, puis propose de lui-même de vrais créneaux, une fois.
+        if (
+            q is not None
+            and q.intent in ("question", "interested")
+            and not missing
+            and ctx.pending_slots == []
+            and stage is not ConversionStage.MEETING_PROPOSED
+            and asks_next_step(state.get("inbound_text", ""))
+        ):
+            return Decision(
+                Action.PROPOSE_MEETING,
+                "Qualification complète et question sur l'admission, la rentrée ou la "
+                "candidature : réponse puis créneaux",
+                answer_first=True,
+            )
         threshold = tuning.propose_meeting_min_score
         if total >= threshold and not missing and ctx.pending_slots == []:
             return Decision(
@@ -279,6 +361,7 @@ def decide(state: SalesAgentState, tuning: PolicyTuning = DEFAULT_TUNING) -> Dec
         total <= tuning.nurture_max_score
         and state.get("trigger") == "inbound_message"
         and (q is None or q.intent == "other")
+        and not asks_about_agent(state.get("inbound_text", ""))
     ):
         return Decision(Action.NURTURE, f"Score faible ({total}) : entretien espacé")
 
@@ -387,16 +470,74 @@ _TERMS = re.compile(
 )
 
 
+# Marques d'accord d'un terme qui engage l'école (« gratuit », « gratuits », « gratuites »,
+# « éligibles ») : le terme est sourcé si sa forme de base figure dans les sources.
+_AGREEMENT = re.compile(r"(?:es|e|s)$")
+
+
 def _compact(text: str) -> str:
     return re.sub(r"\s+", "", text)
 
 
+_NUMBER_WORDS = {
+    "deux": "2", "trois": "3", "quatre": "4", "cinq": "5", "six": "6", "sept": "7", "huit": "8",
+    "neuf": "9", "dix": "10", "onze": "11", "douze": "12", "quinze": "15", "seize": "16",
+    "dix-huit": "18", "vingt": "20", "vingt-quatre": "24", "trente": "30", "quarante-huit": "48",
+}  # fmt: skip
+_SPELLED_DURATION = re.compile(
+    r"\b(" + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True)) + r")\s"
+    r"(?=(?:ans?|annees?|mois|semaines?|jours?|heures?)\b)"
+)
+
+
 def _canonical(text: str) -> str:
-    """Écritures équivalentes d'un montant ramenées à une seule (texte déjà `normalize`) :
-    « 7 000 euros », « 7.000 € » et « 7000 eur » deviennent « 7000€ » ; « 5 pour cent », « 5% »."""
+    """Écritures équivalentes d'un montant ou d'une durée ramenées à une seule (texte déjà
+    `normalize`) : « 7 000 euros », « 7.000 € » et « 7000 eur » deviennent « 7000€ » ;
+    « 5 pour cent », « 5% » ; « deux ans », « 2 ans » (la source écrit souvent en chiffres)."""
+    text = _SPELLED_DURATION.sub(lambda m: _NUMBER_WORDS[m.group(1)] + " ", text)
     text = re.sub(r"(?<=\d)[ .\u00a0\u202f](?=\d{3}(?!\d))", "", text)
     text = re.sub(r"(?<=\d)\s?(?:euros?|eur)\b", "€", text)
     return re.sub(r"(?<=\d)\s?pour ?cent\b", "%", text)
+
+
+# Liens (D-39) : un lien n'est envoyé que s'il figure dans les ressources de la campagne ou dans les
+# sources validées ; un lien inventé par le modèle (page, formulaire, document) est bloqué.
+_LINK = re.compile(r"(?:https?://|www\.)[^\s<>()\[\]\"'«»]+", re.IGNORECASE)
+
+
+def _link_key(link: str) -> str:
+    key = link.rstrip(_TRAILING_LINK).lower()
+    key = re.sub(r"^https?://", "", key)
+    key = re.sub(r"^www\.", "", key)
+    return key.rstrip("/")
+
+
+_TRAILING_LINK = ".,;:!?)»"
+
+
+def links_in(text: str) -> list[str]:
+    return [m.group(0).rstrip(_TRAILING_LINK) for m in _LINK.finditer(text)]
+
+
+def unlisted_links(reply: str, allowed: list[str]) -> list[str]:
+    """Liens de la réponse absents des ressources et des sources validées (comparés sans le
+    protocole, le « www. » ni la barre finale)."""
+    keys = {_link_key(link) for text in allowed for link in links_in(text)}
+    return list(dict.fromkeys(link for link in links_in(reply) if _link_key(link) not in keys))
+
+
+_ANNOUNCED_ATTACHMENT = re.compile(
+    r"\bci[- ]?joint(?:e|s|es)?\b|\ben pi[eè]ces? jointes?\b|\bjoint(?:e|s|es)? (?:à|a) "
+    r"(?:ce|cet) (?:message|e-?mail|mail|courriel)\b",
+    re.IGNORECASE,
+)
+
+
+def attachment_claims(reply: str, attached: Sequence[object]) -> list[str]:
+    """Un document annoncé (« ci-joint », « en pièce jointe ») sans document joint (D-42)."""
+    if attached or not _ANNOUNCED_ATTACHMENT.search(reply):
+        return []
+    return ["document annoncé sans pièce jointe"]
 
 
 def _extra_terms(terms: tuple[str, ...]) -> re.Pattern[str] | None:
@@ -427,6 +568,9 @@ def ungrounded_claims(
         checks.append((extra, validated))
     for pattern, haystack in checks:
         for match in pattern.finditer(text):
-            if _compact(_canonical(match.group(0))) not in haystack:
+            found = _compact(_canonical(match.group(0)))
+            if pattern is _TERMS:
+                found = _AGREEMENT.sub("", found)  # « gratuites » est sourcé par « gratuit »
+            if found not in haystack:
                 bad.append(match.group(0).strip())
     return list(dict.fromkeys(bad))

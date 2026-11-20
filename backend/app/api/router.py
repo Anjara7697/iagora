@@ -11,6 +11,7 @@ from app.api.v1 import (
     conversations,
     dashboard,
     demo,
+    evaluations,
     health,
     imports,
     integrations,
@@ -54,6 +55,7 @@ api_router.include_router(meta.admin_router)
 api_router.include_router(meta.webhook_router)
 api_router.include_router(demo.router)
 api_router.include_router(simulation.router)
+api_router.include_router(evaluations.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(analytics.router)
 # Les webhooks publics appliquent leur propre authentification (signature fournisseur).

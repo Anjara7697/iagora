@@ -17,7 +17,7 @@ from app.agents.defaults import EmptyKnowledgeBase
 from app.config import get_settings
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
-from app.devtools import chat, evaluation, runner, seed
+from app.devtools import chat, conversation_eval, evaluation, kb_evaluation, runner, seed
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import SCENARIOS, get_scenarios
 from app.graph.ports import KnowledgeBase, LanguageModel, Passage
@@ -104,6 +104,30 @@ async def cmd_scenarios(names: list[str], *, fake: bool, report: str | None, cle
     return 0 if ok == len(ran) else 1
 
 
+def _cases_file(cases_path: str | None) -> dict[str, Path]:
+    """Jeu de cas local (`--cas`), gardé hors Git quand il cite les vrais documents (D-28)."""
+    if cases_path is None:
+        return {}
+    path = Path(cases_path)
+    if not path.is_file():
+        sys.exit(f"Jeu de cas introuvable : {path}")
+    return {"path": path}
+
+
+LOCAL_CASES_LABEL = "documents importés uniquement (jeu de cas local, démo écartée)"
+
+
+def _eval_knowledge(rt: Runtime, *, real_rag: bool, local_cases: bool) -> tuple[KnowledgeBase, str]:
+    """Base interrogée par une évaluation. Un jeu de cas local (`--cas`) porte sur les vrais
+    documents d'une campagne : vraie recherche, sans les documents fictifs de démonstration."""
+    if local_cases:
+        return evaluation.ImportedDocumentsOnly(chat_knowledge(rt, fake=False)), LOCAL_CASES_LABEL
+    if real_rag:
+        kb = chat_knowledge(rt, fake=False)
+        return kb, "recherche réelle (documents de démonstration chargés par seed-demo)"
+    return evaluation.LexicalKnowledge(), "base FICTIVE de démonstration, recherche lexicale"
+
+
 async def cmd_eval_agent(
     ids: list[str],
     *,
@@ -117,21 +141,17 @@ async def cmd_eval_agent(
     cleanup: bool,
     price_in: float | None,
     price_out: float | None,
+    cases_path: str | None = None,
 ) -> int:
     """Mesure l'agent sur le jeu de cas annotés (voir `evaluation.py`)."""
     rt = build_runtime(fake=fake)
     try:
-        cases = evaluation.load_cases(ids or None, categories)
+        cases = evaluation.load_cases(ids or None, categories, **_cases_file(cases_path))
     except KeyError as exc:
         sys.exit(str(exc.args[0]))
     if not cases:
         sys.exit("Aucun cas ne correspond aux filtres.")
-    if real_rag:
-        kb: KnowledgeBase = chat_knowledge(rt, fake=False)
-        kb_label = "recherche réelle (documents de démonstration chargés par seed-demo)"
-    else:
-        kb = evaluation.LexicalKnowledge()
-        kb_label = "base FICTIVE de démonstration, recherche lexicale"
+    kb, kb_label = _eval_knowledge(rt, real_rag=real_rag, local_cases=cases_path is not None)
     variant = ablation or "complète"
     print(f"Évaluation de l'agent — mode {rt.mode} — variante {variant} — {len(cases)} cas\n")
     results = await evaluation.run_eval(
@@ -141,7 +161,8 @@ async def cmd_eval_agent(
     summary = evaluation.summarize(results, price_in=price_in, price_out=price_out)
     print(
         f"\nConformes : {summary.conform} — intention {summary.intent} — décision "
-        f"{summary.decision} — transfert {summary.handoff} — sourcées {summary.grounded}"
+        f"{summary.decision} — transfert {summary.handoff} — sourcées {summary.grounded} — "
+        f"forme {summary.channel_format}"
     )
     print(
         f"Chiffres non sourcés : bruts {summary.raw_hallucination}, envoyés "
@@ -171,9 +192,65 @@ async def cmd_eval_agent(
     return 1 if summary.errors else 0
 
 
+async def cmd_eval_conversations(
+    ids: list[str],
+    *,
+    fake: bool,
+    real_rag: bool,
+    pause: float,
+    report: str | None,
+    json_path: str | None,
+    cleanup: bool,
+    cases_path: str | None = None,
+) -> int:
+    """Joue des conversations de plusieurs messages (voir `conversation_eval.py`)."""
+    rt = build_runtime(fake=fake)
+    try:
+        convs = conversation_eval.load_conversations(ids or None, **_cases_file(cases_path))
+    except KeyError as exc:
+        sys.exit(str(exc.args[0]))
+    kb, kb_label = _eval_knowledge(rt, real_rag=real_rag, local_cases=cases_path is not None)
+    print(f"Évaluation de conversations — mode {rt.mode} — {len(convs)} conversation(s)\n")
+    results = await conversation_eval.run_conversations(
+        rt.session_factory, rt.db, convs, llm=rt.llm, knowledge=kb, pause=pause,
+        on_done=lambda r: print(conversation_eval.format_console(r)),
+    )  # fmt: skip
+    summary = conversation_eval.summarize(results)
+    print(
+        f"\nConversations conformes : {summary.conform} — tours {summary.turns} — contexte "
+        f"{summary.context} — parcours {summary.end}"
+    )
+    print(
+        f"Redemandées : {summary.reasked} — salutations répétées : {summary.greetings_repeated} — "
+        f"présentation IA : {summary.ai_self_intros} — ignorées : {summary.skipped}"
+    )
+    model = f"{rt.llm.provider}/{rt.llm.model}"
+    if report:
+        Path(report).write_text(
+            conversation_eval.format_markdown(
+                results, summary, mode=rt.mode, model=model, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Rapport écrit : {report}")
+    if json_path:
+        Path(json_path).write_text(
+            conversation_eval.to_json(
+                results, summary, mode=rt.mode, model=model, knowledge=kb_label
+            ),
+            encoding="utf-8",
+        )
+        print(f"Résultats JSON écrits : {json_path}")
+    if cleanup:
+        async with rt.session_factory() as session:
+            print(f"{await cleanup_recette(session, rt.db)} prospect(s) de recette supprimé(s).")
+    await _shutdown()
+    return 1 if summary.errors else 0
+
+
 async def cleanup_recette(session: AsyncSession, db: Any) -> int:
     """Supprime les prospects créés par les scénarios et le simulateur (pas le jeu de démo)."""
-    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL]
+    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL, conversation_eval.LABEL]
     ids = list(
         await session.scalars(
             select(Prospect.id).where(
@@ -195,7 +272,7 @@ def chat_knowledge(rt: Runtime, *, fake: bool) -> KnowledgeBase:
     if fake:
         demo_fact = Passage(
             source="demo (FICTIF)",
-            text="Le programme de démonstration dure 18 mois et se déroule en alternance.",
+            text="Le programme de démonstration, un Master 2 en ligne, dure 10 mois et se déroule entièrement à distance.",
         )
         return FakeKnowledge([demo_fact])
     kb = create_knowledge_base(get_settings(), rt.session_factory)
@@ -239,51 +316,43 @@ async def load_demo_kb(rt: Runtime, *, reset: bool) -> None:
             print(f"  base de démo : {file.stem} {result.status.value} ({result.chunks} extraits)")
 
 
-async def cmd_kb_eval() -> int:
+async def cmd_kb_eval(*, json_path: str | None = None, cases_path: str | None = None) -> int:
     """Mesure la qualité de la recherche sur des questions types (calibrage du seuil)."""
     rt = build_runtime(fake=True)
     embeddings = require_embeddings()
     kb = PgKnowledgeBase(
-        rt.session_factory, embeddings, min_score=get_settings().rag_min_score, include_demo=True
+        rt.session_factory,
+        embeddings,
+        min_score=get_settings().rag_min_score,
+        include_demo=cases_path is None,  # jeu de cas local : vrais documents seulement
     )
     async with rt.session_factory() as session:
         title_to_slug = {d.title: d.slug for d in await knowledge.list_documents(session)}
-    cases = json.loads((DEMO_KB_DIR / "eval.json").read_text(encoding="utf-8"))
-    hits, hit_scores, miss_scores, failures = 0, [], [], 0
-    same_topic: list[float] = []
-    for case in cases:
-        passages = await kb.search_all(case["question"], case["target"], 1)
-        top = passages[0] if passages else None
-        score = top.score or 0.0 if top else 0.0
-        slug = title_to_slug.get(top.source.split(" / ")[0]) if top else None
-        retained = top is not None and score >= kb.min_score
-        if case.get("same_topic"):
-            # Même sujet, sans réponse dans les documents : le seuil ne peut pas l'écarter ;
-            # c'est l'agent qui le signale et transfère. Mesuré, jamais compté en échec.
-            same_topic.append(score)
-            print(f"ℹ [{score:.3f}] {case['question']}  → {slug or '—'}"
-                  f"{' (retenu : l’agent doit transférer)' if retained else ' (écarté)'}")  # fmt: skip
-            continue
-        if case["expect"] is None:
-            ok = not retained
-            miss_scores.append(score)
-        else:
-            ok = retained and slug == case["expect"]
-            hit_scores.append(score)
-        failures += not ok
-        print(f"{'✓' if ok else '✗'} [{score:.3f}] {case['question']}  → {slug or '—'}"
-              f"{'' if retained else ' (écarté)'}")  # fmt: skip
-        hits += ok
-    print(f"\n{hits}/{len(cases) - len(same_topic)} conformes — seuil actuel {kb.min_score}")
-    if hit_scores and miss_scores:
-        print(f"Questions pertinentes : score min {min(hit_scores):.3f} ; "
-              f"hors sujet : score max {max(miss_scores):.3f}. "
+    results = await kb_evaluation.run(
+        kb,
+        title_to_slug,
+        kb_evaluation.load_cases(**_cases_file(cases_path)),
+        on_done=lambda r: print(kb_evaluation.format_console(r)),
+    )
+    summary = kb_evaluation.summarize(results, kb.min_score)
+    conform = summary["conform"]
+    print(f"\n{conform['ok']}/{conform['total']} conformes — seuil actuel {kb.min_score}")
+    if summary["relevant_score_min"] is not None and summary["off_topic_score_max"] is not None:
+        print(f"Questions pertinentes : score min {summary['relevant_score_min']:.3f} ; "
+              f"hors sujet : score max {summary['off_topic_score_max']:.3f}. "
               "Un bon seuil se situe entre les deux.")  # fmt: skip
-    if same_topic:
-        print(f"Même sujet sans réponse : scores {min(same_topic):.3f} à {max(same_topic):.3f}. "
+    if summary["same_topic_scores"]:
+        low, high = summary["same_topic_scores"]
+        print(f"Même sujet sans réponse : scores {low:.3f} à {high:.3f}. "
               "Le seuil ne les sépare pas des vraies réponses : l'agent les signale et transfère.")  # fmt: skip
+    if json_path:
+        payload = kb_evaluation.to_payload(results, summary, model=embeddings.model_id)
+        Path(json_path).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"Résultats JSON écrits : {json_path}")
     await _shutdown()
-    return 1 if failures else 0
+    return 1 if conform["ok"] < conform["total"] else 0
 
 
 async def _shutdown() -> None:

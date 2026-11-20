@@ -3,7 +3,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
-from app.config import DEFAULT_AI_NOTICE, DEFAULT_BRAND_COLOR, DEFAULT_BRAND_NAME
+from app.config import (
+    DEFAULT_AI_NOTICE,
+    DEFAULT_AI_NOTICE_REVIEWED,
+    DEFAULT_BRAND_COLOR,
+    DEFAULT_BRAND_NAME,
+)
 
 
 class RuntimeSettingsBase(BaseModel):
@@ -28,9 +33,24 @@ class RuntimeSettingsBase(BaseModel):
     # Emails
     email_footer: str = Field("", max_length=1000)
     email_ai_notice: str = Field(DEFAULT_AI_NOTICE, min_length=10, max_length=500)
+    email_ai_notice_reviewed: str = Field(DEFAULT_AI_NOTICE_REVIEWED, min_length=10, max_length=500)
     email_brand_name: str = Field(DEFAULT_BRAND_NAME, min_length=1, max_length=80)
     email_brand_color: str = Field(DEFAULT_BRAND_COLOR, pattern=r"^#[0-9a-fA-F]{6}$")
     email_logo_url: str = Field("", max_length=500, pattern=r"^(https://\S+)?$")
+    email_header_image_url: str = Field("", max_length=500, pattern=r"^(https://\S+)?$")
+    email_header_tagline: str = Field("", max_length=160)
+    email_signature_team: str = Field("", max_length=80)
+    email_signature_org: str = Field("", max_length=80)
+    email_contact_email: str = Field(
+        "", max_length=120, pattern=r"^([^@\s]+@[^@\s]+\.[a-zA-Z]{2,})?$"
+    )
+    email_postal_address: str = Field("", max_length=300)
+    email_social_links: str = Field(
+        "",
+        max_length=1000,
+        description="Un lien par ligne : « Libellé | https://… »",
+        pattern=r"^(\s*[^|\n]+\|\s*https://\S+\s*(\n|$))*$",
+    )
     email_create_unknown_senders: bool = True
     email_poll_seconds: int = Field(60, ge=10, le=3600)
     # Disponibilités des rendez-vous

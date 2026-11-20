@@ -628,6 +628,50 @@
         "title": "Body_login_api_v1_auth_login_post",
         "type": "object"
       },
+      "Body_upload_banner_api_v1_settings_email_banner_put": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG ou JPEG, 400 ko au plus, 600 px de large",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_banner_api_v1_settings_email_banner_put",
+        "type": "object"
+      },
+      "Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PDF, PNG ou JPEG, 4 Mo au plus",
+            "title": "File",
+            "type": "string"
+          },
+          "label": {
+            "description": "Nom donné à l'agent",
+            "maxLength": 120,
+            "title": "Label",
+            "type": "string"
+          },
+          "usage": {
+            "default": "",
+            "description": "Quand le joindre",
+            "maxLength": 300,
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "label"
+        ],
+        "title": "Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post",
+        "type": "object"
+      },
       "Breakdown": {
         "properties": {
           "count": {
@@ -915,6 +959,51 @@
         "title": "CampaignCreate",
         "type": "object"
       },
+      "CampaignFileRead": {
+        "description": "Document de campagne que l'agent peut joindre à un email (D-42), sans son contenu.",
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "usage": {
+            "default": "",
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "filename",
+          "content_type",
+          "size",
+          "created_at"
+        ],
+        "title": "CampaignFileRead",
+        "type": "object"
+      },
       "CampaignMembershipRead": {
         "properties": {
           "assigned_advisor_id": {
@@ -1125,6 +1214,17 @@
             ],
             "title": "Description"
           },
+          "email_subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Subject"
+          },
           "end_date": {
             "anyOf": [
               {
@@ -1144,6 +1244,14 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CampaignResource"
+            },
+            "title": "Resources",
+            "type": "array"
           },
           "responsible_advisor_active": {
             "anyOf": [
@@ -1228,6 +1336,41 @@
         "title": "CampaignRead",
         "type": "object"
       },
+      "CampaignResource": {
+        "description": "Lien validé que l'agent peut partager (D-39) : jamais un lien inventé par le modèle.",
+        "properties": {
+          "label": {
+            "examples": [
+              "Inscription au Master eBIHAR"
+            ],
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "examples": [
+              "https://www.datumacademy.com/fr/masters/eBIHAR"
+            ],
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
+          },
+          "usage": {
+            "default": "",
+            "description": "Quand l'agent doit le proposer",
+            "maxLength": 300,
+            "title": "Usage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "CampaignResource",
+        "type": "object"
+      },
       "CampaignStats": {
         "description": "Tableau de bord d'une campagne : entonnoir, niveaux d'intérêt et sources (F-01, F-13).",
         "properties": {
@@ -1305,6 +1448,19 @@
             ],
             "title": "Description"
           },
+          "email_subject": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Objet imposé du premier email ; vide : écrit par l'agent",
+            "title": "Email Subject"
+          },
           "end_date": {
             "anyOf": [
               {
@@ -1329,6 +1485,22 @@
               }
             ],
             "title": "Name"
+          },
+          "resources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CampaignResource"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Remplace l'ensemble des ressources",
+            "title": "Resources"
           },
           "start_date": {
             "anyOf": [
@@ -3255,6 +3427,59 @@
           "total_score"
         ],
         "title": "HotProspect",
+        "type": "object"
+      },
+      "ImportPayload": {
+        "properties": {
+          "file_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "ran_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Date du passage (défaut : maintenant)",
+            "title": "Ran At"
+          },
+          "report": {
+            "additionalProperties": true,
+            "description": "JSON écrit par --json (eval-agent, …)",
+            "title": "Report",
+            "type": "object"
+          }
+        },
+        "required": [
+          "label",
+          "report"
+        ],
+        "title": "ImportPayload",
         "type": "object"
       },
       "ImportReport": {
@@ -5217,6 +5442,179 @@
         "title": "RejectReason",
         "type": "object"
       },
+      "RunSettings": {
+        "description": "Réglages d'un passage. Ceux qui ne concernent pas la suite choisie sont ignorés.",
+        "properties": {
+          "ablation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sans-rag",
+                  "sans-garde-chiffres"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ablation"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Categories",
+            "type": "array"
+          },
+          "cleanup": {
+            "default": true,
+            "description": "Supprimer les prospects fictifs à la fin",
+            "title": "Cleanup",
+            "type": "boolean"
+          },
+          "ids": {
+            "description": "Vide : tout",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Ids",
+            "type": "array"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "live": {
+            "default": false,
+            "description": "Vrai modèle (sinon faux modèle scripté, gratuit)",
+            "title": "Live",
+            "type": "boolean"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Seuil essayé (base)",
+            "title": "Min Score"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "pause": {
+            "default": 0.0,
+            "description": "Secondes entre deux cas (quota)",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Pause",
+            "type": "number"
+          },
+          "price_in": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prix par million de jetons (entrée)",
+            "title": "Price In"
+          },
+          "price_out": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prix par million de jetons (sortie)",
+            "title": "Price Out"
+          },
+          "real_rag": {
+            "default": false,
+            "description": "Vraie recherche sur la base de démonstration",
+            "title": "Real Rag",
+            "type": "boolean"
+          },
+          "suite": {
+            "enum": [
+              "agent",
+              "conversations",
+              "kb"
+            ],
+            "title": "Suite",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suite",
+          "label"
+        ],
+        "title": "RunSettings",
+        "type": "object"
+      },
+      "RunUpdate": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "ran_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ran At"
+          }
+        },
+        "title": "RunUpdate",
+        "type": "object"
+      },
       "RuntimeSettingsRead": {
         "properties": {
           "agent_auto_reply": {
@@ -5307,10 +5705,17 @@
             "type": "integer"
           },
           "email_ai_notice": {
-            "default": "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.",
+            "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
             "maxLength": 500,
             "minLength": 10,
             "title": "Email Ai Notice",
+            "type": "string"
+          },
+          "email_ai_notice_reviewed": {
+            "default": "Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Email Ai Notice Reviewed",
             "type": "string"
           },
           "email_brand_color": {
@@ -5326,6 +5731,13 @@
             "title": "Email Brand Name",
             "type": "string"
           },
+          "email_contact_email": {
+            "default": "",
+            "maxLength": 120,
+            "pattern": "^([^@\\s]+@[^@\\s]+\\.[a-zA-Z]{2,})?$",
+            "title": "Email Contact Email",
+            "type": "string"
+          },
           "email_create_unknown_senders": {
             "default": true,
             "title": "Email Create Unknown Senders",
@@ -5335,6 +5747,19 @@
             "default": "",
             "maxLength": 1000,
             "title": "Email Footer",
+            "type": "string"
+          },
+          "email_header_image_url": {
+            "default": "",
+            "maxLength": 500,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Email Header Image Url",
+            "type": "string"
+          },
+          "email_header_tagline": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Email Header Tagline",
             "type": "string"
           },
           "email_logo_url": {
@@ -5350,6 +5775,32 @@
             "minimum": 10.0,
             "title": "Email Poll Seconds",
             "type": "integer"
+          },
+          "email_postal_address": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Email Postal Address",
+            "type": "string"
+          },
+          "email_signature_org": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Org",
+            "type": "string"
+          },
+          "email_signature_team": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Team",
+            "type": "string"
+          },
+          "email_social_links": {
+            "default": "",
+            "description": "Un lien par ligne : « Libellé | https://… »",
+            "maxLength": 1000,
+            "pattern": "^(\\s*[^|\\n]+\\|\\s*https://\\S+\\s*(\\n|$))*$",
+            "title": "Email Social Links",
+            "type": "string"
           },
           "embedding_model": {
             "description": "Lecture seule : en changer impose kb-reindex",
@@ -5539,10 +5990,17 @@
             "type": "integer"
           },
           "email_ai_notice": {
-            "default": "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA) de DATUM Academy.",
+            "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
             "maxLength": 500,
             "minLength": 10,
             "title": "Email Ai Notice",
+            "type": "string"
+          },
+          "email_ai_notice_reviewed": {
+            "default": "Message préparé avec l'aide d'un assistant IA et relu par un conseiller de DATUM Academy.",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Email Ai Notice Reviewed",
             "type": "string"
           },
           "email_brand_color": {
@@ -5558,6 +6016,13 @@
             "title": "Email Brand Name",
             "type": "string"
           },
+          "email_contact_email": {
+            "default": "",
+            "maxLength": 120,
+            "pattern": "^([^@\\s]+@[^@\\s]+\\.[a-zA-Z]{2,})?$",
+            "title": "Email Contact Email",
+            "type": "string"
+          },
           "email_create_unknown_senders": {
             "default": true,
             "title": "Email Create Unknown Senders",
@@ -5567,6 +6032,19 @@
             "default": "",
             "maxLength": 1000,
             "title": "Email Footer",
+            "type": "string"
+          },
+          "email_header_image_url": {
+            "default": "",
+            "maxLength": 500,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Email Header Image Url",
+            "type": "string"
+          },
+          "email_header_tagline": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Email Header Tagline",
             "type": "string"
           },
           "email_logo_url": {
@@ -5582,6 +6060,32 @@
             "minimum": 10.0,
             "title": "Email Poll Seconds",
             "type": "integer"
+          },
+          "email_postal_address": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Email Postal Address",
+            "type": "string"
+          },
+          "email_signature_org": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Org",
+            "type": "string"
+          },
+          "email_signature_team": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Email Signature Team",
+            "type": "string"
+          },
+          "email_social_links": {
+            "default": "",
+            "description": "Un lien par ligne : « Libellé | https://… »",
+            "maxLength": 1000,
+            "pattern": "^(\\s*[^|\\n]+\\|\\s*https://\\S+\\s*(\\n|$))*$",
+            "title": "Email Social Links",
+            "type": "string"
           },
           "follow_up_max_per_silence": {
             "default": 3,
@@ -6420,8 +6924,58 @@
         "title": "TemporaryPassword",
         "type": "object"
       },
+      "TodoAttachment": {
+        "description": "Document de campagne joint par l'agent (D-42), visible avant validation.",
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "TodoAttachment",
+        "type": "object"
+      },
       "TodoDraft": {
         "properties": {
+          "attachments": {
+            "default": [],
+            "description": "Documents de la campagne joints à l'email (D-42)",
+            "items": {
+              "$ref": "#/components/schemas/TodoAttachment"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
           "confidence": {
             "anyOf": [
               {
@@ -8571,6 +9125,219 @@
         ]
       }
     },
+    "/api/v1/campaigns/{campaign_id}/files": {
+      "get": {
+        "description": "Documents que l'agent peut joindre aux emails de cette campagne (D-42).",
+        "operationId": "list_campaign_files_api_v1_campaigns__campaign_id__files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignFileRead"
+                  },
+                  "title": "Response List Campaign Files Api V1 Campaigns  Campaign Id  Files Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Campaign Files",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "operationId": "upload_campaign_file_api_v1_campaigns__campaign_id__files_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_campaign_file_api_v1_campaigns__campaign_id__files_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignFileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upload Campaign File",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/files/{file_id}": {
+      "delete": {
+        "description": "Retire le document : un brouillon qui le joignait ne partira plus (D-42).",
+        "operationId": "delete_campaign_file_api_v1_campaigns__campaign_id__files__file_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Campaign File",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "get": {
+        "description": "Le document tel qu'il part en pièce jointe, pour le relire avant de valider un brouillon.",
+        "operationId": "download_campaign_file_api_v1_campaigns__campaign_id__files__file_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "title": "File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/pdf": {},
+              "image/jpeg": {},
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Download Campaign File",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
     "/api/v1/campaigns/{campaign_id}/first-contacts": {
       "get": {
         "description": "Combien de personnes de la campagne recevraient un premier message de l'agent (D-29).",
@@ -9892,6 +10659,357 @@
         "summary": "Purge Demo Data",
         "tags": [
           "demo"
+        ]
+      }
+    },
+    "/api/v1/evaluations": {
+      "get": {
+        "description": "Passages du plus récent au plus ancien, sans le rapport détaillé (indicateurs inclus).",
+        "operationId": "list_runs_api_v1_evaluations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Runs Api V1 Evaluations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Runs",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "post": {
+        "description": "Lance un passage en tâche de fond ; suivre son avancement avec `GET /evaluations/{id}`.",
+        "operationId": "start_run_api_v1_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Start Run Api V1 Evaluations Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Start Run",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/catalog": {
+      "get": {
+        "description": "Suites, cas et conversations disponibles, modèle et embeddings utilisables.",
+        "operationId": "catalog_api_v1_evaluations_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Catalog Api V1 Evaluations Catalog Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Catalog",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/import": {
+      "post": {
+        "description": "Ajoute à l'historique un rapport JSON produit en ligne de commande (`--json`).",
+        "operationId": "import_report_api_v1_evaluations_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Import Report Api V1 Evaluations Import Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Import Report",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/{run_id}": {
+      "delete": {
+        "operationId": "delete_run_api_v1_evaluations__run_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Run",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "get": {
+        "operationId": "get_run_api_v1_evaluations__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Run Api V1 Evaluations  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Run",
+        "tags": [
+          "evaluations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_run_api_v1_evaluations__run_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Run Api V1 Evaluations  Run Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Run",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/api/v1/evaluations/{run_id}/cancel": {
+      "post": {
+        "description": "Arrête le passage en cours ; les résultats déjà obtenus sont gardés.",
+        "operationId": "cancel_run_api_v1_evaluations__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Run Api V1 Evaluations  Run Id  Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Cancel Run",
+        "tags": [
+          "evaluations"
         ]
       }
     },
@@ -12159,6 +13277,87 @@
           }
         ],
         "summary": "Put Runtime Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/email/banner": {
+      "delete": {
+        "operationId": "delete_banner_api_v1_settings_email_banner_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Banner",
+        "tags": [
+          "settings"
+        ]
+      },
+      "get": {
+        "description": "Bandeau chargé (D-41), pour l'afficher dans Paramètres ; 404 s'il n'y en a pas.",
+        "operationId": "get_banner_api_v1_settings_email_banner_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/jpeg": {},
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Banner",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "upload_banner_api_v1_settings_email_banner_put",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_banner_api_v1_settings_email_banner_put"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upload Banner",
         "tags": [
           "settings"
         ]

@@ -40,6 +40,7 @@ from app.schemas.appointment import AppointmentData
 from app.schemas.conversation import ConversationUpdate
 from app.services import (
     appointments,
+    campaign_files,
     commercial_context,
     conversations,
     drafts,
@@ -96,7 +97,13 @@ class DbGateway:
         row = (
             await session.execute(
                 select(
-                    CampaignProspect, Campaign.name, Source.name, Campaign.responsible_advisor_id
+                    CampaignProspect,
+                    Campaign.name,
+                    Source.name,
+                    Campaign.responsible_advisor_id,
+                    Campaign.email_subject,
+                    Campaign.resources,
+                    Campaign.id,
                 )
                 .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
                 .join(Campaign, Campaign.id == CampaignSource.campaign_id)
@@ -126,6 +133,8 @@ class DbGateway:
             if responsible is not None and _can_hold_meetings(responsible):
                 advisor_id, advisor = responsible.id, responsible
         messages = drafts.live_messages(doc.get("messages", []))
+        campaign_id = row[6] if row else None
+        files = await campaign_files.list_files(self._db, campaign_id) if campaign_id else []
         return ProspectContext(
             prospect_id=prospect_id,
             conversation_id=conversation_id,
@@ -148,6 +157,18 @@ class DbGateway:
             is_demo=is_demo_email(prospect.email),
             consent_status=prospect.consent_status.value,
             profile=dict(prospect.profile or {}),
+            campaign_subject=row[4] if row else None,
+            campaign_resources=list(row[5] or []) if row else [],
+            campaign_files=[
+                {
+                    "id": f["id"],
+                    "label": f["label"],
+                    "usage": f["usage"],
+                    "filename": f["filename"],
+                    "campaign_id": campaign_id,
+                }
+                for f in files
+            ],
             history=[
                 HistoryMessage(
                     role=m["role"],

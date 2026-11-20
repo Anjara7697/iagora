@@ -245,6 +245,8 @@ const PAGE_TITLES: [string, string][] = [
   ["/account", "Mon compte"],
   ["/login", "Connexion"],
   ["/simulator", "Simulateur"],
+  ["/evaluation/", "Passage d’évaluation"],
+  ["/evaluation", "Évaluation"],
 ];
 
 /** Titre du document d'un écran : « Prospects · IAGORA ». */
@@ -271,6 +273,8 @@ export const PROFILE_FIELDS: Record<string, string> = {
   field_of_study: "Domaine d’études",
   goal: "Projet",
   availability: "Disponibilité",
+  start_term: "Rentrée visée",
+  location: "Lieu ou format",
   budget: "Budget",
   city: "Ville",
   profession: "Profession",

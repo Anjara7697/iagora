@@ -35,13 +35,15 @@ from app.services import (
     agent_events,
     agent_settings,
     application_intake,
+    campaign_files,
     conversations,
+    email_assets,
     email_format,
     enrollment_intake,
     follow_ups,
 )
 from app.services.agent_settings import AgentMode
-from app.services.errors import ConflictError
+from app.services.errors import ConflictError, NotFoundError
 from app.services.prospects import find_existing, get_prospect, ingest_prospect
 from app.services.send_window import in_send_window
 
@@ -353,7 +355,9 @@ def _thread_headers(
         and m["created_at"] <= message["created_at"]
     ]
     if not previous:
-        return DEFAULT_SUBJECT, None, []
+        # Premier contact : l'objet écrit par l'agent (D-38), sinon l'objet de secours.
+        subject = ((message.get("metadata") or {}).get("subject") or "").strip()
+        return (subject or DEFAULT_SUBJECT)[:300], None, []
     last = max(previous, key=lambda m: m["created_at"])
     info = (last.get("metadata") or {}).get("email") or {}
     subject = (info.get("subject") or "").strip() or DEFAULT_SUBJECT
@@ -465,15 +469,33 @@ async def _deliver_claimed(
             report.skipped += 1
             report.notes.append("message automatique remis en brouillon pour validation")
             return
+    # D-42 : documents joints par l'agent ; un document retiré de la campagne entre-temps bloque
+    # l'envoi (le message l'annonce peut-être) au lieu de partir sans lui.
+    attachments: list[tuple[str, str, bytes]] = []
+    for item in (message.get("metadata") or {}).get("attachments") or []:
+        try:
+            found = await campaign_files.load_file(db, str(item.get("id", "")))
+        except NotFoundError:
+            label = str(item.get("label") or "document")
+            reason = f"pièce jointe retirée de la campagne : {label}"
+            await _finish(db, conv_id, message, "blocked", reason=reason, at=_now())
+            report.blocked += 1
+            return
+        attachments.append((found.filename, found.content_type, found.data))
     subject, in_reply_to, references = _thread_headers(doc, message)
     attempts = int((message.get("metadata") or {}).get("delivery_info", {}).get("attempts", 0)) + 1
     try:
         attempt.smtp_started = True
-        # La mention IA accompagne tout message rédigé par l'agent, validé ou non par un conseiller.
+        # La mention IA accompagne tout message rédigé par l'agent ; sa formulation dit s'il a été
+        # relu et validé par un conseiller (D-32).
+        draft = (message.get("metadata") or {}).get("draft") or {}
+        banner = await email_assets.load_banner(db)
         rendered = email_format.render(
             message["content"],
             settings,
             ai_generated=message["role"] == SenderType.AGENT.value,
+            reviewed=draft.get("status") == "approved",
+            banner_src=f"cid:{email_assets.BANNER_CID}" if banner else None,
         )
         message_id = await client.send(
             OutboundEmail(
@@ -483,6 +505,10 @@ async def _deliver_claimed(
                 html=rendered.html,
                 in_reply_to=in_reply_to,
                 references=references,
+                inline_images=(
+                    [(email_assets.BANNER_CID, banner.content_type, banner.data)] if banner else []
+                ),
+                attachments=attachments,
             )
         )
     except Exception as exc:  # EmailError, mais aussi en-tête invalide : jamais bloqué en `sending`

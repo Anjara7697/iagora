@@ -138,7 +138,8 @@ un écran connu de la console, jamais une adresse externe).
     dans le navigateur, appliqué avant l'affichage par `lib/theme.ts`), Déconnexion.
 18. **Menu** : intitulés en français identiques aux titres des pages (`shell/navigation.ts`). Chaque écran a son
     entrée, que le menu surligne quand on y est ; le Simulateur a la sienne, sous « Paramètres », visible seulement
-    s'il est activé et permis au rôle (`canUseSimulator`, NAV-02). Sur bureau, menu
+    s'il est activé et permis au rôle (`canUseSimulator`, NAV-02) ; l'Évaluation la suit, pour les administrateurs
+    seulement, avec le même interrupteur (`canUseEvaluation`, D-35). Sur bureau, menu
     réductible à ses icônes, intitulé en `Tooltip` et nom accessible conservé, choix mémorisé dans le
     navigateur. Sur mobile et tablette, `Drawer` HeroUI (focus gardé, Échap, bouton Fermer).
 19. **Rien de natif** : pas de `window.confirm` ni d'`alert` ; une confirmation passe par `ConfirmDialog`.

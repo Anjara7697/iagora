@@ -289,3 +289,13 @@
     color: var(--foreground);
   }
 }
+
+/* Impression d'un passage d'évaluation (annexe) : sans menu ni barre (`print:hidden`), et sans zone de défilement
+   bornée, pour que toute la page s'imprime. */
+@media print {
+  [data-slot="scroll-shadow"],
+  .scroll-shadow {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

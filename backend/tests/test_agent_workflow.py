@@ -229,6 +229,55 @@ async def test_missing_calendar_never_invents_availability(client, env, calendar
     assert (await conversation(client, cid))["status"] == "handed_off"
 
 
+async def _qualified_prospect(client, env):
+    """Prospect dont la grille D-33 est complète et qui a déjà échangé avec l'agent."""
+    profile = {
+        "goal": "data",
+        "study_level": "BTS",
+        "current_situation": "étudiant",
+        "start_term": "septembre",
+    }
+    pid, mid, cid = await lead(client, "Bonjour", profile=profile)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, "Comment se passe l'admission ?")
+    env.kb.passages = [Passage(source="faq", text="L'admission se fait sur dossier et entretien.")]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "L'admission se fait sur dossier, puis par un entretien."
+    return cid
+
+
+async def test_a_qualified_prospect_gets_the_answer_then_real_slots_in_one_message(client, env):
+    cid = await _qualified_prospect(client, env)
+    out = (await run(client, cid)).json()
+    assert out["action"] == "propose_meeting" and out["handoff_reason"] is None
+    last = (await conversation(client, cid))["messages"][-1]
+    assert last["content"].startswith("L'admission se fait sur dossier")
+    assert "Pour avancer, voici des créneaux disponibles" in last["content"]
+    assert not last["content"].startswith("Bonjour")  # en pleine conversation
+    assert last["metadata"]["mode"] == "meeting_proposal" and last["metadata"]["with_answer"]
+    assert "créneaux pour échanger avec un conseiller suivent" in env.llm.generate_calls[0][0]
+
+
+async def test_without_a_calendar_the_answer_is_still_sent_without_handoff(client, env):
+    cid = await _qualified_prospect(client, env)
+    env.calendar = UnconfiguredCalendar()
+    app.dependency_overrides[get_calendar] = lambda: env.calendar
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None
+    conv = await conversation(client, cid)
+    assert conv["status"] == "open"
+    assert conv["messages"][-1]["content"] == env.llm.reply
+
+
+async def test_asking_whether_it_is_a_robot_is_answered_not_handed_off(client, env):
+    pid, mid, cid = await lead(client, "Je parle à un robot ou à une vraie personne ?")
+    env.llm.qualification = Qualification(intent="needs_advisor")
+    env.llm.reply = "Je suis un assistant IA de DATUM Academy ; un conseiller relit nos échanges."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None and out["action"] == "continue_conversation"
+    assert "assistant IA" in out["reply"]
+
+
 # --- Scénario 3 : question inconnue -> information absente -> transfert au conseiller ---
 
 
@@ -322,6 +371,41 @@ async def test_the_advisor_signal_after_a_rejected_draft_hands_off_as_out_of_bas
     assert out["handoff_reason"] == "question_hors_base"
     texts = [m["content"] for m in (await conversation(client, cid))["messages"]]
     assert not any("CPF" in t and "éligible" in t for t in texts)
+
+
+async def test_an_advisor_answer_promised_without_the_signal_is_handed_off(client, env):
+    """D-34 : le modèle écrit « je préfère laisser un conseiller vous apporter cette précision »
+    sans le signal : la promesse est tenue par un vrai transfert, le message n'est pas envoyé."""
+    question = "Les cours sont-ils en français ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
+    await say(client, cid, question)
+    near = "La formation eBIHAR se déroule en alternance."
+    env.kb.passages = [Passage(source="faq-ebihar", text=near)]
+    env.llm.qualification = Qualification(intent="question")
+    deferral = "Je préfère laisser un conseiller vous apporter cette précision lors d'un échange."
+    env.llm.reply = lambda system, messages: (
+        deferral if "Extraits de la base" in system else "Le prospect demande la langue."
+    )
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    texts = [m["content"] for m in (await conversation(client, cid))["messages"]]
+    assert deferral not in texts
+
+
+async def test_an_unanswered_question_is_held_for_the_next_message(client, env):
+    """D-34 : la question précédente est restée sans réponse : le modèle ne la repose pas."""
+    question = "Le programme est-il en alternance ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Qu'est-ce qui vous attire dans la data ?", role="agent")
+    await say(client, cid, question)
+    env.kb.passages = [Passage(source="faq-ebihar", text="eBIHAR se déroule en alternance.")]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "Oui, eBIHAR se déroule en alternance."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] is None
+    system = env.llm.generate_calls[-1][0]
+    assert "Ta question précédente est restée sans réponse" in system
 
 
 # --- NF-10 : jamais d'information inventée ---
@@ -515,7 +599,8 @@ async def test_profile_is_enriched_and_known_data_is_never_asked_again(
         profile = (await s.get(Prospect, pid)).profile
     assert profile["study_level"] == "Bac+3" and profile["field_of_study"] == "informatique"
     system = env.llm.generate_calls[-1][0]
-    assert "son niveau d'études" not in system  # déjà connu : jamais redemandé
+    assert "UNE question sur son niveau d'études" not in system  # déjà connu : jamais redemandé
+    assert "Tu connais déjà son niveau d'études" in system  # ni sous une autre forme
     assert "ce qu'il ou elle recherche" in system  # reste à qualifier : UNE seule question
     assert "Pose au maximum UNE question" in system
     assert any(
@@ -524,6 +609,19 @@ async def test_profile_is_enriched_and_known_data_is_never_asked_again(
 
     await say(client, cid, "Je veux devenir data analyst.", role="prospect")
     env.llm.qualification = Qualification(intent="interested", goal="devenir data analyst")
+    await run(client, cid)
+    # Grille D-37 : la situation vient ensuite, puis la rentrée, par une question alternative.
+    asked = env.llm.generate_calls[-1][0]
+    assert "UNE question sur sa situation actuelle" in asked
+
+    await say(client, cid, "Je suis encore étudiant.", role="prospect")
+    env.llm.qualification = Qualification(intent="interested", current_situation="étudiant")
+    await run(client, cid)
+    asked = env.llm.generate_calls[-1][0]
+    assert "la rentrée qu'il ou elle vise" in asked and "question alternative" in asked
+
+    await say(client, cid, "Septembre prochain.", role="prospect")
+    env.llm.qualification = Qualification(intent="interested", start_term="septembre")
     second = (await run(client, cid)).json()
     assert "Ne pose pas de question de qualification" in env.llm.generate_calls[-1][0]
     reasons = {e["reason"] for e in (await history(client, mid))["score_events"]}
@@ -558,6 +656,97 @@ async def test_first_contact_writes_an_introduction(client, env):
     assert out["stage_after"] == "contacted"
     assert (await conversation(client, cid))["messages"][-1]["role"] == "agent"
     assert (await history(client, mid))["score_events"] == []  # aucun signal d'engagement
+
+
+async def test_the_first_contact_email_carries_the_subject_written_by_the_agent(client, env):
+    """D-38 : la ligne « Objet : » devient l'objet de l'email, le corps part sans elle."""
+    pid, mid, cid = await lead(client, None, consent_granted=True)
+    env.llm.reply = "Objet : Jean, votre projet et le Master eBIHAR\n\nBonjour Jean, merci."
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Bonjour Jean, merci." and last["content"] == "Bonjour Jean, merci."
+    assert last["metadata"]["subject"] == "Jean, votre projet et le Master eBIHAR"
+
+
+async def test_campaign_subject_and_links_reach_the_agent_and_invented_links_are_blocked(
+    client, env
+):
+    """D-39 : l'objet imposé remplace celui de l'agent ; un lien hors ressources ne part jamais."""
+    pid, mid, cid = await lead(client, None, consent_granted=True)
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    link = {"label": "Inscription", "url": "https://datum.example/inscription", "usage": ""}
+    await client.patch(
+        f"{API}/campaigns/{campaign_id}",
+        json={"email_subject": "{prénom}, votre projet data", "resources": [link]},
+    )
+    env.llm.reply = (
+        "Objet : autre objet\n\nBonjour Jean, inscrivez-vous : https://datum.example/inscription"
+    )
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert last["metadata"]["subject"] == "Jean, votre projet data"
+    assert out["reply"].endswith("https://datum.example/inscription")
+    assert "https://datum.example/inscription" in env.llm.generate_calls[0][0]
+
+    pid, mid, cid = await lead(client, "Où puis-je m'inscrire ?")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Inscrivez-vous ici : https://datum-promo.example/offre"
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"  # lien inventé : jamais envoyé
+    retry = [system for system, _ in env.llm.generate_calls if "ATTENTION" in system]
+    assert retry and "datum-promo.example/offre" in retry[-1]  # le nouvel essai l'interdit
+
+
+async def test_the_agent_attaches_a_campaign_document_and_never_announces_a_missing_one(
+    client, env
+):
+    """D-42 : la ligne « Pièce jointe : » désigne un document de la campagne, retiré du texte et
+    joint au message ; « ci-joint » sans document n'est jamais envoyé."""
+    pid, mid, cid = await lead(client, "Avez-vous le programme détaillé ?")
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    saved = (
+        await client.post(
+            f"{API}/campaigns/{campaign_id}/files",
+            files={"file": ("brochure.pdf", b"%PDF-1.7\n" + b"0" * 32, "application/pdf")},
+            data={"label": "Brochure du programme", "usage": "quand il veut le programme"},
+        )
+    ).json()
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = (
+        "Bonjour Jean, voici le programme ci-joint.\nPièce jointe : Brochure du programme"
+    )
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Bonjour Jean, voici le programme ci-joint." == last["content"]
+    assert last["metadata"]["attachments"] == [
+        {
+            "id": saved["id"],
+            "label": "Brochure du programme",
+            "filename": "brochure.pdf",
+            "campaign_id": campaign_id,
+        }
+    ]
+    assert (
+        "- Brochure du programme (à joindre : quand il veut le programme)"
+        in (env.llm.generate_calls[0][0])
+    )
+
+    pid, mid, cid = await lead(client, "Pouvez-vous m'envoyer la brochure ?")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Bonjour Jean, vous trouverez la brochure ci-jointe."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"  # promesse sans document
+    retry = [system for system, _ in env.llm.generate_calls if "ATTENTION" in system]
+    assert retry and "document annoncé sans pièce jointe" in retry[-1]
+
+
+async def test_a_subject_line_is_never_kept_outside_the_first_contact_email(client, env):
+    pid, mid, cid = await lead(client, "Bonjour, je regarde vos formations.")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Objet : Votre demande\nMerci pour votre message, Jean."
+    out = (await run(client, cid)).json()
+    last = (await conversation(client, cid))["messages"][-1]
+    assert out["reply"] == "Merci pour votre message, Jean." and "subject" not in last["metadata"]
 
 
 async def test_run_can_target_a_prospect_and_opens_the_conversation(client, env):

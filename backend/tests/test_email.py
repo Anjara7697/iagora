@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from app.agents import auto
 from app.api.dependencies import get_email_client
-from app.config import Settings, get_settings
+from app.config import DEFAULT_AI_NOTICE, DEFAULT_AI_NOTICE_REVIEWED, Settings, get_settings
 from app.integrations.email.base import InboundEmail
 from app.integrations.email.parsing import parse_inbound, strip_quoted
 from app.main import app
@@ -81,7 +81,7 @@ class Env:
         doc = await self.conversation()
         return [m for m in doc["messages"] if m["role"] == role]
 
-    async def approved_reply(self, text="Voici les informations demandées."):
+    async def approved_reply(self, text="Voici les informations demandées.", **metadata):
         """Un brouillon de l'agent validé par un conseiller (prêt à partir)."""
         doc = await self.conversation()
         message = {
@@ -90,7 +90,7 @@ class Env:
             "content": text,
             "external_message_id": None,
             "created_at": datetime.now(UTC),
-            "metadata": {"delivery": "draft", "draft": {"status": "pending"}},
+            "metadata": {"delivery": "draft", "draft": {"status": "pending"}, **metadata},
         }
         await self.db[conversations.COLLECTION].update_one(
             {"_id": doc["_id"]}, {"$push": {"messages": message}}
@@ -383,7 +383,8 @@ async def test_a_validated_reply_is_sent_in_the_same_thread(env):
     assert out.in_reply_to == "<m1@acme-corp.com>"
     assert out.references == ["<old@x>", "<m1@acme-corp.com>"]
     assert out.text.startswith("Voici les informations") and "STOP" in out.text
-    assert "assistant virtuel (IA)" in out.text  # mention de transparence, art. 50 de l'AI Act
+    # Mention de transparence (AI Act, art. 50) : brouillon validé, donc « relu par un conseiller ».
+    assert DEFAULT_AI_NOTICE_REVIEWED in out.text and DEFAULT_AI_NOTICE not in out.text
     assert out.html and "Voici les informations" in out.html
     (reply,) = await env.messages("agent")
     assert reply["metadata"]["delivery"] == "sent"
@@ -410,7 +411,7 @@ async def test_advisor_messages_do_not_carry_the_ai_notice(env):
     client = FakeEmailClient()
     await env.deliver(client)
     (out,) = client.sent
-    assert "assistant virtuel" not in out.text and "STOP" in out.text
+    assert "assistant" not in out.text and "STOP" in out.text
 
 
 async def test_sending_is_disabled_by_default(env):
@@ -764,3 +765,109 @@ def test_mark_unseen_from_clears_the_seen_flag_of_that_sender(monkeypatch):
     assert asyncio.run(client.mark_unseen_from("moi@gmail.com")) == 2
     assert [a[0] for a in fake.stored] == [b"4", b"7"]
     assert all(a[1:] == ("-FLAGS", "(\\Seen)") for a in fake.stored)
+
+
+def test_the_first_email_uses_the_subject_written_by_the_agent_or_the_fallback():
+    """D-38 : premier contact, aucun email du prospect à reprendre : l'objet de l'agent, sinon
+    l'objet de secours."""
+    message = {"role": "agent", "created_at": None, "metadata": {"subject": "Jean, votre projet"}}
+    assert email_sync._thread_headers({"messages": []}, message) == ("Jean, votre projet", None, [])
+    plain = {"role": "agent", "created_at": None, "metadata": {}}
+    assert email_sync._thread_headers({"messages": []}, plain)[0] == email_sync.DEFAULT_SUBJECT
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+async def test_the_uploaded_banner_is_embedded_in_the_sent_email(env):
+    """D-41 : le bandeau chargé part dans le message (image intégrée), sans hébergement."""
+    from app.services import email_assets
+
+    await email_assets.save_banner(env.db, PNG, "bandeau.png", None)
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply()
+    client = FakeEmailClient()
+    await env.deliver(client)
+    (out,) = client.sent
+    assert out.inline_images == [(email_assets.BANNER_CID, "image/png", PNG)]
+    assert f'src="cid:{email_assets.BANNER_CID}"' in out.html
+
+
+def test_an_embedded_image_travels_with_the_html_version():
+    from email import message_from_bytes
+    from email import policy as email_policy
+
+    from app.integrations.email.base import OutboundEmail
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+
+    sender = ImapSmtpClient(settings(email_smtp_host="smtp.test"))
+    msg = sender._build(
+        OutboundEmail(
+            to_address="a@b.test",
+            subject="x",
+            text="Bonjour",
+            html='<img src="cid:bandeau@iagora">',
+            inline_images=[("bandeau@iagora", "image/png", PNG)],
+        )
+    )
+    parsed = message_from_bytes(msg.as_bytes(), policy=email_policy.default)
+    image = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
+    assert image["Content-ID"] == "<bandeau@iagora>" and image.get_payload(decode=True) == PNG
+    assert parsed.get_body(preferencelist=("plain",)).get_content().strip() == "Bonjour"
+
+
+PDF = b"%PDF-1.7\n" + b"0" * 64
+
+
+async def test_the_documents_chosen_by_the_agent_are_attached_to_the_email(env):
+    """D-42 : la brochure de la campagne part en pièce jointe, avec son nom de fichier."""
+    from app.services import campaign_files
+
+    saved = await campaign_files.save_file(
+        env.db, 1, PDF, "brochure.pdf", "Brochure du programme", "", None
+    )
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply(attachments=[{"id": saved["id"], "label": saved["label"]}])
+    client = FakeEmailClient()
+    await env.deliver(client)
+    (out,) = client.sent
+    assert out.attachments == [("brochure.pdf", "application/pdf", PDF)]
+
+
+async def test_a_document_removed_from_the_campaign_blocks_the_email(env):
+    """D-42 : le message annonce peut-être le document : il ne part pas sans lui."""
+    await env.receive(FakeEmailClient([mail()]))
+    await env.approved_reply(attachments=[{"id": "disparu", "label": "Brochure"}])
+    client = FakeEmailClient()
+    report = await env.deliver(client)
+    assert client.sent == [] and report.blocked == 1
+    (reply,) = await env.messages("agent")
+    assert reply["metadata"]["delivery"] == "blocked"
+    assert "Brochure" in reply["metadata"]["delivery_info"]["reason"]
+
+
+def test_an_attached_document_travels_with_the_message():
+    from email import message_from_bytes
+    from email import policy as email_policy
+
+    from app.integrations.email.base import OutboundEmail
+    from app.integrations.email.imap_smtp import ImapSmtpClient
+
+    sender = ImapSmtpClient(settings(email_smtp_host="smtp.test"))
+    msg = sender._build(
+        OutboundEmail(
+            to_address="a@b.test",
+            subject="x",
+            text="Bonjour",
+            html='<img src="cid:bandeau@iagora"><p>Bonjour</p>',
+            inline_images=[("bandeau@iagora", "image/png", PNG)],
+            attachments=[("Brochure eBIHAR.pdf", "application/pdf", PDF)],
+        )
+    )
+    parsed = message_from_bytes(msg.as_bytes(), policy=email_policy.default)
+    assert parsed.get_content_type() == "multipart/mixed"
+    (doc,) = list(parsed.iter_attachments())
+    assert doc.get_filename() == "Brochure eBIHAR.pdf" and doc.get_payload(decode=True) == PDF
+    assert parsed.get_body(preferencelist=("plain",)).get_content().strip() == "Bonjour"
+    image = next(p for p in parsed.walk() if p.get_content_type() == "image/png")
+    assert image["Content-ID"] == "<bandeau@iagora>"  # le bandeau reste intégré au HTML

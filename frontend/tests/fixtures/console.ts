@@ -212,7 +212,9 @@ const settings = {
   agent_min_confidence: 0.5,
   agent_extra_terms: "",
   email_footer: "Répondez STOP pour ne plus recevoir de messages.",
-  email_ai_notice: "Ce message a été rédigé avec l'aide d'un assistant virtuel (IA).",
+  email_ai_notice: "Ce message a été rédigé par un assistant virtuel (IA).",
+  email_ai_notice_reviewed:
+    "Message préparé avec l'aide d'un assistant IA et relu par un conseiller.",
   email_brand_name: "DATUM Academy",
   email_brand_color: "#1f4fd8",
   email_logo_url: "",
@@ -339,6 +341,8 @@ function respond(path: string, query: URLSearchParams): unknown {
       ];
     case "/campaigns/1":
       return campaign;
+    case "/campaigns/1/files":
+      return [];
     case "/campaigns/1/stats":
       return {
         prospects: 12,
@@ -401,6 +405,9 @@ function respond(path: string, query: URLSearchParams): unknown {
   }
 }
 
+/** Ressources volontairement absentes de ce jeu de données : un 404 est leur réponse prévue. */
+const ABSENT = new Set(["/settings/email/banner"]);
+
 /** Branche l'API simulée sur la page ; renvoie la liste des requêtes restées sans réponse prévue. */
 export async function mockConsole(target: Page): Promise<string[]> {
   const unexpected: string[] = [];
@@ -410,7 +417,7 @@ export async function mockConsole(target: Page): Promise<string[]> {
     const path = url.pathname.replace(/^.*\/api\/v1/, "");
     const body = request.method() === "GET" ? respond(path, url.searchParams) : undefined;
     if (body === undefined) {
-      unexpected.push(`${request.method()} ${path}${url.search}`);
+      if (!(request.method() === "GET" && ABSENT.has(path))) unexpected.push(`${request.method()} ${path}${url.search}`);
       await route.fulfill({ status: 404, json: { detail: "Introuvable" } });
       return;
     }

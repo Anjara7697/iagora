@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from app.api.v1 import settings as settings_api
-from app.config import DEFAULT_AI_NOTICE, Settings, get_settings
+from app.config import DEFAULT_AI_NOTICE_REVIEWED, Settings, get_settings
 from app.graph.ports import ChatMessage, LLMConfigError, LLMUnavailableError
 from app.integrations.llm.factory import create_language_model
 from app.integrations.llm.fallback import FallbackLanguageModel
@@ -155,6 +155,10 @@ async def test_email_layout_settings_reach_the_emails(client, env, mongo_db):
         "email_brand_name": "DATUM Academy",
         "email_brand_color": "#123456",
         "email_logo_url": "https://datum.example/logo.png",
+        "email_header_tagline": "Nous ouvrons la voie aux leaders IT de demain",
+        "email_signature_team": "L'équipe admissions",
+        "email_contact_email": "contact@datum.example",
+        "email_social_links": "LinkedIn | https://linkedin.example/datum\nSite | https://datum.example",
     }
     assert (await client.put(f"{API}/settings", json=form)).status_code == 204
     shown = (await client.get(f"{API}/settings")).json()
@@ -163,6 +167,8 @@ async def test_email_layout_settings_reach_the_emails(client, env, mongo_db):
     out = email_format.render("Bonjour", eff, ai_generated=True)
     assert "Message préparé par notre assistant IA." in out.text
     assert "#123456" in out.html and "https://datum.example/logo.png" in out.html
+    assert "Nous ouvrons la voie" in out.html and "mailto:contact@datum.example" in out.html
+    assert "Site : https://datum.example" in out.text
 
 
 async def test_email_preview_uses_typed_values_and_saves_nothing(client, env, mongo_db):
@@ -171,7 +177,8 @@ async def test_email_preview_uses_typed_values_and_saves_nothing(client, env, mo
     assert r.status_code == 200
     body = r.json()
     assert "#0a7a4b" in body["html"] and "École test" in body["html"]
-    assert DEFAULT_AI_NOTICE in body["text"] and "<li" in body["html"]
+    # Aperçu du cas normal en production : brouillon relu et validé par un conseiller (D-32).
+    assert DEFAULT_AI_NOTICE_REVIEWED in body["text"] and "<li" in body["html"]
     assert await runtime_settings.load(mongo_db) is None  # un aperçu n'enregistre rien
 
 
@@ -192,8 +199,12 @@ async def test_effective_settings_reach_the_agent_dependencies(client, env, mong
         {"calendar_timezone": "Mars/Olympus"},
         {"calendar_work_days": "1,9"},
         {"email_ai_notice": "IA"},  # la mention de transparence ne peut pas être vidée
+        {"email_ai_notice_reviewed": "IA"},
         {"email_brand_color": "bleu"},
         {"email_logo_url": "http://datum.example/logo.png"},  # https obligatoire
+        {"email_header_image_url": "http://datum.example/bandeau.png"},
+        {"email_contact_email": "contact"},
+        {"email_social_links": "LinkedIn https://linkedin.example"},  # « Libellé | https://… »
     ],
 )
 async def test_incoherent_values_are_refused(client, env, change):
@@ -253,3 +264,33 @@ async def test_agent_thresholds_are_saved_validated_and_applied(client, mongo_db
     # Incohérent (entretien >= rendez-vous) ou hors bornes : refusé.
     for bad in ({"agent_nurture_max_score": 40}, {"agent_min_confidence": 0.05}):
         assert (await client.put(f"{API}/settings", json={**tuned, **bad})).status_code == 422
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+async def test_the_banner_is_uploaded_shown_in_the_preview_and_removed(client, env):
+    """D-41 : bandeau chargé dans Paramètres (PNG ou JPEG, poids limité), repris dans l'aperçu."""
+    assert (await client.get(f"{API}/settings/email/banner")).status_code == 404
+    files = {"file": ("bandeau.png", PNG, "image/png")}
+    assert (await client.put(f"{API}/settings/email/banner", files=files)).status_code == 204
+    shown = await client.get(f"{API}/settings/email/banner")
+    assert shown.status_code == 200 and shown.content == PNG
+    assert shown.headers["content-type"] == "image/png"
+    preview = (await client.post(f"{API}/settings/email/preview", json=FORM)).json()
+    assert 'src="data:image/png;base64,' in preview["html"]
+    assert (await client.delete(f"{API}/settings/email/banner")).status_code == 204
+    assert (await client.get(f"{API}/settings/email/banner")).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "name,data",
+    [
+        ("bandeau.gif", b"GIF89a" + b"\x00" * 10),  # format refusé, quel que soit le nom
+        ("faux.png", b"<svg onload=alert(1)>"),
+        ("lourd.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 400_001),
+    ],
+)
+async def test_a_banner_that_is_not_a_light_png_or_jpeg_is_refused(client, env, name, data):
+    files = {"file": (name, data, "image/png")}
+    assert (await client.put(f"{API}/settings/email/banner", files=files)).status_code == 422

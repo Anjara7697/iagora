@@ -52,6 +52,13 @@ def _t(node: str, summary: str) -> list[TraceEntry]:
     return [TraceEntry(node=node, summary=summary)]
 
 
+def _attachment(found: dict[str, Any]) -> dict[str, Any]:
+    """Document joint, tel qu'il est gardé avec le message (D-42) : l'envoi le recharge par son
+    identifiant ; le conseiller le voit et peut le relire dans le brouillon."""
+    keys = ("id", "label", "filename", "campaign_id")
+    return {key: found[key] for key in keys if found.get(key) is not None}
+
+
 class WorkflowNodes:
     def __init__(self, deps: Deps) -> None:
         self.deps = deps
@@ -140,6 +147,10 @@ class WorkflowNodes:
                 ),
             }
 
+        if q.intent == "needs_advisor" and policy.asks_about_agent(text):
+            # « Je parle à un robot ? » : une question à laquelle l'agent répond franchement,
+            # pas une demande de conseiller (sauf demande explicite d'un humain).
+            q = q.model_copy(update={"intent": "other", "needs_human": False})
         profile = dict(state["profile"])
         updates = {k: v for k, v in q.profile_updates().items() if profile.get(k) != v}
         if updates:
@@ -220,7 +231,15 @@ class WorkflowNodes:
             query, state.get("target_code"), include_demo=ctx.is_demo
         )
         asks_catalogue = q is not None and q.asks_catalogue
-        if q is not None and q.intent == "question" and not passages and not asks_catalogue:
+        # « Je parle à un robot ? » se répond sans document (D-32) : pas de transfert.
+        about_agent = policy.asks_about_agent(text)
+        if (
+            q is not None
+            and q.intent == "question"
+            and not passages
+            and not asks_catalogue
+            and not about_agent
+        ):
             # F-20 / NF-10 : question hors base de connaissances -> on ne devine pas.
             return {
                 "needs_human": True,
@@ -229,7 +248,14 @@ class WorkflowNodes:
             }
 
         system = prompts.reply_system(
-            ctx, state["profile"], passages, state.get("missing_fields", []), mode=mode
+            ctx,
+            state["profile"],
+            passages,
+            state.get("missing_fields", []),
+            mode=mode,
+            then_meeting=decision.answer_first,
+            # D-34 : une question restée sans réponse n'est pas reposée au message suivant.
+            hold_question=policy.question_unanswered(ctx.history, q, text),
         )
         messages = prompts.to_chat(ctx.history) or [
             ChatMessage(
@@ -238,24 +264,41 @@ class WorkflowNodes:
         ]
         sources = [p.text for p in passages]
         sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
+        # D-39 : seuls les liens des ressources de la campagne et des sources peuvent partir.
+        allowed_links = sources + [str(r.get("url", "")) for r in ctx.campaign_resources]
         conversation = [m.content for m in ctx.history]
+        # D-42 : documents joignables, sur l'email seulement ; la ligne « Pièce jointe : » est
+        # retirée du message avant toute vérification.
+        files = ctx.campaign_files if prompts.is_email(ctx.channel) else []
 
         claims: list[str] = []
+        attached: list[dict[str, Any]] = []
         try:
-            reply = (await self.deps.llm.generate(system, messages)).strip()
+            attached, reply = prompts.split_attachments(
+                await self.deps.llm.generate(system, messages), files
+            )
             extra = self.deps.tuning.extra_terms
             if not prompts.defers_to_advisor(reply):
-                claims = policy.ungrounded_claims(
-                    reply, sources, conversation=conversation, extra_terms=extra
+                claims = (
+                    policy.ungrounded_claims(
+                        reply, sources, conversation=conversation, extra_terms=extra
+                    )
+                    + policy.unlisted_links(reply, allowed_links)
+                    + policy.attachment_claims(reply, attached)
                 )
             if claims:  # un seul nouvel essai, plus strict
-                reply = (
+                attached, reply = prompts.split_attachments(
                     await self.deps.llm.generate(
                         system + prompts.strict_retry_note(claims), messages
+                    ),
+                    files,
+                )
+                claims = (
+                    policy.ungrounded_claims(
+                        reply, sources, conversation=conversation, extra_terms=extra
                     )
-                ).strip()
-                claims = policy.ungrounded_claims(
-                    reply, sources, conversation=conversation, extra_terms=extra
+                    + policy.unlisted_links(reply, allowed_links)
+                    + policy.attachment_claims(reply, attached)
                 )
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
@@ -268,14 +311,35 @@ class WorkflowNodes:
                     f"modèle indisponible : {type(exc).__name__}",
                 ),
             }
-        if prompts.defers_to_advisor(reply):
+        # D-34 : « je préfère laisser un conseiller vous apporter cette précision » écrit sans le
+        # signal vaut le signal, sauf quand des créneaux suivent (le conseiller répondra alors au
+        # rendez-vous proposé) ou en réponse à « je parle à un robot ? ».
+        in_words = (
+            mode != "nurture"
+            and bool(ctx.history)
+            and not decision.answer_first
+            and not about_agent
+            and policy.defers_to_advisor_in_words(reply)
+        )
+        if prompts.defers_to_advisor(reply) or in_words:
             # Les extraits ne répondent pas à la question : le message (« un conseiller vous
             # répondra ») n'est pas envoyé, le transfert le remplace et la promesse est tenue.
             return {
                 "needs_human": True,
                 "handoff_reason": "question_hors_base",
-                "trace": _t("generate_response", "réponse absente des extraits : transfert"),
+                "trace": _t(
+                    "generate_response",
+                    "réponse absente des extraits : transfert"
+                    + (" (renvoi au conseiller sans signal)" if in_words else ""),
+                ),
             }
+        # D-38 : l'email de premier contact porte un objet écrit par le modèle (vérifié avec le
+        # message par le garde-fou ci-dessus) ; ailleurs, une ligne « Objet : » est retirée.
+        subject, reply = prompts.split_subject(reply)
+        if state["trigger"] != "first_contact" or not prompts.is_email(ctx.channel):
+            subject = None
+        elif imposed := prompts.imposed_subject(ctx):
+            subject = imposed  # la campagne impose l'objet (D-39)
         if claims or not reply:
             return {
                 "needs_human": True,
@@ -291,11 +355,15 @@ class WorkflowNodes:
                 "mode": mode,
                 "sources": [p.source for p in passages],
                 "confidence": q.confidence if q is not None else None,
+                **({"subject": subject} if subject else {}),
+                **({"attachments": [_attachment(f) for f in attached]} if attached else {}),
             },
             "needs_human": False,
             "trace": _t(
                 "generate_response",
-                f"réponse générée ({len(reply.split())} mots, {len(passages)} extrait(s))",
+                f"réponse générée ({len(reply.split())} mots, {len(passages)} extrait(s)"
+                + (f", joint : {', '.join(f['label'] for f in attached)}" if attached else "")
+                + ")",
             ),
         }
 
@@ -341,6 +409,9 @@ class WorkflowNodes:
         }
 
     async def get_calendar_slots(self, state: SalesAgentState) -> Update:
+        # Créneaux proposés après une réponse (D-33) : sans agenda, la réponse part seule, sans
+        # transfert ; le rendez-vous reste possible si le prospect le demande ensuite.
+        after_answer = state["decision"].answer_first and bool(state.get("reply_text"))
         try:
             slots = await self.deps.calendar.get_available_slots(
                 NUMBER_OF_SLOTS,
@@ -348,6 +419,11 @@ class WorkflowNodes:
                 advisor_id=state["ctx"].advisor_id,
             )
         except CalendarError as exc:
+            if after_answer:
+                return {
+                    "slots": [],
+                    "trace": _t("get_calendar_slots", f"réponse sans créneaux : {exc}"),
+                }
             # Pas d'agenda branché = transfert normal ; agenda en panne = incident.
             reason = (
                 "agenda_non_configure"
@@ -360,6 +436,8 @@ class WorkflowNodes:
                 "handoff_reason": reason,
                 "trace": _t("get_calendar_slots", f"agenda indisponible : {exc}"),
             }
+        if not slots and after_answer:
+            return {"slots": [], "trace": _t("get_calendar_slots", "réponse sans créneaux")}
         if not slots:
             return {
                 "slots": [],
@@ -379,12 +457,17 @@ class WorkflowNodes:
         slots = state["slots"]
         lines = "\n".join(f"{i}. {prompts.format_slot(s)}" for i, s in enumerate(slots, start=1))
         zone = prompts.zone_label(slots[0].timezone) if slots else ""
-        text = (
-            f"{prompts.greeting(ctx)}\nVoici des créneaux disponibles ({zone}) pour échanger avec "
-            f"un conseiller de DATUM Academy :\n{lines}\nRépondez avec le numéro du créneau qui "
-            "vous convient."
+        offer = (
+            f"des créneaux disponibles ({zone}) pour échanger avec un conseiller de DATUM "
+            f"Academy :\n{lines}\nRépondez avec le numéro du créneau qui vous convient."
         )
-        metadata = {
+        answer = state.get("reply_text") if state["decision"].answer_first else None
+        if answer:
+            # D-33 : la réponse rédigée (et vérifiée) d'abord, puis les vrais créneaux.
+            text = f"{answer}\n\nPour avancer, voici {offer}"
+        else:
+            text = prompts.opening(ctx) + f"Voici {offer}"
+        metadata: dict[str, Any] = {
             "mode": "meeting_proposal",
             "proposed_slots": [
                 {
@@ -396,6 +479,12 @@ class WorkflowNodes:
                 for s in slots
             ],
         }
+        if answer:
+            # Les `answer_chars` premiers caractères sont rédigés par le modèle ; la suite (les
+            # créneaux) est écrite par le code.
+            metadata["with_answer"] = True
+            metadata["answer_chars"] = len(answer)
+            metadata["sources"] = state.get("reply_metadata", {}).get("sources", [])
         return {
             "reply_text": text,
             "reply_metadata": metadata,
@@ -425,7 +514,7 @@ class WorkflowNodes:
             ctx.prospect_id, ctx.advisor_id, meeting
         )
         text = (
-            f"{prompts.greeting(ctx)}\nC'est noté : rendez-vous {prompts.format_slot(slot)} "
+            f"{prompts.opening(ctx)}C'est noté : rendez-vous {prompts.format_slot(slot)} "
             f"({prompts.zone_label(slot.timezone)})."
         )
         if meeting.meeting_url:
