@@ -205,8 +205,8 @@ export function qs(
   return text ? `?${text}` : "";
 }
 
-/** Télécharge un fichier (export CSV) avec la session en cours. */
-export async function download(path: string, filename: string): Promise<void> {
+/** Lit un fichier de l'API (image, export) avec la session en cours ; erreur lisible (`ApiError`) sinon. */
+export async function apiBlob(path: string): Promise<Blob> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
@@ -226,7 +226,16 @@ export async function download(path: string, filename: string): Promise<void> {
     }
     throw new ApiError(res.status, humanError(res.status, payload));
   }
-  const url = URL.createObjectURL(await res.blob());
+  try {
+    return await res.blob();
+  } catch {
+    throw new ApiError(0, NETWORK_ERROR);
+  }
+}
+
+/** Télécharge un fichier (export CSV) avec la session en cours. */
+export async function download(path: string, filename: string): Promise<void> {
+  const url = URL.createObjectURL(await apiBlob(path));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
