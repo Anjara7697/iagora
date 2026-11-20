@@ -214,18 +214,23 @@ export function FilterChipGroup<T extends string>({
 export function Field({
   label,
   hint,
+  error,
   children,
   className,
 }: {
   label: ReactNode;
   hint?: ReactNode;
+  /** Valeur à corriger : message sous le champ (relié par `aria-describedby`), champ en `aria-invalid` (FORM-01). */
+  error?: ReactNode;
   children: ReactElement<{ id?: string; "aria-describedby"?: string }>;
   className?: string;
 }) {
   const auto = useId();
   const id = children.props.id ?? auto;
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
   const labelId = `${id}-label`;
+  const describedBy = [errorId, hintId ?? children.props["aria-describedby"]].filter(Boolean).join(" ") || undefined;
   return (
     <div className={cx("flex min-w-0 flex-col gap-1.5", className)}>
       <Label id={labelId} htmlFor={id}>
@@ -233,9 +238,15 @@ export function Field({
       </Label>
       {cloneElement(children, {
         id,
-        "aria-describedby": hintId ?? children.props["aria-describedby"],
+        "aria-describedby": describedBy,
+        ...(error ? { "aria-invalid": true } : {}),
         ...(children.type === SelectBox ? { "aria-labelledby": labelId } : {}),
-      } as Record<string, string | undefined>)}
+      } as Record<string, string | boolean | undefined>)}
+      {error && (
+        <p id={errorId} className="type-caption text-danger">
+          {error}
+        </p>
+      )}
       {hint && (
         <Description id={hintId}>{hint}</Description>
       )}
@@ -521,6 +532,7 @@ export function FileInput({
   buttonLabel = "Choisir un fichier",
   "aria-describedby": describedBy,
   "aria-label": ariaLabel,
+  "aria-invalid": invalid,
 }: {
   id?: string;
   accept?: string;
@@ -531,10 +543,17 @@ export function FileInput({
   "aria-describedby"?: string;
   /** Nom accessible du champ quand aucune étiquette `<label for>` ne le désigne. */
   "aria-label"?: string;
+  /** Fichier refusé (posé par `Field` quand il reçoit `error`) : bordure en couleur de danger. */
+  "aria-invalid"?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-dashed border-border bg-surface-secondary px-3 py-2.5">
+    <div
+      className={cx(
+        "flex min-w-0 items-center gap-3 rounded-lg border border-dashed bg-surface-secondary px-3 py-2.5",
+        invalid ? "border-danger" : "border-border",
+      )}
+    >
       <input
         ref={input}
         id={id}
@@ -542,6 +561,7 @@ export function FileInput({
         accept={accept}
         aria-label={ariaLabel}
         aria-describedby={describedBy}
+        aria-invalid={invalid || undefined}
         tabIndex={-1}
         className="sr-only"
         onChange={(e) => onChange(e.target.files?.[0])}

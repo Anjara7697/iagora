@@ -44,8 +44,8 @@ export default function CampaignSettings({
                 onChange={setCodes}
               />
               <Btn
-                variant="primary"
-                className="w-fit rounded-lg"
+                variant="secondary"
+                className="w-fit"
                 disabled={busy || !changed}
                 onClick={() => onPatch({ target_codes: codes })}
               >

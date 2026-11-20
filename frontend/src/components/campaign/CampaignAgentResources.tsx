@@ -34,8 +34,13 @@ export default function CampaignAgentResources({
 
   const update = (index: number, patch: Partial<Resource>) =>
     setResources((list) => list.map((r, i) => (i === index ? { ...r, ...patch } : r)));
-  const filled = resources.filter((r) => r.label.trim() || r.url.trim() || r.usage.trim());
-  const invalid = filled.some((r) => !r.label.trim() || !isHttpsUrl(r.url));
+  const isFilled = (r: Resource) => !!(r.label.trim() || r.url.trim() || r.usage.trim());
+  const filled = resources.filter(isFilled);
+  // Erreurs affichées sous le champ concerné (FORM-01) ; une ligne laissée vide est ignorée.
+  const labelError = (r: Resource) => (isFilled(r) && !r.label.trim() ? "Donnez un nom à ce lien." : undefined);
+  const urlError = (r: Resource) =>
+    isFilled(r) && !isHttpsUrl(r.url) ? (r.url.trim() ? "Adresse complète en https:// attendue." : "Saisissez l’adresse du lien.") : undefined;
+  const invalid = filled.some((r) => labelError(r) || urlError(r));
   const changed = subject.trim() !== initialSubject.trim() || JSON.stringify(filled) !== JSON.stringify(initialResources);
 
   if (!canEdit) {
@@ -76,15 +81,14 @@ export default function CampaignAgentResources({
           </p>
           {resources.map((r, index) => (
             <div key={index} className="grid grid-cols-1 items-end gap-3 rounded-lg border border-separator p-3 md:grid-cols-[1fr_1.4fr_1.4fr_auto]">
-              <Field label={`Nom du lien ${index + 1}`}>
+              <Field label={`Nom du lien ${index + 1}`} error={labelError(r)}>
                 <TextInput value={r.label} maxLength={120} onChange={(e) => update(index, { label: e.target.value })} placeholder="ex. Inscription" />
               </Field>
-              <Field label="Adresse (https://)">
+              <Field label="Adresse (https://)" error={urlError(r)}>
                 <TextInput
                   value={r.url}
                   maxLength={500}
                   inputMode="url"
-                  aria-invalid={r.url.trim() !== "" && !isHttpsUrl(r.url)}
                   onChange={(e) => update(index, { url: e.target.value })}
                   placeholder="https://…"
                 />
@@ -97,7 +101,6 @@ export default function CampaignAgentResources({
               </Btn>
             </div>
           ))}
-          {invalid && <p className="type-body-sm text-danger">Chaque lien a besoin d’un nom et d’une adresse complète en https://.</p>}
           <Btn
             variant="secondary"
             className="w-fit"
@@ -110,8 +113,8 @@ export default function CampaignAgentResources({
         </fieldset>
 
         <Btn
-          variant="primary"
-          className="w-fit rounded-lg"
+          variant="secondary"
+          className="w-fit"
           disabled={busy || invalid || !changed}
           onClick={() =>
             onPatch({
