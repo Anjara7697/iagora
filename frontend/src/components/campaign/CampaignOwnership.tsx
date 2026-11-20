@@ -178,7 +178,7 @@ export default function CampaignOwnership({
           )}
           {error && <ErrorText>{error}</ErrorText>}
           <Btn
-            variant="primary"
+            variant="secondary"
             type="submit"
             className="w-fit"
             disabled={

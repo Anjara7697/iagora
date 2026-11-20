@@ -781,10 +781,18 @@ test("réglages : objet du premier email et liens validés pour l'agent", async 
   const panel = page.getByRole("region", { name: "Pour l’agent" });
   await panel.getByLabel("Objet du premier email").fill("{prénom}, votre projet et le Master eBIHAR");
   await panel.getByRole("button", { name: "Ajouter un lien" }).click();
-  await panel.getByLabel("Nom du lien 1").fill("Inscription");
   await panel.getByLabel("Adresse (https://)").fill("http://datum.example");
-  await expect(panel.getByText("Chaque lien a besoin d’un nom et d’une adresse complète en https://.")).toBeVisible();
+  // Chaque erreur s'affiche sous son champ, reliée par aria-describedby (FORM-01).
+  const name = panel.getByLabel("Nom du lien 1");
+  const url = panel.getByLabel("Adresse (https://)");
+  await expect(name).toHaveAttribute("aria-invalid", "true");
+  await expect(name).toHaveAccessibleDescription("Donnez un nom à ce lien.");
+  await expect(url).toHaveAttribute("aria-invalid", "true");
+  await expect(url).toHaveAccessibleDescription("Adresse complète en https:// attendue.");
   await expect(panel.getByRole("button", { name: "Enregistrer pour l’agent" })).toBeDisabled();
+  await auditA11y(page, "réglages : liens à corriger", [], { strict: true });
+  await name.fill("Inscription");
+  await expect(name).not.toHaveAttribute("aria-invalid", "true");
   await panel.getByLabel("Adresse (https://)").fill("https://www.datumacademy.com/fr/masters/eBIHAR");
   await panel.getByLabel("Quand le proposer").fill("quand le prospect veut s’inscrire");
   await panel.getByRole("button", { name: "Enregistrer pour l’agent" }).click();
@@ -798,13 +806,26 @@ test("réglages : objet du premier email et liens validés pour l'agent", async 
     });
 });
 
+test("réglages : un seul bouton principal et audit strict de l'onglet", async ({ page }) => {
+  await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  await expect(page.getByRole("region", { name: "Pour l’agent" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Documents à joindre" }).getByText("Aucun document.")).toBeVisible();
+  // Chaque bloc s'enregistre seul : ses boutons sont secondaires, le bouton principal reste celui de l'en-tête.
+  for (const name of ["Enregistrer les programmes", "Enregistrer pour l’agent", "Ajouter le document", "Enregistrer le responsable"])
+    await expect(page.getByRole("button", { name })).not.toHaveClass(/button--primary/);
+  expect(await page.locator(".button--primary:visible").count()).toBeLessThanOrEqual(1);
+  await auditA11y(page, "fiche : onglet Réglages", [], { strict: true });
+});
+
 test("réglages : documents que l'agent peut joindre, ajoutés puis retirés", async ({ page }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/1?tab=settings");
   const panel = page.getByRole("region", { name: "Documents à joindre" });
   await expect(panel.getByText("Aucun document.")).toBeVisible();
   await panel.getByLabel("Fichier").setInputFiles({ name: "image.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
-  await expect(panel.getByText("Format refusé : PDF, PNG ou JPEG seulement.")).toBeVisible();
+  await expect(panel.getByLabel("Fichier")).toHaveAttribute("aria-invalid", "true");
+  await expect(panel.getByLabel("Fichier")).toHaveAccessibleDescription(/^Format refusé : PDF, PNG ou JPEG seulement\./);
   await expect(panel.getByRole("button", { name: "Ajouter le document" })).toBeDisabled();
   await panel.getByLabel("Fichier").setInputFiles({ name: "brochure.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7") });
   await expect(panel.getByLabel("Nom pour l’agent")).toHaveValue("brochure");
@@ -817,6 +838,14 @@ test("réglages : documents que l'agent peut joindre, ajoutés puis retirés", a
   await expect(panel.getByText("Brochure du programme")).toBeVisible();
   await expect(panel.getByText("brochure.pdf · 1,2 Mo · à joindre : quand le prospect demande le programme")).toBeVisible();
   await panel.getByRole("button", { name: "Retirer Brochure du programme" }).click();
+  // Retrait confirmé d'abord : Annuler ne retire rien.
+  const confirm = page.getByRole("alertdialog", { name: "Retirer « Brochure du programme » ?" });
+  await confirm.getByRole("button", { name: "Annuler" }).click();
+  await expect(panel.getByText("Brochure du programme")).toBeVisible();
+  expect(calls.requests.some((r) => r.method === "DELETE")).toBe(false);
+  await panel.getByRole("button", { name: "Retirer Brochure du programme" }).click();
+  await confirm.getByRole("button", { name: "Retirer" }).click();
+  await expect(page.getByText("Document retiré")).toBeVisible();
   await expect(panel.getByText("Aucun document.")).toBeVisible();
   await expect.poll(() => calls.requests.some((r) => r.method === "DELETE" && r.path === "/campaigns/1/files/f1")).toBe(true);
 });

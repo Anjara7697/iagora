@@ -115,6 +115,8 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
     un Toast HeroUI court.
 12. **Erreurs** : une seule apparence, l'`Alert` HeroUI danger (`ErrorState` pour un chargement, avec
     « Réessayer » ; `ErrorText` pour une action). Le message dit ce qui a échoué avant le détail du serveur.
+    Une valeur à corriger s'affiche sous son champ (`Field` avec `error` : message relié par `aria-describedby`,
+    champ en `aria-invalid`, FORM-01), jamais dans un message commun en bas du formulaire.
 13. **États durables** (service non configuré, éléments à recalculer…) : `Alert` HeroUI annoncée poliment
     (`role="status"`), avec l'action qui résout.
 14. **Confirmations** : `ConfirmDialog` avant une action destructive ou à conséquence, qui en dit l'effet ;
@@ -257,6 +259,14 @@ un écran connu de la console, jamais une adresse externe).
     relecture), puis un Toast avec « Ouvrir À traiter ». Dans « À traiter », le type « Premiers contacts » ajoute
     « Valider les N premiers contacts affichés » au-dessus de la liste : confirmation qui invite à en relire
     quelques-uns, protégée par la garde de saisie (règle 21), Toast du résultat.
+
+**Réglages de campagne** (`components/campaign/CampaignSettings.tsx` et les blocs qu'il affiche)
+
+36. **Un enregistrement par bloc** : responsable, programmes, « Pour l’agent » et « Documents à joindre »
+    s'enregistrent chacun de leur côté, avec un bouton secondaire, pour qu’il reste au plus une action principale à l’écran (celle de
+    l’en-tête de la fiche). Les liens et le fichier à corriger le disent sous leur champ (règle 12) ; la liste des
+    documents se charge par `useApi` (`Skeleton`, puis « Réessayer » en cas d'échec) ; retirer un document passe
+    par un `ConfirmDialog`, puis un Toast (audit strict dans `tests/campaigns.spec.ts`).
 
 **Vérification** : chaque nouvel état a son test Playwright et son audit axe (WCAG 2.2 A et AA, aucune violation grave ou critique ; sur les écrans des captures de référence, aucune violation modérée ni écart aux bonnes pratiques axe), et
 le parcours est capturé avant / après.

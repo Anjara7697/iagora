@@ -2,11 +2,14 @@
 
 import { toast } from "@heroui/react";
 import { Download, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, ErrorText, Field, FileInput, TextInput } from "@/components/ds/controls";
 import { Panel } from "@/components/ds/layout";
+import { Loading } from "@/components/ds/ui";
 import { api, download, failure } from "@/lib/api";
 import type { CampaignFile } from "@/lib/types";
+import { useApi } from "@/lib/useApi";
 
 /** Limites de l'API (D-42). */
 const MAX_BYTES = 4_000_000;
@@ -23,25 +26,12 @@ export function fileSize(bytes: number): string {
  */
 export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId: number; canEdit: boolean }) {
   const base = `/campaigns/${campaignId}/files`;
-  const [files, setFiles] = useState<CampaignFile[] | null>(null);
+  const { data: files, error: loadError, loading, reload } = useApi<CampaignFile[]>(base, { keepPrevious: true });
   const [file, setFile] = useState<File | undefined>();
   const [name, setName] = useState("");
   const [usage, setUsage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setFiles(await api<CampaignFile[]>(base));
-    } catch (err) {
-      setError(failure("Documents indisponibles", err));
-      setFiles([]);
-    }
-  }, [base]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   // Le nom proposé suit le fichier choisi tant qu'il n'a pas été modifié à la main.
   const [suggested, setSuggested] = useState("");
@@ -76,7 +66,7 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
       setFile(undefined);
       setName("");
       setUsage("");
-      await load();
+      reload();
     } catch (err) {
       setError(failure("Document refusé", err));
     } finally {
@@ -89,7 +79,8 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
     setError(null);
     try {
       await api(`${base}/${target.id}`, { method: "DELETE" });
-      await load();
+      toast.success("Document retiré", { description: `L’agent ne joindra plus « ${target.label} ».` });
+      reload();
     } catch (err) {
       setError(failure("Suppression impossible", err));
     } finally {
@@ -112,10 +103,8 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
           L’agent joint un document à un email seulement s’il répond au besoin du prospect ; le brouillon le montre avant validation.
           Rien d’autre n’est joint.
         </p>
-        {files === null ? (
-          <p className="type-body text-muted" aria-busy="true">
-            Chargement…
-          </p>
+        {!files ? (
+          <Loading loading={loading} error={loadError} onRetry={reload} shape="rows" />
         ) : files.length === 0 ? (
           <p className="type-body text-muted">Aucun document.</p>
         ) : (
@@ -134,9 +123,17 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
                   Télécharger
                 </Btn>
                 {canEdit && (
-                  <Btn size="sm" variant="tertiary" isIconOnly disabled={busy} aria-label={`Retirer ${f.label}`} onClick={() => void remove(f)}>
-                    <X className="size-4" aria-hidden="true" />
-                  </Btn>
+                  <ConfirmDialog
+                    trigger={
+                      <Btn size="sm" variant="tertiary" isIconOnly disabled={busy} aria-label={`Retirer ${f.label}`}>
+                        <X className="size-4" aria-hidden="true" />
+                      </Btn>
+                    }
+                    title={`Retirer « ${f.label} » ?`}
+                    description="L’agent ne pourra plus joindre ce document à ses emails. Pour le remettre, il faudra l’ajouter à nouveau."
+                    confirmLabel="Retirer"
+                    onConfirm={() => void remove(f)}
+                  />
                 )}
               </li>
             ))}
@@ -144,7 +141,7 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
         )}
         {canEdit && !full && (
           <div className="grid grid-cols-1 items-end gap-3 rounded-lg border border-separator p-3 md:grid-cols-2">
-            <Field label="Fichier" hint="PDF, PNG ou JPEG, 4 Mo au plus" className="md:col-span-2">
+            <Field label="Fichier" hint="PDF, PNG ou JPEG, 4 Mo au plus" error={fileProblem} className="md:col-span-2">
               <FileInput accept="application/pdf,image/png,image/jpeg" file={file} onChange={choose} buttonLabel="Choisir un document" />
             </Field>
             <Field label="Nom pour l’agent">
@@ -153,10 +150,9 @@ export default function CampaignAgentFiles({ campaignId, canEdit }: { campaignId
             <Field label="Quand le joindre">
               <TextInput value={usage} maxLength={300} onChange={(e) => setUsage(e.target.value)} placeholder="ex. quand le prospect demande le programme" />
             </Field>
-            {fileProblem && <ErrorText className="md:col-span-2">{fileProblem}</ErrorText>}
             <Btn
-              variant="primary"
-              className="w-fit rounded-lg"
+              variant="secondary"
+              className="w-fit"
               disabled={busy || !file || !!fileProblem || !name.trim()}
               onClick={() => void upload()}
             >
