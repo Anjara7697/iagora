@@ -628,6 +628,21 @@
         "title": "Body_login_api_v1_auth_login_post",
         "type": "object"
       },
+      "Body_upload_banner_api_v1_settings_email_banner_put": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG ou JPEG, 400 ko au plus, 600 px de large",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_banner_api_v1_settings_email_banner_put",
+        "type": "object"
+      },
       "Breakdown": {
         "properties": {
           "count": {
@@ -12925,6 +12940,87 @@
           }
         ],
         "summary": "Put Runtime Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/email/banner": {
+      "delete": {
+        "operationId": "delete_banner_api_v1_settings_email_banner_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Banner",
+        "tags": [
+          "settings"
+        ]
+      },
+      "get": {
+        "description": "Bandeau chargé (D-41), pour l'afficher dans Paramètres ; 404 s'il n'y en a pas.",
+        "operationId": "get_banner_api_v1_settings_email_banner_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/jpeg": {},
+              "image/png": {}
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Banner",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "upload_banner_api_v1_settings_email_banner_put",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_banner_api_v1_settings_email_banner_put"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upload Banner",
         "tags": [
           "settings"
         ]
