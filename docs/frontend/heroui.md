@@ -226,6 +226,10 @@ un écran connu de la console, jamais une adresse externe).
     champ ; « Enregistrer » est alors refusé, avec le nom du champ et sa catégorie, qui s'ouvre, le focus sur le
     champ. La couleur des emails se choisit avec le `ColorPicker` HeroUI (`ColorChoice`).
     « Revenir aux valeurs du serveur » passe par `ConfirmDialog` ; succès en Toast, échec en `ErrorText`.
+    Le bandeau des emails (`components/settings/EmailBanner.tsx`) s'enregistre dès le choix de l'image, à part de
+    la barre : une image refusée est dite en `ErrorText` relié au champ, sans `aria-invalid` (qui bloquerait
+    « Enregistrer les paramètres ») ; son retrait passe par `ConfirmDialog`, puis un Toast. L'image est lue par
+    `apiBlob` (`lib/api`) : un échec de lecture est dit, sans être confondu avec l'absence de bandeau.
 32. **Équipe** (`app/team`, `components/team/`) : tableau des membres (recherche et rôle dans l'adresse, compteur
     « N membres · N actifs ») ; « Ajouter un membre » et la fiche d'un membre s'ouvrent dans un panneau latéral
     (`?member=`). Réinitialiser le mot de passe, désactiver et réactiver passent par `ConfirmDialog` ; sur son propre

@@ -50,7 +50,7 @@ async function mockApi(
   page: Page,
   calls: unknown[],
   role = "ADMIN",
-  opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean } = {},
+  opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean; bannerFails?: boolean } = {},
 ) {
   let banner = false;
   await page.route("**/api/v1/**", async (route) => {
@@ -84,6 +84,16 @@ async function mockApi(
         calls.push({ banner: request.headers()["content-type"] ?? "" });
         banner = true;
         await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      if (request.method() === "DELETE") {
+        calls.push({ banner: "DELETE" });
+        banner = false;
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      if (opts.bannerFails) {
+        await route.fulfill({ status: 503, json: { detail: "Base indisponible" } });
         return;
       }
       if (banner) {
@@ -541,10 +551,35 @@ test("bandeau chargé : envoyé à l'API puis affiché, au format et au poids v�
   await expect(emails.getByText(/Aucun bandeau chargé/)).toBeVisible();
   const input = emails.locator('input[type="file"]');
   await input.setInputFiles({ name: "bandeau.gif", mimeType: "image/gif", buffer: PNG });
-  await expect(emails.getByText("Format refusé : PNG ou JPEG seulement.")).toBeVisible();
+  // Alerte reliée au champ, sans aria-invalid : le bandeau s'envoie à part et ne bloque pas « Enregistrer les paramètres ».
+  await expect(emails.getByRole("alert")).toHaveText("Format refusé : PNG ou JPEG seulement.");
+  await expect(input).toHaveAccessibleDescription("Format refusé : PNG ou JPEG seulement.");
+  await expect(input).not.toHaveAttribute("aria-invalid", "true");
   expect(calls).toEqual([]);
   await input.setInputFiles({ name: "bandeau.png", mimeType: "image/png", buffer: PNG });
   await expect(emails.getByRole("img", { name: "Bandeau actuel des emails" })).toBeVisible();
   expect(calls).toEqual([{ banner: expect.stringContaining("multipart/form-data") }]);
-  await expect(emails.getByRole("button", { name: "Retirer le bandeau" })).toBeVisible();
+  await expect(page.getByText("Bandeau enregistré")).toBeVisible();
+  await auditA11y(page, "paramètres : bandeau chargé", [".email-preview"], { strict: true });
+
+  // Retrait confirmé d'abord : Annuler ne retire rien.
+  await emails.getByRole("button", { name: "Retirer le bandeau" }).click();
+  const confirm = page.getByRole("alertdialog", { name: "Retirer le bandeau ?" });
+  await auditA11y(page, "paramètres : confirmation du retrait du bandeau", [], { strict: true });
+  await confirm.getByRole("button", { name: "Annuler" }).click();
+  await expect(emails.getByRole("img", { name: "Bandeau actuel des emails" })).toBeVisible();
+  expect(calls).toHaveLength(1);
+  await emails.getByRole("button", { name: "Retirer le bandeau" }).click();
+  await confirm.getByRole("button", { name: "Retirer" }).click();
+  await expect(page.getByText("Bandeau retiré")).toBeVisible();
+  await expect(emails.getByText(/Aucun bandeau chargé/)).toBeVisible();
+  expect(calls).toEqual([{ banner: expect.stringContaining("multipart/form-data") }, { banner: "DELETE" }]);
+});
+
+test("bandeau chargé : un échec de lecture est dit, pas confondu avec l'absence de bandeau", async ({ page }) => {
+  await mockApi(page, [], "ADMIN", { bannerFails: true });
+  await login(page);
+  await page.goto("/settings?section=emails");
+  const emails = page.getByRole("region", { name: "Emails", exact: true });
+  await expect(emails.getByRole("alert").filter({ hasText: "Bandeau indisponible" })).toContainText("Base indisponible");
 });
