@@ -425,6 +425,7 @@ async def reset_demo(session: AsyncSession, db: Any) -> int:
                 )
             )
         )
+        await db["campaign_files"].delete_many({"campaign_id": {"$in": demo_campaigns}})
         await session.execute(delete(Campaign).where(Campaign.id.in_(demo_campaigns)))
         if source_ids:
             await session.execute(delete(Source).where(Source.id.in_(source_ids)))

@@ -1,7 +1,7 @@
 "use client";
 
 import { draftStatus } from "@/lib/messages";
-import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Play, RefreshCw, Route, Send, X } from "lucide-react";
+import { ArrowLeft, CalendarCheck, Check, Inbox, MessagesSquare, Paperclip, Play, RefreshCw, Route, Send, X } from "lucide-react";
 import { toast } from "@heroui/react";
 import { useState } from "react";
 import SimulationNotice from "./SimulationNotice";
@@ -24,7 +24,7 @@ type Session = {
 };
 type Report = {
   guide: string[];
-  exchange: { messages: { id: string; role: string; content: string }[] };
+  exchange: { messages: { id: string; role: string; content: string; attachments?: string[] }[] };
   appointments: { id: number; start_at: string; meeting_url: string | null }[];
   limits: string[];
   model_validation: string;
@@ -333,6 +333,12 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                     {m.role === "prospect" ? "Camille" : "Message reçu"} :
                   </strong>{" "}
                   {m.content}
+                  {m.attachments?.map((name) => (
+                    <span key={name} className="mt-1 flex items-center gap-1.5 text-muted">
+                      <Paperclip className="size-3.5 shrink-0" aria-hidden="true" />
+                      {`Pièce jointe : ${name}`}
+                    </span>
+                  ))}
                 </p>
               ))}
             </Box>

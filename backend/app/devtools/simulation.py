@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import runtime
 from app.devtools.fakes import FakeCalendar, FakeKnowledge
-from app.devtools.runner import new_demo_prospect
+from app.devtools.runner import GUIDED_CAMPAIGN, new_demo_prospect
 from app.devtools.scenarios import DEMO_FACT
 from app.graph import policy
 from app.graph.ports import LanguageModel, Passage, Slot
@@ -24,6 +24,7 @@ VERSION = "qualification-meeting-v1"
 GUIDE = [
     "Bonjour, je cherche une formation pour devenir data analyst. Comment se déroule le programme ?",
     "J’ai un M1 en informatique et je vise la prochaine rentrée.",
+    "Pouvez-vous m’envoyer la brochure du programme ?",
     "C’est un vrai budget pour moi : combien coûte le master ?",
     "Je voudrais prendre rendez-vous avec un conseiller.",
     "Le deuxième créneau me convient.",
@@ -31,7 +32,10 @@ GUIDE = [
 
 
 async def create(session: AsyncSession, db: Any, first_name: str) -> dict[str, Any]:
-    pid, _, cid = await new_demo_prospect(session, db, label="journey", first_name=first_name)
+    pid, _, cid = await new_demo_prospect(
+        session, db, label="journey", first_name=first_name, campaign_name=GUIDED_CAMPAIGN,
+        brochure=True,
+    )  # fmt: skip
     await db[conversations.COLLECTION].update_one(
         {"_id": (await conversations.get_doc(db, cid))["_id"]},
         {"$set": {"simulation": {"scenario": VERSION, "created_at": datetime.now(UTC)}}},
@@ -188,6 +192,12 @@ async def exchange(session: AsyncSession, db: Any, cid: str) -> dict[str, Any]:
                 "role": m["role"],
                 "content": m["content"],
                 "created_at": m["created_at"],
+                # Ce que le prospect reçoit en pièce jointe (le nom, jamais le contenu).
+                **(
+                    {"attachments": [a["label"] for a in (m.get("metadata") or {})["attachments"]]}
+                    if (m.get("metadata") or {}).get("attachments")
+                    else {}
+                ),
             }
             for m in doc["messages"]
             if m["role"] == "prospect" or (m.get("metadata") or {}).get("delivery") == "simulated"

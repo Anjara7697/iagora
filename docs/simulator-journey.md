@@ -47,8 +47,8 @@ Le profil privé du rôle : M1 en informatique, objectif data analyst, vise la
 prochaine rentrée, s’inquiète du coût. Ces faits ne sont
 pas préremplis dans le profil connu de l’agent : le prospect doit les révéler.
 
-Les suggestions guident cinq échanges : besoin initial, qualification, objection,
-demande de rendez-vous, choix du deuxième créneau. Elles restent des suggestions :
+Les suggestions guident six échanges : besoin initial, qualification, demande de brochure,
+objection, demande de rendez-vous, choix du deuxième créneau. Elles restent des suggestions :
 adapter le texte si l’agent pose une autre question. Aucun clic n’envoie un message
 sans action explicite. Le mode global de l’agent reste applicable ; l’arrêt
 manuel est respecté. En mode assisté, valider ou refuser le brouillon avant le
@@ -62,6 +62,7 @@ Le parcours emploie :
 | Modèle | Adaptateur LLM configuré ; aucune substitution silencieuse par un faux modèle |
 | Connaissances | Deux extraits fictifs contrôlés, recherche locale simple par mots partagés ; **pas de validation du RAG/embeddings réel** |
 | Documents | Durée fictive de 10 mois, entièrement en ligne ; coût fictif de 6200 euros par an ; ni financement ni rentrée documentés (l’agent doit passer la main sans inventer) |
+| Brochure | PDF **fictif** généré par `devtools/demo_brochure.py` (aucun fichier réel dans Git, D-28), joint à la campagne « [DÉMO] Parcours guidé » (D-42) : à l'étape 3, l'agent peut la joindre à son email ; le brouillon la montre avant validation, et la boîte du prospect en indique le nom (« Pièce jointe : … »), jamais le contenu. Les scénarios de recette et les évaluations utilisent une autre campagne, sans brochure : leurs mesures ne changent pas |
 | Calendrier | Trois créneaux fictifs stables par session, à partir de sept jours après sa création ; réservation via le port Calendar et persistance réelle du rendez-vous |
 | Visioconférence | URL fictive `zoom.example.com`, jamais une vraie réunion |
 | Boîte du prospect | Message validé/prêt marqué `delivery=simulated` ; jamais `sent`, aucun appel SMTP |
@@ -150,7 +151,7 @@ conversion signalé dans le rapport de conformité reste un lot métier distinct
 
 ## Suite et critères de passage
 
-1. **Recette manuelle avec le vrai modèle** : terminer les cinq échanges en mode
+1. **Recette manuelle avec le vrai modèle** : terminer les six échanges en mode
    assisté puis auto ; examiner mémoire, pertinence, absence d’invention et
    réservation. Documenter les écarts réels, sans imposer le mot-à-mot des réponses.
 2. **Workflow n8n prospect** : un profil et un scénario, historique limité à
