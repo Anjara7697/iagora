@@ -1,0 +1,90 @@
+{
+  "description": "Profils de prospects FICTIFS pour `eval-simulation` : un second modèle joue le prospect, message après message, face à l'agent. `goal` : ce que le prospect veut obtenir ; `style` : sa façon d'écrire ; `facts` : ce qu'il sait de lui et peut dire si on le lui demande (jamais d'information sur la formation : il ne la connaît pas) ; `opening` : son premier message ; `max_turns` : nombre de messages au plus. `script` : repli hors ligne, rejoué à la place du modèle (avec le faux modèle de l'agent : `fake` comme dans `conversation_cases.json`). Aucune donnée réelle.",
+  "personas": [
+    {
+      "id": "etudiant_m1_hesitant",
+      "title": "Étudiant en M1 informatique, hésitant sur son orientation",
+      "target": "ebihar_students",
+      "goal": "Savoir si le master eBIHAR convient à un M1 informatique qui hésite entre la data et le développement, puis décider de prendre rendez-vous ou non.",
+      "style": "Poli, phrases courtes, un peu indécis, pose une question à la fois.",
+      "facts": "M1 informatique, 22 ans, hésite entre data scientist et développeur, cherche un master en ligne, disponible en soirée.",
+      "opening": "Bonjour, je suis en M1 informatique et j'hésite sur la suite. Le master eBIHAR pourrait me convenir ?",
+      "max_turns": 6,
+      "script": [
+        {"says": "Bonjour, je suis en M1 informatique et j'hésite sur la suite. Le master eBIHAR pourrait me convenir ?", "fake": {"qualification": {"intent": "interested", "study_level": "M1 informatique"}, "reply": "Bonjour, merci pour votre message. Le master eBIHAR se suit en ligne et prépare aux métiers de la data. Qu'aimeriez-vous faire après le master ?"}},
+        {"says": "Plutôt data scientist, mais je ne suis pas sûr.", "fake": {"qualification": {"intent": "interested", "goal": "data scientist"}, "reply": "C'est un bon point de départ. Voulez-vous en discuter avec un conseiller ?"}},
+        {"says": "Oui pourquoi pas, merci.", "fake": {"qualification": {"intent": "meeting_request"}, "reply": "Avec plaisir, je vous propose un échange avec un conseiller."}}
+      ]
+    },
+    {
+      "id": "pro_reconversion",
+      "title": "Professionnel en poste qui veut se reconvertir dans la data",
+      "target": "compagnons_pros",
+      "goal": "Savoir si une formation est compatible avec un emploi à temps plein et connaître le format.",
+      "style": "Direct, soucieux du temps, phrases structurées.",
+      "facts": "Chef de projet depuis 8 ans, travaille à temps plein, veut se former le soir et le week-end, pas de financement connu.",
+      "opening": "Bonjour, je suis chef de projet et je voudrais me reconvertir dans la data. Est-ce compatible avec un emploi à temps plein ?",
+      "max_turns": 6,
+      "script": [
+        {"says": "Bonjour, je suis chef de projet et je voudrais me reconvertir dans la data. Est-ce compatible avec un emploi à temps plein ?", "fake": {"qualification": {"intent": "question"}, "reply": "Bonjour, merci pour votre message. Quel est votre projet précisément ?"}},
+        {"says": "Je veux passer data analyst d'ici un an.", "fake": {"qualification": {"intent": "interested", "goal": "data analyst"}, "reply": "Merci. Quelle est votre situation professionnelle actuelle ?"}}
+      ]
+    },
+    {
+      "id": "curieux_sans_projet",
+      "title": "Curieux sans projet précis",
+      "target": "ebihar_students",
+      "goal": "Se renseigner sans s'engager ; ne donne pas d'informations personnelles sans qu'on les demande.",
+      "style": "Vague, répond par de très courts messages, ne sait pas ce qu'il cherche.",
+      "facts": "Étudiant en licence, ne sait pas encore ce qu'il veut faire, ne veut pas de rendez-vous maintenant.",
+      "opening": "Bonjour, je voulais juste avoir des infos.",
+      "max_turns": 5,
+      "script": [
+        {"says": "Bonjour, je voulais juste avoir des infos.", "fake": {"qualification": {"intent": "interested"}, "reply": "Bonjour, merci pour votre message. Qu'est-ce qui vous amène ?"}},
+        {"says": "Je ne sais pas trop, je regarde.", "fake": {"qualification": {"intent": "other"}, "reply": "Aucun souci. Souhaitez-vous que je vous présente le programme ?"}}
+      ]
+    },
+    {
+      "id": "presse_rendez_vous",
+      "title": "Prospect pressé qui veut un rendez-vous tout de suite",
+      "target": "ebihar_students",
+      "goal": "Obtenir un rendez-vous avec un conseiller dès que possible, sans répondre à beaucoup de questions.",
+      "style": "Pressé, impatient, répond brièvement et redemande un rendez-vous.",
+      "facts": "Licence 3 informatique, disponible en fin de journée, veut intégrer la prochaine rentrée.",
+      "opening": "Bonjour, je veux un rendez-vous avec un conseiller rapidement.",
+      "max_turns": 5,
+      "script": [
+        {"says": "Bonjour, je veux un rendez-vous avec un conseiller rapidement.", "fake": {"qualification": {"intent": "meeting_request"}, "reply": "Bonjour, avec plaisir. Quelles sont vos disponibilités ?"}},
+        {"says": "Demain en fin de journée.", "fake": {"qualification": {"intent": "meeting_request", "availability": "demain fin de journée"}, "reply": "Merci, un conseiller reviendra vers vous avec des créneaux."}}
+      ]
+    },
+    {
+      "id": "sceptique_robot",
+      "title": "Sceptique qui demande s'il parle à un robot",
+      "target": "ebihar_students",
+      "goal": "Vérifier si son interlocuteur est une IA, puis, s'il est rassuré, poser une question sur le programme.",
+      "style": "Méfiant, ironique, pose des questions directes.",
+      "facts": "Étudiant en M2, a peur des démarchages automatiques, veut savoir qui lit ses messages.",
+      "opening": "Bonjour. Je parle à un robot ou à une vraie personne ?",
+      "max_turns": 5,
+      "script": [
+        {"says": "Bonjour. Je parle à un robot ou à une vraie personne ?", "fake": {"qualification": {"intent": "other"}, "reply": "Je suis un assistant IA de DATUM Academy ; un conseiller relit nos échanges et peut prendre le relais."}},
+        {"says": "D'accord. Et le programme, ça dure combien de temps ?", "fake": {"qualification": {"intent": "question"}, "reply": "Je ne dispose pas de cette information pour l'instant, un conseiller vous la confirmera."}}
+      ]
+    },
+    {
+      "id": "hors_sujet",
+      "title": "Prospect qui pose des questions hors sujet",
+      "target": "ebihar_students",
+      "goal": "Poser des questions sans rapport avec la formation (logement, restaurants, météo) puis, finalement, une question sur le programme.",
+      "style": "Dispersé, enchaîne les sujets.",
+      "facts": "Futur étudiant qui déménage au Pays basque, cherche un logement.",
+      "opening": "Bonjour, vous connaissez des logements pas chers à Bidart ?",
+      "max_turns": 5,
+      "script": [
+        {"says": "Bonjour, vous connaissez des logements pas chers à Bidart ?", "fake": {"qualification": {"intent": "other"}, "reply": "Bonjour, je ne peux pas vous renseigner sur le logement. Souhaitez-vous des informations sur le programme ?"}},
+        {"says": "Et sinon il y a des restaurants près de l'école ?", "fake": {"qualification": {"intent": "other"}, "reply": "Je ne peux pas vous aider sur ce point. Je peux en revanche vous parler du programme."}}
+      ]
+    }
+  ]
+}

@@ -17,7 +17,16 @@ from app.agents.defaults import EmptyKnowledgeBase
 from app.config import get_settings
 from app.database.clients import close_clients, get_mongo_db
 from app.database.session import dispose_engine, get_sessionmaker
-from app.devtools import chat, conversation_eval, evaluation, kb_evaluation, runner, seed
+from app.devtools import (
+    chat,
+    conversation_eval,
+    evaluation,
+    kb_evaluation,
+    prospect_sim,
+    runner,
+    seed,
+)
+from app.devtools.evaluation import MeteredLLM
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import SCENARIOS, get_scenarios
 from app.graph.ports import KnowledgeBase, LanguageModel, Passage
@@ -248,9 +257,66 @@ async def cmd_eval_conversations(
     return 1 if summary.errors else 0
 
 
+async def cmd_eval_simulation(
+    ids: list[str],
+    *,
+    fake: bool,
+    real_rag: bool,
+    passes: int,
+    pause: float,
+    report: str | None,
+    json_path: str | None,
+    cleanup: bool,
+) -> int:
+    """Joue des prospects simulés par un second modèle (voir `prospect_sim.py`)."""
+    rt = build_runtime(fake=fake)
+    try:
+        personas = prospect_sim.load_personas(ids or None)
+    except KeyError as exc:
+        sys.exit(str(exc.args[0]))
+    kb, kb_label = _eval_knowledge(rt, real_rag=real_rag, local_cases=False)
+    # Le prospect utilise le modèle SANS la mesure de l'agent : ses appels ne comptent pas dans les siens.
+    prospect_llm = None if fake else (rt.llm.inner if isinstance(rt.llm, MeteredLLM) else rt.llm)
+    print(
+        f"Prospects simulés — mode {rt.mode} — {len(personas)} profil(s) × {max(1, passes)} passage(s)\n"
+    )
+    results = await prospect_sim.run_simulations(
+        rt.session_factory, rt.db, personas, llm=rt.llm, knowledge=kb, prospect_llm=prospect_llm,
+        passes=passes, pause=pause, on_done=lambda r: print(conversation_eval.format_console(r)),
+    )  # fmt: skip
+    summary = conversation_eval.summarize(results)
+    print(
+        f"\nConversations conformes : {summary.conform} — tours {summary.turns} — "
+        f"redemandées {summary.reasked} — salutations répétées {summary.greetings_repeated} — "
+        f"présentation IA {summary.ai_self_intros}"
+    )
+    model = f"{rt.llm.provider}/{rt.llm.model}"
+    meta = {"mode": rt.mode, "model": model, "knowledge": kb_label}
+    if report:
+        Path(report).write_text(
+            conversation_eval.format_markdown(results, summary, **meta), encoding="utf-8"
+        )
+        print(f"Rapport écrit : {report}")
+    if json_path:
+        Path(json_path).write_text(
+            conversation_eval.to_json(results, summary, **meta), encoding="utf-8"
+        )
+        print(f"Résultats JSON écrits : {json_path}")
+    if cleanup:
+        async with rt.session_factory() as session:
+            print(f"{await cleanup_recette(session, rt.db)} prospect(s) de recette supprimé(s).")
+    await _shutdown()
+    return 1 if summary.errors else 0
+
+
 async def cleanup_recette(session: AsyncSession, db: Any) -> int:
     """Supprime les prospects créés par les scénarios et le simulateur (pas le jeu de démo)."""
-    labels = [s.name for s in SCENARIOS] + ["chat", evaluation.EVAL_LABEL, conversation_eval.LABEL]
+    labels = [s.name for s in SCENARIOS] + [
+        "chat",
+        evaluation.EVAL_LABEL,
+        conversation_eval.LABEL,
+        prospect_sim.LABEL,
+    ]
     ids = list(
         await session.scalars(
             select(Prospect.id).where(
