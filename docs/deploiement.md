@@ -36,6 +36,13 @@ actif ou avec un `CORS_ORIGINS` contenant `*`/localhost, et la simulation est re
 
 ## 3. Installation (une fois par environnement)
 
+> **Serveur partagé, sans `sudo`.** Si le compte de déploiement n'est pas administrateur, l'administrateur du serveur
+> prépare trois choses, une seule fois : le droit d'utiliser Docker (`sudo usermod -aG docker <compte>`, puis se
+> reconnecter), un dossier d'installation dont le compte est propriétaire (`sudo mkdir -p <dossier> && sudo chown
+> <compte>: <dossier>`) et le bloc Caddy (§ 4). Le compte cloner ensuite dans ce dossier **sans** les deux premières
+> lignes ci-dessous. Garder `BACKUP_DIR` (`deploy/.env`) **hors** du dépôt, dans un dossier dont le compte est
+> propriétaire : un nouveau `git clone` ne doit pas emporter les sauvegardes.
+
 ```bash
 sudo mkdir -p /srv/iagora-dev && sudo chown "$USER" /srv/iagora-dev
 git clone https://github.com/Anjara7697/iagora.git /srv/iagora-dev
@@ -226,9 +233,13 @@ deploy/restore.sh /var/backups/iagora/postgres-AAAAMMJJ-HHMMSS.dump /var/backups
 
      Avant cette commande, les anciens identifiants restent lisibles (ancienne clé dérivée du secret JWT) ;
      après, le secret JWT peut changer sans les perdre.
-- Retour arrière du **code** : `git checkout <commit précédent> && deploy/deploy.sh <branche>` (le script
-  affiche l'ancien commit). Une migration appliquée n'est pas défaite automatiquement : en cas de
-  migration problématique, restaurer la sauvegarde faite juste avant (`deploy/restore.sh`).
+- Retour arrière du **code** : `deploy/deploy.sh <branche> <commit précédent>` (le script affiche l'ancien
+  commit à la fin d'une mise à jour qui échoue, sous la forme `Retour arrière : deploy/deploy.sh main abc1234`).
+  Le dépôt se place alors sur ce commit et reconstruit les images. L'ancienne commande
+  `git checkout <commit> && deploy/deploy.sh <branche>` ne marchait pas : le script revenait aussitôt à la
+  dernière version de la branche. La mise à jour suivante (`deploy/deploy.sh <branche>`) repart de la branche.
+  Une migration appliquée n'est pas défaite automatiquement : en cas de migration problématique, restaurer la
+  sauvegarde faite juste avant (`deploy/restore.sh`).
 
 ## 7 bis. Repartir d'une instance d'essai vide (`dev`, décision D-30)
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Met à jour IAGORA : récupère le code, construit les images, migre, redémarre, vérifie.
-# Usage (depuis la racine du dépôt) :  deploy/deploy.sh [branche]   (défaut : dev)
+# Usage (depuis la racine du dépôt) :  deploy/deploy.sh [branche] [commit]   (défaut : dev)
+#   deploy/deploy.sh main            met à jour vers la dernière version de la branche
+#   deploy/deploy.sh main <commit>   retour arrière : redéploie ce commit (voir docs/deploiement.md §7)
 set -euo pipefail
 
 BRANCH="${1:-dev}"
+REF="${2:-}" # retour arrière : commit à redéployer, sans avancer jusqu'à la dernière version
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE=(docker compose -f "$ROOT/deploy/compose.prod.yml" --env-file "$ROOT/deploy/.env")
 
@@ -13,8 +16,13 @@ cd "$ROOT"
 echo "→ Code : $BRANCH"
 git fetch --quiet origin "$BRANCH"
 PREVIOUS="$(git rev-parse --short HEAD)"
-git checkout --quiet "$BRANCH"
-git merge --ff-only "origin/$BRANCH"
+if [ -n "$REF" ]; then
+  git cat-file -e "$REF^{commit}" 2>/dev/null || { echo "Commit introuvable : $REF"; exit 1; }
+  git checkout --quiet "$REF"
+else
+  git checkout --quiet "$BRANCH"
+  git merge --ff-only "origin/$BRANCH"
+fi
 echo "   $PREVIOUS → $(git rev-parse --short HEAD)"
 
 # Première installation : les bases n'existent pas encore, il n'y a rien à sauvegarder.
@@ -44,5 +52,5 @@ for _ in $(seq 1 30); do
   sleep 3
 done
 echo "ÉCHEC : l'API ou la console n'est pas prête. Journaux :  ${COMPOSE[*]} logs --tail=80 iagora-api iagora-web migrate"
-echo "Retour arrière : git checkout $PREVIOUS && deploy/deploy.sh (voir docs/deploiement.md)."
+echo "Retour arrière : deploy/deploy.sh $BRANCH $PREVIOUS (voir docs/deploiement.md §7)."
 exit 1
