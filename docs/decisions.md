@@ -513,3 +513,23 @@ apparaît.
 **Suite.** Mesurer l'effet avec `eval-conversations` sur des questions de suivi ; une réécriture de la requête par le
 modèle reste possible si la règle ne suffit pas.
 
+## D-44 — Prospects simulés par un second modèle (`eval-simulation`)
+
+**Contexte.** `eval-conversations` rejoue des messages écrits d'avance : le prospect dit toujours la même chose et la
+mesure ne montre ni la variation du modèle ni l'imprévu (limite écrite dans le mémoire : un passage par mesure, des
+messages de prospect écrits d'avance). D-35 prévoyait ces prospects simulés comme suite de l'évaluation.
+
+**Décision.**
+- Un second modèle joue le prospect à partir d'un profil (objectif, style, ce qu'il sait de lui, messages au plus),
+  six profils au départ ; il met fin à la conversation par `[FIN]` ; plafond de 12 messages.
+- Les mesures sont celles de `eval-conversations` (mêmes fonctions, mêmes rapports) : les chiffres restent comparables.
+  Plusieurs passages par profil (`--passes`) pour mesurer la variation.
+- Le prospect simulé ne connaît pas la formation : il ne peut ni inventer ni affirmer un fait (NF-10) ; seul l'agent
+  répond, avec ses sources.
+- Hors ligne, le prospect rejoue un script et l'agent utilise le faux modèle (tests et CI sans réseau). Données
+  fictives uniquement (`evalsim.*@demo.example.com`), outil refusé en production.
+- Même modèle pour l'agent et le prospect pour l'instant ; choisir un modèle différent pour le prospect reste possible.
+
+**Suite.** Afficher la suite dans la page Évaluation (indicateurs normalisés, comparaison des passages) ; mesurer
+l'agent corrigé avec plusieurs passages par profil.
+

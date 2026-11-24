@@ -10,6 +10,7 @@ Cinq outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en p
 | Simulateur de conversation | `python -m app.cli chat` | Jouer le prospect à la main et voir la décision de l'agent à chaque message |
 | Évaluation quantitative | `python -m app.cli eval-agent` | Mesurer l'agent sur un jeu de cas annotés : intention, décision, transferts, réponses sourcées, chiffres inventés, latence |
 | Évaluation de conversations | `python -m app.cli eval-conversations` | Mesurer l'agent sur des conversations de plusieurs messages : contexte suivi, informations redemandées, ton tenu, parcours mené au bout |
+| Prospects simulés | `python -m app.cli eval-simulation` | Un second modèle joue le prospect face à l'agent, plusieurs passages par profil : mesurer ce que les conversations écrites d'avance ne montrent pas (variation, imprévu) |
 
 Avec Docker : `docker compose exec backend python -m app.cli <commande>`.
 
@@ -187,6 +188,35 @@ se comparent d'un passage à l'autre :
   le dernier message est comptée comme arrêtée.
 - Informations redemandées, salutations et présentation comme IA sont repérées par des expressions courantes :
   un écart signalé se relit dans les échanges du rapport.
+
+## Prospects simulés (agent contre agent)
+
+```bash
+python -m app.cli eval-simulation                                      # hors ligne : le prospect rejoue son script
+python -m app.cli eval-simulation --live --passes 3 --pause 4 --report sim.md --json sim.json --cleanup
+python -m app.cli eval-simulation --live presse_rendez_vous sceptique_robot
+```
+
+`eval-conversations` rejoue des messages écrits d'avance : le prospect dit toujours la même chose. Ici, un **second
+modèle joue le prospect**, message après message, à partir d'un profil (`prospect_personas.json`) : objectif, façon
+d'écrire, ce qu'il sait de lui, nombre de messages au plus. Six profils : étudiant en M1 hésitant, professionnel en
+reconversion, curieux sans projet, pressé qui veut un rendez-vous, sceptique qui demande s'il parle à un robot,
+prospect qui pose des questions hors sujet.
+
+- **Mêmes mesures** que `eval-conversations` (redemandes, salutations répétées, présentation comme IA, plus d'une
+  question par message, parcours, durée), donc des chiffres comparables ; rapports Markdown et JSON identiques.
+- **Plusieurs passages** (`--passes`) : le modèle varie d'un essai à l'autre ; c'est cette variation qui est mesurée.
+- **Fin de conversation** : le prospect écrit `[FIN]` quand son objectif est atteint ou qu'il abandonne ; un transfert
+  ou une clôture par l'agent arrête aussi la conversation ; plafond de 12 messages quel que soit le profil.
+- **Garde-fous** : prospects fictifs (`evalsim.*@demo.example.com`), base de démonstration fictive, rien n'est envoyé,
+  refusé en production (comme tous les outils de recette). Le prospect simulé ne connaît pas la formation et n'a pas
+  le droit d'inventer un prix ou une durée ; l'agent reste seul juge de ses sources (NF-10).
+- **Hors ligne**, le prospect rejoue le `script` du profil et l'agent utilise le faux modèle : reproductible, sans
+  réseau (tests, CI). Avec `--live`, le même modèle joue l'agent et le prospect ; ses appels de prospect ne
+  comptent pas dans les mesures de l'agent.
+- `--cleanup` supprime les prospects `evalsim.*`.
+
+La page Évaluation n'affiche pas encore cette suite (prochaine étape).
 
 ## Page Évaluation
 

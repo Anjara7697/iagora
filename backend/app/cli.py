@@ -170,6 +170,24 @@ def main() -> None:
     conv.add_argument(
         "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
     )
+    sim = sub.add_parser(
+        "eval-simulation",
+        help="(dev) Mesurer l'agent face à des prospects simulés par un second modèle",
+    )
+    sim.add_argument("ids", nargs="*", help="Profils à jouer (tous par défaut)")
+    sim.add_argument(
+        "--live", action="store_true", help="Utiliser le vrai modèle (par défaut : faux modèle)"
+    )
+    sim.add_argument(
+        "--rag-reel", action="store_true", help="Vraie recherche sur la base de démonstration"
+    )
+    sim.add_argument("--passes", type=int, default=1, help="Nombre de passages par profil")
+    sim.add_argument("--pause", type=float, default=0.0, help="Secondes entre deux conversations")
+    sim.add_argument("--report", help="Écrire un rapport Markdown à ce chemin")
+    sim.add_argument("--json", dest="json_path", help="Écrire les résultats JSON à ce chemin")
+    sim.add_argument(
+        "--cleanup", action="store_true", help="Supprimer les prospects de recette ensuite"
+    )
     args = parser.parse_args()
 
     if args.command == "seed-demo":
@@ -222,6 +240,20 @@ def main() -> None:
         sys.exit(
             asyncio.run(commands.cmd_kb_eval(json_path=args.json_path, cases_path=args.cases_path))
         )
+    elif args.command == "eval-simulation":
+        code = asyncio.run(
+            commands.cmd_eval_simulation(
+                args.ids,
+                fake=not args.live,
+                real_rag=args.rag_reel,
+                passes=args.passes,
+                pause=args.pause,
+                report=args.report,
+                json_path=args.json_path,
+                cleanup=args.cleanup,
+            )
+        )
+        sys.exit(code)
     elif args.command == "eval-conversations":
         code = asyncio.run(
             commands.cmd_eval_conversations(
