@@ -226,6 +226,9 @@ class WorkflowNodes:
         q = state.get("qualification")
 
         query = text if text.strip() else (ctx.campaign_name or "")
+        if text.strip() and q is not None and q.intent == "question":
+            # Question de suivi courte (« et le prix ? ») : complétée par le contexte du prospect.
+            query = policy.retrieval_query(text, ctx.history)
         # Les documents fictifs ne servent qu'aux prospects fictifs, quel que soit l'environnement.
         passages: list[Passage] = await self.deps.knowledge.search(
             query, state.get("target_code"), include_demo=ctx.is_demo

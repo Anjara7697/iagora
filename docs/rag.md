@@ -107,8 +107,9 @@ d'envoyer « un conseiller vous répondra » sans prévenir personne.
 
 ## Limites actuelles
 
-- La recherche utilise le texte du dernier message du prospect seul : une question de suivi très courte
-  (« et le prix ? ») manque de contexte. À améliorer en réécrivant la requête avec l'historique.
+- Une question de suivi très courte (« et le prix ? », moins de six mots) est cherchée avec les deux messages
+  précédents du prospect (D-43) ; une question plus longue est cherchée seule. La règle est déterministe : une
+  question qui change de sujet sans le dire peut encore manquer de contexte.
 - Les documents officiels de DATUM Academy restent à importer (procédure ci-dessus) ; la base de démonstration est
   fictive.
 - Le chargement se fait en ligne de commande ; une page d'administration viendra avec le tableau de bord.

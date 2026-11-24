@@ -148,6 +148,27 @@ def defers_to_advisor_in_words(reply: str) -> bool:
     return bool(_DEFERS.search(normalize(reply)))
 
 
+# Une question de suivi plus courte que ce nombre de mots (« et le prix ? ») n'a pas de sens seule.
+SHORT_QUERY_WORDS = 5
+FOLLOW_UP_CONTEXT = 2  # messages précédents du prospect ajoutés à la requête de recherche
+
+
+def retrieval_query(inbound: str, history: Sequence[HistoryMessage]) -> str:
+    """Texte envoyé à la recherche documentaire (RAG, sans appel au modèle).
+
+    Le message du prospect suffit quand il est assez long. Une question de suivi très courte
+    (« et le prix ? ») est complétée par les derniers messages du prospect, sinon la recherche
+    n'a aucun contexte et ne ramène rien : l'agent transférerait à tort. Seuls les messages du
+    prospect sont ajoutés : ce que l'agent a écrit n'est pas une source."""
+    text = inbound.strip()
+    if len(text.split()) > SHORT_QUERY_WORDS:
+        return text
+    earlier = [m.content.strip() for m in history if m.role == "prospect" and m.content.strip()]
+    if earlier and earlier[-1] == text:
+        earlier = earlier[:-1]  # le message courant est déjà à la fin de l'historique
+    return " ".join([*earlier[-FOLLOW_UP_CONTEXT:], text]).strip()
+
+
 def question_unanswered(
     history: list[HistoryMessage], qualification: Qualification | None, inbound: str
 ) -> bool:

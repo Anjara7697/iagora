@@ -408,6 +408,35 @@ async def test_an_unanswered_question_is_held_for_the_next_message(client, env):
     assert "Ta question précédente est restée sans réponse" in system
 
 
+async def test_a_short_follow_up_question_is_searched_with_the_prospects_context(client, env):
+    """« et le prix ? » seul ne ramène rien : la recherche reçoit aussi le message précédent."""
+    first = "Quelle est la durée du master eBIHAR ?"
+    pid, mid, cid = await lead(client, first)
+    await say(client, cid, "Le master dure deux ans.", role="agent")
+    await say(client, cid, "et le prix ?")
+    env.kb.passages = [
+        Passage(source="faq-ebihar", text="La durée du master eBIHAR est de deux ans.")
+    ]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "Le master eBIHAR dure deux ans."
+    await run(client, cid)
+    assert env.kb.queries[-1] == f"{first} et le prix ?"
+
+
+async def test_a_long_question_is_searched_alone(client, env):
+    question = "Quelles sont les conditions d'admission au master eBIHAR ?"
+    pid, mid, cid = await lead(client, "Bonjour")
+    await say(client, cid, "Bonjour")
+    await say(client, cid, question)
+    env.kb.passages = [
+        Passage(source="faq-ebihar", text="Conditions d'admission du master eBIHAR.")
+    ]
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "Les conditions d'admission sont décrites."
+    await run(client, cid)
+    assert env.kb.queries[-1] == question
+
+
 # --- NF-10 : jamais d'information inventée ---
 
 

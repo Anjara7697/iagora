@@ -497,3 +497,19 @@ règlent par campagne (D-39), et l'agent décide quand les utiliser.
 
 **Suite.** Mesurer le premier contact avec la brochure ; retirer une pièce jointe depuis le brouillon si le besoin
 apparaît.
+
+## D-43 — Recherche documentaire avec le contexte du prospect
+
+**Contexte.** La recherche (RAG) n'utilisait que le dernier message du prospect. Une question de suivi très courte
+(« et le prix ? ») n'a pas de sens seule : rien n'était trouvé et l'agent transférait au conseiller à tort.
+
+**Décision.**
+- Quand le prospect pose une question de moins de six mots, la requête de recherche est complétée par ses deux
+  messages précédents. Une question plus longue est cherchée seule.
+- Sans appel supplémentaire au modèle : règle déterministe (`policy.retrieval_query`), donc sans coût ni latence en plus.
+- Seuls les messages du prospect sont ajoutés : ce que l'agent a écrit n'est pas une source. Le seuil de pertinence et
+  les garde-fous (D-34, NF-10) ne changent pas.
+
+**Suite.** Mesurer l'effet avec `eval-conversations` sur des questions de suivi ; une réécriture de la requête par le
+modèle reste possible si la règle ne suffit pas.
+
