@@ -533,3 +533,21 @@ messages de prospect écrits d'avance). D-35 prévoyait ces prospects simulés c
 **Suite.** Afficher la suite dans la page Évaluation (indicateurs normalisés, comparaison des passages) ; mesurer
 l'agent corrigé avec plusieurs passages par profil.
 
+## D-45 — Prospects simulés dans la page Évaluation
+
+**Contexte.** `eval-simulation` (D-44) n'existait qu'en ligne de commande ; D-35 prévoyait de la brancher sur la page
+Évaluation « comme une suite supplémentaire ».
+
+**Décision.**
+- Une quatrième suite, **Prospects simulés**, avec les mêmes passages, le même historique, la même comparaison et la
+  même évolution que les autres. Ses indicateurs sont ceux des conversations (mêmes mesures, D-44) : les passages
+  restent comparables.
+- Réglages : profils joués, passages par profil (1 à 5), faux ou vrai modèle, vraie recherche, pause, nettoyage.
+  L'estimation de quota compte trois appels par message : lecture, rédaction, et le prospect simulé.
+- Un rapport `--json` de `eval-simulation` s'importe comme une simulation (`meta.suite`), pas comme des conversations.
+- Mêmes garde-fous que la page : administrateurs seulement, refusée en production, un seul passage à la fois,
+  prospects fictifs `@demo.example.com`.
+
+**Suite.** Mesurer l'agent avec plusieurs passages par profil ; un indicateur de variation entre passages, si la
+comparaison des moyennes ne suffit pas.
+

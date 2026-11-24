@@ -1,8 +1,9 @@
 """Passages d'évaluation de la page Évaluation (outil de recette : jamais en production).
 
-Un passage joue l'une des trois évaluations existantes, exactement comme la ligne de commande :
+Un passage joue l'une des quatre évaluations existantes, exactement comme la ligne de commande :
 - `agent` : les cas un par un (`evaluation.py`, `eval-agent`) ;
 - `conversations` : les conversations de plusieurs messages (`conversation_eval.py`) ;
+- `simulation` : des prospects simulés par un second modèle (`prospect_sim.py`, `eval-simulation`) ;
 - `kb` : la recherche dans la base de connaissances (`kb_evaluation.py`, `kb-eval`).
 
 Il tourne en tâche de fond dans le processus de l'API, un seul à la fois, et peut être annulé : les
@@ -29,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.defaults import EmptyKnowledgeBase
 from app.config import Settings
-from app.devtools import conversation_eval, evaluation, kb_evaluation
+from app.devtools import conversation_eval, evaluation, kb_evaluation, prospect_sim
 from app.devtools.fakes import FakeLLM
 from app.graph.ports import KnowledgeBase, LanguageModel
 from app.integrations.embeddings.base import EmbeddingModel
@@ -41,15 +42,18 @@ from app.services import knowledge
 logger = logging.getLogger(__name__)
 
 COLLECTION = "eval_runs"
-Suite = Literal["agent", "conversations", "kb"]
+Suite = Literal["agent", "conversations", "simulation", "kb"]
 SUITE_LABELS: dict[str, str] = {
     "agent": "Cas un par un",
     "conversations": "Conversations",
+    "simulation": "Prospects simulés",
     "kb": "Base de connaissances",
 }
 # Appels au modèle de langage par message du prospect (lecture du message, puis rédaction) :
 # estimation affichée avant un passage avec le vrai modèle (quota).
 LLM_CALLS_PER_TURN = 2
+# Prospect simulé : un appel de plus par message (le second modèle joue le prospect).
+SIMULATION_CALLS_PER_TURN = 3
 MAX_IMPORT_BYTES = 8_000_000
 
 
@@ -76,6 +80,7 @@ class RunSettings(BaseModel):
     price_in: float | None = Field(None, ge=0, description="Prix par million de jetons (entrée)")
     price_out: float | None = Field(None, ge=0, description="Prix par million de jetons (sortie)")
     min_score: float | None = Field(None, ge=0, le=1, description="Seuil essayé (base)")
+    passes: int = Field(1, ge=1, le=5, description="Passages par profil (prospects simulés)")
     cleanup: bool = Field(True, description="Supprimer les prospects fictifs à la fin")
 
     def effective(self) -> dict[str, Any]:
@@ -89,6 +94,8 @@ class RunSettings(BaseModel):
             "ids": self.ids,
             "cleanup": self.cleanup,
         }
+        if self.suite == "simulation":
+            out["passes"] = self.passes
         if self.suite == "agent":
             out |= {
                 "categories": self.categories,
@@ -136,6 +143,14 @@ def catalog(
                 ],
             },
             {
+                "key": "simulation",
+                "label": SUITE_LABELS["simulation"],
+                "items": [
+                    {"id": p.id, "title": p.title, "turns": p.max_turns}
+                    for p in prospect_sim.load_personas()
+                ],
+            },
+            {
                 "key": "kb",
                 "label": SUITE_LABELS["kb"],
                 "items": [
@@ -154,6 +169,7 @@ def catalog(
         },
         "rag_min_score": app_settings.rag_min_score,
         "llm_calls_per_turn": LLM_CALLS_PER_TURN,
+        "simulation_calls_per_turn": SIMULATION_CALLS_PER_TURN,
         "running": _ACTIVE.run_id if _ACTIVE is not None and not _ACTIVE.task.done() else None,
     }
 
@@ -356,6 +372,7 @@ _INDICATORS: dict[str, list[_Spec]] = {
         ("unavailable", "Modèle indisponible", "Coût", "llm_unavailable", "n", "down"),
         ("errors", "Erreurs techniques", "Coût", "errors", "n", "down"),
     ],  # fmt: skip
+    "simulation": [],  # complété ci-dessous : les mêmes indicateurs que les conversations
     "kb": [
         ("conform", "Questions conformes", "Recherche", "conform", "rate", "up"),
         (
@@ -378,6 +395,8 @@ _INDICATORS: dict[str, list[_Spec]] = {
         ("min_score", "Seuil utilisé", "Recherche", "min_score", "n", None),
     ],  # fmt: skip
 }
+
+_INDICATORS["simulation"] = _INDICATORS["conversations"]
 
 
 def indicators(suite: str, summary: dict[str, Any]) -> list[dict[str, Any]]:
@@ -461,11 +480,17 @@ async def delete_run(db: Any, run_id: str) -> bool:
 def _detect_suite(report: dict[str, Any]) -> str:
     if not isinstance(report.get("summary"), dict):
         raise EvaluationError("Rapport non reconnu : résumé (« summary ») absent.")
+    meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
     for key, suite in (("cases", "agent"), ("conversations", "conversations"), ("questions", "kb")):
         if isinstance(report.get(key), list):
-            return suite
+            # Le JSON de eval-simulation a la forme de celui de eval-conversations.
+            return (
+                "simulation"
+                if suite == "conversations" and meta.get("suite") == "simulation"
+                else suite
+            )
     raise EvaluationError(
-        "Rapport non reconnu : il faut le JSON de eval-agent, eval-conversations ou kb-eval."
+        "Rapport non reconnu : il faut le JSON de eval-agent, eval-conversations, eval-simulation ou kb-eval."
     )
 
 
@@ -510,7 +535,7 @@ async def import_report(
         raise EvaluationError("Rapport trop volumineux.")
     suite = _detect_suite(report)
     if suite == "conversations":
-        _complete_conversations(report["conversations"])
+        _complete_conversations(report["conversations"])  # les conversations écrites seulement
     elif suite == "agent":
         _complete_cases(report["cases"])
     meta: dict[str, Any] = report["meta"] if isinstance(report.get("meta"), dict) else {}
@@ -561,6 +586,8 @@ def _select(run: RunSettings) -> list[Any]:
             items: list[Any] = evaluation.load_cases(run.ids or None, run.categories or None)
         elif run.suite == "conversations":
             items = conversation_eval.load_conversations(run.ids or None)
+        elif run.suite == "simulation":
+            items = prospect_sim.load_personas(run.ids or None)
         else:
             items = kb_evaluation.load_cases()
             if run.ids:
@@ -622,7 +649,8 @@ async def start(
         _execute(db, session_factory, run, doc["_id"], items, app_settings, llm, embeddings),
         name=f"evaluation-{doc['_id']}",
     )
-    _ACTIVE = _Active(doc["_id"], task, total=len(items))
+    total = len(items) * run.passes if run.suite == "simulation" else len(items)
+    _ACTIVE = _Active(doc["_id"], task, total=total)
     return _public(doc, full=False)
 
 
@@ -706,6 +734,20 @@ async def _execute(
                 build = build_agent
                 await evaluation.run_eval(
                     session_factory, db, items, llm=model, knowledge=kb, ablation=run.ablation,
+                    pause=run.pause, on_done=lambda r: done(r, r.ok),
+                )  # fmt: skip
+            elif run.suite == "simulation":
+
+                def build_simulation() -> dict[str, Any]:
+                    summary = conversation_eval.summarize(collected)
+                    return conversation_eval.to_payload(
+                        collected, summary, suite="simulation", **meta
+                    )
+
+                build = build_simulation
+                await prospect_sim.run_simulations(
+                    session_factory, db, items, llm=model, knowledge=kb,
+                    prospect_llm=model if run.live else None, passes=run.passes,
                     pause=run.pause, on_done=lambda r: done(r, r.ok),
                 )  # fmt: skip
             else:

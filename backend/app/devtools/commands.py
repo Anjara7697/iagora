@@ -299,7 +299,8 @@ async def cmd_eval_simulation(
         print(f"Rapport écrit : {report}")
     if json_path:
         Path(json_path).write_text(
-            conversation_eval.to_json(results, summary, **meta), encoding="utf-8"
+            conversation_eval.to_json(results, summary, suite="simulation", **meta),
+            encoding="utf-8",
         )
         print(f"Résultats JSON écrits : {json_path}")
     if cleanup:

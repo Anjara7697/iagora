@@ -216,11 +216,13 @@ prospect qui pose des questions hors sujet.
   comptent pas dans les mesures de l'agent.
 - `--cleanup` supprime les prospects `evalsim.*`.
 
-La page Évaluation n'affiche pas encore cette suite (prochaine étape).
+Depuis la page Évaluation, la suite **Prospects simulés** se lance comme les autres (voir plus bas) ; un rapport
+`--json` de `eval-simulation` s'importe aussi dans l'historique.
 
 ## Page Évaluation
 
-Les trois évaluations se lancent aussi depuis l'application (D-35), avec les mêmes fonctions et donc les mêmes
+Les quatre évaluations (cas un par un, conversations, prospects simulés, base de connaissances) se lancent aussi depuis
+l'application (D-35, D-45), avec les mêmes fonctions et donc les mêmes
 chiffres que la ligne de commande. Réservé aux administrateurs, refusé en production.
 
 Dans la console, **Évaluation** (menu Administration, sous Simulateur) :
@@ -228,6 +230,8 @@ Dans la console, **Évaluation** (menu Administration, sous Simulateur) :
 - **Historique** : tous les passages, lancés ou importés, filtrables par suite ; une ligne ouvre le passage.
 - **Lancer** : suite, nom et notes, faux ou vrai modèle, vraie recherche, pause, éléments joués, catégories, variante,
   prix, seuil essayé, nettoyage. Avec le vrai modèle, une confirmation annonce le nombre d'appels estimé.
+  Pour les prospects simulés : les profils joués et le nombre de passages par profil (1 à 5) ; l'estimation compte
+  trois appels par message (lecture, rédaction, et le prospect simulé).
 - **Comparer** : deux passages d'une même suite côte à côte, chaque indicateur avec son écart et son sens
   (« en progrès », « en recul », « inchangé ») ; par défaut l'avant-dernier et le dernier.
 - **Évolution** : la courbe d'un indicateur, du premier passage au dernier, avec le tableau des valeurs.

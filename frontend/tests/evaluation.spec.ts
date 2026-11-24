@@ -73,12 +73,21 @@ const CATALOG = {
         { id: "sans_redemande", title: "Sans redemande", turns: 3, live_only: false },
       ],
     },
+    {
+      key: "simulation",
+      label: "Prospects simulés",
+      items: [
+        { id: "etudiant_m1_hesitant", title: "Étudiant en M1, hésitant", turns: 6 },
+        { id: "presse_rendez_vous", title: "Prospect pressé", turns: 5 },
+      ],
+    },
     { key: "kb", label: "Base de connaissances", items: [{ id: "0", title: "Durée ?", group: "ebihar_students" }] },
   ],
   model: { available: true, name: "gemini/gemini-3.1-flash-lite" },
   embeddings: { available: true, name: "gemini/gemini-embedding-001" },
   rag_min_score: 0.6,
   llm_calls_per_turn: 2,
+  simulation_calls_per_turn: 3,
   running: null,
 };
 
@@ -185,6 +194,20 @@ test("lancer avec le vrai modèle demande une confirmation qui annonce les appel
   await expect(page.getByText("1 sur 2 joués, 1 conformes.")).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Avancement du passage" })).toHaveAttribute("aria-valuetext", /^50\s%$/);
   await expect(page.getByRole("button", { name: "Annuler le passage" })).toBeVisible();
+});
+
+test("prospects simulés : passages par profil et appels annoncés (un de plus par message)", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page, "/evaluation?tab=launch");
+  await page.getByRole("tab", { name: "Prospects simulés" }).click();
+  await page.getByLabel("Nom du passage").fill("Simulation D-44");
+  await page.getByLabel("Passages par profil").fill("2");
+  await page.getByRole("tab", { name: /Vrai modèle/ }).click();
+  await page.getByRole("button", { name: "Lancer l’évaluation" }).click();
+  // (6 + 5) messages au plus × 2 passages × 3 appels (le prospect simulé en ajoute un).
+  await expect(page.getByRole("alertdialog")).toContainText("2 éléments, environ 66 appels");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Lancer" }).click();
+  expect(calls.posts[0].body).toMatchObject({ suite: "simulation", label: "Simulation D-44", live: true, passes: 2, ids: [] });
 });
 
 test("détail d’un passage : indicateurs, puis l’échange complet d’une conversation", async ({ page }) => {

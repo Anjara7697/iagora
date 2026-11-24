@@ -17,7 +17,11 @@ function detect(report: unknown): { suite: Suite; count: number } | null {
   if (!report || typeof report !== "object" || !("summary" in report)) return null;
   const r = report as EvalReport;
   if (Array.isArray(r.cases)) return { suite: "agent", count: r.cases.length };
-  if (Array.isArray(r.conversations)) return { suite: "conversations", count: r.conversations.length };
+  if (Array.isArray(r.conversations)) {
+    // Le rapport de eval-simulation a la forme de celui de eval-conversations ; seul `meta.suite` les distingue.
+    const simulated = (r.meta as { suite?: unknown } | undefined)?.suite === "simulation";
+    return { suite: simulated ? "simulation" : "conversations", count: r.conversations.length };
+  }
   if (Array.isArray(r.questions)) return { suite: "kb", count: r.questions.length };
   return null;
 }
