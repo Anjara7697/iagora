@@ -9,7 +9,7 @@ export function canUseEvaluation(role: User["role"] | undefined): boolean {
   return SIMULATOR_ENABLED && role === "ADMIN";
 }
 
-export type Suite = "agent" | "conversations" | "kb";
+export type Suite = "agent" | "conversations" | "simulation" | "kb";
 export type RunStatus = "running" | "done" | "cancelled" | "failed" | "interrupted";
 
 export type Indicator = {
@@ -33,6 +33,7 @@ export type RunSettings = {
   price_in?: number | null;
   price_out?: number | null;
   min_score?: number | null;
+  passes?: number;
   cleanup?: boolean;
 };
 
@@ -118,17 +119,21 @@ export type Catalog = {
   embeddings: { available: boolean; name: string | null };
   rag_min_score: number;
   llm_calls_per_turn: number;
+  simulation_calls_per_turn: number;
   running: string | null;
 };
 
 export const SUITES: Record<Suite, string> = {
   conversations: "Conversations",
+  simulation: "Prospects simulés",
   agent: "Cas un par un",
   kb: "Base de connaissances",
 };
 
 export const SUITE_HINTS: Record<Suite, string> = {
   conversations: "Parcours de plusieurs messages : conformité, profil lu, technique de vente.",
+  simulation:
+    "Un second modèle joue le prospect, plusieurs passages par profil : mesure la variation du modèle et l’imprévu, que des messages écrits d’avance ne montrent pas.",
   agent: "Chaque situation isolée : intention, décision, transfert, réponse sourcée.",
   kb: "La recherche trouve-t-elle le bon document pour chaque question type ?",
 };
@@ -153,7 +158,7 @@ export type EvaluationTab = keyof typeof EVALUATION_TABS;
 type Query = { get: (key: string) => string | null };
 const RUN_ID = /^[0-9a-f]{32}$/;
 const KEY = /^[a-z_]{1,40}$/;
-const isSuite = (v: string | null): v is Suite => v === "agent" || v === "conversations" || v === "kb";
+const isSuite = (v: string | null): v is Suite => v === "agent" || v === "conversations" || v === "simulation" || v === "kb";
 
 /** État porté par l'adresse : onglet, suite affichée, passages comparés, indicateur suivi. Seules les valeurs valides sont relues. */
 export function readEvaluationView(query: Query) {
@@ -241,6 +246,7 @@ export function describeSettings(run: EvalRun): string[] {
   if (s.ids?.length) out.push(`${s.ids.length} élément${s.ids.length > 1 ? "s" : ""} choisi${s.ids.length > 1 ? "s" : ""}`);
   if (s.categories?.length) out.push(`Catégories : ${s.categories.join(", ")}`);
   if (s.ablation) out.push(`Variante : ${s.ablation}`);
+  if (s.passes && s.passes > 1) out.push(`${s.passes} passages par profil`);
   if (s.pause) out.push(`Pause : ${s.pause} s`);
   if (s.min_score !== undefined && s.min_score !== null) out.push(`Seuil essayé : ${s.min_score}`);
   return out;

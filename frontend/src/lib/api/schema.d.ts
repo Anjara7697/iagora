@@ -4194,6 +4194,12 @@ export interface components {
              */
             notes: string;
             /**
+             * Passes
+             * @description Passages par profil (prospects simulés)
+             * @default 1
+             */
+            passes: number;
+            /**
              * Pause
              * @description Secondes entre deux cas (quota)
              * @default 0
@@ -4219,7 +4225,7 @@ export interface components {
              * Suite
              * @enum {string}
              */
-            suite: "agent" | "conversations" | "kb";
+            suite: "agent" | "conversations" | "simulation" | "kb";
         };
         /** RunUpdate */
         RunUpdate: {

@@ -5515,6 +5515,14 @@
             "title": "Notes",
             "type": "string"
           },
+          "passes": {
+            "default": 1,
+            "description": "Passages par profil (prospects simulés)",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Passes",
+            "type": "integer"
+          },
           "pause": {
             "default": 0.0,
             "description": "Secondes entre deux cas (quota)",
@@ -5559,6 +5567,7 @@
             "enum": [
               "agent",
               "conversations",
+              "simulation",
               "kb"
             ],
             "title": "Suite",

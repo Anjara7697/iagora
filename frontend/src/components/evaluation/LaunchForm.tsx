@@ -27,7 +27,8 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
   const [live, setLive] = useState(false);
   const [realRag, setRealRag] = useState(false);
   const [pause, setPause] = useState(0);
-  const [selected, setSelected] = useState<Record<Suite, string[] | null>>({ agent: null, conversations: null, kb: null });
+  const [passes, setPasses] = useState(1);
+  const [selected, setSelected] = useState<Record<Suite, string[] | null>>({ agent: null, conversations: null, simulation: null, kb: null });
   const [categories, setCategories] = useState<string[]>([]);
   const [ablation, setAblation] = useState("");
   const [withPrices, setWithPrices] = useState(false);
@@ -45,8 +46,11 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
   const chosen = selected[suite];
   const inCategories = (group?: string) => suite !== "agent" || categories.length === 0 || (group !== undefined && categories.includes(group));
   const played = items.filter((i) => (chosen === null || chosen.includes(i.id)) && inCategories(i.group));
-  const turns = played.reduce((n, i) => n + (suite === "conversations" ? (i.turns ?? 1) : 1), 0);
-  const calls = turns * catalog.llm_calls_per_turn;
+  const longSuite = suite === "conversations" || suite === "simulation";
+  const rounds = suite === "simulation" ? passes : 1;
+  const turns = played.reduce((n, i) => n + (longSuite ? (i.turns ?? 1) : 1), 0) * rounds;
+  const callsPerTurn = suite === "simulation" ? catalog.simulation_calls_per_turn : catalog.llm_calls_per_turn;
+  const calls = turns * callsPerTurn;
   const usesModel = suite !== "kb";
   const running = catalog.running !== null;
   const blocked =
@@ -92,6 +96,7 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
           price_in: suite === "agent" && withPrices ? priceIn : null,
           price_out: suite === "agent" && withPrices ? priceOut : null,
           min_score: suite === "kb" && tryThreshold ? threshold : null,
+          passes: suite === "simulation" ? passes : 1,
           cleanup,
         },
       });
@@ -118,7 +123,7 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
           label="Suite à jouer"
           value={suite}
           onChange={changeSuite}
-          options={(["conversations", "agent", "kb"] as Suite[]).map((s) => ({ value: s, text: SUITES[s] }))}
+          options={(["conversations", "simulation", "agent", "kb"] as Suite[]).map((s) => ({ value: s, text: SUITES[s] }))}
         />
         <p className="type-body-sm text-muted">{SUITE_HINTS[suite]}</p>
       </div>
@@ -208,6 +213,15 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
         </div>
       )}
 
+      {suite === "simulation" && (
+        <Field
+          label="Passages par profil"
+          hint="Le modèle varie d’un essai à l’autre : plusieurs passages montrent cette variation. Chaque passage ajoute des appels au modèle."
+        >
+          <NumberInput className="sm:max-w-40" value={passes} min={1} max={5} step={1} onValueChange={setPasses} />
+        </Field>
+      )}
+
       {suite === "agent" && (def?.categories?.length ?? 0) > 0 && (
         <div className="flex flex-col gap-2">
           <span className="type-body font-medium text-foreground">Catégories</span>
@@ -287,7 +301,7 @@ export default function LaunchForm({ catalog, onLaunched }: { catalog: Catalog; 
 
       {usesModel && live && (
         <Notice tone="warning">
-          {`Environ ${calls} appels au modèle (${turns} message${turns > 1 ? "s" : ""} × ${catalog.llm_calls_per_turn}), plus les nouveaux essais éventuels.`}
+          {`Environ ${calls} appels au modèle (${turns} message${turns > 1 ? "s" : ""} × ${callsPerTurn}), plus les nouveaux essais éventuels.`}
         </Notice>
       )}
       {error && <ErrorText>{error}</ErrorText>}

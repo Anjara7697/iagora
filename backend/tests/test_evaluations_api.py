@@ -61,13 +61,16 @@ async def test_only_admins_outside_production(client, make_client):
 async def test_the_catalog_lists_suites_and_what_can_be_used(client):
     catalog = (await client.get(f"{API}/catalog")).json()
     suites = {s["key"]: s for s in catalog["suites"]}
-    assert set(suites) == {"agent", "conversations", "kb"}
+    assert set(suites) == {"agent", "conversations", "simulation", "kb"}
+    personas = {p["id"]: p for p in suites["simulation"]["items"]}
+    assert len(personas) == 6 and personas["sceptique_robot"]["turns"] >= 2
     conv = {c["id"]: c for c in suites["conversations"]["items"]}
     assert conv["parcours_rdv_ebihar"]["turns"] >= 2 and "live_only" in conv["parcours_rdv_ebihar"]
     assert "sans-rag" in suites["agent"]["ablations"] and suites["agent"]["categories"]
     assert catalog["model"] == {"available": False, "name": None}
     assert catalog["embeddings"]["available"] is False
     assert catalog["llm_calls_per_turn"] == 2 and catalog["running"] is None
+    assert catalog["simulation_calls_per_turn"] == 3  # un appel de plus : le prospect simulé
 
 
 async def test_a_conversation_run_is_measured_like_the_command_line(client, session_factory):
@@ -88,6 +91,40 @@ async def test_a_conversation_run_is_measured_like_the_command_line(client, sess
         assert await session.scalar(select(func.count()).select_from(Prospect)) == 0
     listed = (await client.get(API)).json()
     assert listed[0]["id"] == run["id"] and "report" not in listed[0]
+
+
+async def test_a_simulation_run_plays_every_pass_of_every_persona(client, session_factory):
+    run = await launch(client, suite="simulation", ids=["hors_sujet", "sceptique_robot"], passes=2)
+    assert run["status"] == "running" and run["model"] == "faux modèle scripté"
+    done = await wait_until_finished(client, run["id"])
+    assert done["status"] == "done", done.get("error")
+    assert done["settings"]["passes"] == 2 and done["suite_label"] == "Prospects simulés"
+    assert done["progress"]["total"] == 4 and done["progress"]["done"] == 4
+    ids = [c["id"] for c in done["report"]["conversations"]]
+    assert ids == ["hors_sujet#1", "hors_sujet#2", "sceptique_robot#1", "sceptique_robot#2"]
+    assert done["report"]["meta"]["suite"] == "simulation"
+    indicators = {i["key"]: i for i in done["indicators"]}  # les mêmes que les conversations
+    assert "/4 (" in indicators["conform"]["display"]  # quatre conversations mesurées
+    async with session_factory() as session:  # prospects fictifs supprimés à la fin
+        assert await session.scalar(select(func.count()).select_from(Prospect)) == 0
+
+
+async def test_a_simulation_report_from_the_command_line_is_imported_as_a_simulation(client):
+    report = {
+        "meta": {"suite": "simulation", "model": "gemini/x", "mode": "réel (gemini/x)"},
+        "summary": {"conform": {"ok": 5, "total": 6, "rate": 0.83}},
+        "conversations": [{"id": "hors_sujet#1", "title": "Hors sujet", "ok": True, "turns": []}],
+    }
+    response = await client.post(f"{API}/import", json={"label": "sim", "report": report})
+    assert response.status_code == 201, response.text
+    assert response.json()["suite"] == "simulation"
+    by_key = {i["key"]: i for i in response.json()["indicators"]}
+    assert by_key["conform"]["display"] == "5/6 (83 %)"
+
+
+async def test_the_number_of_passes_is_bounded(client):
+    response = await client.post(API, json={"suite": "simulation", "label": "x", "passes": 6})
+    assert response.status_code == 422
 
 
 async def test_agent_settings_are_applied_and_kept_with_the_run(client):
