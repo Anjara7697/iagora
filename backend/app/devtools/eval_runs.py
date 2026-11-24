@@ -480,7 +480,8 @@ async def delete_run(db: Any, run_id: str) -> bool:
 def _detect_suite(report: dict[str, Any]) -> str:
     if not isinstance(report.get("summary"), dict):
         raise EvaluationError("Rapport non reconnu : résumé (« summary ») absent.")
-    meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
+    raw_meta = report.get("meta")
+    meta: dict[str, Any] = raw_meta if isinstance(raw_meta, dict) else {}
     for key, suite in (("cases", "agent"), ("conversations", "conversations"), ("questions", "kb")):
         if isinstance(report.get(key), list):
             # Le JSON de eval-simulation a la forme de celui de eval-conversations.
