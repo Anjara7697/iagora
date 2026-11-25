@@ -104,6 +104,7 @@ class Server:
         zoom_statuses=(),
     ):
         self.calls: list[tuple[str, str, dict]] = []
+        self.params: list[dict[str, str]] = []
         self.busy = busy or []
         self.calendar_error = calendar_error
         self.zoom_status = zoom_status
@@ -117,6 +118,7 @@ class Server:
         url = str(request.url)
         body = json.loads(request.content) if request.content.startswith(b"{") else {}
         self.calls.append((request.method, url.split("?")[0], body))
+        self.params.append(dict(request.url.params))
         if "oauth2.googleapis.com" in url or "zoom.us/oauth" in url:
             return httpx.Response(200, json={"access_token": "tok", "expires_in": 3600})
         if url.endswith("/freeBusy"):
@@ -202,6 +204,9 @@ def test_booking_creates_zoom_meeting_and_event_with_link():
     event = next(c for c in server.calls if c[1].endswith("/events"))
     assert "j@a.fr" in event[2]["description"] and meeting.meeting_url in event[2]["description"]
     assert event[2]["location"] == meeting.meeting_url
+    # Compte de service : pas d'invité (Google le refuse sans délégation de domaine).
+    assert "attendees" not in event[2]
+    assert server.params[server.calls.index(event)]["sendUpdates"] == "none"
 
 
 def test_booking_refuses_a_slot_taken_meanwhile():

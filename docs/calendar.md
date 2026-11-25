@@ -61,6 +61,23 @@ Ce réglage ne sert que tant qu'aucun agenda n'est enregistré dans la console.
 | `demo` | Créneaux **fictifs** et lien fictif (`zoom.example.com`). Recette locale. **Refusé en production.** |
 | `google` | Google Calendar du conseiller + réunion Zoom. |
 
+## Invitation et rappel du prospect (D-47)
+
+- **Invitation Google** : avec l'agenda connecté depuis la console (OAuth), le prospect est ajouté comme
+  invité de l'événement et Google lui envoie l'invitation depuis l'agenda du conseiller (`sendUpdates=all`).
+  Le lien reste aussi dans la réponse de l'agent. Avec un compte de service (`.env`), pas d'invitation
+  (voir plus bas).
+- **Rappel la veille** : environ 24 h avant le début, l'agent écrit au prospect sur sa conversation ouverte
+  (son canal habituel) : date, heure, fuseau, lien, et « En cas d'empêchement, il suffit de répondre à ce
+  message ». Texte écrit par le code, sans contenu commercial : il part **sans validation**, même en mode
+  assisté, comme l'accusé de transfert. Un seul rappel par rendez-vous.
+- Pas de rappel : en mode manuel, hors de la fenêtre d'envoi (Paramètres), pour un rendez-vous qui n'est
+  plus « planifié », réservé moins de 24 h avant son début (la confirmation vient de partir), vers un
+  prospect désinscrit, fictif ou sans conversation ouverte. Si la veille tombe hors fenêtre (rendez-vous
+  le lundi matin), le rappel part à la réouverture de la fenêtre, jusqu'à 30 minutes avant le début.
+- Exécuté par l'exécuteur des relances (même bail, même cadence `FOLLOW_UP_INTERVAL_SECONDS`). Chaque rappel
+  est réclamé dans MongoDB (`appointment_reminders`) : deux instances n'envoient pas le même.
+
 ## Règles de disponibilité
 
 Réglables dans `.env` : `CALENDAR_TIMEZONE` (Europe/Paris), `CALENDAR_WORK_DAYS` (`1,2,3,4,5` = lundi à
@@ -93,8 +110,8 @@ d'agenda). À défaut, l'agenda commun `GOOGLE_CALENDAR_DEFAULT_ID`.
    Alternative hors Docker : `GOOGLE_SERVICE_ACCOUNT_FILE=/chemin/cle.json`.
 
 Limite connue : un compte de service ne peut pas inviter le prospect à l'événement sans délégation à
-l'échelle du domaine. Le prospect reçoit donc son lien **dans la réponse de l'agent** ; l'événement du
-conseiller contient son email et le lien.
+l'échelle du domaine. Dans ce mode, le prospect n'est donc pas invité : il reçoit son lien **dans la
+réponse de l'agent** et le rappel de la veille ; l'événement du conseiller contient son email et le lien.
 
 ## Zoom
 
@@ -143,4 +160,5 @@ arrivent sur leurs rendez-vous ; tous les rôles authentifiés peuvent consulter
 La consultation ne contacte ni Google ni Zoom. Une réservation passée n’est pas
 marquée « Réalisé » automatiquement. Les modifications ou annulations faites dans
 Google ne sont pas synchronisées vers cette liste ; les statuts affichés sont ceux
-stockés dans IAGORA. La gestion des rendez-vous et les rappels restent à développer.
+stockés dans IAGORA. La gestion des rendez-vous (modification, annulation) reste à développer ; le rappel de la veille
+est décrit plus haut.

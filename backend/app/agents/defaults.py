@@ -21,7 +21,7 @@ from app.graph.ports import (
 )
 from app.models.enums import SenderType
 from app.schemas.conversation import MessageCreate
-from app.services import conversations
+from app.services import conversations, drafts
 from app.services.agent_settings import AgentMode
 from app.services.errors import ConflictError
 
@@ -74,7 +74,9 @@ class RecordingMessenger:
         self._mode = mode
 
     async def send(self, ctx: ProspectContext, text: str, metadata: dict[str, Any]) -> None:
-        needs_validation = self._mode is AgentMode.ASSISTED and metadata.get("mode") != "handoff"
+        needs_validation = (
+            self._mode is AgentMode.ASSISTED and metadata.get("mode") not in drafts.NO_REVIEW_MODES
+        )
         extra: dict[str, Any] = (
             {"delivery": "draft", "draft": {"status": "pending"}}
             if needs_validation

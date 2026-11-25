@@ -140,7 +140,9 @@ class GoogleCalendarClient:
         start: datetime,
         end: datetime,
         location: str | None,
+        attendees: list[str] | None = None,
     ) -> str:
+        """Avec `attendees`, Google envoie l'invitation (et ses mises à jour) aux invités."""
         event: dict[str, Any] = {
             "summary": summary,
             "description": description,
@@ -149,10 +151,12 @@ class GoogleCalendarClient:
         }
         if location:
             event["location"] = location
+        if attendees:
+            event["attendees"] = [{"email": email} for email in attendees]
         body = await self._call(
             "POST",
             f"{API}/calendars/{calendar_id}/events",
-            params={"sendUpdates": "none"},
+            params={"sendUpdates": "all" if attendees else "none"},
             json=event,
         )
         return str(body["id"])

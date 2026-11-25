@@ -17,6 +17,9 @@ from app.services import conversations
 from app.services.errors import ConflictError, NotFoundError
 
 PENDING = "pending"
+# Messages écrits entièrement par le code, sans contenu commercial : ils partent sans validation,
+# même en mode assisté (accusé de transfert, rappel de rendez-vous D-47).
+NO_REVIEW_MODES = frozenset({"handoff", "appointment_reminder"})
 DEAD = {"rejected", "superseded", "cancelled"}
 
 

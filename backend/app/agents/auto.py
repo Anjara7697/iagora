@@ -3,6 +3,7 @@
 - `reply_to_message` : tâche de fond lancée dès qu'un message du prospect est enregistré ; l'agent
   prépare sa réponse (brouillon en mode assisté, rien en mode manuel). Un verrou par conversation
   évite deux réponses simultanées : le second passage voit que l'agent a déjà répondu et s'arrête.
+- `follow_up_loop` exécute aussi les rappels de rendez-vous (`services/appointment_reminders`).
 - `run_due_follow_ups` : relance les prospects restés silencieux. Garde-fous : jours ouvrés de 8 h
   à 19 h (heure de Paris), arrêt en mode manuel, jamais vers un prospect désinscrit ou qui a
   répondu, au plus `follow_up_max_per_silence` relances sans réponse. Une relance est « réclamée »
@@ -28,6 +29,7 @@ from app.models import FollowUp, Prospect
 from app.models.enums import FollowUpStatus
 from app.services import (
     agent_settings,
+    appointment_reminders,
     commercial_context,
     conversations,
     drafts,
@@ -354,6 +356,10 @@ async def follow_up_loop(settings: Settings) -> None:
                 calendar=get_calendar(),
                 knowledge=get_knowledge_base(current),
                 settings=current,
+            )
+            # Même bail et même cadence : la veille d'un rendez-vous, le rappel du prospect (D-47).
+            await appointment_reminders.run_due_reminders(
+                lambda: get_sessionmaker()(), get_mongo_db(), settings=current
             )
         except asyncio.CancelledError:
             raise
