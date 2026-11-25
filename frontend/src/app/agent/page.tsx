@@ -5,6 +5,8 @@ import { Bot, CircleCheck, CircleSlash, OctagonX, Play } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { AGENT_COPY, AgentDot, RESUME, STOP } from "@/components/agent/AgentStatus";
+import { CurrentActivityList } from "@/components/agent/AgentActivity";
+import { useCurrentActivity } from "@/components/agent/useAgentActivity";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { LinkButton, Tag } from "@/components/ds/controls";
 import { EmptyText, ErrorState, PageHeader, Panel, Screen, cx } from "@/components/ds/layout";
@@ -44,6 +46,7 @@ export default function AgentPage() {
   const readOnly = !user || user.role === "VIEWER";
   const mode = useApi<ModeRead>("/agent/mode");
   const activity = useApi<DashboardSummary["activity"]>("/dashboard/activity?days=7");
+  const live = useCurrentActivity();
   const settings = useApi<RuntimeSettings>(isAdmin ? "/settings" : null);
   const email = useApi<EmailStatus>(isAdmin ? "/integrations/email" : null);
   const calendar = useApi<CalendarSettings>(isAdmin ? "/integrations/calendar" : null);
@@ -179,6 +182,16 @@ export default function AgentPage() {
           </ul>
         </Panel>
       </div>
+
+      <Panel
+        label="En cours maintenant"
+        title="En cours maintenant"
+        className={reveal(2).className}
+        bodyClassName="gap-0 px-5 py-2"
+      >
+        <Loading loading={live.loading && !live.data} error={live.error} onRetry={live.reload} />
+        {live.data && <CurrentActivityList items={live.data} />}
+      </Panel>
 
       <div className={cx("grid grid-cols-1 items-start gap-6 lg:grid-cols-2", reveal(2).className)} style={reveal(2).style}>
         <Panel label="Ce que fait l’agent" title="Ce que fait l’agent" bodyClassName="gap-3 px-5 py-4">

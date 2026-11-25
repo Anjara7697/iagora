@@ -11,7 +11,22 @@ const activity = {
   errors: 0,
 };
 
-async function mockApi(page: Page, role = "ADMIN", initial: "assisted" | "manual" = "assisted") {
+const live = [
+  {
+    conversation_id: "c1",
+    prospect_id: 4,
+    state: "running",
+    started_at: new Date(Date.now() - 6000).toISOString(),
+    updated_at: new Date().toISOString(),
+    prospect: { id: 4, first_name: "Inès", last_name: "Morel", email: "ines.morel@example.com" },
+    steps: [
+      { node: "qualify_prospect", label: "Analyse du message", status: "done", started_at: new Date(Date.now() - 5000).toISOString(), finished_at: new Date(Date.now() - 3000).toISOString() },
+      { node: "generate_response", label: "Recherche dans la base et rédaction de la réponse", status: "running", started_at: new Date(Date.now() - 3000).toISOString() },
+    ],
+  },
+];
+
+async function mockApi(page: Page, role = "ADMIN", initial: "assisted" | "manual" = "assisted", current: unknown[] = []) {
   let mode = initial;
   const puts: unknown[] = [];
   await page.route("**/api/v1/**", async (route) => {
@@ -30,6 +45,7 @@ async function mockApi(page: Page, role = "ADMIN", initial: "assisted" | "manual
       }
       body = { mode, updated_by: 1, updated_at: "2026-11-10T09:00:00Z" };
     } else if (path === "/dashboard/activity") body = activity;
+    else if (path === "/agent/activity") body = current;
     else if (path === "/settings")
       body = {
         agent_auto_reply: true,
@@ -103,4 +119,19 @@ test("agent : un observateur consulte sans pouvoir arrêter", async ({ page }) =
   await expect(page.getByRole("region", { name: "État de l’agent" })).toContainText("Arrêté");
   await expect(page.getByRole("button", { name: /Arrêt d’urgence|Reprendre/ })).toHaveCount(0);
   await expect(page.getByText(/accès observateur permet de consulter l’état/)).toBeVisible();
+});
+
+test("agent : « En cours maintenant » liste les conversations traitées, avec un lien", async ({ page }) => {
+  await mockApi(page, "ADVISOR", "assisted", live);
+  await open(page);
+  const region = page.getByRole("region", { name: "En cours maintenant" });
+  await expect(region.getByRole("link", { name: "Inès Morel" })).toHaveAttribute("href", "/conversations?id=c1");
+  await expect(region).toContainText("Recherche dans la base et rédaction de la réponse");
+  await expect(region).toContainText("L’agent rédige…");
+});
+
+test("agent : rien en cours", async ({ page }) => {
+  await mockApi(page, "ADVISOR");
+  await open(page);
+  await expect(page.getByRole("region", { name: "En cours maintenant" })).toContainText("L’agent ne traite rien en ce moment.");
 });

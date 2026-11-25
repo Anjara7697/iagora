@@ -270,6 +270,29 @@ class PolicyTuning:
     extra_terms: tuple[str, ...] = ()
 
 
+# --- Suivi en direct ---
+
+
+class StepReporter(Protocol):
+    """Signale le début et la fin de chaque étape du graphe (journal en direct de la console).
+
+    Une implémentation ne doit jamais faire échouer l'exécution de l'agent."""
+
+    async def step_started(self, node: str) -> None: ...
+
+    async def step_finished(self, node: str, update: dict[str, Any]) -> None: ...
+
+
+class SilentReporter:
+    """Aucun suivi (recette hors ligne, tests)."""
+
+    async def step_started(self, node: str) -> None:
+        return None
+
+    async def step_finished(self, node: str, update: dict[str, Any]) -> None:
+        return None
+
+
 @dataclass
 class Deps:
     llm: LanguageModel
@@ -278,3 +301,4 @@ class Deps:
     calendar: Calendar
     knowledge: KnowledgeBase
     tuning: PolicyTuning = field(default_factory=PolicyTuning)
+    reporter: StepReporter = field(default_factory=SilentReporter)

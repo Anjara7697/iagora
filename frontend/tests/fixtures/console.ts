@@ -250,6 +250,10 @@ function respond(path: string, query: URLSearchParams): unknown {
       return advisor;
     case "/agent/mode":
       return { mode: "assisted" };
+    case "/agent/activity":
+      return [];
+    case "/conversations/c1/agent-activity":
+      return null;
     case "/dashboard/summary":
       return {
         agent_mode: "assisted",

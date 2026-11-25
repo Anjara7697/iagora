@@ -6,17 +6,21 @@ import { Avatar } from "@heroui/react";
 import { Tag, RowButton } from "@/components/ds/controls";
 import { DemoBadge } from "@/components/ds/ui";
 import { CHANNELS, HANDOFF_REASONS, initials, label, relativeTime } from "@/lib/labels";
-import type { ConversationSummary } from "@/lib/types";
+import { activityTag } from "@/lib/agentActivity";
+import type { AgentActivityItem, ConversationSummary } from "@/lib/types";
 import { rowName } from "@/components/conversations/shared";
 
 export function ConversationRow({
   c,
   selected,
   onSelect,
+  activity,
 }: {
   c: ConversationSummary;
   selected: boolean;
   onSelect: () => void;
+  /** L'agent travaille ou attend pour cette conversation (journal en direct). */
+  activity?: AgentActivityItem;
 }) {
   const name = rowName(c);
   return (
@@ -33,6 +37,11 @@ export function ConversationRow({
           </span>
           <span className="flex flex-wrap gap-1.5">
             <Tag>{label(CHANNELS, c.channel)}</Tag>
+            {activity && (
+              <Tag tone={activity.state === "retrying" || activity.state === "stalled" ? "warning" : "agent"}>
+                {activityTag(activity)}
+              </Tag>
+            )}
             {c.status === "handed_off" && (
               <Tag tone="warning">
                 {c.handoff

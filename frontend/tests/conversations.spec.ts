@@ -802,3 +802,33 @@ test("mobile : la première conversation apparaît dans le premier écran", asyn
   await expect(page.getByRole("dialog", { name: "Filtres" })).toBeInViewport();
   await auditA11y(page, "conversations, filtres ouverts");
 });
+
+test("journal en direct : étapes de l'agent dans la conversation et pastille dans la liste", async ({ page }) => {
+  await mockApi(page);
+  const startedAt = new Date(Date.now() - 6000).toISOString();
+  const running = {
+    conversation_id: "c1",
+    prospect_id: 1,
+    state: "running",
+    started_at: startedAt,
+    updated_at: new Date().toISOString(),
+    steps: [
+      { node: "load_prospect", label: "Lecture de la fiche du prospect", status: "done", started_at: startedAt, finished_at: startedAt },
+      { node: "decide_next_action", label: "Choix de la suite", status: "done", detail: "poursuivre l'échange", started_at: startedAt, finished_at: startedAt },
+      { node: "generate_response", label: "Recherche dans la base et rédaction de la réponse", status: "running", started_at: startedAt },
+    ],
+  };
+  await page.route("**/api/v1/conversations/c1/agent-activity", (route) => route.fulfill({ json: running }));
+  await page.route("**/api/v1/agent/activity", (route) =>
+    route.fulfill({ json: [{ ...running, prospect: { id: 1, first_name: "Marie", last_name: "Dupont", email: null } }] }),
+  );
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Liste des conversations" });
+  await expect(list.getByText("L’agent rédige…")).toBeVisible();
+  await list.getByRole("button", { name: /Marie Dupont/ }).click();
+  const card = page.getByRole("region", { name: "Activité de l’agent en direct" });
+  await expect(card).toContainText("L’agent travaille : recherche dans la base et rédaction de la réponse");
+  await expect(card.getByRole("list", { name: "Étapes" }).getByRole("listitem")).toHaveCount(3);
+  await expect(card).toContainText("Choix de la suite · poursuivre l'échange");
+  await auditA11y(page, "conversations-journal");
+});

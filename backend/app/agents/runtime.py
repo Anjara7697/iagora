@@ -25,6 +25,7 @@ from app.models.enums import ConversationStatus, SenderType
 from app.schemas.agent import AgentRunResult, TraceRead
 from app.schemas.conversation import ConversationCreate
 from app.services import (
+    agent_activity,
     agent_settings,
     commercial_context,
     conversations,
@@ -46,6 +47,8 @@ async def ensure_run_indexes(db: Any) -> None:
     await db[RUNS].create_index([("conversation_id", 1), ("started_at", DESCENDING)])
     await db[RUNS].create_index("event_id", sparse=True)
     await db["agent_events"].create_index([("completed", 1), ("next_attempt_at", 1)])
+    await db["agent_events"].create_index([("conversation_id", 1), ("completed", 1)])
+    await agent_activity.ensure_indexes(db)
 
 
 async def _resolve_conversation(
@@ -202,6 +205,7 @@ async def _run_agent(
     else:
         raise ConflictError("Aucun message du prospect à traiter")
 
+    recorder = agent_activity.ActivityRecorder(db, conv_id, pid, mode=mode, trigger=trigger)
     deps = Deps(
         llm=llm,
         gateway=DbGateway(session, db),
@@ -209,6 +213,7 @@ async def _run_agent(
         calendar=calendar,
         knowledge=knowledge,
         tuning=runtime_settings.tuning(await runtime_settings.effective(db, get_settings())),
+        reporter=recorder,
     )
     graph = build_workflow(deps)
     initial: SalesAgentState = {
@@ -230,10 +235,12 @@ async def _run_agent(
     }
     # Appels réels au modèle (dont le modèle de secours), durées et jetons (AUDIT-AI-004).
     with usage.recording() as llm_calls:
+        await recorder.begin()
         try:
             state: SalesAgentState = await graph.ainvoke(initial)
         except Exception as exc:
             logger.exception("Exécution de l'agent en erreur (prospect %s)", pid)
+            await recorder.fail()
             await db[RUNS].insert_one(
                 {**run_doc, "status": "error", "error": type(exc).__name__, "llm_calls": llm_calls}
             )
@@ -262,6 +269,7 @@ async def _run_agent(
         "trace": [{"node": t.node, "summary": t.summary, "at": t.at} for t in trace],
     }
     inserted = await db[RUNS].insert_one(result_doc)
+    await recorder.end(result_doc["outcome"])
     return to_result(result_doc, str(inserted.inserted_id))
 
 
