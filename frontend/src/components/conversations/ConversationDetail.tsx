@@ -29,6 +29,8 @@ import type { Conversation, ConversationSummary, Prospect, TodoItem } from "@/li
 import { Box } from "@/components/ds/card";
 import { rowName, STATUS_TONE } from "@/components/conversations/shared";
 import { ConversationContext } from "@/components/conversations/ConversationContext";
+import { AgentActivityCard } from "@/components/agent/AgentActivity";
+import { useAgentActivity } from "@/components/agent/useAgentActivity";
 
 /** Changements d'état qui demandent confirmation : leur effet est dit avant d'agir. */
 type Confirmable = "give_back" | "agent" | "close" | "clear";
@@ -88,6 +90,12 @@ export function ConversationDetail({
   const [confirm, setConfirm] = useState<Confirmable | null>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
+  // Journal en direct : à la fin d'un traitement, la conversation est relue (le brouillon apparaît).
+  const activity = useAgentActivity(summary.id, () => {
+    conversation.reload();
+    notifyWorkQueueChanged();
+    onChanged();
+  });
   const conv = conversation.data;
   const p = prospect.data;
   const readOnly = user?.role === "VIEWER";
@@ -324,6 +332,7 @@ export function ConversationDetail({
           />
         </Box>
       )}
+      {activity.data && <AgentActivityCard activity={activity.data} className={reveal(4).className} />}
       {pendingDraft && draftId && (
         <>
           <Loading loading={draftItem.loading && !draftItem.data} error={draftItem.error} onRetry={draftItem.reload} />

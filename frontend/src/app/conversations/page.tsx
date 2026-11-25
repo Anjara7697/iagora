@@ -28,6 +28,7 @@ import type { ConversationSummary, Page } from "@/lib/types";
 import { Box } from "@/components/ds/card";
 import { CHANNEL_FILTERS } from "@/components/conversations/shared";
 import { ConversationRow } from "@/components/conversations/ConversationRow";
+import { useCurrentActivity } from "@/components/agent/useAgentActivity";
 import { ConversationDetail } from "@/components/conversations/ConversationDetail";
 
 /** Conversations par page de la liste. */
@@ -84,6 +85,8 @@ function Inbox() {
   const all = useApi<Page<ConversationSummary>>(filtered ? "/conversations?limit=1" : null);
 
   const items = list.data?.items ?? [];
+  const current = useCurrentActivity();
+  const activityById = new Map((current.data ?? []).map((a) => [a.conversation_id, a]));
   const total = list.data?.total ?? 0;
   const inPage = items.find((c) => c.id === selectedId) ?? null;
   const direct = useApi<ConversationSummary>(
@@ -208,6 +211,7 @@ function Inbox() {
                     c={c}
                     selected={c.id === selectedId}
                     onSelect={() => select(c.id)}
+                    activity={activityById.get(c.id)}
                   />
                 ))}
               </Box>

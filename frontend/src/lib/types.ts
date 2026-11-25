@@ -133,6 +133,11 @@ export type ConversationSummary = {
 
 export type TraceEntry = Schemas["TraceRead"];
 
+/** Journal en direct de l'agent : libellés fixes et nombres seulement (aucun texte du modèle). */
+export type AgentActivity = Schemas["LiveActivity"];
+export type AgentActivityItem = Schemas["LiveActivityItem"];
+export type AgentActivityState = AgentActivity["state"];
+
 export type AgentRun = {
   run_id: string;
   prospect_id: number;

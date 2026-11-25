@@ -4108,6 +4108,304 @@
         "title": "LeadIn",
         "type": "object"
       },
+      "LiveActivity": {
+        "description": "État affiché dans la console.\n\n`state` : queued (va démarrer), waiting (attend : `waiting_reason`), running, retrying\n(erreur, nouvel essai à `next_attempt_at`), stalled (plus de nouvelles depuis 3 min),\ndone (terminé il y a moins de 10 min), failed (abandonné après plusieurs erreurs).",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "prospect_id": {
+            "title": "Prospect Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "waiting",
+              "running",
+              "retrying",
+              "stalled",
+              "done",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LiveActivityStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "waiting_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "grouping",
+                  "manual_mode",
+                  "unassigned"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting Reason"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "prospect_id",
+          "state"
+        ],
+        "title": "LiveActivity",
+        "type": "object"
+      },
+      "LiveActivityItem": {
+        "description": "Ligne de « En cours maintenant » : l'activité et la carte du prospect.",
+        "properties": {
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Attempt At"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "prospect": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationProspect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prospect_id": {
+            "title": "Prospect Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "waiting",
+              "running",
+              "retrying",
+              "stalled",
+              "done",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LiveActivityStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "waiting_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "grouping",
+                  "manual_mode",
+                  "unassigned"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting Reason"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "prospect_id",
+          "state"
+        ],
+        "title": "LiveActivityItem",
+        "type": "object"
+      },
+      "LiveActivityStep": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "done"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "label",
+          "status",
+          "started_at"
+        ],
+        "title": "LiveActivityStep",
+        "type": "object"
+      },
       "LlmTestResult": {
         "properties": {
           "detail": {
@@ -8357,6 +8655,37 @@
         ]
       }
     },
+    "/api/v1/agent/activity": {
+      "get": {
+        "description": "Conversations où l'agent travaille ou attend, dans le périmètre de l'utilisateur.",
+        "operationId": "current_activity_api_v1_agent_activity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LiveActivityItem"
+                  },
+                  "title": "Response Current Activity Api V1 Agent Activity Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Current Activity",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/v1/agent/mode": {
       "get": {
         "operationId": "get_agent_mode_api_v1_agent_mode_get",
@@ -10371,6 +10700,62 @@
         "summary": "Update Conversation",
         "tags": [
           "conversations"
+        ]
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/agent-activity": {
+      "get": {
+        "description": "Ce que fait l'agent à l'instant pour cette conversation (journal en direct).\n\nLibellés fixes et nombres seulement : ni texte du modèle, ni contenu, ni détail d'erreur.\n`null` : rien en cours ni de récent.",
+        "operationId": "conversation_activity_api_v1_conversations__conversation_id__agent_activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveActivity"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Conversation Activity Api V1 Conversations  Conversation Id  Agent Activity Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Conversation Activity",
+        "tags": [
+          "agent"
         ]
       }
     },

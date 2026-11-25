@@ -10,7 +10,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from app.graph.nodes import WorkflowNodes
-from app.graph.ports import Deps
+from app.graph.ports import Deps, StepReporter
 from app.graph.state import Action, SalesAgentState
 
 _STRAIGHT = [
@@ -81,13 +81,25 @@ def after_send(state: SalesAgentState) -> str:
     return "schedule_followup" if state["decision"].action is Action.NURTURE else "finalize"
 
 
+def _reported(name: str, node: Any, reporter: StepReporter) -> Any:
+    """Entoure un noeud du signal de début et de fin d'étape (journal en direct)."""
+
+    async def run(state: SalesAgentState) -> Any:
+        await reporter.step_started(name)
+        update = await node(state)
+        await reporter.step_finished(name, update or {})
+        return update
+
+    return run
+
+
 def build_workflow(deps: Deps) -> Any:
     """Compile le graphe. Les dépendances (modèle, base, agenda...) sont injectées : le graphe
     lui-même ne connaît aucun fournisseur."""
     nodes = WorkflowNodes(deps)
     graph = StateGraph(SalesAgentState)
     for name in _NODES:
-        graph.add_node(name, getattr(nodes, name))
+        graph.add_node(name, _reported(name, getattr(nodes, name), deps.reporter))
 
     graph.add_edge(START, _STRAIGHT[0])
     for current, following in zip(_STRAIGHT, _STRAIGHT[1:], strict=False):

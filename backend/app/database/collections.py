@@ -7,3 +7,4 @@ collection : les deux couches dépendent de ce module neutre.
 AGENT_RUNS = "agent_runs"
 AGENT_EVENTS = "agent_events"
 CONVERSATIONS = "conversations"
+AGENT_ACTIVITY = "agent_activity"

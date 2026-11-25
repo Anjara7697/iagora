@@ -21,6 +21,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current Activity
+         * @description Conversations où l'agent travaille ou attend, dans le périmètre de l'utilisateur.
+         */
+        get: operations["current_activity_api_v1_agent_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agent/mode": {
         parameters: {
             query?: never;
@@ -597,6 +617,29 @@ export interface paths {
          * @description Statut (open, handed_off, closed) et résumé. Clôturer ou transférer annule les relances.
          */
         patch: operations["update_conversation_api_v1_conversations__conversation_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/conversations/{conversation_id}/agent-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Conversation Activity
+         * @description Ce que fait l'agent à l'instant pour cette conversation (journal en direct).
+         *
+         *     Libellés fixes et nombres seulement : ni texte du modèle, ni contenu, ni détail d'erreur.
+         *     `null` : rien en cours ni de récent.
+         */
+        get: operations["conversation_activity_api_v1_conversations__conversation_id__agent_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/conversations/{conversation_id}/confirm-enrollment-email": {
@@ -3762,6 +3805,96 @@ export interface components {
              */
             target_code?: string | null;
         };
+        /**
+         * LiveActivity
+         * @description État affiché dans la console.
+         *
+         *     `state` : queued (va démarrer), waiting (attend : `waiting_reason`), running, retrying
+         *     (erreur, nouvel essai à `next_attempt_at`), stalled (plus de nouvelles depuis 3 min),
+         *     done (terminé il y a moins de 10 min), failed (abandonné après plusieurs erreurs).
+         */
+        LiveActivity: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Next Attempt At */
+            next_attempt_at?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Prospect Id */
+            prospect_id: number;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "waiting" | "running" | "retrying" | "stalled" | "done" | "failed";
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["LiveActivityStep"][];
+            /** Updated At */
+            updated_at?: string | null;
+            /** Waiting Reason */
+            waiting_reason?: ("grouping" | "manual_mode" | "unassigned") | null;
+        };
+        /**
+         * LiveActivityItem
+         * @description Ligne de « En cours maintenant » : l'activité et la carte du prospect.
+         */
+        LiveActivityItem: {
+            /** Conversation Id */
+            conversation_id: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Next Attempt At */
+            next_attempt_at?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+            prospect?: components["schemas"]["ConversationProspect"] | null;
+            /** Prospect Id */
+            prospect_id: number;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "waiting" | "running" | "retrying" | "stalled" | "done" | "failed";
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["LiveActivityStep"][];
+            /** Updated At */
+            updated_at?: string | null;
+            /** Waiting Reason */
+            waiting_reason?: ("grouping" | "manual_mode" | "unassigned") | null;
+        };
+        /** LiveActivityStep */
+        LiveActivityStep: {
+            /** Detail */
+            detail?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Label */
+            label: string;
+            /** Node */
+            node: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "done";
+        };
         /** LlmTestResult */
         LlmTestResult: {
             /** Detail */
@@ -5497,6 +5630,26 @@ export interface operations {
             };
         };
     };
+    current_activity_api_v1_agent_activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveActivityItem"][];
+                };
+            };
+        };
+    };
     get_agent_mode_api_v1_agent_mode_get: {
         parameters: {
             query?: never;
@@ -6664,6 +6817,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    conversation_activity_api_v1_conversations__conversation_id__agent_activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveActivity"] | null;
                 };
             };
             /** @description Validation Error */
