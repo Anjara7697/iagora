@@ -568,3 +568,19 @@ pièces jointes.
 
 **Suite.** Mesurer, avec le vrai modèle, si l'agent joint la brochure à bon escient (seulement quand elle répond au besoin).
 
+## D-47 — Rappel la veille du rendez-vous et invitation Google du prospect
+
+**Contexte.** Après la réservation, le prospect ne recevait que le lien dans la réponse de l'agent : aucun rappel,
+et l'événement Google était créé sans invité (`sendUpdates=none`).
+
+**Décision** (responsable du projet, 25/11/2026).
+- **Un seul rappel, environ 24 h avant**, sur la conversation ouverte du prospect. Texte écrit par le code (date,
+  heure, fuseau, lien), sans contenu commercial : il part sans validation, même en mode assisté (comme l'accusé de
+  transfert). Mêmes garde-fous que les relances : mode manuel, fenêtre d'envoi, désinscription, prospects fictifs.
+  Pas de rappel pour un rendez-vous réservé moins de 24 h avant (la confirmation vient de partir).
+- **Invitation Google** du prospect quand l'agenda est connecté par OAuth ; Google envoie l'invitation depuis
+  l'agenda du conseiller. Le compte de service reste sans invité (délégation de domaine nécessaire).
+- Rappels réclamés dans MongoDB (`appointment_reminders`) : pas de migration, pas de doublon entre instances.
+
+**Suite.** Un second rappel (1 h avant) si les absences restent fréquentes ; synchroniser les annulations faites
+dans Google pour ne pas rappeler un rendez-vous annulé hors d'IAGORA.

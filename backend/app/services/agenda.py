@@ -173,7 +173,9 @@ class ConsoleCalendar:
             return token
 
         client = GoogleCalendarClient(settings, self._http, token_provider=access_token)
-        return GoogleZoomCalendar(settings, client, zoom, calendar_id="primary")
+        return GoogleZoomCalendar(
+            settings, client, zoom, calendar_id="primary", invite_prospect=True
+        )
 
     async def get_available_slots(
         self, count: int, *, advisor_email: str | None = None, advisor_id: int | None = None

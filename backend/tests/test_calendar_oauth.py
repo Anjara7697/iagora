@@ -41,7 +41,9 @@ class Google:
             self.calls.append(("freebusy", body))
             return httpx.Response(200, json={"calendars": {body["items"][0]["id"]: {"busy": []}}})
         if url.split("?")[0].endswith("/events"):
-            self.calls.append(("event", {}))
+            self.calls.append(
+                ("event", {"body": json.loads(request.content), "params": dict(request.url.params)})
+            )
             return httpx.Response(200, json={"id": "evt-1"})
         return httpx.Response(500)
 
@@ -248,3 +250,19 @@ async def test_calendar_settings_are_admin_only(make_client):
     assert (
         await advisor.put(f"{API}/integrations/calendar", json={"provider": "demo"})
     ).status_code == 403
+
+
+async def test_the_prospect_is_invited_to_the_event_of_the_connected_calendar(mongo_db):
+    from app.graph.ports import Slot
+
+    s = base()
+    await _google_mode(mongo_db, s)
+    await calendar_config.save_connection(mongo_db, s, 7, "refresh-7", "conseil@gmail.com")
+    google = Google()
+    slot = Slot("s", datetime(2099, 1, 5, 10, tzinfo=UTC), datetime(2099, 1, 5, 10, 30, tzinfo=UTC))
+    await _calendar(s, mongo_db, google).book(
+        slot, "Jean", advisor_id=7, prospect_email="jean@exemple.fr"
+    )
+    event = next(c[1] for c in google.calls if c[0] == "event")
+    assert event["body"]["attendees"] == [{"email": "jean@exemple.fr"}]
+    assert event["params"]["sendUpdates"] == "all"  # Google envoie l'invitation

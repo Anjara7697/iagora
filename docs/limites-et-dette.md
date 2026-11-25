@@ -11,7 +11,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Durée de conservation à décider avec DATUM puis à planifier (la commande `purge-inactive` existe) ; emails de la boîte et événements Google / Zoom d'un prospect effacé à supprimer à la main | [effacement-rgpd.md](effacement-rgpd.md) |
 | P1 | Email : recette réussie sur une boîte de test (réception, brouillon, validation, envoi) ; reste la boîte définitive de DATUM | [recette-locale.md](recette-locale.md) |
 | P1 | Rendez-vous Google + Zoom : réglables dans la console (OAuth par conseiller), jamais testés avec de vrais comptes | [calendar.md](calendar.md) |
-| P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
+| P3 | Rendez-vous : un seul rappel (la veille) ; avec un compte de service Google (`.env`), le prospect n'est pas invité à l'événement (il reçoit le lien dans la réponse et le rappel) | [calendar.md](calendar.md) |
 | P2 | Meta Lead Ads : webhook, sécurité, mapping et simulation livrés ; recette réelle en attente des accès et permissions. LinkedIn non branché | [sources-leads.md](sources-leads.md) |
 | P3 | Le RAG complète une question de suivi courte (moins de six mots) avec les deux messages précédents du prospect (D-43) ; un changement de sujet non annoncé peut encore manquer de contexte | [rag.md](rag.md) |
 | P3 | Doublons repérés seulement quand un même lead porte les identifiants de deux fiches (pas de rapprochement par nom) ; une fusion ne se défait pas | [doublons.md](doublons.md) |

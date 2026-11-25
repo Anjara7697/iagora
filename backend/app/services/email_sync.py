@@ -37,6 +37,7 @@ from app.services import (
     application_intake,
     campaign_files,
     conversations,
+    drafts,
     email_assets,
     email_format,
     enrollment_intake,
@@ -470,7 +471,11 @@ async def _deliver_claimed(
             await _finish(db, conv_id, message, "blocked", reason="brouillon non validé")
             report.blocked += 1
             return
-        if mode is AgentMode.ASSISTED and draft is None and metadata.get("mode") != "handoff":
+        if (
+            mode is AgentMode.ASSISTED
+            and draft is None
+            and metadata.get("mode") not in drafts.NO_REVIEW_MODES
+        ):
             # Reprise après le mode auto : aucun ancien message autonome ne contourne la revue.
             message["metadata"] = {**metadata, "draft": {"status": "pending"}}
             await _finish(db, conv_id, message, "draft")

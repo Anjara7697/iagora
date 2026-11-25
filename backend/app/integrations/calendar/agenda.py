@@ -32,7 +32,12 @@ def _availability_args(s: Settings) -> dict[str, object]:
 
 class GoogleZoomCalendar:
     """`calendar_id` fixé (« primary ») : agenda du compte Google connecté par OAuth. Sinon
-    (compte de service), l'agenda du conseiller est désigné par son email."""
+    (compte de service), l'agenda du conseiller est désigné par son email.
+
+    `invite_prospect` : le prospect est ajouté comme invité et Google lui envoie l'invitation.
+    Réservé à l'agenda connecté par OAuth : un compte de service ne peut pas inviter sans
+    délégation à l'échelle du domaine (Google refuserait la création de l'événement).
+    """
 
     def __init__(
         self,
@@ -40,11 +45,14 @@ class GoogleZoomCalendar:
         google: GoogleCalendarClient,
         zoom: ZoomClient,
         calendar_id: str | None = None,
+        *,
+        invite_prospect: bool = False,
     ) -> None:
         self._s = settings
         self._google = google
         self._zoom = zoom
         self._fixed_calendar = calendar_id
+        self._invite_prospect = invite_prospect
 
     def _calendar_id(self, advisor_email: str | None) -> str:
         if self._fixed_calendar:
@@ -101,6 +109,7 @@ class GoogleZoomCalendar:
                 start=slot.start,
                 end=slot.end,
                 location=url,
+                attendees=[prospect_email] if self._invite_prospect and prospect_email else None,
             )
         except CalendarError:
             if zoom_id:
