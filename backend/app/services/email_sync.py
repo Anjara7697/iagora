@@ -204,7 +204,9 @@ async def _ingest_email(
             and not mail.suspect
             and not policy.is_opt_out(message.content)
         ):
-            await agent_events.enqueue_reply(db, conversation.id)
+            await agent_events.enqueue_reply(
+                db, conversation.id, delay=timedelta(seconds=settings.email_reply_grouping_seconds)
+            )
         report.received += 1
         if policy.is_opt_out(message.content):
             report.notes.append(f"désinscription reçue par email : prospect {prospect.id}")
@@ -222,7 +224,11 @@ async def sync_inbound(
     settings: Settings,
     on_message: OnMessage | None = None,
 ) -> SyncReport:
+    """Enregistre les emails non lus. L'agent répond ensuite une seule fois par conversation, à
+    tous les messages reçus : immédiatement si `email_reply_grouping_seconds` vaut 0, sinon par sa
+    file une fois le délai écoulé après le dernier email (emails rapprochés regroupés)."""
     report = SyncReport()
+    to_answer: list[str] = []  # conversations à traiter, dans l'ordre d'arrivée, sans doublon
     for mail in await client.fetch_unseen():
         try:
             conversation_id: str | None = None
@@ -239,14 +245,16 @@ async def sync_inbound(
                 report.notes.append(f"email {mail.uid} abandonné après {MAX_ATTEMPTS} échecs")
                 await client.mark_seen(mail.uid)
             continue
-        if conversation_id and on_message is not None:
-            try:
-                await on_message(conversation_id)
-            except (
-                Exception
-            ):  # l'email est enregistré : une panne de l'agent ne bloque pas la suite
-                logger.exception("Réponse automatique en erreur (conversation %s)", conversation_id)
-                report.errors += 1
+        if conversation_id and conversation_id not in to_answer:
+            to_answer.append(conversation_id)
+    if on_message is None or settings.email_reply_grouping_seconds > 0:
+        return report  # la file de l'agent répondra après le délai de regroupement
+    for conversation_id in to_answer:
+        try:
+            await on_message(conversation_id)
+        except Exception:  # l'email est enregistré : une panne de l'agent ne bloque pas la suite
+            logger.exception("Réponse automatique en erreur (conversation %s)", conversation_id)
+            report.errors += 1
     return report
 
 

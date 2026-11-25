@@ -1,12 +1,14 @@
 """Demandes de traitement persistantes, identifiées par conversation et message entrant."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.services import conversations, drafts
 
 
-async def enqueue_reply(db: Any, conversation_id: str) -> str:
+async def enqueue_reply(db: Any, conversation_id: str, *, delay: timedelta | None = None) -> str:
+    """Inscrit le dernier message du prospect dans la file. `delay` repousse son traitement (emails
+    rapprochés) ; une entrée déjà inscrite garde son échéance."""
     doc = await conversations.get_doc(db, conversation_id)
     messages = drafts.live_messages(doc.get("messages", []))
     inbound_id = next((m["id"] for m in reversed(messages) if m["role"] == "prospect"), "first")
@@ -19,7 +21,7 @@ async def enqueue_reply(db: Any, conversation_id: str) -> str:
                 "prospect_id": doc["prospect_id"],
                 "completed": False,
                 "created_at": datetime.now(UTC),
-                "next_attempt_at": datetime.now(UTC),
+                "next_attempt_at": datetime.now(UTC) + (delay or timedelta()),
             }
         },
         upsert=True,

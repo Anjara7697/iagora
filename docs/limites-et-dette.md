@@ -14,8 +14,8 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P2 | Pas de rappel avant rendez-vous ; le prospect n'est pas invité à l'événement Google (il reçoit le lien dans la réponse) | [calendar.md](calendar.md) |
 | P2 | Meta Lead Ads : webhook, sécurité, mapping et simulation livrés ; recette réelle en attente des accès et permissions. LinkedIn non branché | [sources-leads.md](sources-leads.md) |
 | P3 | Le RAG complète une question de suivi courte (moins de six mots) avec les deux messages précédents du prospect (D-43) ; un changement de sujet non annoncé peut encore manquer de contexte | [rag.md](rag.md) |
-| P2 | Plusieurs emails rapprochés du même prospect reçoivent chacun une réponse | [email.md](email.md) |
 | P2 | Pas de fusion des fiches en double ; pas de file d'arbitrage des doublons | [revue-qualite.md](revue-qualite.md) |
+| P3 | Emails rapprochés regroupés pendant 120 s ; un email arrivé juste après, alors que la réponse automatique aux précédents est déjà prête, reçoit la sienne | [email.md](email.md) |
 | P3 | Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [calendar.md](calendar.md) |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
 | P3 | Email : mise en page HTML simple, pas de pièces jointes ni d'images intégrées ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |

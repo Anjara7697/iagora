@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     email_from_address: str = ""  # par défaut : l'identifiant de connexion
     email_from_name: str = "DATUM Academy"
     email_poll_seconds: int = Field(60, ge=10)
+    # Emails rapprochés : l'agent attend ce délai après le dernier email d'un prospect avant de
+    # répondre, pour traiter plusieurs messages en une seule réponse. 0 : réponse immédiate.
+    email_reply_grouping_seconds: int = Field(120, ge=0, le=900)
     # Envoi réel des messages validés : désactivé par défaut (réception seule).
     email_send_enabled: bool = False
     # Bac à sable : si renseigné (adresses séparées par des virgules), l'agent n'écrit QU'À ces

@@ -85,6 +85,23 @@ def _conversation_lock(conversation_id: str) -> asyncio.Lock:
     return lock
 
 
+MAX_INBOUND_CHARS = 20_000
+
+
+def unanswered_text(messages: list[dict[str, Any]]) -> str:
+    """Messages du prospect arrivés depuis la dernière réponse (agent ou conseiller), réunis.
+
+    Plusieurs emails rapprochés reçoivent ainsi une seule réponse qui les traite tous. Un brouillon
+    en attente ne compte pas comme une réponse : il est remplacé par la nouvelle."""
+    unanswered: list[str] = []
+    for message in reversed(messages):
+        if message["role"] == SenderType.PROSPECT.value:
+            unanswered.append(message["content"])
+        elif not drafts.is_pending(message):
+            break
+    return "\n\n".join(reversed(unanswered))[-MAX_INBOUND_CHARS:]
+
+
 async def run_agent(
     session: AsyncSession,
     db: Any,
@@ -167,7 +184,7 @@ async def _run_agent(
     elif event_id is not None and inputs:
         # Un message peut arriver pendant une autre réponse : son événement reste distinct.
         await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
-        trigger, inbound_text = "inbound_message", inputs[-1]["content"]
+        trigger, inbound_text = "inbound_message", unanswered_text(messages)
     elif not messages:
         # L'agent écrit en premier : seulement à une personne qui a consenti (import coché, case de
         # formulaire, accord recueilli par un conseiller). Une personne qui écrit d'elle-même reçoit
@@ -179,7 +196,7 @@ async def _run_agent(
             )
         trigger, inbound_text = "first_contact", ""
     elif messages[-1]["role"] == SenderType.PROSPECT.value:
-        trigger, inbound_text = "inbound_message", messages[-1]["content"]
+        trigger, inbound_text = "inbound_message", unanswered_text(messages)
     elif drafts.is_pending(messages[-1]):
         raise ConflictError("Un brouillon est en attente de validation")
     else:

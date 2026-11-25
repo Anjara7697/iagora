@@ -426,7 +426,7 @@ async def test_a_short_follow_up_question_is_searched_with_the_prospects_context
 async def test_a_long_question_is_searched_alone(client, env):
     question = "Quelles sont les conditions d'admission au master eBIHAR ?"
     pid, mid, cid = await lead(client, "Bonjour")
-    await say(client, cid, "Bonjour")
+    await say(client, cid, "Bonjour, que puis-je pour vous ?", role="agent")
     await say(client, cid, question)
     env.kb.passages = [
         Passage(source="faq-ebihar", text="Conditions d'admission du master eBIHAR.")

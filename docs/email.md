@@ -54,6 +54,13 @@ un unique candidat déjà déposé créent une demande **Inscription à confirme
 [confirmation-inscription.md](confirmation-inscription.md). Les documents originaux restent dans
 la boîte email.
 
+**Emails rapprochés.** Plusieurs emails d'un même prospect reçus coup sur coup reçoivent **une
+seule** réponse (un seul brouillon en mode assisté). L'agent attend `EMAIL_REPLY_GROUPING_SECONDS`
+(120 s par défaut, 0 = immédiat) après le dernier email avant de répondre : chaque nouvel email
+repousse la réponse, et l'entrée de file du précédent est marquée remplacée. La réponse traite tous
+les messages arrivés depuis la dernière réponse envoyée ; un brouillon encore en attente est remplacé.
+Dans un même passage de la boîte, l'agent n'est lancé qu'une fois par prospect.
+
 **Envoi.** Les messages `delivery: not_sent` (brouillons validés, réponses d'un conseiller, réponses
 directes en mode automatique) sont envoyés un par un, dans le même fil (`Re:`, `In-Reply-To`,
 `References`), avec une mention de désinscription (`STOP`) et l'en-tête `List-Unsubscribe`. Chaque message
@@ -130,5 +137,6 @@ docker compose exec backend python -m app.cli email-sync
 - Un message resté `sending` plus de 15 minutes (arrêt brutal pendant l'envoi) n'est jamais renvoyé
   automatiquement : le cycle suivant le passe en `failed` avec le motif « Envoi interrompu… vérifiez dans
   les éléments envoyés ». Le conseiller vérifie la boîte, puis relance s'il le faut (« Nouvelle tentative »).
-- Plusieurs emails rapprochés du même prospect reçoivent une réponse chacun.
+- Emails rapprochés : un email arrivé après le délai de regroupement, alors que la réponse
+  aux précédents est déjà prête en mode automatique, reçoit sa propre réponse.
 - Pas de pièces jointes en sortie ; l'HTML est une mise en page simple (voir ci-dessus), sans images intégrées.

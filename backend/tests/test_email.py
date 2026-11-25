@@ -39,6 +39,7 @@ def settings(**over) -> Settings:
         "email_enabled": True,
         "email_username": "agent@datum.test",
         "email_send_enabled": True,
+        "email_reply_grouping_seconds": 0,  # réponse immédiate ; regroupement testé à part
         **over,
     }
     return Settings(_env_file=None, **base)
@@ -338,6 +339,30 @@ async def test_a_second_email_joins_the_same_conversation(env):
     await env.receive(FakeEmailClient([mail(1), mail(2, text="Autre question")]))
     assert len(await env.db[conversations.COLLECTION].find({}).to_list(None)) == 1
     assert len(await env.messages("prospect")) == 2
+
+
+async def test_close_emails_of_one_prospect_get_a_single_agent_run(env):
+    client = FakeEmailClient(
+        [mail(1), mail(2, text="Et le prix ?"), mail(3, sender="paul@acme-corp.com")]
+    )
+    report = await env.receive(client)
+    assert report.received == 3 and client.seen == ["1", "2", "3"]
+    assert len(env.replied) == 2 and len(set(env.replied)) == 2  # une fois par prospect
+
+
+async def test_close_emails_wait_in_the_queue_for_the_grouping_delay(env):
+    before = datetime.now(UTC)
+    await env.receive(
+        FakeEmailClient([mail(1), mail(2, text="Et le prix ?")]),
+        email_reply_grouping_seconds=120,
+        agent_auto_reply=True,
+    )
+    assert env.replied == []  # pas de réponse immédiate : la file répondra après le délai
+    events = await env.db["agent_events"].find({}).to_list(None)
+    assert len(events) == 2  # une entrée par email ; la plus ancienne sera remplacée
+    for event in events:
+        due = event["next_attempt_at"].replace(tzinfo=UTC)
+        assert due >= before + timedelta(seconds=120)
 
 
 async def test_automatic_and_own_messages_are_ignored_but_marked_read(env):
