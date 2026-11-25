@@ -172,6 +172,7 @@ def describe(
     now: datetime,
     manual_mode: bool = False,
     unassigned: bool = False,
+    campaign_paused: bool = False,
 ) -> LiveActivity | None:
     """Combine le journal et la file en un état affichable (None : rien à montrer)."""
     if activity is None and pending is None and failed is None:
@@ -202,6 +203,8 @@ def describe(
             result.state, result.waiting_reason = "waiting", "manual_mode"
         elif unassigned:
             result.state, result.waiting_reason = "waiting", "unassigned"
+        elif campaign_paused:
+            result.state, result.waiting_reason = "waiting", "campaign_paused"
         elif retrying:
             result.state = "retrying"
         elif result.next_attempt_at is not None and result.next_attempt_at > now:
@@ -228,19 +231,27 @@ def describe(
     return None
 
 
-async def _waiting_flags(session: Any, db: Any, prospect_ids: list[int]) -> tuple[bool, set[int]]:
-    """Mode manuel, et prospects sans rattachement actif (file « À attribuer »)."""
+async def _waiting_flags(
+    session: Any, db: Any, prospect_ids: list[int]
+) -> tuple[bool, set[int], set[int]]:
+    """Mode manuel, prospects sans rattachement actif (file « À attribuer ») et prospects dont la
+    campagne a arrêté l'agent pour les réponses (D-51)."""
     from app.services import agent_settings, commercial_context
 
     manual = await agent_settings.get_mode(db) is AgentMode.MANUAL
     unassigned: set[int] = set()
+    paused: set[int] = set()
     if prospect_ids:
+        stopped = await agent_settings.campaigns_paused_for(db, agent_settings.MessageKind.REPLY)
         memberships = await commercial_context.memberships(session, prospect_ids)
+        campaigns = await commercial_context.campaign_ids(session, prospect_ids) if stopped else {}
         for pid in set(prospect_ids):
             membership = memberships.get(pid)
             if membership is None or not await commercial_context.is_active(session, membership):
                 unassigned.add(pid)
-    return manual, unassigned
+            elif campaigns.get(pid) in stopped:
+                paused.add(pid)
+    return manual, unassigned, paused
 
 
 async def for_conversation(session: Any, db: Any, conversation_id: str) -> LiveActivity | None:
@@ -251,9 +262,11 @@ async def for_conversation(session: Any, db: Any, conversation_id: str) -> LiveA
     failed = await db[AGENT_EVENTS].find_one(
         {"conversation_id": conversation_id, "failed": True}, sort=[("completed_at", -1)]
     )
-    manual, unassigned = False, set[int]()
+    manual, unassigned, paused = False, set[int](), set[int]()
     if pending is not None:
-        manual, unassigned = await _waiting_flags(session, db, [int(pending["prospect_id"])])
+        manual, unassigned, paused = await _waiting_flags(
+            session, db, [int(pending["prospect_id"])]
+        )
     return describe(
         activity,
         pending,
@@ -261,6 +274,7 @@ async def for_conversation(session: Any, db: Any, conversation_id: str) -> LiveA
         now=_now(),
         manual_mode=manual,
         unassigned=int(pending["prospect_id"]) in unassigned if pending else False,
+        campaign_paused=int(pending["prospect_id"]) in paused if pending else False,
     )
 
 
@@ -290,7 +304,7 @@ async def active(
         doc = await db[AGENT_ACTIVITY].find_one({"_id": conv_id})
         if doc is not None:
             activities[conv_id] = doc
-    manual, unassigned = await _waiting_flags(
+    manual, unassigned, paused = await _waiting_flags(
         session, db, [int(e["prospect_id"]) for e in pendings.values()]
     )
     items: list[LiveActivity] = []
@@ -303,6 +317,7 @@ async def active(
             now=now,
             manual_mode=manual,
             unassigned=pending is not None and int(pending["prospect_id"]) in unassigned,
+            campaign_paused=pending is not None and int(pending["prospect_id"]) in paused,
         )
         if item is not None and item.state in ACTIVE_STATES:
             items.append(item)

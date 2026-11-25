@@ -69,11 +69,20 @@ type Calls = {
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; removeConflict?: boolean; status?: string } = {},
+  opts: { role?: string; removeConflict?: boolean; status?: string; autoAllowed?: boolean } = {},
 ) {
   const calls: Calls = { requests: [], queries: [] };
   let current = campaign(opts.status ? { status: opts.status } : {});
   let prepared = false;
+  let agentModes: Record<string, unknown> = {
+    campaign_id: 1,
+    overrides: { first_contact: null, reply: null, follow_up: null },
+    effective: { first_contact: "assisted", reply: "assisted", follow_up: "assisted" },
+    global_mode: "assisted",
+    auto_allowed: opts.autoAllowed ?? true,
+    updated_by: null,
+    updated_at: null,
+  };
   let files: { id: string; label: string; usage: string; filename: string; content_type: string; size: number; created_at: string }[] = [];
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -211,7 +220,19 @@ async function mockApi(
     } else if (path === "/todo")
       body = { items: [], total: 0, limit: 1, offset: 0, counts: {} };
     else if (path === "/agent/mode") body = { mode: "assisted" };
-    else if (path === "/campaigns/1/first-contacts") {
+    else if (path === "/campaigns/1/agent-modes") {
+      if (method === "PUT") {
+        const sent = request.postDataJSON() as Record<string, string | null>;
+        calls.requests.push({ method, path, body: sent });
+        agentModes = {
+          ...agentModes,
+          overrides: sent,
+          effective: Object.fromEntries(Object.entries(sent).map(([k, v]) => [k, v ?? "assisted"])),
+          updated_at: "2026-11-25T12:00:00Z",
+        };
+      }
+      body = agentModes;
+    } else if (path === "/campaigns/1/first-contacts") {
       if (method === "POST") {
         calls.requests.push({ method, path, body: null });
         prepared = true;
@@ -829,13 +850,43 @@ test("réglages : objet du premier email et liens validés pour l'agent", async 
     });
 });
 
+test("réglages : autonomie de l'agent par type de message (D-51)", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  const panel = page.getByRole("region", { name: "Autonomie de l’agent" });
+  await expect(panel.getByText("Appliqué : Validation requise")).toHaveCount(3);
+  const save = panel.getByRole("button", { name: "Enregistrer l’autonomie" });
+  await expect(save).toBeDisabled();
+  await panel.getByRole("button", { name: /Relances : autonomie de l’agent/ }).click();
+  await page.getByRole("option", { name: "Automatique, sans validation" }).click();
+  await panel.getByRole("button", { name: /Réponses : autonomie de l’agent/ }).click();
+  await page.getByRole("option", { name: "Arrêté sur cette campagne" }).click();
+  await save.click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PUT" && r.path === "/campaigns/1/agent-modes")?.body)
+    .toEqual({ first_contact: null, reply: "manual", follow_up: "auto" });
+  await expect(panel.getByText("Appliqué : Arrêté")).toBeVisible();
+  await expect(panel.getByText("Appliqué : Automatique")).toBeVisible();
+  await auditA11y(page, "réglages : autonomie de l'agent", [], { strict: true });
+});
+
+test("réglages : le mode automatique n'est pas proposé en production", async ({ page }) => {
+  await mockApi(page, { autoAllowed: false });
+  await login(page, "/campaigns/1?tab=settings");
+  const panel = page.getByRole("region", { name: "Autonomie de l’agent" });
+  await expect(panel.getByText(/pas disponible en production/)).toBeVisible();
+  await panel.getByRole("button", { name: /Relances : autonomie de l’agent/ }).click();
+  await expect(page.getByRole("option", { name: "Arrêté sur cette campagne" })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Automatique, sans validation" })).toHaveCount(0);
+});
+
 test("réglages : un seul bouton principal et audit strict de l'onglet", async ({ page }) => {
   await mockApi(page);
   await login(page, "/campaigns/1?tab=settings");
   await expect(page.getByRole("region", { name: "Pour l’agent" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Documents à joindre" }).getByText("Aucun document.")).toBeVisible();
   // Chaque bloc s'enregistre seul : ses boutons sont secondaires, le bouton principal reste celui de l'en-tête.
-  for (const name of ["Enregistrer les programmes", "Enregistrer pour l’agent", "Ajouter le document", "Enregistrer le responsable"])
+  for (const name of ["Enregistrer les programmes", "Enregistrer l’autonomie", "Enregistrer pour l’agent", "Ajouter le document", "Enregistrer le responsable"])
     await expect(page.getByRole("button", { name })).not.toHaveClass(/button--primary/);
   expect(await page.locator(".button--primary:visible").count()).toBeLessThanOrEqual(1);
   await auditA11y(page, "fiche : onglet Réglages", [], { strict: true });

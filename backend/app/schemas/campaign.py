@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.core.agent_mode import AgentMode
 from app.models.enums import CampaignStatus
 
 
@@ -166,3 +167,24 @@ class FirstContactsRead(BaseModel):
     already_contacted: int = Field(0, description="Déjà en échange ou plus à l'étape Nouveau")
     in_progress: int = Field(0, description="Premier contact déjà en préparation")
     opted_out: int = 0
+
+
+class AgentModesByKind(BaseModel):
+    """Mode de l'agent par type de message ; `null` : suivre le réglage général."""
+
+    first_contact: AgentMode | None = None
+    reply: AgentMode | None = None
+    follow_up: AgentMode | None = None
+
+
+class CampaignAgentModesRead(BaseModel):
+    """Autonomie de l'agent sur une campagne (D-51) : réglages propres à la campagne, et mode
+    réellement appliqué à chaque type de message (arrêt d'urgence et D-16 compris)."""
+
+    campaign_id: int
+    overrides: AgentModesByKind
+    effective: dict[str, AgentMode]
+    global_mode: AgentMode
+    auto_allowed: bool
+    updated_by: int | None = None
+    updated_at: datetime | None = None

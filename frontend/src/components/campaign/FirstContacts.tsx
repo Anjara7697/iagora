@@ -18,7 +18,7 @@ import { Btn, LinkButton, Notice } from "@/components/ds/controls";
 import { ErrorState } from "@/components/ds/layout";
 import { api, failure, qs } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
-import type { AgentMode, Campaign, FirstContacts as Plan } from "@/lib/types";
+import type { AgentMode, Campaign, CampaignAgentModes, FirstContacts as Plan } from "@/lib/types";
 
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? "s" : ""}`;
 const contacts = (n: number) => (n > 1 ? `${n} premiers contacts` : `${n} premier contact`);
@@ -27,14 +27,17 @@ export function FirstContacts({ campaign, showImport = true }: { campaign: Campa
   const router = useRouter();
   const user = useCurrentUser();
   const plan = useApi<Plan>(`/campaigns/${campaign.id}/first-contacts`);
-  const mode = useApi<{ mode: AgentMode }>("/agent/mode");
+  const modes = useApi<CampaignAgentModes>(`/campaigns/${campaign.id}/agent-modes`);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const canWrite = user?.role === "ADMIN" || user?.role === "ADVISOR";
   const importSource = campaign.sources.find((s) => s.type === "import") ?? campaign.sources[0];
   const p = plan.data;
   const n = p?.eligible ?? 0;
-  const auto = mode.data?.mode === "auto";
+  // Mode appliqué aux premiers contacts de cette campagne (D-51), arrêt d'urgence compris.
+  const firstContactMode = modes.data?.effective.first_contact as AgentMode | undefined;
+  const auto = firstContactMode === "auto";
+  const stopped = firstContactMode === "manual";
 
   async function prepare() {
     setBusy(true);
@@ -96,7 +99,7 @@ export function FirstContacts({ campaign, showImport = true }: { campaign: Campa
               Importer une liste
             </LinkButton>
           )}
-          {canWrite && n > 0 && p?.campaign_active && (
+          {canWrite && n > 0 && p?.campaign_active && !stopped && (
             <Btn variant="primary" isDisabled={busy} onClick={() => setConfirming(true)}>
               <Send className="size-4" aria-hidden="true" />
               Préparer {n > 1 ? `les ${n} premiers contacts` : "le premier contact"}
@@ -109,6 +112,13 @@ export function FirstContacts({ campaign, showImport = true }: { campaign: Campa
       )}
       {p && n > 0 && !p.campaign_active && (
         <Notice tone="warning">Activez la campagne pour préparer les premiers contacts.</Notice>
+      )}
+      {p && n > 0 && p.campaign_active && stopped && (
+        <Notice tone="warning">
+          {modes.data?.global_mode === "manual"
+            ? "L’agent est arrêté (arrêt d’urgence) : aucun premier contact n’est préparé."
+            : "Premiers contacts de l’agent arrêtés sur cette campagne : changez-le dans Réglages, Autonomie de l’agent."}
+        </Notice>
       )}
       <ConfirmDialog
         isOpen={confirming}

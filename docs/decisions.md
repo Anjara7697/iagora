@@ -647,3 +647,24 @@ prospect ; mais la réponse n'était pas réutilisée : la même question repart
 **Suite.** Regrouper les questions proches avant de proposer (plusieurs prospects, même lacune) ; montrer combien de
 transferts une réponse a évités.
 
+
+## D-51 — Autonomie de l'agent par campagne et par type de message
+
+**Contexte.** L'agent n'avait qu'un réglage global (assisté, automatique ou arrêté) : impossible de laisser partir
+seules les relances d'une campagne rodée tout en relisant chaque premier contact d'une campagne nouvelle, ou d'arrêter
+l'agent sur une seule campagne sensible.
+
+**Décision** (responsable du projet, 25/11/2026).
+- Sur chaque campagne (onglet Réglages, administrateurs), un réglage pour **les premiers contacts, les réponses et les
+  relances** : réglage général (défaut), à valider, automatique, ou arrêté sur cette campagne.
+- **L'arrêt d'urgence général prime toujours** ; les réglages de campagne sont gardés et s'appliquent à la reprise.
+- **Le mode automatique reste refusé en production** pendant le pilote (D-16), même réglé sur une campagne : il y
+  retombe sur « à valider » et n'est pas proposé à l'écran.
+- La campagne d'un message est celle du dernier rattachement du prospect. Les textes fixes (accusé de transfert,
+  rappel de rendez-vous) ne suivent que le réglage général.
+- Campagne arrêtée : les réponses attendent dans la file (« En attente : l'agent est arrêté sur la campagne »), les
+  relances restent programmées, les emails déjà validés restent en attente ; tout repart à la reprise. Une campagne
+  repassée en validation remet en brouillon ses anciens messages automatiques non envoyés.
+- Stockage : collection MongoDB `campaign_agent_modes` (pas de migration). API `GET/PUT /campaigns/{id}/agent-modes`.
+
+**Suite.** Afficher le réglage de chaque campagne sur l'écran Agent ; un réglage par source si le besoin apparaît.

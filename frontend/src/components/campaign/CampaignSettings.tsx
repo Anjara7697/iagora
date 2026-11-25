@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CampaignAgentFiles from "@/components/campaign/CampaignAgentFiles";
+import CampaignAgentModes from "@/components/campaign/CampaignAgentModes";
 import CampaignAgentResources from "@/components/campaign/CampaignAgentResources";
 import CampaignOwnership from "@/components/campaign/CampaignOwnership";
 import { Btn, CheckCardGroup, Tag } from "@/components/ds/controls";
@@ -9,7 +10,7 @@ import { Panel } from "@/components/ds/layout";
 import { TARGETS, label } from "@/lib/labels";
 import type { Campaign, Target } from "@/lib/types";
 
-/** Réglages d'une campagne : responsable, programmes visés et ressources de l'agent (modifiables par l'administrateur). Le statut est dans l'en-tête. */
+/** Réglages d'une campagne : responsable, programmes visés, autonomie et ressources de l'agent (modifiables par l'administrateur). Le statut est dans l'en-tête. */
 export default function CampaignSettings({
   campaign,
   targets,
@@ -64,6 +65,7 @@ export default function CampaignSettings({
           )}
         </Panel>
       </div>
+      <CampaignAgentModes campaignId={campaign.id} canEdit={canEdit} />
       <CampaignAgentResources
         key={`${campaign.id}:${campaign.updated_at}`}
         campaign={campaign}

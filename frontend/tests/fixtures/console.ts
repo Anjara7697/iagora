@@ -259,6 +259,17 @@ function respond(path: string, query: URLSearchParams): unknown {
   const limit = Number(query.get("limit") ?? 50);
   // Relances prévues d'un prospect : aucune dans ce jeu (leur carte a ses propres tests, follow-ups.spec.ts).
   if (/^\/prospects\/\d+\/follow-ups$/.test(path)) return [];
+  // Autonomie de l'agent par campagne (D-51) : la campagne suit le réglage général.
+  if (/^\/campaigns\/\d+\/agent-modes$/.test(path))
+    return {
+      campaign_id: Number(path.split("/")[2]),
+      overrides: { first_contact: null, reply: null, follow_up: null },
+      effective: { first_contact: "assisted", reply: "assisted", follow_up: "assisted" },
+      global_mode: "assisted",
+      auto_allowed: true,
+      updated_by: null,
+      updated_at: null,
+    };
   switch (path) {
     case "/auth/me":
       return advisor;

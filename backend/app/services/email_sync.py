@@ -36,6 +36,7 @@ from app.services import (
     agent_settings,
     application_intake,
     campaign_files,
+    commercial_context,
     conversations,
     drafts,
     email_assets,
@@ -439,6 +440,18 @@ async def _deliver_claimed(
                 )
             except ConflictError as exc:
                 follow_up_block = exc.message
+        mode: AgentMode | None = None
+        if message["role"] == SenderType.AGENT.value:
+            metadata = message.get("metadata") or {}
+            # Textes fixes (transfert, rappel) : réglage global seul ; sinon celui de la campagne
+            # pour ce type de message (D-51).
+            mode = (
+                await agent_settings.get_mode(db)
+                if metadata.get("mode") in drafts.NO_REVIEW_MODES
+                else await agent_settings.prospect_mode(
+                    session, db, prospect.id, agent_settings.kind_of_message(metadata)
+                )
+            )
 
     block: str | None = None
     if doc.get("status") == "closed":
@@ -458,12 +471,17 @@ async def _deliver_claimed(
         report.blocked += 1
         return
 
-    if message["role"] == SenderType.AGENT.value:
-        mode = await agent_settings.get_mode(db)
+    if mode is not None:
         if mode is AgentMode.MANUAL:
             await _finish(db, conv_id, message, "not_sent")
             report.skipped += 1
-            report.notes.append("envois de l'agent suspendus (arrêt d'urgence)")
+            note = (
+                "envois de l'agent suspendus (arrêt d'urgence)"
+                if await agent_settings.get_mode(db) is AgentMode.MANUAL
+                else "envois de l'agent suspendus (campagne arrêtée)"
+            )
+            if note not in report.notes:
+                report.notes.append(note)
             return
         metadata = message.get("metadata") or {}
         draft = metadata.get("draft")
@@ -570,6 +588,14 @@ async def deliver_outbox(
             "messages.metadata.delivery": "not_sent",
         }
     )
+    # Campagnes arrêtées pour un type de message (D-51) : leurs messages attendent sans occuper
+    # les places du passage ; le contrôle final reste fait à l'envoi (`_deliver_claimed`).
+    paused = {
+        kind: ids
+        for kind in agent_settings.KINDS
+        if (ids := await agent_settings.campaigns_paused_for(db, kind))
+    }
+    campaign_of: dict[int, int | None] = {}
     async for doc in cursor:
         for message in _outbound_candidates(doc):
             if (
@@ -581,6 +607,23 @@ async def deliver_outbox(
                 if "envois de l'agent suspendus (arrêt d'urgence)" not in report.notes:
                     report.notes.append("envois de l'agent suspendus (arrêt d'urgence)")
                 continue
+            metadata = message.get("metadata") or {}
+            if (
+                paused
+                and message["role"] == SenderType.AGENT.value
+                and metadata.get("mode") not in drafts.NO_REVIEW_MODES
+            ):
+                pid = int(doc["prospect_id"])
+                if pid not in campaign_of:
+                    async with session_factory() as session:
+                        found = await commercial_context.campaign_ids(session, [pid])
+                    campaign_of[pid] = found.get(pid)
+                kind = agent_settings.kind_of_message(metadata)
+                if campaign_of[pid] in paused.get(kind, set()):
+                    report.skipped += 1
+                    if "envois de l'agent suspendus (campagne arrêtée)" not in report.notes:
+                        report.notes.append("envois de l'agent suspendus (campagne arrêtée)")
+                    continue
             if (message.get("metadata") or {}).get("first_contact"):
                 if not window_open or first_contacts_this_cycle >= FIRST_CONTACTS_PER_CYCLE:
                     report.skipped += 1

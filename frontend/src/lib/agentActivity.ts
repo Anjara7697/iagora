@@ -52,6 +52,7 @@ export function activityTitle(a: AgentActivity, now: number = Date.now()): strin
     case "waiting":
       if (a.waiting_reason === "manual_mode") return "En attente : l’agent est arrêté (mode manuel)";
       if (a.waiting_reason === "unassigned") return "En attente : attribuer une campagne au prospect";
+      if (a.waiting_reason === "campaign_paused") return "En attente : l’agent est arrêté sur la campagne pour les réponses";
       return next && next > now
         ? `En attente d’autres emails du prospect (encore ${shortDuration(next - now)})`
         : "En attente d’autres emails du prospect";

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.schemas.conversation import ConversationProspect
 
 ActivityState = Literal["queued", "waiting", "running", "retrying", "stalled", "done", "failed"]
-WaitingReason = Literal["grouping", "manual_mode", "unassigned"]
+WaitingReason = Literal["grouping", "manual_mode", "unassigned", "campaign_paused"]
 
 
 class LiveActivityStep(BaseModel):
