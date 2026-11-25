@@ -27,6 +27,7 @@ Source de vérité du schéma réel : les modèles `backend/app/models/` et les 
 | `campaigns.responsible_advisor_id` (`SET NULL`) et `campaign_prospects.assignment_is_override` (migration 0009) | F-22 : un responsable par campagne ; une affectation manuelle d'un prospect reste une exception visible |
 | `users.must_change_password` et `password_changed_at` (migration 0010) | S-06 : mot de passe temporaire à changer à la première connexion ; sessions antérieures au changement refusées |
 | Table `erasure_records` : empreintes SHA-256 de l'email et du téléphone, motif, `keep_suppressed`, auteur (migration 0011) | S-02 : trace d'un effacement RGPD sans conserver la donnée ; liste d'opposition qui empêche une réimportation |
+| Table `duplicate_candidates` : paires de fiches à trancher (`pending`, `merged`, `distinct`), identifiants partagés, fiche gardée, auteur (migration 0017) ; numéros de fiches sans clé étrangère pour garder la trace d'une fusion | F-05 : un lead qui relie deux fiches est signalé, jamais fusionné automatiquement |
 | `follow_ups.attempts` (migration 0012) | AUDIT-BIZ-005 : une relance en erreur technique n'est plus retentée sans limite |
 | Téléphones normalisés en E.164 (migration 0013) | F-05 : `06 11 22 33 44` et `+33611223344` désignent le même prospect |
 | `consent_events.reason` et `actor_user_id` (migration 0014) | Décision D-20 : motif écrit et auteur d'un consentement rétabli |

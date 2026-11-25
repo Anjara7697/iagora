@@ -23,6 +23,7 @@ from app.core import phones
 from app.models import (
     Appointment,
     CampaignProspect,
+    DuplicateCandidate,
     ErasureRecord,
     FollowUp,
     Interaction,
@@ -33,6 +34,7 @@ from app.models.enums import (
     AppointmentStatus,
     ConsentStatus,
     ConversionStage,
+    DuplicateStatus,
     FollowUpStatus,
 )
 from app.schemas.erasure import ErasureReport, ExternalEvent
@@ -141,6 +143,16 @@ async def erase_prospect(
         )
     )
     conversations = await _delete_mongo(db, prospect_id)
+    # Ses doublons encore à trancher n'ont plus d'objet (l'historique des fusions reste).
+    await session.execute(
+        delete(DuplicateCandidate).where(
+            DuplicateCandidate.status == DuplicateStatus.PENDING,
+            or_(
+                DuplicateCandidate.prospect_id == prospect_id,
+                DuplicateCandidate.other_prospect_id == prospect_id,
+            ),
+        )
+    )
     await session.execute(delete(Prospect).where(Prospect.id == prospect_id))
     await session.commit()
     session.expunge_all()

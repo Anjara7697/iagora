@@ -15,6 +15,7 @@ from app.models import (
     CampaignTarget,
     Channel,
     ConsentEvent,
+    DuplicateCandidate,
     FollowUp,
     Interaction,
     Prospect,
@@ -49,19 +50,67 @@ async def _find_by(session: AsyncSession, field: str, value: str) -> Prospect | 
     return (await session.scalars(select(Prospect).where(column == value))).first()
 
 
-async def find_existing(session: AsyncSession, data: ProspectIngest) -> Prospect | None:
-    """Recherche par identifiant disponible, par ordre de priorité (F-05)."""
+async def find_matches(session: AsyncSession, data: ProspectIngest) -> list[Prospect]:
+    """Fiches distinctes reconnues par les identifiants reçus, par ordre de priorité (F-05)."""
     matches: list[Prospect] = []
     for field in IDENTIFIER_FIELDS:
         value = getattr(data, field)
-        if value and (found := await _find_by(session, field, value)):
+        found = await _find_by(session, field, value) if value else None
+        if found is not None and all(p.id != found.id for p in matches):
             matches.append(found)
-    if len({p.id for p in matches}) > 1:
-        # Identifiants rattachés à des fiches différentes : on ne fusionne pas automatiquement.
-        logger.warning(
-            "Identifiants ambigus, fiches %s ; retenue : %s", [p.id for p in matches], matches[0].id
-        )
+    return matches
+
+
+async def find_existing(session: AsyncSession, data: ProspectIngest) -> Prospect | None:
+    """Recherche par identifiant disponible, par ordre de priorité (F-05)."""
+    matches = await find_matches(session, data)
     return matches[0] if matches else None
+
+
+def _shared_fields(prospect: Prospect, data: ProspectIngest) -> list[str]:
+    out = []
+    for field in IDENTIFIER_FIELDS:
+        value, own = getattr(data, field), getattr(prospect, field)
+        if value and own and (value.lower() == own.lower() if field == "email" else value == own):
+            out.append(field)
+    return out
+
+
+async def flag_duplicates(
+    session: AsyncSession, matches: list[Prospect], data: ProspectIngest
+) -> None:
+    """Identifiants reçus rattachés à plusieurs fiches : la paire part dans la file des doublons
+    à trancher (jamais de fusion automatique). Rejouable : une paire n'est signalée qu'une fois,
+    et une paire déjà déclarée « distincte » n'est pas signalée de nouveau."""
+    if len(matches) < 2:
+        return
+    kept = matches[0]
+    logger.warning(
+        "Identifiants ambigus, fiches %s ; retenue : %s", [p.id for p in matches], kept.id
+    )
+    for other in matches[1:]:
+        low, high = sorted((kept.id, other.id))
+        exists = await session.scalar(
+            select(DuplicateCandidate.id).where(
+                DuplicateCandidate.prospect_id == low,
+                DuplicateCandidate.other_prospect_id == high,
+            )
+        )
+        if exists is not None:
+            continue
+        fields = sorted({*_shared_fields(kept, data), *_shared_fields(other, data)})
+        try:
+            async with session.begin_nested():
+                session.add(
+                    DuplicateCandidate(
+                        prospect_id=low,
+                        other_prospect_id=high,
+                        matched_fields=", ".join(fields)[:100],
+                    )
+                )
+                await session.flush()
+        except IntegrityError:
+            pass  # signalement concurrent de la même paire
 
 
 async def _enrich(session: AsyncSession, prospect: Prospect, data: ProspectIngest) -> None:
@@ -179,7 +228,8 @@ async def ingest_prospect(
                 raise ConflictError("Cet identifiant de réception appartient à un autre prospect")
             return existing, False, entry  # un rejeu ne change ni le contexte ni le consentement
 
-    prospect = await find_existing(session, data)
+    matches = await find_matches(session, data)
+    prospect = matches[0] if matches else None
     created = prospect is None
     if prospect is None:
         prospect = Prospect(
@@ -239,6 +289,7 @@ async def ingest_prospect(
                 # qu'elles puissent mettre à jour le profil de cette même fiche.
                 await session.commit()
                 return prospect, False, replay
+        await flag_duplicates(session, matches, data)
         await _enrich(session, prospect, data)
         if target and prospect.target_id is None:
             prospect.target_id = target.id

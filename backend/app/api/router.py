@@ -11,6 +11,7 @@ from app.api.v1 import (
     conversations,
     dashboard,
     demo,
+    duplicates,
     evaluations,
     health,
     imports,
@@ -35,6 +36,7 @@ api_router.include_router(users.router)
 api_router.include_router(users.advisors_router)
 api_router.include_router(imports.router)
 api_router.include_router(prospects.router)
+api_router.include_router(duplicates.router)
 api_router.include_router(campaigns.router)
 api_router.include_router(campaigns.targets_router)
 api_router.include_router(campaign_prospects.router)
