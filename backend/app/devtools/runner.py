@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.runtime import run_agent
+from app.devtools import demo_brochure
 from app.devtools.fakes import FakeCalendar, FakeKnowledge, FakeLLM
 from app.devtools.scenarios import ANY, Expect, Scenario
 from app.graph import policy
@@ -21,12 +22,13 @@ from app.schemas.agent import AgentRunResult
 from app.schemas.campaign import CampaignCreate, SourceInput
 from app.schemas.conversation import ConversationCreate, MessageCreate
 from app.schemas.prospect import ProspectIngest
-from app.services import campaigns, conversations, follow_ups, pipeline, prospects
+from app.services import campaign_files, campaigns, conversations, follow_ups, pipeline, prospects
 from app.services.agent_settings import AgentMode
 from app.services.prospects import get_prospect
 
 DEMO_DOMAIN = "demo.example.com"
 SCENARIO_CAMPAIGN = "[DÉMO] Scénarios de recette"
+GUIDED_CAMPAIGN = "[DÉMO] Parcours guidé"  # porte la brochure fictive (D-42)
 # Messages rédigés par le code (pas par le modèle) : exclus de la vérification des chiffres.
 CODE_WRITTEN_MODES = {"meeting_proposal", "meeting_confirmation", "handoff"}
 
@@ -84,6 +86,16 @@ async def ensure_demo_campaign(
     return read.id, read.sources[0].id
 
 
+async def ensure_demo_brochure(db: Any, campaign_id: int) -> None:
+    """Joint la brochure fictive à la campagne de démonstration, une seule fois (D-42)."""
+    existing = await campaign_files.list_files(db, campaign_id)
+    if not any(f["label"] == demo_brochure.LABEL for f in existing):
+        await campaign_files.save_file(
+            db, campaign_id, demo_brochure.brochure_pdf(), demo_brochure.FILENAME,
+            demo_brochure.LABEL, demo_brochure.USAGE, None,
+        )  # fmt: skip
+
+
 async def new_demo_prospect(
     session: AsyncSession,
     db: Any,
@@ -93,10 +105,14 @@ async def new_demo_prospect(
     profile: dict[str, Any] | None = None,
     first_name: str = "Camille",
     channel: str = "email",
+    campaign_name: str = SCENARIO_CAMPAIGN,
+    brochure: bool = False,
 ) -> tuple[int, int, str]:
     """Prospect fictif + conversation ouverte sur `channel` (l'email par défaut). Retourne
-    (prospect, rattachement, conversation)."""
-    campaign_id, source_id = await ensure_demo_campaign(session)
+    (prospect, rattachement, conversation). `brochure` : la campagne porte la brochure fictive."""
+    campaign_id, source_id = await ensure_demo_campaign(session, campaign_name)
+    if brochure:
+        await ensure_demo_brochure(db, campaign_id)
     token = secrets.token_hex(3)
     prospect, _, _ = await prospects.ingest_prospect(
         session,

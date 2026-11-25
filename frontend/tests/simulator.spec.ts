@@ -7,6 +7,7 @@ type Msg = {
   content: string;
   created_at: string;
   metadata: Record<string, unknown>;
+  attachments?: string[];
 };
 
 const run = (over: Record<string, unknown> = {}) => ({
@@ -143,6 +144,7 @@ async function mockApi(
       const m = messages[messages.length - 1];
       (m.metadata.draft as { status: string }).status = "approved";
       m.metadata.delivery = "simulated";
+      m.attachments = ["Brochure du programme (démonstration)"]; // D-42 : le prospect en voit le nom
       body = {};
     } else if (path === "/prospects" && request.method() === "POST") {
       posts.push({ path, body: request.postDataJSON() });
@@ -397,6 +399,7 @@ test("parcours guidé : le prospect ne voit la réponse qu’après validation",
     .getByRole("button", { name: "Valider et livrer dans la boîte fictive" })
     .click();
   await expect(mailbox.getByText(/Le programme dure 18 mois/)).toBeVisible();
+  await expect(mailbox.getByText("Pièce jointe : Brochure du programme (démonstration)")).toBeVisible();
   await expect(
     operator.getByText("Reçu dans la boîte fictive", { exact: true }),
   ).toBeVisible();

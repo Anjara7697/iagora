@@ -69,6 +69,10 @@ async def test_complete_guided_journey_memory_delivery_and_booking(client, model
             "Merci pour ces précisions. Avez-vous des questions sur le master ?",
         ),
         (
+            Qualification(intent="interested"),
+            "Avec plaisir.\nPièce jointe : Brochure du programme (démonstration)",
+        ),
+        (
             Qualification(intent="question"),
             "Le Master eBIHAR de démonstration coûte 6200 euros par an.",
         ),
@@ -91,13 +95,18 @@ async def test_complete_guided_journey_memory_delivery_and_booking(client, model
     assert report["appointments"][0]["simulated"] is True
     assert "zoom.example" in report["appointments"][0]["meeting_url"]
     assert all(
-        set(m) == {"id", "role", "content", "created_at"} for m in report["exchange"]["messages"]
+        set(m) - {"attachments"} == {"id", "role", "content", "created_at"}
+        for m in report["exchange"]["messages"]
     )
     # Rejeu n8n du dernier message : ni doublon de message, ni nouveau rendez-vous.
-    again = await send(client, cid, s["guide"][-1], "turn-4")
+    again = await send(client, cid, s["guide"][-1], "turn-5")
     assert again.status_code == 200
     assert len(again.json()["appointments"]) == 1
-    assert len(again.json()["exchange"]["messages"]) == 10
+    assert len(again.json()["exchange"]["messages"]) == 12
+    # La brochure fictive est jointe à la réponse : le prospect en voit le nom, jamais le contenu.
+    mails = [m for m in again.json()["exchange"]["messages"] if m.get("attachments")]
+    assert [m["attachments"] for m in mails] == [["Brochure du programme (démonstration)"]]
+    assert "Pièce jointe" not in mails[0]["content"]  # la ligne est retirée du texte
 
 
 async def test_pending_draft_stop_and_replay(client, model):

@@ -551,3 +551,20 @@ l'agent corrigé avec plusieurs passages par profil.
 **Suite.** Mesurer l'agent avec plusieurs passages par profil ; un indicateur de variation entre passages, si la
 comparaison des moyennes ne suffit pas.
 
+## D-46 — Brochure fictive dans le parcours guidé du simulateur
+
+**Contexte.** Les documents de campagne (D-42) étaient testés, mais le parcours guidé ne montrait pas la brochure :
+le prospect fictif n'était rattaché à aucune campagne qui en porte une, et la boîte du prospect n'affichait pas les
+pièces jointes.
+
+**Décision.**
+- Le parcours guidé utilise sa propre campagne « [DÉMO] Parcours guidé », qui porte une **brochure fictive**
+  (PDF généré dans le code, aucun fichier réel : D-28). Les scénarios de recette et les évaluations gardent leur campagne,
+  sans brochure : leurs mesures ne changent pas.
+- Une sixième suggestion, « Pouvez-vous m'envoyer la brochure du programme ? », après la qualification.
+- La vue du prospect (`/exchange`, `/report`) indique le nom du document joint, jamais son contenu ; la console l'affiche
+  sous le message (« Pièce jointe : … »). Le texte du message ne porte plus la ligne « Pièce jointe : ».
+- La remise à zéro de la démonstration supprime aussi les documents des campagnes de démonstration.
+
+**Suite.** Mesurer, avec le vrai modèle, si l'agent joint la brochure à bon escient (seulement quand elle répond au besoin).
+
