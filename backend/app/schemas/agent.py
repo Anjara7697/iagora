@@ -41,4 +41,7 @@ class AgentRunResult(BaseModel):
     scores: dict[str, Any]
     llm: dict[str, Any]
     trace: list[TraceRead]
+    instruction: str | None = Field(
+        None, description="Consigne du conseiller qui a demandé cette version (« Régénérer »)"
+    )
     started_at: datetime

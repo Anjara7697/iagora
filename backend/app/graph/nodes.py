@@ -233,6 +233,15 @@ class WorkflowNodes:
         passages: list[Passage] = await self.deps.knowledge.search(
             query, state.get("target_code"), include_demo=ctx.is_demo
         )
+        instruction = state.get("instruction") or None
+        if instruction:
+            # « Parle du financement » : les extraits sur ce sujet rejoignent ceux de la question,
+            # seule source de faits (la consigne n'en apporte aucun).
+            seen = {p.text for p in passages}
+            extra_passages = await self.deps.knowledge.search(
+                instruction, state.get("target_code"), include_demo=ctx.is_demo
+            )
+            passages += [p for p in extra_passages if p.text not in seen][:2]
         asks_catalogue = q is not None and q.asks_catalogue
         # « Je parle à un robot ? » se répond sans document (D-32) : pas de transfert.
         about_agent = policy.asks_about_agent(text)
@@ -259,6 +268,7 @@ class WorkflowNodes:
             then_meeting=decision.answer_first,
             # D-34 : une question restée sans réponse n'est pas reposée au message suivant.
             hold_question=policy.question_unanswered(ctx.history, q, text),
+            instruction=instruction,
         )
         messages = prompts.to_chat(ctx.history) or [
             ChatMessage(
@@ -360,12 +370,14 @@ class WorkflowNodes:
                 "confidence": q.confidence if q is not None else None,
                 **({"subject": subject} if subject else {}),
                 **({"attachments": [_attachment(f) for f in attached]} if attached else {}),
+                **({"instruction": instruction} if instruction else {}),
             },
             "needs_human": False,
             "trace": _t(
                 "generate_response",
                 f"réponse générée ({len(reply.split())} mots, {len(passages)} extrait(s)"
                 + (f", joint : {', '.join(f['label'] for f in attached)}" if attached else "")
+                + (", consigne du conseiller suivie" if instruction else "")
                 + ")",
             ),
         }
@@ -488,6 +500,8 @@ class WorkflowNodes:
             metadata["with_answer"] = True
             metadata["answer_chars"] = len(answer)
             metadata["sources"] = state.get("reply_metadata", {}).get("sources", [])
+            if instruction := state.get("reply_metadata", {}).get("instruction"):
+                metadata["instruction"] = instruction
         return {
             "reply_text": text,
             "reply_metadata": metadata,

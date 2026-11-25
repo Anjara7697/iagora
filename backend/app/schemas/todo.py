@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.agent_mode import AgentMode
 from app.schemas.conversation import ConversationProspect
@@ -40,6 +40,9 @@ class TodoDraft(BaseModel):
     )
     attachments: list[TodoAttachment] = Field(
         [], description="Documents de la campagne joints à l'email (D-42)"
+    )
+    instruction: str | None = Field(
+        None, description="Consigne du conseiller suivie pour rédiger cette version"
     )
 
 
@@ -111,6 +114,28 @@ class DraftApprove(BaseModel):
 
 class DraftReject(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
+
+# Consigne d'un conseiller pour régénérer un brouillon : une phrase, pas un second prompt.
+INSTRUCTION_MAX_CHARS = 300
+
+
+class DraftRegenerate(BaseModel):
+    instruction: str | None = Field(
+        None,
+        max_length=INSTRUCTION_MAX_CHARS,
+        description=(
+            "Consigne libre pour la nouvelle version (ton, longueur, sujet à mettre en avant). "
+            "Elle guide la rédaction sans lever les règles de l'agent."
+        ),
+    )
+
+    @field_validator("instruction")
+    @classmethod
+    def _one_line(cls, value: str | None) -> str | None:
+        """Une seule ligne, espaces resserrés ; une consigne vide vaut « sans consigne »."""
+        cleaned = " ".join((value or "").split())
+        return cleaned or None
 
 
 class AgentModeRead(BaseModel):

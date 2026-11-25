@@ -183,6 +183,18 @@
             ],
             "title": "Handoff Reason"
           },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consigne du conseiller qui a demandé cette version (« Régénérer »)",
+            "title": "Instruction"
+          },
           "llm": {
             "additionalProperties": true,
             "title": "Llm",
@@ -2483,6 +2495,25 @@
           "message_id"
         ],
         "title": "DraftRef",
+        "type": "object"
+      },
+      "DraftRegenerate": {
+        "properties": {
+          "instruction": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consigne libre pour la nouvelle version (ton, longueur, sujet à mettre en avant). Elle guide la rédaction sans lever les règles de l'agent.",
+            "title": "Instruction"
+          }
+        },
+        "title": "DraftRegenerate",
         "type": "object"
       },
       "DraftReject": {
@@ -7822,6 +7853,18 @@
             "description": "Pied de message ajouté automatiquement (non modifiable)",
             "title": "Footer"
           },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consigne du conseiller suivie pour rédiger cette version",
+            "title": "Instruction"
+          },
           "message_id": {
             "title": "Message Id",
             "type": "string"
@@ -10993,7 +11036,7 @@
     },
     "/api/v1/conversations/{conversation_id}/drafts/{message_id}/regenerate": {
       "post": {
-        "description": "Remplace le brouillon par une nouvelle version rédigée par l'agent.",
+        "description": "Remplace le brouillon par une nouvelle version rédigée par l'agent. Une consigne du\nconseiller (« plus court », « parle du financement ») peut guider cette version : elle ne\nlève aucune règle (faits sourcés, vouvoiement, une question au plus, pas de rendez-vous\nproposé par le modèle) et reste tracée dans « Décisions de l'agent ».",
         "operationId": "regenerate_draft_api_v1_conversations__conversation_id__drafts__message_id__regenerate_post",
         "parameters": [
           {
@@ -11015,6 +11058,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/DraftRegenerate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "content": {

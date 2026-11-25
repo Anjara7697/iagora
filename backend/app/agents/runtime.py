@@ -144,9 +144,12 @@ async def _run_agent(
     follow_up_membership_id: int | None = None,
     simulation: bool = False,
     event_id: str | None = None,
+    instruction: str | None = None,
 ) -> AgentRunResult:
     """`mode` : à fournir pour ignorer le réglage global (recette hors ligne, tests).
-    `follow_up` : relance d'un prospect resté silencieux (dernier message : celui de l'agent)."""
+    `follow_up` : relance d'un prospect resté silencieux (dernier message : celui de l'agent).
+    `instruction` : consigne d'un conseiller qui régénère un brouillon ; elle guide la rédaction
+    du message, jamais la décision ni les garde-fous."""
     started_at = datetime.now(UTC)
     doc = await _resolve_conversation(session, db, conversation_id, prospect_id, channel)
     conv_id = str(doc["_id"])
@@ -221,6 +224,7 @@ async def _run_agent(
         "conversation_id": conv_id,
         "trigger": trigger,  # type: ignore[typeddict-item]
         "inbound_text": inbound_text,
+        "instruction": instruction,
         "trace": [],
     }
     run_doc: dict[str, Any] = {
@@ -232,6 +236,7 @@ async def _run_agent(
         "started_at": started_at,
         "llm": {"provider": llm.provider, "model": llm.model},
         "prompt_version": prompts.PROMPT_VERSION,
+        **({"instruction": instruction} if instruction else {}),
     }
     # Appels réels au modèle (dont le modèle de secours), durées et jetons (AUDIT-AI-004).
     with usage.recording() as llm_calls:
@@ -266,11 +271,27 @@ async def _run_agent(
             "total": state.get("total_score"),
             "level": state.get("interest_level"),
         },
-        "trace": [{"node": t.node, "summary": t.summary, "at": t.at} for t in trace],
+        "trace": _instruction_trace(instruction, state, started_at)
+        + [{"node": t.node, "summary": t.summary, "at": t.at} for t in trace],
     }
     inserted = await db[RUNS].insert_one(result_doc)
     await recorder.end(result_doc["outcome"])
     return to_result(result_doc, str(inserted.inserted_id))
+
+
+def _instruction_trace(
+    instruction: str | None, state: SalesAgentState, at: datetime
+) -> list[dict[str, Any]]:
+    """Première étape de la trace quand un conseiller a régénéré avec une consigne : elle dit
+    laquelle, et si la rédaction l'a reçue (une proposition de créneaux seule, un transfert ou
+    une désinscription ne passent pas par la rédaction)."""
+    if not instruction:
+        return []
+    used = bool((state.get("reply_metadata") or {}).get("instruction"))
+    summary = f"nouvelle version demandée avec la consigne : « {instruction} »" + (
+        "" if used else " (non utilisée : aucun message rédigé par le modèle)"
+    )
+    return [{"node": "regenerate", "summary": summary, "at": at}]
 
 
 def to_result(doc: dict[str, Any], run_id: str) -> AgentRunResult:
@@ -290,6 +311,7 @@ def to_result(doc: dict[str, Any], run_id: str) -> AgentRunResult:
         llm=doc.get("llm", {}),
         trace=[TraceRead(**t) for t in doc.get("trace", [])],
         started_at=doc["started_at"],
+        instruction=doc.get("instruction"),
     )
 
 

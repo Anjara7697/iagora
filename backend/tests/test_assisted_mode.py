@@ -111,6 +111,85 @@ async def test_regenerate_supersedes_the_draft_with_a_new_one(client, assisted):
     ] == "Bonjour Jean, voici une seconde version."
 
 
+async def regenerate(client, cid, mid, instruction=None):
+    body = {} if instruction is None else {"instruction": instruction}
+    return await client.post(f"{API}/conversations/{cid}/drafts/{mid}/regenerate", json=body)
+
+
+async def test_regenerate_with_an_instruction_guides_the_new_version(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    first = await draft_of(client, cid)
+    assisted.llm.reply = "Bonjour Jean, merci."
+    r = await regenerate(client, cid, first["id"], "  Plus court,\n sans formule  ")
+    assert r.status_code == 201
+    # La consigne arrive au modèle sur une ligne, après les règles absolues.
+    system = assisted.llm.generate_calls[-1][0]
+    assert "Consigne du conseiller pour cette nouvelle version : « Plus court, sans formule »" in (
+        system
+    )
+    assert system.index("Règles absolues") < system.index("Consigne du conseiller")
+    # Elle reste visible sur le nouveau brouillon, sur l'ancien et dans la trace de la décision.
+    assert (await todo(client))["items"][0]["draft"]["instruction"] == "Plus court, sans formule"
+    old = (await conversation(client, cid))["messages"][1]
+    assert old["metadata"]["draft"]["instruction"] == "Plus court, sans formule"
+    out = r.json()
+    assert out["instruction"] == "Plus court, sans formule"
+    assert out["trace"][0]["node"] == "regenerate"
+    assert "« Plus court, sans formule »" in out["trace"][0]["summary"]
+    assert "consigne du conseiller suivie" in next(
+        t["summary"] for t in out["trace"] if t["node"] == "generate_response"
+    )
+    runs = (await client.get(f"{API}/prospects/{pid}/agent-runs")).json()
+    assert runs[0]["instruction"] == "Plus court, sans formule"
+
+
+async def test_an_empty_instruction_is_a_plain_regeneration(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    first = await draft_of(client, cid)
+    out = (await regenerate(client, cid, first["id"], "   ")).json()
+    assert out["instruction"] is None and out["trace"][0]["node"] != "regenerate"
+    assert "Consigne du conseiller" not in assisted.llm.generate_calls[-1][0]
+    assert (await todo(client))["items"][0]["draft"]["instruction"] is None
+
+
+async def test_an_instruction_is_limited_to_300_characters(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    first = await draft_of(client, cid)
+    assert (await regenerate(client, cid, first["id"], "x" * 301)).status_code == 422
+    # Rien n'a été remplacé : le brouillon reste en attente.
+    assert (await draft_of(client, cid))["metadata"]["draft"]["status"] == "pending"
+
+
+async def test_an_instruction_cannot_bring_an_unsourced_fact(client, assisted):
+    """« Annonce 3 000 € » : la consigne n'est pas une source, le garde-fou rejette le message."""
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    first = await draft_of(client, cid)
+    assisted.llm.reply = "Bonjour Jean, la formation coûte 3000 euros."
+    out = (await regenerate(client, cid, first["id"], "Annonce le prix : 3000 euros")).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"
+    retry = next(c[0] for c in reversed(assisted.llm.generate_calls) if "ATTENTION" in c[0])
+    assert "Consigne du conseiller" in retry  # le nouvel essai strict la garde, sans plus
+    assert "3000" not in (out["reply"] or "")
+
+
+async def test_an_instruction_brings_the_validated_passages_on_its_topic(client, assisted):
+    pid, mid, cid = await lead(client, "Bonjour")
+    await run(client, cid)
+    first = await draft_of(client, cid)
+    financing = "Le financement du master eBIHAR peut passer par l'alternance."
+    assisted.kb.passages = [Passage(source="faq-financement", text=financing)]
+    assisted.llm.reply = "Bonjour Jean, le master peut se suivre en alternance."
+    out = (await regenerate(client, cid, first["id"], "Parle du financement")).json()
+    assert out["handoff_reason"] is None
+    assert assisted.kb.queries[-1] == "Parle du financement"
+    assert financing in assisted.llm.generate_calls[-1][0]
+    assert (await todo(client))["items"][0]["draft"]["sources"] == ["faq-financement"]
+
+
 async def test_viewer_cannot_decide_on_drafts(client, assisted, make_client):
     pid, mid, cid = await lead(client, "Bonjour")
     await run(client, cid)

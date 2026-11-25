@@ -490,11 +490,14 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
   const calls = await mockApi(page);
   await open(page);
   await page.getByRole("button", { name: /Marie Dupont/ }).click();
-  // Brouillon non modifié : régénérer part sans confirmation.
+  // Régénérer ouvre la consigne facultative : sans consigne, le corps reste vide.
   await page.getByRole("button", { name: "Régénérer" }).click();
+  const regenerate = page.getByRole("alertdialog", { name: "Régénérer la réponse ?" });
+  await expect(regenerate.getByLabel("Consigne pour l’agent (facultative)")).toBeFocused();
+  await regenerate.getByRole("button", { name: "Régénérer" }).click();
   await expect
-    .poll(() => calls.posts.some((p) => p.path.endsWith("/regenerate")))
-    .toBe(true);
+    .poll(() => calls.posts.find((p) => p.path.endsWith("/regenerate"))?.body)
+    .toEqual({});
   await expect(page.getByText("Nouvelle réponse demandée", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Voir la décision" })).toHaveCount(0);
 
@@ -523,6 +526,32 @@ test("refuser exige un motif ; régénérer appelle l'agent", async ({ page }) =
   await expect(delivery).toContainText("aucun envoi n’a été demandé");
   await expect(delivery).toContainText("Motif du refus : Ton trop familier");
   await expect(delivery.getByRole("button", { name: "Réessayer l’envoi" })).toHaveCount(0);
+});
+
+test("régénérer avec une consigne : raccourcis, limite et envoi", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  await page.getByRole("button", { name: /Marie Dupont/ }).click();
+  await page.getByRole("button", { name: "Régénérer" }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Régénérer la réponse ?" });
+  const field = dialog.getByLabel("Consigne pour l’agent (facultative)");
+  const shortcuts = dialog.getByRole("group", { name: "Consignes rapides" });
+  await shortcuts.getByRole("button", { name: "Plus court" }).click();
+  await shortcuts.getByRole("button", { name: "Parle du financement" }).click();
+  await expect(field).toHaveValue("Plus court. Parle du financement.");
+  await expect(shortcuts.getByRole("button", { name: "Plus court" })).toHaveAttribute("aria-pressed", "true");
+  // Un second clic retire le raccourci.
+  await shortcuts.getByRole("button", { name: "Plus court" }).click();
+  await expect(field).toHaveValue("Parle du financement.");
+  await field.fill("x".repeat(400));
+  await expect(field).toHaveValue("x".repeat(300));
+  await expect(dialog).toContainText("300 / 300 caractères");
+  await field.fill("Parle du financement, en deux phrases");
+  await dialog.getByRole("button", { name: "Régénérer" }).click();
+  await expect
+    .poll(() => calls.posts.find((p) => p.path.endsWith("/regenerate"))?.body)
+    .toEqual({ instruction: "Parle du financement, en deux phrases" });
+  await expect(page.getByText("Nouvelle réponse demandée", { exact: true })).toBeVisible();
 });
 
 test("brouillon modifié : aucune perte sans confirmation", async ({ page }) => {
