@@ -40,6 +40,9 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 | [intake.md](intake.md) | Réception des prospects, file « À attribuer », reprise des traitements |
 | [advisor-workflow.md](advisor-workflow.md) | Travail des conseillers : affectation, étapes, indicateurs |
 | [campaign-ownership.md](campaign-ownership.md) | Responsable de campagne, héritage et exceptions |
+| [doublons.md](doublons.md) | Doublons de prospects : repérage, file à trancher, fusion manuelle |
+| [candidatures.md](candidatures.md) | Candidatures reçues par email : repérage, vérification par le conseiller |
+| [confirmation-inscription.md](confirmation-inscription.md) | Confirmer une inscription avec une preuve vérifiée |
 | [demo-mode.md](demo-mode.md) | Données fictives : repérage, filtre, purge |
 | [simulator-journey.md](simulator-journey.md) | Parcours guidé du simulateur |
 
