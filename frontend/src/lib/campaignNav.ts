@@ -1,8 +1,12 @@
 import { CAMPAIGN_STATUS, STAGES } from "@/lib/labels";
+import { readSort } from "@/lib/sorting";
+
+/** Champs de tri de la liste des campagnes (paramètre `sort` de l'API). */
+export const CAMPAIGN_SORTS = ["name", "status"] as const;
 
 /**
  * État de navigation du module Campagnes, porté par l'URL pour survivre aux allers-retours :
- * - liste : statut, « Mes campagnes », page (`/campaigns?status=draft&mine=true&page=2`) ;
+ * - liste : statut, « Mes campagnes », tri, page (`/campaigns?status=draft&mine=true&sort=-name&page=2`) ;
  * - fiche : onglet, étape et page des prospects, et l'URL de la liste d'où l'on vient (`from`).
  * Seules les valeurs connues sont relues ; une URL de retour est toujours reconstruite, jamais suivie telle quelle.
  */
@@ -24,12 +28,22 @@ const href = (path: string, values: Record<string, string>) => {
 };
 
 export function readCampaignList(query: Query) {
-  return { status: option(query, "status", CAMPAIGN_STATUS), mine: query.get("mine") === "true", page: pageOf(query) };
+  return {
+    status: option(query, "status", CAMPAIGN_STATUS),
+    mine: query.get("mine") === "true",
+    sort: readSort(query.get("sort"), CAMPAIGN_SORTS),
+    page: pageOf(query),
+  };
 }
 export type CampaignList = ReturnType<typeof readCampaignList>;
 
 export function campaignListHref(state: CampaignList) {
-  return href("/campaigns", { status: state.status, mine: state.mine ? "true" : "", page: state.page > 1 ? String(state.page) : "" });
+  return href("/campaigns", {
+    status: state.status,
+    mine: state.mine ? "true" : "",
+    sort: state.sort,
+    page: state.page > 1 ? String(state.page) : "",
+  });
 }
 
 /** Retour vers la liste : uniquement `/campaigns` et ses filtres connus. */

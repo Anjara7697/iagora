@@ -176,7 +176,8 @@ function Catalog() {
           </SearchField.Group>
         </SearchField>
         <Segmented
-          className="max-w-full sm:[&_[role=tab]]:whitespace-nowrap"
+          // Mobile (390 px) : les quatre filtres se partagent la largeur, sans flèche de défilement.
+          className="w-full max-w-full sm:w-auto max-sm:[&_[role=tablist]]:w-full max-sm:[&_[role=tab]]:flex-1 max-sm:[&_[role=tab]]:px-2"
           label="Filtrer les connecteurs"
           value={filter}
           options={FILTERS.map(([id, text]) => ({ value: id, text }))}

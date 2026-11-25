@@ -258,3 +258,23 @@ async def test_campaign_documents_are_uploaded_listed_downloaded_and_removed(mak
     assert (await admin.get(f"{url}/{saved['id']}")).status_code == 404
     assert (await admin.delete(f"{url}/{saved['id']}")).status_code == 404
     assert (await admin.get(f"/api/v1/campaigns/{cid + 999}/files")).status_code == 404
+
+
+async def test_list_sorts_by_name_or_status(client):
+    """Tri côté serveur (tableau des campagnes) : nom, ou statut dans l'ordre métier puis nom."""
+    ended = (await _create(client, name="Bachelor 2025", status="inactive")).json()["id"]
+    draft = (await _create(client, name="alternance 2027", status="draft")).json()["id"]
+    live_b = (await _create(client, name="Master 2026", status="active")).json()["id"]
+    live_a = (await _create(client, name="Licence 2026", status="active")).json()["id"]
+
+    async def ids(sort: str | None = None) -> list[int]:
+        params = {"sort": sort} if sort else {}
+        listing = (await client.get("/api/v1/campaigns", params=params)).json()
+        return [c["id"] for c in listing["items"]]
+
+    assert await ids("name") == [draft, ended, live_a, live_b]  # casse ignorée
+    assert await ids("-name") == [live_b, live_a, ended, draft]
+    assert await ids("status") == [live_a, live_b, draft, ended]  # active, brouillon, en pause
+    assert await ids("-status") == [ended, draft, live_a, live_b]
+    assert await ids() == [live_a, live_b, draft, ended]  # par défaut : les plus récentes d'abord
+    assert (await client.get("/api/v1/campaigns", params={"sort": "leads"})).status_code == 422

@@ -1,3 +1,4 @@
+import { fieldLabel } from "./fieldLabels";
 import { loginHref } from "./session/returnPath";
 
 export const API_URL =
@@ -85,25 +86,36 @@ const RAW = new Set([
   "unprocessable entity",
 ]);
 
-/** Message d'erreur lisible par un conseiller, sans identifiant technique. */
 /** Message d'échec d'une action : ce qui a échoué d'abord, puis le détail du serveur (règle 12 des parcours). */
 export function failure(what: string, error: unknown): string {
   return `${what}${error instanceof ApiError ? ` : ${error.message}` : "."}`;
 }
 
+/**
+ * Erreur de validation (422) : les champs en cause sous leur nom lisible, jamais le message anglais ni le nom
+ * technique. « manquante » si chaque erreur est un champ absent, « invalide » sinon.
+ */
+function validationError(errors: unknown[]): string {
+  const items = errors.filter((e): e is { loc?: unknown; type?: unknown } => !!e && typeof e === "object");
+  const found = items.map((e) => fieldLabel(e.loc));
+  const labels = [...new Set(found.filter((l): l is string => l !== null))];
+  // Un champ sans nom lisible compte dans « et N autres » plutôt que d'être tu.
+  const unnamed = found.filter((l) => l === null).length;
+  if (!labels.length) return "Information manquante ou invalide : vérifiez le formulaire.";
+  const missing = items.every((e) => e.type === "missing");
+  const shown = labels.slice(0, 3).map((l) => `« ${l} »`);
+  const rest = labels.length - shown.length + unnamed;
+  const list = rest > 0 ? `${shown.join(", ")} et ${rest} autre${rest > 1 ? "s" : ""}` : shown.join(", ").replace(/, (?=[^,]*$)/, " et ");
+  return `${missing ? "Information manquante" : "Information invalide"} : ${list}.`;
+}
+
+/** Message d'erreur lisible par un conseiller, sans identifiant technique. */
 export function humanError(status: number, payload: unknown): string {
   let detail: string | null = null;
   if (payload && typeof payload === "object" && "detail" in payload) {
     const raw = (payload as { detail: unknown }).detail;
     if (typeof raw === "string") detail = raw;
-    else if (Array.isArray(raw) && raw[0]) {
-      // Erreur de validation (422) : on nomme le champ plutôt que le message anglais.
-      const loc = Array.isArray(raw[0].loc) ? raw[0].loc : [];
-      const field = loc.length ? String(loc[loc.length - 1]) : null;
-      return field && field !== "body"
-        ? `Information manquante ou invalide (champ « ${field} »).`
-        : "Information manquante ou invalide : vérifiez le formulaire.";
-    }
+    else if (Array.isArray(raw) && raw[0]) return validationError(raw);
   }
   // Un message métier explicite (« Service temporairement indisponible ») est gardé.
   if (detail && !RAW.has(detail.trim().toLowerCase()))

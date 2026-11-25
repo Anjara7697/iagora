@@ -1,9 +1,11 @@
 "use client";
 
 import { Pagination, ScrollShadow, Spinner, Table } from "@heroui/react";
+import { ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { pageList } from "@/lib/pagination";
+import type { SortState } from "@/lib/sorting";
 import { SCROLL_SHADOW_SIZE, cx } from "./layout";
 
 type DataColumn = {
@@ -12,6 +14,8 @@ type DataColumn = {
   /** Colonne d'en-tête de ligne (la première, en général) : donne son nom à la ligne. */
   rowHeader?: boolean;
   className?: string;
+  /** Colonne triable (tri côté serveur) : son `id` est le champ de tri de l'API. */
+  sortable?: boolean;
 };
 
 /**
@@ -19,6 +23,8 @@ type DataColumn = {
  * Les lignes sont des `Table.Row` (id unique, `href` pour une ligne qui ouvre une page) contenant des `Table.Cell`.
  * `isLoading` et `emptyState` alimentent le `renderEmptyState` du corps ; `footer` s'affiche dans `Table.Footer`.
  * Le défilement horizontal passe par `ScrollShadow` ; le tableau est en `rounded-lg`.
+ * Tri : `sort` (colonne et sens courants) et `onSortChange` ; un clic sur l'en-tête d'une colonne `sortable` trie
+ * par ordre croissant, un second clic inverse. Une colonne triable non triée montre une double flèche discrète.
  */
 export function DataTable({
   label,
@@ -31,6 +37,8 @@ export function DataTable({
   emptyState,
   footer,
   hideScrollBar = true,
+  sort = null,
+  onSortChange,
   children,
 }: {
   label: string;
@@ -44,16 +52,42 @@ export function DataTable({
   footer?: ReactNode;
   /** Masque la barre de défilement horizontal (l'ombre sur les bords indique qu'il reste du contenu). */
   hideScrollBar?: boolean;
+  sort?: SortState | null;
+  onSortChange?: (sort: SortState) => void;
   children?: ReactNode;
 }) {
   return (
     <Table className={cx("rounded-lg", className)} style={style}>
       <ScrollShadow orientation="horizontal" size={SCROLL_SHADOW_SIZE} hideScrollBar={hideScrollBar}>
-        <Table.Content aria-label={label} style={{ minWidth }}>
+        <Table.Content
+          aria-label={label}
+          style={{ minWidth }}
+          sortDescriptor={sort ?? undefined}
+          onSortChange={onSortChange && ((next) => onSortChange({ column: String(next.column), direction: next.direction }))}
+        >
           <Table.Header>
             {columns.map((c, i) => (
-              <Table.Column key={c.id} id={c.id} isRowHeader={c.rowHeader ?? i === 0} className={cx("type-caption", c.className)}>
-                {c.label}
+              <Table.Column
+                key={c.id}
+                id={c.id}
+                isRowHeader={c.rowHeader ?? i === 0}
+                allowsSorting={!!c.sortable && !!onSortChange}
+                className={cx("type-caption", c.sortable && onSortChange && "cursor-pointer select-none", c.className)}
+              >
+                {({ allowsSorting, sortDirection }) =>
+                  allowsSorting ? (
+                    <Table.SortableColumnHeader
+                      sortDirection={sortDirection}
+                      showIndicator
+                      className="inline-flex items-center gap-1"
+                    >
+                      {c.label}
+                      {!sortDirection && <ArrowUpDown aria-hidden className="size-3 text-muted" />}
+                    </Table.SortableColumnHeader>
+                  ) : (
+                    c.label
+                  )
+                }
               </Table.Column>
             ))}
           </Table.Header>

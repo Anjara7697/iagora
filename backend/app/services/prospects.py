@@ -2,9 +2,9 @@
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -478,6 +478,29 @@ def _filtered(
     return stmt
 
 
+ProspectSort = Literal["name", "-name", "created_at", "-created_at"]
+
+
+def _prospect_order(sort: ProspectSort | None) -> list[ColumnElement[Any]]:
+    """Tri de la liste : nom (nom de famille, prénom, puis email faute de nom) ou date de création.
+
+    `-` devant le champ : ordre décroissant. Sans tri demandé, les plus récents d'abord.
+    L'identifiant départage toujours les égalités, pour une pagination stable.
+    """
+    if sort is None:
+        return [Prospect.id.desc()]
+    descending = sort.startswith("-")
+    if sort.lstrip("-") == "name":
+        keys: list[Any] = [
+            func.lower(func.coalesce(Prospect.last_name, Prospect.first_name, Prospect.email, "")),
+            func.lower(func.coalesce(Prospect.first_name, "")),
+        ]
+    else:
+        keys = [Prospect.created_at]
+    keys.append(Prospect.id)
+    return [k.desc() if descending else k.asc() for k in keys]
+
+
 async def list_prospects(
     session: AsyncSession,
     *,
@@ -495,6 +518,7 @@ async def list_prospects(
     channel: str | None = None,
     pending_campaign: bool = False,
     scope: scope_service.Scope = scope_service.EVERYTHING,
+    sort: ProspectSort | None = None,
 ) -> tuple[list[Prospect], int]:
     stmt = _filtered(
         q=q,
@@ -511,7 +535,7 @@ async def list_prospects(
         scope=scope,
     )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    items = await session.scalars(stmt.order_by(Prospect.id.desc()).limit(limit).offset(offset))
+    items = await session.scalars(stmt.order_by(*_prospect_order(sort)).limit(limit).offset(offset))
     return list(items), total
 
 

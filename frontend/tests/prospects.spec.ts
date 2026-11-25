@@ -1274,3 +1274,32 @@ test("« N sur M » : le total sans filtre est lu une fois", async ({ page }) =>
   await page.waitForLoadState("networkidle");
   expect(totals).toBe(1);
 });
+
+test("trier le tableau par nom ou date de création : tri envoyé à l'API, gardé au retour de la fiche", async ({ page }) => {
+  await mockApi(page);
+  const sorts: (string | null)[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/v1/prospects" && url.searchParams.get("limit") !== "1") sorts.push(url.searchParams.get("sort"));
+  });
+  await login(page);
+  // Le pipeline n'a pas de colonnes : le tri n'y est pas envoyé.
+  expect(sorts.every((s) => s === null)).toBe(true);
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  const name = page.getByRole("columnheader", { name: "Prospect" });
+  const created = page.getByRole("columnheader", { name: "Créé le" });
+  await created.click();
+  await expect(created).toHaveAttribute("aria-sort", "ascending");
+  await created.click();
+  await expect(created).toHaveAttribute("aria-sort", "descending");
+  await expect(page).toHaveURL(/[?&]sort=-created_at(&|$)/);
+  await expect.poll(() => sorts.at(-1)).toBe("-created_at");
+  await name.click();
+  await expect(name).toHaveAttribute("aria-sort", "ascending");
+  await expect.poll(() => sorts.at(-1)).toBe("name");
+  await expect(page.getByRole("columnheader", { name: "Consentement" })).not.toHaveAttribute("aria-sort");
+  // Aller sur une fiche puis revenir : le tri est conservé.
+  await page.getByRole("link", { name: "Alice Martin", exact: true }).click();
+  await page.getByRole("link", { name: "Retour aux résultats", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "Prospect" })).toHaveAttribute("aria-sort", "ascending");
+});

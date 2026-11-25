@@ -240,3 +240,28 @@ async def test_csv_export_is_excel_friendly_and_safe(client, make_client):
 
     viewer = await make_client(UserRole.VIEWER)
     assert (await viewer.get("/api/v1/prospects/export")).status_code == 403
+
+
+async def test_list_sorts_by_name_or_creation_date(client):
+    """Tri côté serveur (tableau des prospects) : nom de famille puis prénom, ou création."""
+    zoe = await _make(client, "z@acme-corp.com", "Zoé", last_name="Martin")
+    ana = await _make(client, "a@acme-corp.com", "Ana", last_name="Martin")
+    bob = await _make(client, "b@acme-corp.com", "Bob", last_name="durand")  # casse ignorée
+    anonymous = {"email": "c@acme-corp.com", "channel": "email"}  # sans nom : trié par son email
+    nameless = (await client.post("/api/v1/prospects", json=anonymous)).json()["prospect"]["id"]
+
+    async def ids(sort: str | None = None) -> list[int]:
+        params = {"sort": sort} if sort else {}
+        listing = (await client.get("/api/v1/prospects", params=params)).json()
+        return [p["id"] for p in listing["items"]]
+
+    assert await ids("name") == [nameless, bob, ana, zoe]
+    assert await ids("-name") == [zoe, ana, bob, nameless]
+    assert await ids("created_at") == [zoe, ana, bob, nameless]
+    assert await ids("-created_at") == [nameless, bob, ana, zoe]
+    assert await ids() == [nameless, bob, ana, zoe]  # par défaut : les plus récents d'abord
+    # Pagination stable avec le tri.
+    params = {"sort": "name", "limit": 2, "offset": 2}
+    page = (await client.get("/api/v1/prospects", params=params)).json()
+    assert [p["id"] for p in page["items"]] == [ana, zoe]
+    assert (await client.get("/api/v1/prospects", params={"sort": "email"})).status_code == 422

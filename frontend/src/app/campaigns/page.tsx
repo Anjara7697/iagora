@@ -14,6 +14,7 @@ import { qs } from "@/lib/api";
 import { campaignListHref, readCampaignList, replaceUrl, type CampaignList } from "@/lib/campaignNav";
 import { RATE_THRESHOLDS, percent, rateBadge } from "@/lib/kpi";
 import { label } from "@/lib/labels";
+import { sortParam, sortState } from "@/lib/sorting";
 import { useApi } from "@/lib/useApi";
 import type { Campaign, CampaignOverview, Page } from "@/lib/types";
 
@@ -53,7 +54,7 @@ function Campaigns() {
     replaceUrl(campaignListHref({ ...readCampaignList(new URLSearchParams(window.location.search)), page: 1, ...patch }));
 
   const list = useApi<Page<Campaign>>(
-    `/campaigns${qs({ status, advisor_id: mine ? user?.id : undefined, limit: PAGE_SIZE, offset: (view.page - 1) * PAGE_SIZE })}`,
+    `/campaigns${qs({ status, advisor_id: mine ? user?.id : undefined, sort: view.sort, limit: PAGE_SIZE, offset: (view.page - 1) * PAGE_SIZE })}`,
     { keepPrevious: true },
   );
   // Chiffres clés : toutes les campagnes, indépendamment des filtres de la liste.
@@ -189,6 +190,8 @@ function Campaigns() {
           figures={figures}
           linkSuffix={listHref === "/campaigns" ? "" : `?from=${encodeURIComponent(listHref)}`}
           isLoading={list.loading && !list.data}
+          sort={sortState(view.sort)}
+          onSortChange={(next) => update({ sort: sortParam(next) })}
           footer={
             total > PAGE_SIZE ? (
               <TablePagination total={total} pageSize={PAGE_SIZE} page={Math.min(view.page, pages)} onChange={(next) => update({ page: next })} />

@@ -11,6 +11,7 @@ import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table
 import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import { DemoBadge, ScoreBadge, StageBadge } from "@/components/ds/ui";
 import { formatDate, fullName } from "@/lib/labels";
+import type { SortState } from "@/lib/sorting";
 import type { Membership, Prospect } from "@/lib/types";
 import { ConsentTag, ProspectAvatar, level } from "@/components/prospects/shared";
 
@@ -18,10 +19,15 @@ export function ProspectTable({
   items,
   memberships,
   profileHref,
+  sort,
+  onSortChange,
 }: {
   items: Prospect[];
   memberships: (p: Prospect) => Membership[];
   profileHref: (id: number) => string;
+  /** Tri côté serveur par nom ou date de création (colonnes « Prospect » et « Créé le »). */
+  sort?: SortState | null;
+  onSortChange?: (sort: SortState) => void;
 }) {
   const router = useRouter();
   if (useMediaQuery(NARROW))
@@ -60,11 +66,13 @@ export function ProspectTable({
     <DataTable
       label="Prospects et rattachements aux campagnes"
       minWidth={720}
+      sort={sort}
+      onSortChange={onSortChange}
       columns={[
-        { id: "prospect", label: "Prospect" },
+        { id: "name", label: "Prospect", sortable: true },
         { id: "stages", label: "Étapes et scores" },
         { id: "consent", label: "Consentement" },
-        { id: "created", label: "Créé le" },
+        { id: "created_at", label: "Créé le", sortable: true },
       ]}
     >
       {items.map((p) => (

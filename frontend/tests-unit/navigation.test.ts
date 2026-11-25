@@ -18,9 +18,10 @@ const query = (href: string) => new URLSearchParams(href.split("?")[1] ?? "");
 
 describe("Campagnes", () => {
   test("liste : aller-retour de l'adresse et valeurs inconnues ignorées", () => {
-    const href = "/campaigns?status=draft&mine=true&page=3";
+    const href = "/campaigns?status=draft&mine=true&sort=-name&page=3";
     assert.equal(campaignListHref(readCampaignList(query(href))), href);
-    assert.deepEqual(readCampaignList(query("/campaigns?status=supprimée&page=-2&mine=1")), { status: "", mine: false, page: 1 });
+    assert.deepEqual(readCampaignList(query("/campaigns?status=supprimée&page=-2&mine=1")), { status: "", mine: false, sort: "", page: 1 });
+    assert.equal(readCampaignList(query("/campaigns?sort=-leads")).sort, "");
     assert.equal(readCampaignList(query("/campaigns?page=1e9")).page, 1);
   });
 
@@ -49,9 +50,10 @@ describe("Campagnes", () => {
 
 describe("Prospects", () => {
   test("liste : aller-retour de l'adresse avec tous les filtres", () => {
-    const href = "/prospects?q=dupont&stage=qualified&campaign=4&source=9&demo=exclude&target_code=ebihar_students&mine=true&view=table&offset=50";
+    const href = "/prospects?q=dupont&stage=qualified&campaign=4&source=9&demo=exclude&target_code=ebihar_students&mine=true&sort=-created_at&view=table&offset=50";
     const state = readProspectResults(query(href));
     assert.equal(prospectResultsHref(state), href);
+    assert.equal(readProspectResults(query("?sort=email")).sort, "");
   });
 
   test("liste : le pipeline choisi reste dans l'adresse, sans choix la vue suit la largeur", () => {

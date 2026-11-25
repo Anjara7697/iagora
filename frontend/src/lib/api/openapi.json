@@ -9301,6 +9301,30 @@
             }
           },
           {
+            "description": "Tri : name ou status, préfixé de « - » pour l'ordre décroissant",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "name",
+                    "-name",
+                    "status",
+                    "-status"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tri : name ou status, préfixé de « - » pour l'ordre décroissant",
+              "title": "Sort"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -12862,6 +12886,30 @@
               ],
               "description": "Canal d'arrivée",
               "title": "Channel"
+            }
+          },
+          {
+            "description": "Tri : name ou created_at, préfixé de « - » pour l'ordre décroissant",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "name",
+                    "-name",
+                    "created_at",
+                    "-created_at"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tri : name ou created_at, préfixé de « - » pour l'ordre décroissant",
+              "title": "Sort"
             }
           },
           {
