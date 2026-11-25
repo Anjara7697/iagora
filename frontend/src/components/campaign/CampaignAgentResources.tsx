@@ -2,6 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
+import { Label } from "@heroui/react";
 import { Btn, Field, TextInput } from "@/components/ds/controls";
 import { Panel } from "@/components/ds/layout";
 import { isHttpsUrl } from "@/lib/links";
@@ -80,7 +81,8 @@ export default function CampaignAgentResources({
             Les seuls liens que l’agent peut proposer, quand ils répondent au besoin du prospect. Tout autre lien est bloqué.
           </p>
           {resources.map((r, index) => (
-            <div key={index} className="grid grid-cols-1 items-end gap-3 rounded-lg border border-separator p-3 md:grid-cols-[1fr_1.4fr_1.4fr_auto]">
+            // Alignés en haut : un message d'erreur sous un champ ne décale plus les champs voisins.
+            <div key={index} className="grid grid-cols-1 items-start gap-3 rounded-lg border border-separator p-3 md:grid-cols-[1fr_1.4fr_1.4fr_auto]">
               <Field label={`Nom du lien ${index + 1}`} error={labelError(r)}>
                 <TextInput value={r.label} maxLength={120} onChange={(e) => update(index, { label: e.target.value })} placeholder="ex. Inscription" />
               </Field>
@@ -96,9 +98,21 @@ export default function CampaignAgentResources({
               <Field label="Quand le proposer">
                 <TextInput value={r.usage} maxLength={300} onChange={(e) => update(index, { usage: e.target.value })} placeholder="ex. quand le prospect veut s’inscrire" />
               </Field>
-              <Btn variant="tertiary" isIconOnly aria-label={`Retirer le lien ${index + 1}`} onClick={() => setResources((list) => list.filter((_, i) => i !== index))}>
-                <X className="size-4" aria-hidden="true" />
-              </Btn>
+              <div className="flex flex-col gap-1.5">
+                {/* Libellé invisible : place le bouton à la hauteur des champs, sur écran large. */}
+                <Label aria-hidden="true" className="invisible hidden md:block">
+                  &nbsp;
+                </Label>
+                <Btn
+                  variant="tertiary"
+                  isIconOnly
+                  className="md:my-px"
+                  aria-label={`Retirer le lien ${index + 1}`}
+                  onClick={() => setResources((list) => list.filter((_, i) => i !== index))}
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </Btn>
+              </div>
             </div>
           ))}
           <Btn
