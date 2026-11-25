@@ -9,6 +9,7 @@ import { SourceAvatars } from "@/components/ds/SourceAvatars";
 import { CompactList, CompactRow, DataTable, Table } from "@/components/ds/table";
 import { NARROW, useMediaQuery } from "@/lib/useMediaQuery";
 import { TARGETS, formatPeriod, label } from "@/lib/labels";
+import type { SortState } from "@/lib/sorting";
 import type { Campaign, CampaignOverview } from "@/lib/types";
 
 /**
@@ -22,6 +23,8 @@ export default function CampaignsTable({
   emptyState,
   footer,
   linkSuffix = "",
+  sort,
+  onSortChange,
 }: {
   campaigns: Campaign[];
   figures: Map<number, CampaignOverview>;
@@ -30,6 +33,9 @@ export default function CampaignsTable({
   footer?: ReactNode;
   /** Ajouté au lien de chaque ligne (ex. `?from=…` pour revenir à la liste filtrée). */
   linkSuffix?: string;
+  /** Tri côté serveur par nom ou statut (colonnes « Campagne » et « Statut »). */
+  sort?: SortState | null;
+  onSortChange?: (sort: SortState) => void;
 }) {
   const narrow = useMediaQuery(NARROW);
   const status = (c: Campaign) => <CampaignStatusTag status={c.status} />;
@@ -88,9 +94,11 @@ export default function CampaignsTable({
       loadingLabel="Chargement des campagnes…"
       emptyState={emptyState}
       footer={footer}
+      sort={sort}
+      onSortChange={onSortChange}
       columns={[
-        { id: "campaign", label: "Campagne", className: "min-w-[240px]" },
-        { id: "status", label: "Statut" },
+        { id: "name", label: "Campagne", className: "min-w-[240px]", sortable: true },
+        { id: "status", label: "Statut", sortable: true },
         { id: "sources", label: "Sources" },
         { id: "leads", label: "Leads", className: "text-right" },
         { id: "qualified", label: "Qualifiés", className: "text-right" },

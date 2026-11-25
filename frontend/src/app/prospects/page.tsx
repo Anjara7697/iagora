@@ -27,6 +27,7 @@ import { CHANNELS, CONSENT, LEVELS, STAGES, TARGETS, label } from "@/lib/labels"
 import { prospectResultsHref, readProspectResults, type ProspectResults } from "@/lib/prospectResults";
 import type { Campaign, Page, Prospect } from "@/lib/types";
 import { replaceUrl } from "@/lib/url";
+import { sortParam, sortState } from "@/lib/sorting";
 import { useApi } from "@/lib/useApi";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { WIDE, useMediaQuery } from "@/lib/useMediaQuery";
@@ -36,7 +37,7 @@ function Prospects() {
   const state = readProspectResults(params);
   const {
     q, pendingCampaign, stage, campaign, offset, hideDemo, targetCode,
-    levelFilter, channelFilter, consentFilter, mine, sourceFilter,
+    levelFilter, channelFilter, consentFilter, mine, sourceFilter, sort,
   } = state;
   // Vue choisie, sinon selon la largeur (UX-03) : pipeline à partir de 1024 px, table en dessous. Inconnue avant
   // l'hydratation : rien n'est demandé tant qu'elle ne l'est pas (la taille de page en dépend).
@@ -87,7 +88,7 @@ function Prospects() {
   // Recherche envoyée une fois la frappe arrêtée (DATA-01) ; le champ et l'adresse suivent la saisie sans délai.
   const searched = useDebouncedValue(q);
   const { data, error, loading, reload } = useApi<Page<Prospect>>(
-    view && `/prospects${qs({ q: searched, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, limit, offset })}`,
+    view && `/prospects${qs({ q: searched, stage, campaign_id: campaign, source_id: sourceFilter, advisor_id: mine ? user?.id : undefined, pending_campaign: pendingCampaign ? "true" : undefined, demo: hideDemo ? "exclude" : undefined, target_code: targetCode, level: levelFilter, channel: channelFilter, consent_status: consentFilter, sort: view === "table" ? sort : undefined, limit, offset })}`,
     { keepPrevious: true },
   );
   // Total sans filtre, pour « N sur M » (règle 5) : demandé au premier filtre, puis gardé (DATA-03) au lieu d'être
@@ -96,7 +97,8 @@ function Prospects() {
   if (filtered && !needsAll) setNeedsAll(true);
   const all = useApi<Page<Prospect>>(needsAll ? "/prospects?limit=1" : null);
   function reset() {
-    update({ ...readProspectResults(new URLSearchParams()), view: state.view });
+    // Le tri du tableau n'est pas un filtre : il reste.
+    update({ ...readProspectResults(new URLSearchParams()), view: state.view, sort: state.sort });
   }
   async function exportCsv() {
     setExportError(null);
@@ -234,7 +236,13 @@ function Prospects() {
               {view === "pipeline" ? (
                 <ProspectPipeline data={data} stage={stage} memberships={memberships} profileHref={profileHref} />
               ) : (
-                <ProspectTable items={data.items} memberships={memberships} profileHref={profileHref} />
+                <ProspectTable
+                  items={data.items}
+                  memberships={memberships}
+                  profileHref={profileHref}
+                  sort={sortState(sort)}
+                  onSortChange={(next) => update({ sort: sortParam(next) })}
+                />
               )}
             </>
           )}

@@ -1,6 +1,8 @@
 """Campagnes, cibles et sources (F-01, F-02)."""
 
-from sqlalchemy import func, select
+from typing import Any, Literal
+
+from sqlalchemy import ColumnElement, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -108,6 +110,37 @@ async def get_campaign(session: AsyncSession, campaign_id: int) -> Campaign:
     return campaign
 
 
+CampaignSort = Literal["name", "-name", "status", "-status"]
+
+# Ordre métier des statuts (pas l'ordre alphabétique des valeurs) : active, brouillon, en pause.
+_STATUS_ORDER = case(
+    {CampaignStatus.ACTIVE: 0, CampaignStatus.DRAFT: 1, CampaignStatus.INACTIVE: 2},
+    value=Campaign.status,
+    else_=3,
+)
+
+
+def _campaign_order(sort: CampaignSort | None) -> list[ColumnElement[Any]]:
+    """Tri de la liste : nom ou statut, `-` devant pour l'ordre décroissant.
+
+    Par défaut, les plus récentes d'abord. À statut égal, les campagnes restent par nom ;
+    l'identifiant départage toujours (pagination stable).
+    """
+    if sort is None:
+        return [Campaign.id.desc()]
+    descending = sort.startswith("-")
+    name = func.lower(Campaign.name)
+    keys: list[Any] = (
+        [name, Campaign.id] if sort.lstrip("-") == "name" else [_STATUS_ORDER, name, Campaign.id]
+    )
+    if not descending:
+        return [k.asc() for k in keys]
+    # Statut décroissant : seul le statut s'inverse, les noms restent dans l'ordre alphabétique.
+    if sort == "-status":
+        return [_STATUS_ORDER.desc(), name.asc(), Campaign.id.asc()]
+    return [k.desc() for k in keys]
+
+
 async def list_campaigns(
     session: AsyncSession,
     status: CampaignStatus | None,
@@ -115,6 +148,7 @@ async def list_campaigns(
     offset: int,
     *,
     advisor_id: int | None = None,
+    sort: CampaignSort | None = None,
 ) -> tuple[list[Campaign], int]:
     stmt = select(Campaign)
     if advisor_id is not None:
@@ -122,7 +156,7 @@ async def list_campaigns(
     if status is not None:
         stmt = stmt.where(Campaign.status == status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = await session.scalars(stmt.order_by(Campaign.id.desc()).limit(limit).offset(offset))
+    rows = await session.scalars(stmt.order_by(*_campaign_order(sort)).limit(limit).offset(offset))
     return list(rows), total
 
 

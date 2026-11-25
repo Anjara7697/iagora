@@ -319,6 +319,29 @@ test("Mes campagnes : filtre du responsable envoyé avec le statut", async ({
     .toBe(true);
 });
 
+test("trier la liste par nom puis par statut : tri envoyé à l'API et gardé dans l'adresse", async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page);
+  const name = page.getByRole("columnheader", { name: "Campagne" });
+  const status = page.getByRole("columnheader", { name: "Statut" });
+  await expect(name).toHaveAttribute("aria-sort", "none");
+  await name.click();
+  await expect(name).toHaveAttribute("aria-sort", "ascending");
+  await expect(page).toHaveURL(/[?&]sort=name(&|$)/);
+  await expect.poll(() => calls.queries.some((q) => q.includes("sort=name"))).toBe(true);
+  await name.click();
+  await expect(name).toHaveAttribute("aria-sort", "descending");
+  await expect(page).toHaveURL(/[?&]sort=-name(&|$)/);
+  await status.click();
+  await expect(status).toHaveAttribute("aria-sort", "ascending");
+  await expect.poll(() => calls.queries.some((q) => q.includes("sort=status"))).toBe(true);
+  // Les colonnes de chiffres ne sont pas triables (pas de tri côté serveur pour elles).
+  await expect(page.getByRole("columnheader", { name: "Leads" })).not.toHaveAttribute("aria-sort");
+  // Le tri survit au rechargement.
+  await page.reload();
+  await expect(status).toHaveAttribute("aria-sort", "ascending");
+});
+
 async function login(page: Page, then = "/campaigns") {
   await page.goto("/login");
   await page.getByLabel("Email ou nom").fill("admin");

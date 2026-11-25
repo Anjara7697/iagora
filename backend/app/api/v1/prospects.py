@@ -133,6 +133,10 @@ async def list_prospects(
     target_code: Annotated[str | None, Query(description="Programme visé")] = None,
     source_id: Annotated[int | None, Query(description="Source de leads")] = None,
     channel: Annotated[str | None, Query(description="Canal d'arrivée")] = None,
+    sort: Annotated[
+        service.ProspectSort | None,
+        Query(description="Tri : name ou created_at, préfixé de « - » pour l'ordre décroissant"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[ProspectDetail]:
@@ -142,7 +146,7 @@ async def list_prospects(
         limit=limit, offset=offset, demo=demo, pending_campaign=pending_campaign, scope=scope,
         target_code=target_code, source_id=source_id, channel=channel,
         level=level.value if level else None,
-        consent_status=consent_status.value if consent_status else None,
+        consent_status=consent_status.value if consent_status else None, sort=sort,
     )  # fmt: skip
     memberships = await service.get_memberships_for(session, [p.id for p in items])
     labels = await service.campaign_labels(

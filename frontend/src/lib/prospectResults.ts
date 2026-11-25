@@ -1,4 +1,8 @@
 import { CHANNELS, CONSENT, LEVELS, STAGES, TARGETS } from "@/lib/labels";
+import { readSort } from "@/lib/sorting";
+
+/** Champs de tri du tableau des prospects (paramètre `sort` de l'API). */
+export const PROSPECT_SORTS = ["name", "created_at"] as const;
 
 type Query = { get: (key: string) => string | null };
 const option = (query: Query, key: string, options: Record<string, string>) => {
@@ -29,6 +33,7 @@ export function readProspectResults(query: Query) {
     consentFilter: option(query, "consent_status", CONSENT),
     mine: query.get("mine") === "true",
     // Vue choisie ; vide : selon la largeur (pipeline à partir de 1024 px, table en dessous, UX-03).
+    sort: readSort(query.get("sort"), PROSPECT_SORTS),
     view: (query.get("view") === "table" || query.get("view") === "pipeline" ? query.get("view") : "") as ProspectView,
     offset:
       Number.isSafeInteger(offset) && offset >= 0 && offset <= 2147483647
@@ -52,6 +57,7 @@ export function prospectResultsHref(state: ProspectResults) {
     channel: state.channelFilter,
     consent_status: state.consentFilter,
     mine: state.mine ? "true" : "",
+    sort: state.sort,
     view: state.view,
     offset: state.offset ? String(state.offset) : "",
   };

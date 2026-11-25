@@ -6062,6 +6062,8 @@ export interface operations {
             query?: {
                 advisor_id?: number | null;
                 status?: components["schemas"]["CampaignStatus"] | null;
+                /** @description Tri : name ou status, préfixé de « - » pour l'ordre décroissant */
+                sort?: ("name" | "-name" | "status" | "-status") | null;
                 limit?: number;
                 offset?: number;
             };
@@ -8252,6 +8254,8 @@ export interface operations {
                 source_id?: number | null;
                 /** @description Canal d'arrivée */
                 channel?: string | null;
+                /** @description Tri : name ou created_at, préfixé de « - » pour l'ordre décroissant */
+                sort?: ("name" | "-name" | "created_at" | "-created_at") | null;
                 limit?: number;
                 offset?: number;
             };

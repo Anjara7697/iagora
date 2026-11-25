@@ -46,11 +46,15 @@ async def list_campaigns(
     session: DbSession,
     advisor_id: int | None = None,
     status_: Annotated[CampaignStatus | None, Query(alias="status")] = None,
+    sort: Annotated[
+        service.CampaignSort | None,
+        Query(description="Tri : name ou status, préfixé de « - » pour l'ordre décroissant"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page[CampaignRead]:
     rows, total = await service.list_campaigns(
-        session, status_, limit, offset, advisor_id=advisor_id
+        session, status_, limit, offset, advisor_id=advisor_id, sort=sort
     )
     return Page[CampaignRead](
         items=[await service.to_read(session, c) for c in rows],
