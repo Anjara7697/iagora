@@ -668,3 +668,25 @@ l'agent sur une seule campagne sensible.
 - Stockage : collection MongoDB `campaign_agent_modes` (pas de migration). API `GET/PUT /campaigns/{id}/agent-modes`.
 
 **Suite.** Afficher le réglage de chaque campagne sur l'écran Agent ; un réglage par source si le besoin apparaît.
+
+## D-52 — Fiche de campagne donnée à l'agent
+
+**Contexte.** Une campagne ne portait aucune information propre : l'agent ne recevait que son nom, ses liens et la
+liste de ses documents, et ne citait que la base de connaissances, filtrée par programme. Deux campagnes sur le même
+programme (rentrée de janvier, webinaire de mars) faisaient écrire la même chose, sans date limite ni offre.
+
+**Décision** (responsable du projet, 25/11/2026 : « fiche campagne dans le prompt », plutôt que des documents de base
+de connaissances par campagne).
+- Sur chaque campagne (onglet Réglages, administrateurs), une **fiche** de quatre champs : offre et message clé
+  (800 caractères), dates importantes (600), conditions particulières (800), à ne pas dire (600).
+- Offre, dates et conditions sont **des faits validés** : donnés à l'agent à chaque message, ils **l'emportent sur la
+  base de connaissances** en cas de désaccord et justifient un prix, une date ou une condition au contrôle après coup
+  (NF-10). « À ne pas dire » est une consigne, jamais une source.
+- Une question sans extrait de la base n'est plus transférée d'office quand la fiche contient des faits : le modèle
+  répond avec la fiche ou signale lui-même la question sans réponse.
+- **Après la date de fin de la campagne**, la fiche n'est plus donnée à l'agent. La date du jour lui est donnée pour ne
+  jamais présenter une date passée comme à venir.
+- Stockage : colonne JSON `campaigns.brief` (migration 0018), champ `brief` de `PATCH /campaigns/{id}`.
+
+**Suite.** Des documents de base de connaissances rattachés à une campagne, si une campagne a besoin de contenus longs
+(règlement, programme d'un événement).

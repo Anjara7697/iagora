@@ -2799,6 +2799,43 @@ export interface components {
             /** Source Id */
             source_id: number;
         };
+        /**
+         * CampaignBrief
+         * @description Fiche de campagne (D-52) : ce qui distingue cette campagne, donné à l'agent à chaque message.
+         *
+         *     Offre, dates et conditions sont des faits validés que l'agent peut citer ; « à éviter » est une
+         *     consigne, jamais une source. Après la date de fin de la campagne, la fiche n'est plus donnée.
+         */
+        CampaignBrief: {
+            /**
+             * Avoid
+             * @description Ce que l'agent ne doit pas dire ou promettre dans cette campagne
+             * @default
+             * @example Ne pas parler de la rentrée de septembre.
+             */
+            avoid: string;
+            /**
+             * Conditions
+             * @description Conditions particulières (tarif, places, public)
+             * @default
+             * @example 30 places. Offre réservée aux candidats inscrits avant le 15 décembre.
+             */
+            conditions: string;
+            /**
+             * Key Dates
+             * @description Dates importantes (rentrée, date limite, événement)
+             * @default
+             * @example Date limite de candidature : 15 décembre. Rentrée : 12 janvier.
+             */
+            key_dates: string;
+            /**
+             * Offer
+             * @description Offre et message clé
+             * @default
+             * @example Rentrée de janvier en alternance : frais de dossier offerts
+             */
+            offer: string;
+        };
         /** CampaignCreate */
         CampaignCreate: {
             /** Description */
@@ -2919,6 +2956,7 @@ export interface components {
         };
         /** CampaignRead */
         CampaignRead: {
+            brief?: components["schemas"]["CampaignBrief"];
             /**
              * Created At
              * Format: date-time
@@ -3023,6 +3061,8 @@ export interface components {
         CampaignStatus: "draft" | "active" | "inactive";
         /** CampaignUpdate */
         CampaignUpdate: {
+            /** @description Remplace la fiche de campagne */
+            brief?: components["schemas"]["CampaignBrief"] | null;
             /** Description */
             description?: string | null;
             /**

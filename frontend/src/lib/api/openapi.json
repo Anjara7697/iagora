@@ -1012,6 +1012,53 @@
         "title": "CampaignAttribution",
         "type": "object"
       },
+      "CampaignBrief": {
+        "description": "Fiche de campagne (D-52) : ce qui distingue cette campagne, donné à l'agent à chaque message.\n\nOffre, dates et conditions sont des faits validés que l'agent peut citer ; « à éviter » est une\nconsigne, jamais une source. Après la date de fin de la campagne, la fiche n'est plus donnée.",
+        "properties": {
+          "avoid": {
+            "default": "",
+            "description": "Ce que l'agent ne doit pas dire ou promettre dans cette campagne",
+            "examples": [
+              "Ne pas parler de la rentrée de septembre."
+            ],
+            "maxLength": 600,
+            "title": "Avoid",
+            "type": "string"
+          },
+          "conditions": {
+            "default": "",
+            "description": "Conditions particulières (tarif, places, public)",
+            "examples": [
+              "30 places. Offre réservée aux candidats inscrits avant le 15 décembre."
+            ],
+            "maxLength": 800,
+            "title": "Conditions",
+            "type": "string"
+          },
+          "key_dates": {
+            "default": "",
+            "description": "Dates importantes (rentrée, date limite, événement)",
+            "examples": [
+              "Date limite de candidature : 15 décembre. Rentrée : 12 janvier."
+            ],
+            "maxLength": 600,
+            "title": "Key Dates",
+            "type": "string"
+          },
+          "offer": {
+            "default": "",
+            "description": "Offre et message clé",
+            "examples": [
+              "Rentrée de janvier en alternance : frais de dossier offerts"
+            ],
+            "maxLength": 800,
+            "title": "Offer",
+            "type": "string"
+          }
+        },
+        "title": "CampaignBrief",
+        "type": "object"
+      },
       "CampaignCreate": {
         "properties": {
           "description": {
@@ -1319,6 +1366,9 @@
       },
       "CampaignRead": {
         "properties": {
+          "brief": {
+            "$ref": "#/components/schemas/CampaignBrief"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1558,6 +1608,17 @@
       },
       "CampaignUpdate": {
         "properties": {
+          "brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampaignBrief"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Remplace la fiche de campagne"
+          },
           "description": {
             "anyOf": [
               {
