@@ -524,3 +524,81 @@ async def test_a_queued_agent_event_failing_repeatedly_is_abandoned(mongo_db, mo
         db=mongo_db, session_factory=None, llm=None, calendar=None, knowledge=None
     )
     assert len(calls) == auto.MAX_EVENT_ERRORS
+
+
+# --- Emails rapprochés : une seule réponse ---
+
+
+async def test_close_messages_from_a_prospect_get_a_single_reply(
+    client,
+    env,
+    session_factory,
+    mongo_db,  # noqa: F811
+):
+    from app.services.agent_events import enqueue_reply
+
+    pid, mid, cid = await lead(client, "Bonjour, je souhaite des informations sur la formation")
+    first = await enqueue_reply(mongo_db, cid, delay=timedelta(seconds=-1))
+    await say(client, cid, "Je voudrais aussi connaître le rythme en alternance")
+    second = await enqueue_reply(mongo_db, cid, delay=timedelta(seconds=-1))
+    assert first != second
+    await auto.run_pending_replies(
+        db=mongo_db,
+        session_factory=session_factory,
+        llm=env.llm,
+        calendar=env.calendar,
+        knowledge=env.kb,
+    )
+    assert len(await agent_messages(client, cid)) == 1
+    # La réponse traite les deux messages, pas seulement le dernier.
+    assert any("informations sur la formation" in q and "alternance" in q for q in env.kb.queries)
+    superseded = await mongo_db["agent_events"].find_one({"_id": first})
+    answered = await mongo_db["agent_events"].find_one({"_id": second})
+    assert superseded["completed"] and superseded.get("superseded")
+    assert answered["completed"] and not answered.get("superseded")
+
+
+async def test_a_grouped_reply_waits_until_the_delay_after_the_last_message(
+    client,
+    env,
+    session_factory,
+    mongo_db,  # noqa: F811
+):
+    from app.services.agent_events import enqueue_reply
+
+    pid, mid, cid = await lead(client, "Bonjour")
+    await enqueue_reply(mongo_db, cid, delay=timedelta(seconds=-1))
+    await say(client, cid, "Encore une question")
+    await enqueue_reply(mongo_db, cid, delay=timedelta(seconds=120))  # email tout juste reçu
+    deps = {
+        "db": mongo_db,
+        "session_factory": session_factory,
+        "llm": env.llm,
+        "calendar": env.calendar,
+        "knowledge": env.kb,
+    }
+    await auto.run_pending_replies(**deps)
+    assert await agent_messages(client, cid) == []  # le premier email ne reçoit pas sa réponse
+    await mongo_db["agent_events"].update_many(
+        {"completed": False}, {"$set": {"next_attempt_at": datetime.now(UTC)}}
+    )  # le délai est écoulé
+    await auto.run_pending_replies(**deps)
+    assert len(await agent_messages(client, cid)) == 1
+
+
+def test_unanswered_messages_are_merged_since_the_last_reply():
+    from app.agents.runtime import unanswered_text
+
+    def msg(role, content, **metadata):
+        return {"role": role, "content": content, "metadata": metadata}
+
+    messages = [
+        msg("prospect", "ancien"),
+        msg("agent", "réponse envoyée", delivery="sent"),
+        msg("prospect", "premier"),
+        msg("agent", "brouillon", delivery="draft", draft={"status": "pending"}),
+        msg("prospect", "second"),
+    ]
+    assert unanswered_text(messages) == "premier\n\nsecond"
+    assert unanswered_text(messages[:2]) == ""
+    assert unanswered_text([msg("prospect", "x" * 30_000)]) == "x" * 20_000
