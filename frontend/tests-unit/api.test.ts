@@ -13,11 +13,38 @@ describe("humanError : message lisible par un conseiller", () => {
     assert.equal(humanError(403, { detail: "Forbidden" }), "Votre rôle ne permet pas cette action.");
   });
 
-  test("validation (422) : nomme le champ en cause, pas le message anglais", () => {
-    const payload = { detail: [{ loc: ["body", "email"], msg: "value is not a valid email address" }] };
-    assert.equal(humanError(422, payload), "Information manquante ou invalide (champ « email »).");
+  test("validation (422) : nomme le champ en cause en français, pas le message anglais", () => {
+    const invalid = { detail: [{ loc: ["body", "email"], msg: "value is not a valid email address", type: "value_error" }] };
+    assert.equal(humanError(422, invalid), "Information invalide : « Adresse email ».");
+    const missing = { detail: [{ loc: ["body", "first_name"], msg: "Field required", type: "missing" }] };
+    assert.equal(humanError(422, missing), "Information manquante : « Prénom ».");
     assert.equal(
       humanError(422, { detail: [{ loc: ["body"], msg: "Field required" }] }),
+      "Information manquante ou invalide : vérifiez le formulaire.",
+    );
+  });
+
+  test("validation (422) : champ d'une liste, plusieurs champs, champ inconnu", () => {
+    const nested = { detail: [{ loc: ["body", "sources", 0, "platform"], type: "enum" }] };
+    assert.equal(humanError(422, nested), "Information invalide : « Plateforme ».");
+    const two = {
+      detail: [
+        { loc: ["body", "smtp_host"], type: "missing" },
+        { loc: ["body", "smtp_port"], type: "missing" },
+      ],
+    };
+    assert.equal(humanError(422, two), "Information manquante : « Serveur SMTP » et « Port SMTP ».");
+    const many = {
+      detail: ["name", "start_date", "end_date", "email_subject", "champ_interne"].map((f) => ({ loc: ["body", f], type: "value_error" })),
+    };
+    assert.equal(humanError(422, many), "Information invalide : « Nom », « Date de début », « Date de fin » et 2 autres.");
+    // Jamais de nom technique, même pour un champ non répertorié.
+    assert.equal(
+      humanError(422, { detail: [{ loc: ["body", "champ_interne"], type: "missing" }] }),
+      "Information manquante ou invalide : vérifiez le formulaire.",
+    );
+    assert.equal(
+      humanError(422, { detail: [{ loc: ["query", "constructor"], type: "missing" }] }),
       "Information manquante ou invalide : vérifiez le formulaire.",
     );
   });
