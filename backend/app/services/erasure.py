@@ -42,7 +42,13 @@ from app.services.errors import NotFoundError
 
 REASONS = ("request", "retention", "other")
 _SALT = "iagora-suppression-v1:"
-MONGO_COLLECTIONS = ("conversations", "agent_runs", "agent_events", "agent_activity")
+MONGO_COLLECTIONS = (
+    "conversations",
+    "agent_runs",
+    "agent_events",
+    "agent_activity",
+    "advisor_alerts",
+)
 # Ces événements servent de marqueur d'idempotence (un rejeu ne recrée rien) : on ne les supprime
 # pas, on coupe seulement leur lien avec la fiche effacée.
 UNLINK_COLLECTIONS = ("meta_lead_events",)

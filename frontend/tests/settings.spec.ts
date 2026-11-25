@@ -16,6 +16,9 @@ const current = {
   agent_nurture_max_score: 24,
   agent_min_confidence: 0.5,
   agent_extra_terms: "",
+  advisor_alerts_enabled: true,
+  advisor_alerts_digest_hour: 8,
+  console_url: "",
   email_footer: "Répondez STOP.",
   email_ai_notice: "Ce message a été rédigé par un assistant virtuel (IA).",
   email_ai_notice_reviewed:
@@ -493,6 +496,24 @@ test("les seuils de décision de l’agent se règlent dans Agent et relances", 
   const put = calls.find((c) => (c as { put?: unknown }).put) as { put: Record<string, unknown> };
   expect(put.put).toMatchObject({ agent_meeting_min_score: 40, agent_extra_terms: "Pass Transition" });
   await auditA11y(page, "paramètres (seuils de l’agent)");
+});
+
+test("les alertes des conseillers se règlent dans Agent et relances", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings?section=agent");
+  const agent = page.getByRole("region", { name: "Agent et relances" });
+  await agent.getByLabel("Heure du récapitulatif (fuseau de l’agenda)").fill("9");
+  await agent.getByLabel("Adresse de la console").fill("https://console.datum.fr");
+  await page.getByRole("button", { name: "Enregistrer les paramètres" }).click();
+  await expect(page.getByText("Paramètres enregistrés", { exact: true })).toBeVisible();
+  const put = calls.find((c) => (c as { put?: unknown }).put) as { put: Record<string, unknown> };
+  expect(put.put).toMatchObject({
+    advisor_alerts_enabled: true,
+    advisor_alerts_digest_hour: 9,
+    console_url: "https://console.datum.fr",
+  });
 });
 
 test("valeur hors bornes ou vide : signalée sous le champ, enregistrement bloqué jusqu'à correction", async ({ page }) => {
