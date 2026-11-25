@@ -1,7 +1,7 @@
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 
 from app.api.dependencies import (
     ADMIN_ONLY,
@@ -12,8 +12,11 @@ from app.api.dependencies import (
     DbSession,
     MongoDb,
 )
+from app.core.agent_mode import AgentMode
 from app.models.enums import CampaignStatus
 from app.schemas.campaign import (
+    AgentModesByKind,
+    CampaignAgentModesRead,
     CampaignCreate,
     CampaignFileRead,
     CampaignOverview,
@@ -26,7 +29,7 @@ from app.schemas.campaign import (
     TargetRead,
 )
 from app.schemas.common import Page
-from app.services import campaign_files, campaign_ownership, first_contacts
+from app.services import agent_settings, campaign_files, campaign_ownership, first_contacts
 from app.services import campaigns as service
 from app.services import scope as scope_service
 
@@ -222,3 +225,60 @@ async def prepare_first_contacts(
     seul."""
     visible = await scope_service.prospect_ids(session, scope)
     return _first_contacts_read(await first_contacts.enqueue(session, db, campaign_id, visible))
+
+
+async def _agent_modes_read(db: MongoDb, campaign_id: int) -> CampaignAgentModesRead:
+    modes = await agent_settings.get_campaign_modes(db, campaign_id)
+    return CampaignAgentModesRead(
+        campaign_id=campaign_id,
+        overrides=AgentModesByKind(**{k.value: v for k, v in modes.overrides.items()}),
+        effective={
+            k.value: v for k, v in (await agent_settings.effective_modes(db, campaign_id)).items()
+        },
+        global_mode=await agent_settings.get_mode(db),
+        auto_allowed=agent_settings.auto_mode_allowed(),
+        updated_by=modes.updated_by,
+        updated_at=modes.updated_at,
+    )
+
+
+@router.get("/{campaign_id}/agent-modes", response_model=CampaignAgentModesRead)
+async def get_agent_modes(
+    campaign_id: int, session: DbSession, db: MongoDb
+) -> CampaignAgentModesRead:
+    """Autonomie de l'agent sur la campagne, par type de message (D-51)."""
+    await service.get_campaign(session, campaign_id)
+    return await _agent_modes_read(db, campaign_id)
+
+
+@router.put(
+    "/{campaign_id}/agent-modes",
+    response_model=CampaignAgentModesRead,
+    dependencies=[ADMIN_ONLY],
+)
+async def set_agent_modes(
+    campaign_id: int,
+    payload: AgentModesByKind,
+    session: DbSession,
+    db: MongoDb,
+    user: CurrentUser,
+) -> CampaignAgentModesRead:
+    """Règle l'agent de la campagne pour les premiers contacts, les réponses et les relances :
+    `null` (réglage général), `assisted`, `auto` ou `manual` (arrêté sur cette campagne).
+    L'arrêt d'urgence général prime toujours ; `auto` reste refusé en production (D-16)."""
+    await service.get_campaign(session, campaign_id)
+    overrides = {
+        agent_settings.MessageKind(kind): mode
+        for kind, mode in payload.model_dump().items()
+        if mode is not None
+    }
+    if AgentMode.AUTO in overrides.values() and not agent_settings.auto_mode_allowed():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail=(
+                "Mode automatique désactivé en production : "
+                "chaque réponse est validée par un conseiller"
+            ),
+        )
+    await agent_settings.set_campaign_modes(db, campaign_id, overrides, user.id)
+    return await _agent_modes_read(db, campaign_id)

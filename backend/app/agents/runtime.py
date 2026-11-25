@@ -171,8 +171,7 @@ async def _run_agent(
         )
         if previous:
             return to_result(previous, str(previous["_id"]))
-    mode = mode or await agent_settings.get_mode(db)
-    if mode is AgentMode.MANUAL:
+    if (mode or await agent_settings.get_mode(db)) is AgentMode.MANUAL:
         raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucune réponse automatique")
     if doc["status"] == ConversationStatus.CLOSED.value:
         raise ConflictError("La conversation est clôturée")
@@ -180,6 +179,7 @@ async def _run_agent(
         raise ConflictError("Conversation transférée à un conseiller : l'agent n'intervient plus")
     if not await commercial_context.memberships(session, [pid]):
         raise ConflictError("Attribuer une campagne et une source avant de lancer l'agent")
+    supersede_pending = False
     if follow_up:
         await follow_ups.eligible_membership(session, pid, follow_up_membership_id)
         if not messages or drafts.is_pending(messages[-1]):
@@ -189,7 +189,7 @@ async def _run_agent(
         trigger, inbound_text = "follow_up", ""
     elif event_id is not None and inputs:
         # Un message peut arriver pendant une autre réponse : son événement reste distinct.
-        await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
+        supersede_pending = True
         trigger, inbound_text = "inbound_message", unanswered_text(messages)
     elif not messages:
         # L'agent écrit en premier : seulement à une personne qui a consenti (import coché, case de
@@ -207,6 +207,19 @@ async def _run_agent(
         raise ConflictError("Un brouillon est en attente de validation")
     else:
         raise ConflictError("Aucun message du prospect à traiter")
+
+    # Autonomie de la campagne pour ce type de message (D-51) : elle peut arrêter l'agent sur
+    # cette campagne, ou se passer de validation là où le mode automatique est permis.
+    if mode is None:
+        mode = await agent_settings.prospect_mode(
+            session, db, pid, agent_settings.kind_of_trigger(trigger)
+        )
+    if mode is AgentMode.MANUAL:
+        raise ConflictError(
+            "Agent arrêté pour ce type de message sur cette campagne : un conseiller répond"
+        )
+    if supersede_pending:
+        await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
 
     recorder = agent_activity.ActivityRecorder(db, conv_id, pid, mode=mode, trigger=trigger)
     deps = Deps(

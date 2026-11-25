@@ -388,3 +388,7 @@ export type Analytics = Schemas["Analytics"];
 
 /** Doublon suspect : deux fiches qui semblent décrire la même personne, à trancher (fusion ou « distinctes »). */
 export type DuplicatePair = Schemas["DuplicatePair"];
+
+export type AgentMessageKind = "first_contact" | "reply" | "follow_up";
+
+export type CampaignAgentModes = Schemas["CampaignAgentModesRead"];

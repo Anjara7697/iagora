@@ -253,6 +253,13 @@ async def regenerate_draft(
     proposé par le modèle) et reste tracée dans « Décisions de l'agent »."""
     if await agent_settings.get_mode(db) is AgentMode.MANUAL:
         raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucune réponse automatique")
+    doc = await conversation_service.get_doc(db, conversation_id)
+    draft = next((m for m in doc.get("messages", []) if m.get("id") == message_id), None)
+    kind = agent_settings.kind_of_message((draft or {}).get("metadata"))
+    if await agent_settings.prospect_mode(session, db, int(doc["prospect_id"]), kind) is (
+        AgentMode.MANUAL
+    ):
+        raise ConflictError("Agent arrêté pour ce type de message sur cette campagne")
     instruction = payload.instruction if payload else None
     await drafts.supersede(db, conversation_id, message_id, user.id, instruction)
     return await runtime.run_agent(

@@ -26,7 +26,7 @@ from app.config import Settings
 from app.graph.ports import Calendar, KnowledgeBase, LanguageModel
 from app.integrations.email.base import EmailClient
 from app.integrations.email.factory import create_email_client
-from app.models import FollowUp, Prospect
+from app.models import CampaignProspect, CampaignSource, FollowUp, Prospect
 from app.models.enums import FollowUpStatus
 from app.services import (
     advisor_alerts,
@@ -255,17 +255,30 @@ async def run_due_follow_ups(
         summary.skipped = "hors de la fenêtre d'envoi"
         return summary
 
+    # Campagnes dont les relances sont arrêtées (D-51) : leurs relances restent programmées et
+    # repartent quand la campagne reprend ; elles ne bloquent pas celles des autres campagnes.
+    paused = await agent_settings.campaigns_paused_for(db, agent_settings.MessageKind.FOLLOW_UP)
     async with session_factory() as session:
-        due = list(
-            await session.scalars(
-                select(FollowUp.id)
-                .join(Prospect, Prospect.id == FollowUp.prospect_id)
-                .where(or_(Prospect.email.is_(None), ~Prospect.email.ilike("%@demo.example.com")))
-                .where(FollowUp.status == FollowUpStatus.SCHEDULED, FollowUp.scheduled_at <= now)
-                .order_by(FollowUp.scheduled_at)
-                .limit(BATCH)
-            )
+        query = (
+            select(FollowUp.id)
+            .join(Prospect, Prospect.id == FollowUp.prospect_id)
+            .where(or_(Prospect.email.is_(None), ~Prospect.email.ilike("%@demo.example.com")))
+            .where(FollowUp.status == FollowUpStatus.SCHEDULED, FollowUp.scheduled_at <= now)
         )
+        if paused:
+            query = (
+                query.outerjoin(
+                    CampaignProspect, CampaignProspect.id == FollowUp.campaign_prospect_id
+                )
+                .outerjoin(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+                .where(
+                    or_(
+                        CampaignSource.campaign_id.is_(None),
+                        CampaignSource.campaign_id.not_in(paused),
+                    )
+                )
+            )
+        due = list(await session.scalars(query.order_by(FollowUp.scheduled_at).limit(BATCH)))
     for follow_up_id in due:
         async with session_factory() as session:
             if not await _claim(session, follow_up_id, now):

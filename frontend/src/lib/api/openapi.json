@@ -120,6 +120,43 @@
         "title": "AgentModeUpdate",
         "type": "object"
       },
+      "AgentModesByKind": {
+        "description": "Mode de l'agent par type de message ; `null` : suivre le réglage général.",
+        "properties": {
+          "first_contact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "follow_up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "AgentModesByKind",
+        "type": "object"
+      },
       "AgentRunRequest": {
         "description": "Lance l'agent sur une conversation, ou ouvre/reprend celle d'un prospect.",
         "properties": {
@@ -895,6 +932,64 @@
           }
         },
         "title": "CalendarSettingsWrite",
+        "type": "object"
+      },
+      "CampaignAgentModesRead": {
+        "description": "Autonomie de l'agent sur une campagne (D-51) : réglages propres à la campagne, et mode\nréellement appliqué à chaque type de message (arrêt d'urgence et D-16 compris).",
+        "properties": {
+          "auto_allowed": {
+            "title": "Auto Allowed",
+            "type": "boolean"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "integer"
+          },
+          "effective": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AgentMode"
+            },
+            "title": "Effective",
+            "type": "object"
+          },
+          "global_mode": {
+            "$ref": "#/components/schemas/AgentMode"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/AgentModesByKind"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "overrides",
+          "effective",
+          "global_mode",
+          "auto_allowed"
+        ],
+        "title": "CampaignAgentModesRead",
         "type": "object"
       },
       "CampaignAttribution": {
@@ -4576,7 +4671,8 @@
                 "enum": [
                   "grouping",
                   "manual_mode",
-                  "unassigned"
+                  "unassigned",
+                  "campaign_paused"
                 ],
                 "type": "string"
               },
@@ -4702,7 +4798,8 @@
                 "enum": [
                   "grouping",
                   "manual_mode",
-                  "unassigned"
+                  "unassigned",
+                  "campaign_paused"
                 ],
                 "type": "string"
               },
@@ -10467,6 +10564,110 @@
           }
         ],
         "summary": "Update Campaign",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/agent-modes": {
+      "get": {
+        "description": "Autonomie de l'agent sur la campagne, par type de message (D-51).",
+        "operationId": "get_agent_modes_api_v1_campaigns__campaign_id__agent_modes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignAgentModesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Agent Modes",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "put": {
+        "description": "Règle l'agent de la campagne pour les premiers contacts, les réponses et les relances :\n`null` (réglage général), `assisted`, `auto` ou `manual` (arrêté sur cette campagne).\nL'arrêt d'urgence général prime toujours ; `auto` reste refusé en production (D-16).",
+        "operationId": "set_agent_modes_api_v1_campaigns__campaign_id__agent_modes_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentModesByKind"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignAgentModesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Set Agent Modes",
         "tags": [
           "campaigns"
         ]

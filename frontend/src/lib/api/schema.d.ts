@@ -451,6 +451,32 @@ export interface paths {
         patch: operations["update_campaign_api_v1_campaigns__campaign_id__patch"];
         trace?: never;
     };
+    "/api/v1/campaigns/{campaign_id}/agent-modes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Agent Modes
+         * @description Autonomie de l'agent sur la campagne, par type de message (D-51).
+         */
+        get: operations["get_agent_modes_api_v1_campaigns__campaign_id__agent_modes_get"];
+        /**
+         * Set Agent Modes
+         * @description Règle l'agent de la campagne pour les premiers contacts, les réponses et les relances :
+         *     `null` (réglage général), `assisted`, `auto` ou `manual` (arrêté sur cette campagne).
+         *     L'arrêt d'urgence général prime toujours ; `auto` reste refusé en production (D-16).
+         */
+        put: operations["set_agent_modes_api_v1_campaigns__campaign_id__agent_modes_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{campaign_id}/files": {
         parameters: {
             query?: never;
@@ -2424,6 +2450,15 @@ export interface components {
             mode: components["schemas"]["AgentMode"];
         };
         /**
+         * AgentModesByKind
+         * @description Mode de l'agent par type de message ; `null` : suivre le réglage général.
+         */
+        AgentModesByKind: {
+            first_contact?: components["schemas"]["AgentMode"] | null;
+            follow_up?: components["schemas"]["AgentMode"] | null;
+            reply?: components["schemas"]["AgentMode"] | null;
+        };
+        /**
          * AgentRunRequest
          * @description Lance l'agent sur une conversation, ou ouvre/reprend celle d'un prospect.
          */
@@ -2735,6 +2770,27 @@ export interface components {
              * @enum {string}
              */
             provider: "none" | "demo" | "google";
+        };
+        /**
+         * CampaignAgentModesRead
+         * @description Autonomie de l'agent sur une campagne (D-51) : réglages propres à la campagne, et mode
+         *     réellement appliqué à chaque type de message (arrêt d'urgence et D-16 compris).
+         */
+        CampaignAgentModesRead: {
+            /** Auto Allowed */
+            auto_allowed: boolean;
+            /** Campaign Id */
+            campaign_id: number;
+            /** Effective */
+            effective: {
+                [key: string]: components["schemas"]["AgentMode"];
+            };
+            global_mode: components["schemas"]["AgentMode"];
+            overrides: components["schemas"]["AgentModesByKind"];
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: number | null;
         };
         /** CampaignAttribution */
         CampaignAttribution: {
@@ -4158,7 +4214,7 @@ export interface components {
             /** Updated At */
             updated_at?: string | null;
             /** Waiting Reason */
-            waiting_reason?: ("grouping" | "manual_mode" | "unassigned") | null;
+            waiting_reason?: ("grouping" | "manual_mode" | "unassigned" | "campaign_paused") | null;
         };
         /**
          * LiveActivityItem
@@ -4191,7 +4247,7 @@ export interface components {
             /** Updated At */
             updated_at?: string | null;
             /** Waiting Reason */
-            waiting_reason?: ("grouping" | "manual_mode" | "unassigned") | null;
+            waiting_reason?: ("grouping" | "manual_mode" | "unassigned" | "campaign_paused") | null;
         };
         /** LiveActivityStep */
         LiveActivityStep: {
@@ -6801,6 +6857,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_modes_api_v1_campaigns__campaign_id__agent_modes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignAgentModesRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_agent_modes_api_v1_campaigns__campaign_id__agent_modes_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentModesByKind"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignAgentModesRead"];
                 };
             };
             /** @description Validation Error */

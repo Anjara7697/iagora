@@ -105,6 +105,12 @@ async def enqueue(
         raise ConflictError("Activez la campagne avant de préparer les premiers contacts")
     if await agent_settings.get_mode(db) is AgentMode.MANUAL:
         raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucun message n'est préparé")
+    kind = agent_settings.MessageKind.FIRST_CONTACT
+    if await agent_settings.campaign_mode(db, campaign_id, kind) is AgentMode.MANUAL:
+        raise ConflictError(
+            "Premiers contacts de l'agent arrêtés sur cette campagne : "
+            "changez-le dans les Réglages de la campagne"
+        )
     for pid in result.eligible[:MAX_PER_REQUEST]:
         conversation, _ = await conversations.create_conversation(
             session, db, ConversationCreate(prospect_id=pid, channel="email")

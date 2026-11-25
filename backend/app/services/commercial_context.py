@@ -73,3 +73,18 @@ async def is_active(session: AsyncSession, membership: CampaignProspect) -> bool
         )
     )
     return value is not None
+
+
+async def campaign_ids(session: AsyncSession, prospect_ids: list[int]) -> dict[int, int]:
+    """Campagne actuelle de chaque prospect (celle de son dernier rattachement)."""
+    if not prospect_ids:
+        return {}
+    rows = await session.execute(
+        select(CampaignProspect.prospect_id, CampaignSource.campaign_id)
+        .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
+        .where(
+            CampaignProspect.prospect_id.in_(prospect_ids),
+            CampaignProspect.id.in_(latest_ids()),
+        )
+    )
+    return {row[0]: row[1] for row in rows}
