@@ -56,6 +56,13 @@ async function mockApi(
   opts: { source?: string; failLoad?: () => boolean; llmFails?: boolean; bannerFails?: boolean } = {},
 ) {
   let banner = false;
+  let houseRules = {
+    style: "Phrases courtes.\nParler de « parcours » plutôt que de « cursus ».",
+    banned: ["n’hésitez pas"],
+    version: 2,
+    updated_by: 1,
+    updated_at: "2026-11-24T10:00:00Z",
+  };
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/v1", "");
@@ -104,7 +111,25 @@ async function mockApi(
         return;
       }
       code = 404;
-    } else if (path === "/settings/email/preview") {
+    } else if (path === "/settings/house-rules" && request.method() === "PUT") {
+      const sent = request.postDataJSON();
+      calls.push({ houseRules: sent });
+      houseRules = { ...sent, version: houseRules.version + 1, updated_by: 1, updated_at: "2026-11-25T14:00:00Z" };
+      body = houseRules;
+    } else if (path === "/settings/house-rules") body = houseRules;
+    else if (path === "/settings/house-rules/history")
+      body = [
+        houseRules,
+        { style: "Ton chaleureux.", banned: [], version: 1, updated_by: 1, updated_at: "2026-11-20T09:00:00Z" },
+      ];
+    else if (path === "/analytics")
+      body = {
+        reject_reasons: [
+          { reason: "Trop long", count: 4 },
+          { reason: "Trop familier, pas notre ton", count: 2 },
+        ],
+      };
+    else if (path === "/settings/email/preview") {
       calls.push({ preview: request.postDataJSON() });
       body = { html: "<p>Exemple IAGORA</p>", text: "Exemple" };
     } else if (path === "/todo")
@@ -603,4 +628,40 @@ test("bandeau chargé : un échec de lecture est dit, pas confondu avec l'absenc
   await page.goto("/settings?section=emails");
   const emails = page.getByRole("region", { name: "Emails", exact: true });
   await expect(emails.getByRole("alert").filter({ hasText: "Bandeau indisponible" })).toContainText("Base indisponible");
+});
+
+
+test("les consignes maison s'écrivent, s'enregistrent à part et une version se reprend", async ({ page }) => {
+  const calls: unknown[] = [];
+  await mockApi(page, calls);
+  await login(page);
+  await page.goto("/settings");
+  await goSection(page, "Consignes maison");
+  const card = page.getByRole("region", { name: "Consignes maison" });
+  await expect(card.getByText("Les règles de sécurité de l’agent passent toujours avant ces consignes")).toBeVisible();
+  await expect(card.getByLabel("Ton et règles de style")).toHaveValue(/Phrases courtes/);
+  // La barre des autres paramètres est masquée : ces consignes ont leur propre bouton.
+  await expect(page.getByRole("button", { name: "Enregistrer les paramètres" })).toBeHidden();
+  await expect(card.getByRole("button", { name: "Enregistrer les consignes" })).toBeDisabled();
+
+  const phrase = card.getByRole("textbox", { name: "Expressions interdites" });
+  await phrase.fill("N’HÉSITEZ pas");
+  await expect(card.getByText("Cette expression est déjà dans la liste.")).toBeVisible();
+  await expect(card.getByRole("button", { name: "Ajouter l’expression" })).toBeDisabled();
+  await phrase.fill("  à   très vite ");
+  await phrase.press("Enter");
+  await expect(card.getByRole("list", { name: "Liste des expressions interdites" }).getByRole("listitem")).toHaveCount(2);
+  await card.getByRole("button", { name: "Retirer « n’hésitez pas »" }).click();
+  await expect(card.getByText("Modifications non enregistrées")).toBeVisible();
+  await card.getByRole("button", { name: "Enregistrer les consignes" }).click();
+  await expect(page.getByText("Consignes maison enregistrées (version 3)")).toBeVisible();
+  expect(calls).toContainEqual({
+    houseRules: { style: "Phrases courtes.\nParler de « parcours » plutôt que de « cursus ».", banned: ["à très vite"] },
+  });
+
+  await expect(page.getByRole("region", { name: "Motifs de refus" }).getByText("Trop long")).toBeVisible();
+  const versions = page.getByRole("region", { name: "Versions précédentes" });
+  await versions.getByRole("button", { name: "Reprendre" }).click();
+  await expect(card.getByLabel("Ton et règles de style")).toHaveValue("Ton chaleureux.");
+  await auditA11y(page, "paramètres (consignes maison)");
 });

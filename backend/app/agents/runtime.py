@@ -31,6 +31,7 @@ from app.services import (
     conversations,
     drafts,
     follow_ups,
+    house_rules,
     lease,
     runtime_settings,
 )
@@ -222,6 +223,7 @@ async def _run_agent(
         await drafts.supersede_pending(db, conv_id, "Nouvelle entrée à traiter")
 
     recorder = agent_activity.ActivityRecorder(db, conv_id, pid, mode=mode, trigger=trigger)
+    rules = await house_rules.get_rules(db)
     deps = Deps(
         llm=llm,
         gateway=DbGateway(session, db),
@@ -229,6 +231,7 @@ async def _run_agent(
         calendar=calendar,
         knowledge=knowledge,
         tuning=runtime_settings.tuning(await runtime_settings.effective(db, get_settings())),
+        house_rules=rules,
         reporter=recorder,
     )
     graph = build_workflow(deps)
@@ -249,6 +252,8 @@ async def _run_agent(
         "started_at": started_at,
         "llm": {"provider": llm.provider, "model": llm.model},
         "prompt_version": prompts.PROMPT_VERSION,
+        # D-53 : version des consignes maison qui ont guidé la rédaction (0 : aucune).
+        "house_rules_version": rules.version,
         **({"instruction": instruction} if instruction else {}),
     }
     # Appels réels au modèle (dont le modèle de secours), durées et jetons (AUDIT-AI-004).

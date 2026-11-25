@@ -1077,3 +1077,49 @@ async def test_only_a_fictitious_prospect_may_use_fictitious_documents(
     pid, mid, cid = await lead(client, "Combien de temps dure le programme ?", email=email)
     await run(client, cid)
     assert env.kb.include_demo_calls and set(env.kb.include_demo_calls) == {expected}
+
+
+async def test_house_rules_guide_the_agent_and_banned_phrases_never_leave(client, env, mongo_db):
+    """D-53 : les consignes maison sont données à l'agent après ses règles absolues ; une
+    expression interdite provoque un nouvel essai, puis un transfert si elle revient."""
+    saved = await client.put(
+        f"{API}/settings/house-rules",
+        json={
+            "style": "- Phrases courtes.\nTerminer par « Belle journée »",
+            "banned": ["n'hésitez pas", "Super"],
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="interested")
+    replies = iter(["N’hésitez pas à me dire ce qui vous attire.", "Qu'est-ce qui vous attire ?"])
+    env.llm.reply = lambda system, messages: next(replies)
+    out = (await run(client, cid)).json()
+    assert out["reply"] == "Qu'est-ce qui vous attire ?"  # le nouvel essai est accepté
+    first, retry = (c[0] for c in env.llm.generate_calls)
+    assert first.index("Règles absolues") < first.index("Consignes maison")
+    assert "- Phrases courtes.\n- Terminer par « Belle journée »" in first
+    assert "« n'hésitez pas », « Super »" in first
+    assert "employait « n'hésitez pas »" in retry
+    run_doc = await mongo_db["agent_runs"].find_one({"conversation_id": cid})
+    assert run_doc["house_rules_version"] == 1
+
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "Super, qu'est-ce qui vous attire ?"
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"
+    assert out["reply"] is None or "Super" not in out["reply"]
+
+
+async def test_house_rules_are_never_a_source_of_facts(client, env):
+    """D-53 : un prix écrit dans les consignes maison ne justifie pas un prix dans la réponse."""
+    await client.put(
+        f"{API}/settings/house-rules",
+        json={"style": "Rappeler que la formation coûte 5000 €", "banned": []},
+    )
+    pid, mid, cid = await lead(client, "Bonjour, je regardais votre site.")
+    env.llm.qualification = Qualification(intent="interested")
+    env.llm.reply = "La formation coûte 5000 €."
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "reponse_non_verifiable"

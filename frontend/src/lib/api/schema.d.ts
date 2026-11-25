@@ -2026,6 +2026,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/house-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get House Rules
+         * @description Consignes maison en vigueur (D-53).
+         */
+        get: operations["get_house_rules_api_v1_settings_house_rules_get"];
+        /**
+         * Put House Rules
+         * @description Nouvelle version des consignes maison, suivie dès le prochain message de l'agent. Les
+         *     règles absolues de l'agent (vouvoiement, faits vérifiés, une question) priment toujours.
+         */
+        put: operations["put_house_rules_api_v1_settings_house_rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/house-rules/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get House Rules History
+         * @description Dernières versions enregistrées, la plus récente d'abord.
+         */
+        get: operations["get_house_rules_history_api_v1_settings_house_rules_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/llm/test": {
         parameters: {
             query?: never;
@@ -3929,6 +3974,36 @@ export interface components {
             stage: string;
             /** Total Score */
             total_score: number;
+        };
+        /** HouseRulesRead */
+        HouseRulesRead: {
+            /** Banned */
+            banned: string[];
+            /** Style */
+            style: string;
+            /** Updated At */
+            updated_at: string | null;
+            /** Updated By */
+            updated_by: number | null;
+            /**
+             * Version
+             * @description 0 : aucune consigne enregistrée
+             */
+            version: number;
+        };
+        /**
+         * HouseRulesWrite
+         * @description Consignes maison (D-53) : ton et règles de style en texte libre, une consigne par ligne ;
+         *     expressions que l'agent ne doit jamais écrire, vérifiées par le code.
+         */
+        HouseRulesWrite: {
+            /** Banned */
+            banned?: string[];
+            /**
+             * Style
+             * @default
+             */
+            style: string;
         };
         /** ImportPayload */
         ImportPayload: {
@@ -9993,6 +10068,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_house_rules_api_v1_settings_house_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRulesRead"];
+                };
+            };
+        };
+    };
+    put_house_rules_api_v1_settings_house_rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseRulesWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRulesRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_house_rules_history_api_v1_settings_house_rules_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRulesRead"][];
                 };
             };
         };
