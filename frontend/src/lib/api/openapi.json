@@ -3799,6 +3799,79 @@
         "title": "HotProspect",
         "type": "object"
       },
+      "HouseRulesRead": {
+        "properties": {
+          "banned": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Banned",
+            "type": "array"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated By"
+          },
+          "version": {
+            "description": "0 : aucune consigne enregistrée",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "style",
+          "banned",
+          "version",
+          "updated_by",
+          "updated_at"
+        ],
+        "title": "HouseRulesRead",
+        "type": "object"
+      },
+      "HouseRulesWrite": {
+        "description": "Consignes maison (D-53) : ton et règles de style en texte libre, une consigne par ligne ;\nexpressions que l'agent ne doit jamais écrire, vérifiées par le code.",
+        "properties": {
+          "banned": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Banned",
+            "type": "array"
+          },
+          "style": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "title": "HouseRulesWrite",
+        "type": "object"
+      },
       "ImportPayload": {
         "properties": {
           "file_name": {
@@ -15804,6 +15877,109 @@
           }
         ],
         "summary": "Preview Email",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/house-rules": {
+      "get": {
+        "description": "Consignes maison en vigueur (D-53).",
+        "operationId": "get_house_rules_api_v1_settings_house_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseRulesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get House Rules",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "Nouvelle version des consignes maison, suivie dès le prochain message de l'agent. Les\nrègles absolues de l'agent (vouvoiement, faits vérifiés, une question) priment toujours.",
+        "operationId": "put_house_rules_api_v1_settings_house_rules_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseRulesWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseRulesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Put House Rules",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/house-rules/history": {
+      "get": {
+        "description": "Dernières versions enregistrées, la plus récente d'abord.",
+        "operationId": "get_house_rules_history_api_v1_settings_house_rules_history_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HouseRulesRead"
+                  },
+                  "title": "Response Get House Rules History Api V1 Settings House Rules History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get House Rules History",
         "tags": [
           "settings"
         ]

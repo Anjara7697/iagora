@@ -1,12 +1,13 @@
 "use client";
 
 import { toast } from "@heroui/react";
-import { Bot, CalendarClock, Mail, Sparkles, type LucideIcon } from "lucide-react";
+import { Bot, CalendarClock, Mail, PenLine, Sparkles, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TestingAccess from "@/components/settings/TestingAccess";
+import { HouseRulesSection } from "@/components/settings/HouseRules";
 import { canUseSimulator } from "@/lib/access";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { Btn, ErrorText, Notice, SelectBox } from "@/components/ds/controls";
@@ -33,10 +34,11 @@ const SECTIONS = [
     hint: "Modèle, clé, secours",
   },
   { id: "agent", label: "Agent et relances", hint: "Réponses et relances" },
+  { id: "consignes", label: "Consignes maison", hint: "Ton, style, expressions" },
   { id: "emails", label: "Emails", hint: "Pied, mise en page, relève" },
   { id: "rdv", label: "Rendez-vous", hint: "Jours et horaires" },
 ] as const;
-const ICONS: Record<string, LucideIcon> = { ia: Sparkles, agent: Bot, emails: Mail, rdv: CalendarClock };
+const ICONS: Record<string, LucideIcon> = { ia: Sparkles, agent: Bot, consignes: PenLine, emails: Mail, rdv: CalendarClock };
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 /** Premier champ signalé (valeur vide ou hors bornes), dans n'importe quelle section. */
@@ -74,8 +76,11 @@ function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  // Les consignes maison s'enregistrent à part (une version par enregistrement, D-53).
+  const [houseDirty, setHouseDirty] = useState(false);
+  const onHouseDirty = useCallback((value: boolean) => setHouseDirty(value), []);
   // Quitter Paramètres (menu, onglet) avec des réglages non enregistrés demande confirmation.
-  const { dialog: discardDialog } = useDiscardGuard(() => dirty);
+  const { dialog: discardDialog } = useDiscardGuard(() => dirty || houseDirty);
   const [preview, setPreview] = useState<string | null>(null);
   const [test, setTest] = useState<{
     ok: boolean;
@@ -292,6 +297,10 @@ function Settings() {
             <AgentSection {...sectionProps} hidden={active !== "agent"} dirty={dirty} canSimulate={canUseSimulator(user?.role)} />
           </div>
 
+          <div data-section="consignes" className="contents">
+            <HouseRulesSection hidden={active !== "consignes"} onDirty={onHouseDirty} />
+          </div>
+
           <div data-section="emails" className="contents">
             <EmailsSection {...sectionProps} hidden={active !== "emails"} preview={preview} showPreview={showPreview} />
           </div>
@@ -302,7 +311,7 @@ function Settings() {
 
           {/* Barre d'enregistrement dans le flux, sous la section (UX-15, A11Y-04) : elle ne recouvre ni le contenu,
               ni un champ qui reçoit le focus, ni la notification de confirmation. */}
-          <div className="flex flex-col gap-2 rounded-lg border border-separator bg-surface px-4 py-3">
+          <div hidden={active === "consignes"} className="flex flex-col gap-2 rounded-lg border border-separator bg-surface px-4 py-3">
             <ActionsBar>
               <Btn variant="primary" onClick={save} disabled={busy !== null}>
                 Enregistrer les paramètres

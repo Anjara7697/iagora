@@ -595,3 +595,26 @@ def ungrounded_claims(
             if found not in haystack:
                 bad.append(match.group(0).strip())
     return list(dict.fromkeys(bad))
+
+
+_APOSTROPHES = str.maketrans({"’": "'", "‘": "'", "ʼ": "'", "`": "'"})
+
+
+def _phrase_key(text: str) -> str:
+    return " ".join(normalize(text.translate(_APOSTROPHES)).split())
+
+
+def banned_phrases(reply: str, banned: Sequence[str]) -> list[str]:
+    """Expressions interdites par les consignes maison (D-53) présentes dans la réponse, comparées
+    sans accents, majuscules ni différence d'apostrophe, en mots entiers (« cher » ne bloque pas
+    « chercher »). Renvoie les expressions telles que l'administrateur les a écrites."""
+    text = _phrase_key(reply)
+    found = []
+    for phrase in banned:
+        key = _phrase_key(phrase)
+        if not key:
+            continue
+        pattern = r"\s+".join(re.escape(word) for word in key.split())
+        if re.search(rf"(?<!\w){pattern}(?!\w)", text):
+            found.append(" ".join(phrase.split()))
+    return list(dict.fromkeys(found))

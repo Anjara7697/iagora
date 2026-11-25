@@ -275,6 +275,18 @@ class PolicyTuning:
     extra_terms: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class HouseRules:
+    """Consignes maison de l'école (D-53), écrites par un administrateur dans Paramètres : ton,
+    règles de style et formules (`style`), expressions à ne jamais écrire (`banned`, vérifiées par
+    le code après la rédaction). Elles passent après les règles absolues de l'agent et
+    n'apportent aucun fait. `version` : numéro de la version, enregistré dans chaque trace."""
+
+    style: str = ""
+    banned: tuple[str, ...] = ()
+    version: int = 0
+
+
 # --- Suivi en direct ---
 
 
@@ -306,4 +318,5 @@ class Deps:
     calendar: Calendar
     knowledge: KnowledgeBase
     tuning: PolicyTuning = field(default_factory=PolicyTuning)
+    house_rules: HouseRules = field(default_factory=HouseRules)
     reporter: StepReporter = field(default_factory=SilentReporter)

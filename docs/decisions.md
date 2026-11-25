@@ -690,3 +690,25 @@ de connaissances par campagne).
 
 **Suite.** Des documents de base de connaissances rattachés à une campagne, si une campagne a besoin de contenus longs
 (règlement, programme d'un événement).
+
+## D-53 — Consignes maison modifiables par l'administrateur
+
+**Contexte.** Le ton et les règles de style de l'agent étaient écrits dans le code (`prompts.RULES`) : changer une
+formule ou bannir une expression demandait un développeur. Les motifs de refus des brouillons étaient seulement
+comptés dans Pilotage, sans moyen d'en faire une règle.
+
+**Décision** (responsable du projet, 25/11/2026 : « Style + formules interdites »).
+- Dans Paramètres, section **Consignes maison** (administrateurs) : un texte libre (ton, règles de style, formules à
+  privilégier, une consigne par ligne, 2 000 caractères) et une liste d'**expressions interdites** (30 au plus,
+  80 caractères chacune).
+- Les consignes sont données à l'agent **après ses règles absolues**, qui priment toujours : vouvoiement, une question
+  au plus, pas de rendez-vous proposé par le modèle, transparence sur l'IA, faits seulement tirés des sources. Elles
+  ne sont **jamais une source** : un prix ou une date écrit dans les consignes ne justifie rien au contrôle NF-10.
+- Les expressions interdites sont **vérifiées par le code** dans chaque message rédigé (sans accents, majuscules ni
+  différence d'apostrophe, en mots entiers) : un nouvel essai est demandé, puis le message est transféré au conseiller
+  (`reponse_non_verifiable`) si l'expression revient. Elles s'appliquent aussi aux régénérations avec consigne.
+- Chaque enregistrement crée une **version** numérotée (les 20 dernières sont gardées, `house_rules_history`) ; la
+  version utilisée est enregistrée dans la trace de chaque exécution (`house_rules_version`, 0 : aucune). L'écran
+  affiche les motifs de refus des 30 derniers jours pour aider à écrire les consignes.
+- Stockage : document `house_rules` de la collection Mongo `settings` (pas de migration) ; API
+  `GET/PUT /settings/house-rules` et `GET /settings/house-rules/history`.

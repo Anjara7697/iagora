@@ -10,13 +10,14 @@ from app.api.dependencies import ADMIN_ONLY, CurrentUser, MongoDb
 from app.config import Settings, get_settings
 from app.graph.ports import ChatMessage, LLMError
 from app.integrations.llm.factory import create_language_model
+from app.schemas.house_rules import HouseRulesRead, HouseRulesWrite
 from app.schemas.runtime_settings import (
     EmailPreview,
     LlmTestResult,
     RuntimeSettingsRead,
     RuntimeSettingsWrite,
 )
-from app.services import email_assets, email_format, runtime_settings
+from app.services import email_assets, email_format, house_rules, runtime_settings
 from app.services.errors import ValidationFailure
 
 PREVIEW_BODY = (
@@ -140,3 +141,34 @@ async def upload_banner(
 @router.delete("/email/banner", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_banner(db: MongoDb) -> None:
     await email_assets.delete_banner(db)
+
+
+def _house_rules_read(version: house_rules.HouseRulesVersion) -> HouseRulesRead:
+    return HouseRulesRead(
+        style=version.rules.style,
+        banned=list(version.rules.banned),
+        version=version.rules.version,
+        updated_by=version.updated_by,
+        updated_at=version.updated_at,
+    )
+
+
+@router.get("/house-rules", response_model=HouseRulesRead)
+async def get_house_rules(db: MongoDb) -> HouseRulesRead:
+    """Consignes maison en vigueur (D-53)."""
+    return _house_rules_read(await house_rules.get_current(db))
+
+
+@router.put("/house-rules", response_model=HouseRulesRead)
+async def put_house_rules(
+    payload: HouseRulesWrite, db: MongoDb, user: CurrentUser
+) -> HouseRulesRead:
+    """Nouvelle version des consignes maison, suivie dès le prochain message de l'agent. Les
+    règles absolues de l'agent (vouvoiement, faits vérifiés, une question) priment toujours."""
+    return _house_rules_read(await house_rules.save(db, payload.style, payload.banned, user.id))
+
+
+@router.get("/house-rules/history", response_model=list[HouseRulesRead])
+async def get_house_rules_history(db: MongoDb) -> list[HouseRulesRead]:
+    """Dernières versions enregistrées, la plus récente d'abord."""
+    return [_house_rules_read(v) for v in await house_rules.history(db)]

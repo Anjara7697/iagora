@@ -272,6 +272,7 @@ class WorkflowNodes:
             # D-34 : une question restée sans réponse n'est pas reposée au message suivant.
             hold_question=policy.question_unanswered(ctx.history, q, text),
             instruction=instruction,
+            house_rules=self.deps.house_rules,
         )
         messages = prompts.to_chat(ctx.history) or [
             ChatMessage(
@@ -289,34 +290,35 @@ class WorkflowNodes:
         files = ctx.campaign_files if prompts.is_email(ctx.channel) else []
 
         claims: list[str] = []
+        banned: list[str] = []
         attached: list[dict[str, Any]] = []
+        extra = self.deps.tuning.extra_terms
+        forbidden = self.deps.house_rules.banned
+
+        def check(reply: str, attached: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+            if prompts.defers_to_advisor(reply):
+                return [], []
+            return (
+                policy.ungrounded_claims(
+                    reply, sources, conversation=conversation, extra_terms=extra
+                )
+                + policy.unlisted_links(reply, allowed_links)
+                + policy.attachment_claims(reply, attached)
+            ), policy.banned_phrases(reply, forbidden)
+
         try:
             attached, reply = prompts.split_attachments(
                 await self.deps.llm.generate(system, messages), files
             )
-            extra = self.deps.tuning.extra_terms
-            if not prompts.defers_to_advisor(reply):
-                claims = (
-                    policy.ungrounded_claims(
-                        reply, sources, conversation=conversation, extra_terms=extra
-                    )
-                    + policy.unlisted_links(reply, allowed_links)
-                    + policy.attachment_claims(reply, attached)
+            claims, banned = check(reply, attached)
+            if claims or banned:  # un seul nouvel essai, plus strict
+                note = (prompts.strict_retry_note(claims) if claims else "") + (
+                    prompts.banned_retry_note(banned) if banned else ""
                 )
-            if claims:  # un seul nouvel essai, plus strict
                 attached, reply = prompts.split_attachments(
-                    await self.deps.llm.generate(
-                        system + prompts.strict_retry_note(claims), messages
-                    ),
-                    files,
+                    await self.deps.llm.generate(system + note, messages), files
                 )
-                claims = (
-                    policy.ungrounded_claims(
-                        reply, sources, conversation=conversation, extra_terms=extra
-                    )
-                    + policy.unlisted_links(reply, allowed_links)
-                    + policy.attachment_claims(reply, attached)
-                )
+                claims, banned = check(reply, attached)
         except LLMError as exc:
             logger.warning("Rédaction impossible (%s) : %s", type(exc).__name__, exc)
             return {
@@ -364,6 +366,17 @@ class WorkflowNodes:
                 "trace": _t(
                     "generate_response",
                     f"réponse rejetée (infos non sourcées : {claims or 'vide'})",
+                ),
+            }
+        if banned:
+            # D-53 : une expression interdite par les consignes maison ne part jamais, même
+            # après un nouvel essai : le conseiller reprend la main.
+            return {
+                "needs_human": True,
+                "handoff_reason": "reponse_non_verifiable",
+                "trace": _t(
+                    "generate_response",
+                    f"réponse rejetée (expressions interdites : {', '.join(banned)})",
                 ),
             }
         return {

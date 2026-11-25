@@ -392,3 +392,4 @@ export type DuplicatePair = Schemas["DuplicatePair"];
 export type AgentMessageKind = "first_contact" | "reply" | "follow_up";
 
 export type CampaignAgentModes = Schemas["CampaignAgentModesRead"];
+export type HouseRules = Schemas["HouseRulesRead"];
