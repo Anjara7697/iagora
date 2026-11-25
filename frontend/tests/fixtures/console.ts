@@ -321,6 +321,8 @@ function respond(path: string, query: URLSearchParams): unknown {
       return conversationSummary;
     case "/prospects":
       return query.get("pending_campaign") ? page([], limit) : page(prospects.slice(0, limit), limit);
+    case "/duplicates":
+      return page([], limit);
     case "/prospects/1":
       return prospect;
     case "/prospects/1/conversation":
