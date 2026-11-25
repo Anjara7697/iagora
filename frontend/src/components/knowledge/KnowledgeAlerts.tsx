@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert } from "@heroui/react";
-import { RefreshCw, Sparkles } from "lucide-react";
+import { BookPlus, RefreshCw, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { Btn, LinkButton } from "@/components/ds/controls";
 import { reveal } from "@/components/ds/motion";
@@ -50,8 +50,11 @@ export default function KnowledgeAlerts({
   reindexing,
   showingReindex,
   gapCount,
+  pendingCount,
+  showingSuggestions,
   onReindex,
   onShowReindex,
+  onShowSuggestions,
 }: {
   isAdmin: boolean;
   configured: boolean | null;
@@ -59,8 +62,12 @@ export default function KnowledgeAlerts({
   reindexing: boolean;
   showingReindex: boolean;
   gapCount: number;
+  /** Réponses proposées par les conseillers, en attente de validation (D-50). */
+  pendingCount: number;
+  showingSuggestions: boolean;
   onReindex: () => void;
   onShowReindex: () => void;
+  onShowSuggestions: () => void;
 }) {
   return (
     <>
@@ -108,9 +115,27 @@ export default function KnowledgeAlerts({
           {!isAdmin && " Demandez à un administrateur de lancer le recalcul."}
         </KnowledgeAlert>
       )}
-      {gapCount > 0 && (
+      {pendingCount > 0 && isAdmin && (
         <KnowledgeAlert
           index={3}
+          status="warning"
+          icon={<BookPlus className="size-4" />}
+          title={`${pendingCount} réponse${pendingCount > 1 ? "s" : ""} proposée${pendingCount > 1 ? "s" : ""} à valider`}
+          actions={
+            !showingSuggestions && (
+              <Btn variant="secondary" size="sm" onClick={onShowSuggestions}>
+                {pendingCount > 1 ? "Relire les réponses" : "Relire la réponse"}
+              </Btn>
+            )
+          }
+        >
+          Des conseillers ont répondu à des questions absentes de la base. Une fois validée, une réponse rejoint la FAQ
+          de son programme et l’agent s’en sert aussitôt.
+        </KnowledgeAlert>
+      )}
+      {gapCount > 0 && (
+        <KnowledgeAlert
+          index={4}
           status="accent"
           className="border border-agent/25 bg-agent-soft/60"
           icon={<Sparkles className="size-4 text-agent" />}
@@ -122,7 +147,7 @@ export default function KnowledgeAlerts({
           }
         >
           L’agent {gapCount > 1 ? "les a transmises" : "l’a transmise"} à un conseiller faute de document suffisant.
-          Ajouter la réponse dans un document évite d’autres transferts.
+          « Ajouter à la base » sur la demande évite d’autres transferts.
         </KnowledgeAlert>
       )}
     </>

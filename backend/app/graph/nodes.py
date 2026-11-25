@@ -588,6 +588,7 @@ class WorkflowNodes:
             if q is not None and q.intent in ("question", "needs_advisor")
             else None,
             recommended_action=RECOMMENDED_ACTIONS.get(reason, "Reprendre la conversation"),
+            target_code=ctx.target_code,
         )
         await self.deps.gateway.save_handoff(ctx.conversation_id, sheet)
         update: Update = {

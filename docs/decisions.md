@@ -603,3 +603,21 @@ de cinq, sans action, figurait sur Aujourd'hui. Un conseiller ne pouvait ni arr�
   `POST /follow-ups/{id}/reschedule`. Conseillers et administrateurs agissent, l'observateur consulte ; périmètre D-23.
 
 **Suite.** « Ne plus relancer ce prospect » (réglage par prospect, migration) si le besoin apparaît.
+
+## D-50 — Apprendre des questions sans réponse
+
+**Contexte.** Une question absente de la base est transférée au conseiller (`question_hors_base`), qui répond au
+prospect ; mais la réponse n'était pas réutilisée : la même question repartait en transfert au prospect suivant.
+
+**Décision** (responsable du projet, 25/11/2026).
+- Sur la demande « Réponses à compléter », **Ajouter à la base** : le conseiller propose la question (reformulée) et
+  la réponse, pré-remplies depuis la conversation, avec le programme du prospect.
+- **Validation par un administrateur** obligatoire (correction possible, ou refus avec motif) ; un administrateur
+  qui ajoute la réponse lui-même la valide en même temps.
+- **Une FAQ par programme** : la réponse validée devient une section du document « Questions des prospects » de son
+  programme, ou du document commun. Même intitulé : la section est remplacée.
+- La fiche de transfert porte désormais le programme (`target_code`) du prospect.
+
+**Suite.** Regrouper les questions proches avant de proposer (plusieurs prospects, même lacune) ; montrer combien de
+transferts une réponse a évités.
+

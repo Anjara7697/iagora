@@ -3997,6 +3997,317 @@
         "title": "InterestLevel",
         "type": "string"
       },
+      "KbSuggestionApprove": {
+        "description": "Champs omis : on garde ceux de la proposition. `target_code: null` : document commun.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 5,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 5,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "target_code": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Code"
+          }
+        },
+        "title": "KbSuggestionApprove",
+        "type": "object"
+      },
+      "KbSuggestionCreate": {
+        "properties": {
+          "answer": {
+            "maxLength": 4000,
+            "minLength": 5,
+            "title": "Answer",
+            "type": "string"
+          },
+          "conversation_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Question",
+            "type": "string"
+          },
+          "target_code": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Code"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "question",
+          "answer"
+        ],
+        "title": "KbSuggestionCreate",
+        "type": "object"
+      },
+      "KbSuggestionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KbSuggestionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "KbSuggestionPage",
+        "type": "object"
+      },
+      "KbSuggestionPrefill": {
+        "properties": {
+          "answer": {
+            "description": "Dernière réponse du conseiller après le transfert",
+            "title": "Answer",
+            "type": "string"
+          },
+          "existing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KbSuggestionRead"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dernière proposition faite pour cette conversation"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "target_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Code"
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "target_code"
+        ],
+        "title": "KbSuggestionPrefill",
+        "type": "object"
+      },
+      "KbSuggestionRead": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "document_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FAQ où la réponse a été ajoutée",
+            "title": "Document Slug"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "proposed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed By"
+          },
+          "prospect_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prospect Id"
+          },
+          "prospect_question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Question telle que posée",
+            "title": "Prospect Question"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Motif du refus",
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Programme ; vide : commun à tous",
+            "title": "Target Code"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "question",
+          "answer",
+          "target_code",
+          "created_at"
+        ],
+        "title": "KbSuggestionRead",
+        "type": "object"
+      },
+      "KbSuggestionReject": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "KbSuggestionReject",
+        "type": "object"
+      },
       "KnowledgeStatus": {
         "properties": {
           "configured": {
@@ -13334,6 +13645,302 @@
           }
         ],
         "summary": "Knowledge Status",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions": {
+      "get": {
+        "description": "Propositions, les plus récentes d'abord (périmètre du conseiller).",
+        "operationId": "list_suggestions_api_v1_knowledge_suggestions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(pending|approved|rejected)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conversation_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbSuggestionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Suggestions",
+        "tags": [
+          "knowledge"
+        ]
+      },
+      "post": {
+        "description": "« Ajouter à la base » : la réponse attend la validation d'un administrateur.",
+        "operationId": "propose_api_v1_knowledge_suggestions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbSuggestionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbSuggestionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Propose",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions/prefill": {
+      "get": {
+        "description": "Question du prospect, réponse du conseiller et programme, pour pré-remplir la proposition.",
+        "operationId": "prefill_api_v1_knowledge_suggestions_prefill_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbSuggestionPrefill"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Prefill",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions/{suggestion_id}/approve": {
+      "post": {
+        "description": "Valide la réponse (corrigée au besoin) : elle rejoint la FAQ de son programme.",
+        "operationId": "approve_api_v1_knowledge_suggestions__suggestion_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbSuggestionApprove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbSuggestionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Approve",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/v1/knowledge/suggestions/{suggestion_id}/reject": {
+      "post": {
+        "description": "Refuse la proposition : rien n'entre dans la base, le motif reste dans l'historique.",
+        "operationId": "reject_api_v1_knowledge_suggestions__suggestion_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KbSuggestionReject"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KbSuggestionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Reject",
         "tags": [
           "knowledge"
         ]
