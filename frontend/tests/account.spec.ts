@@ -21,6 +21,11 @@ async function mockApi(
         role: "ADVISOR",
         must_change_password: false,
       };
+    else if (path === "/auth/me/alerts" && request.method() === "PUT") {
+      const { enabled } = request.postDataJSON();
+      calls.push(`alerts:${enabled}`);
+      body = { enabled };
+    } else if (path === "/auth/me/alerts") body = { enabled: true };
     else if (path === "/calendar/me" && request.method() === "DELETE") {
       calls.push("delete");
       await route.fulfill({ status: 204, body: "" });
@@ -141,4 +146,19 @@ test("compte Zoom de l'école : pas de section Mon Zoom", async ({ page }) => {
   await page.goto("/account");
   await expect(page.getByRole("region", { name: "Mon agenda" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Mon Zoom" })).toHaveCount(0);
+});
+
+test("le conseiller coupe ses alertes par email depuis Mon compte", async ({
+  page,
+}) => {
+  const calls: string[] = [];
+  await mockApi(page, { available: false, connected: false }, calls);
+  await login(page);
+  await page.goto("/account");
+  const section = page.getByRole("region", { name: "Alertes par email" });
+  const toggle = section.getByRole("switch", { name: "Recevoir les alertes par email" });
+  await expect(toggle).toBeChecked();
+  await toggle.click({ force: true });
+  await expect(toggle).not.toBeChecked();
+  expect(calls).toContain("alerts:false");
 });

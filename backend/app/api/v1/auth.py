@@ -7,14 +7,15 @@ from app.api import cookies
 from app.api.dependencies import (
     CurrentUser,
     DbSession,
+    MongoDb,
     SettingsDep,
     oauth2_scheme,
     request_token,
 )
 from app.core.ratelimit import limiter
 from app.core.security import decode_access_claims
-from app.schemas.user import PasswordChange, Token, UserRead
-from app.services import auth_sessions
+from app.schemas.user import AlertPreferences, PasswordChange, Token, UserRead
+from app.services import advisor_alerts, auth_sessions
 from app.services import users as service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -76,6 +77,21 @@ async def logout(
 @router.get("/me", response_model=UserRead)
 async def me(user: CurrentUser) -> UserRead:
     return UserRead.model_validate(user)
+
+
+@router.get("/me/alerts", response_model=AlertPreferences)
+async def my_alerts(user: CurrentUser, db: MongoDb) -> AlertPreferences:
+    """Alertes par email hors de la console (escalades, prospects chauds) : actives par défaut."""
+    return AlertPreferences(enabled=await advisor_alerts.is_enabled_for(db, user.id))
+
+
+@router.put("/me/alerts", response_model=AlertPreferences)
+async def set_my_alerts(
+    payload: AlertPreferences, user: CurrentUser, db: MongoDb
+) -> AlertPreferences:
+    """Chacun coupe ou rétablit ses propres alertes."""
+    await advisor_alerts.set_enabled_for(db, user.id, payload.enabled)
+    return payload
 
 
 @router.post("/password", response_model=Token)

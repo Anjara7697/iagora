@@ -30,6 +30,10 @@ class RuntimeSettingsBase(BaseModel):
     agent_extra_terms: str = Field(
         "", max_length=1000, description="Termes qui engagent l'école, séparés par des virgules"
     )
+    # Alertes des conseillers hors de la console (D-49)
+    advisor_alerts_enabled: bool = True
+    advisor_alerts_digest_hour: int = Field(8, ge=0, le=23)
+    console_url: str = Field("", max_length=300, pattern=r"^(https://\S+)?$")
     # Emails
     email_footer: str = Field("", max_length=1000)
     email_ai_notice: str = Field(DEFAULT_AI_NOTICE, min_length=10, max_length=500)

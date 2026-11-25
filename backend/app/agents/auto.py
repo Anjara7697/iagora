@@ -3,7 +3,8 @@
 - `reply_to_message` : tâche de fond lancée dès qu'un message du prospect est enregistré ; l'agent
   prépare sa réponse (brouillon en mode assisté, rien en mode manuel). Un verrou par conversation
   évite deux réponses simultanées : le second passage voit que l'agent a déjà répondu et s'arrête.
-- `follow_up_loop` exécute aussi les rappels de rendez-vous (`services/appointment_reminders`).
+- `follow_up_loop` exécute aussi les rappels de rendez-vous (`services/appointment_reminders`) et
+  les alertes des conseillers (`services/advisor_alerts`).
 - `run_due_follow_ups` : relance les prospects restés silencieux. Garde-fous : jours ouvrés de 8 h
   à 19 h (heure de Paris), arrêt en mode manuel, jamais vers un prospect désinscrit ou qui a
   répondu, au plus `follow_up_max_per_silence` relances sans réponse. Une relance est « réclamée »
@@ -28,6 +29,7 @@ from app.integrations.email.factory import create_email_client
 from app.models import FollowUp, Prospect
 from app.models.enums import FollowUpStatus
 from app.services import (
+    advisor_alerts,
     agent_settings,
     appointment_reminders,
     commercial_context,
@@ -338,7 +340,7 @@ async def follow_up_loop(settings: Settings) -> None:
     from app.api.dependencies import get_calendar, get_knowledge_base, get_language_model
     from app.database.clients import get_mongo_db
     from app.database.session import get_sessionmaker
-    from app.services import runtime_settings
+    from app.services import email_config, runtime_settings
 
     while True:
         try:
@@ -360,6 +362,14 @@ async def follow_up_loop(settings: Settings) -> None:
             # Même bail et même cadence : la veille d'un rendez-vous, le rappel du prospect (D-47).
             await appointment_reminders.run_due_reminders(
                 lambda: get_sessionmaker()(), get_mongo_db(), settings=current
+            )
+            # Puis les alertes des conseillers (escalades, prospects chauds) par email (D-49).
+            mailbox = await email_config.effective_settings(get_mongo_db(), current)
+            await advisor_alerts.run_alerts(
+                lambda: get_sessionmaker()(),
+                get_mongo_db(),
+                create_email_client(mailbox),
+                settings=mailbox,
             )
         except asyncio.CancelledError:
             raise
