@@ -210,6 +210,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/me/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Alerts
+         * @description Alertes par email hors de la console (escalades, prospects chauds) : actives par défaut.
+         */
+        get: operations["my_alerts_api_v1_auth_me_alerts_get"];
+        /**
+         * Set My Alerts
+         * @description Chacun coupe ou rétablit ses propres alertes.
+         */
+        put: operations["set_my_alerts_api_v1_auth_me_alerts_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/password": {
         parameters: {
             query?: never;
@@ -2467,6 +2491,14 @@ export interface components {
             trace: components["schemas"]["TraceRead"][];
             /** Trigger */
             trigger: string;
+        };
+        /**
+         * AlertPreferences
+         * @description Alertes par email de l'utilisateur (D-49).
+         */
+        AlertPreferences: {
+            /** Enabled */
+            enabled: boolean;
         };
         /**
          * Analytics
@@ -4895,6 +4927,16 @@ export interface components {
         /** RuntimeSettingsRead */
         RuntimeSettingsRead: {
             /**
+             * Advisor Alerts Digest Hour
+             * @default 8
+             */
+            advisor_alerts_digest_hour: number;
+            /**
+             * Advisor Alerts Enabled
+             * @default true
+             */
+            advisor_alerts_enabled: boolean;
+            /**
              * Agent Auto Reply
              * @default true
              */
@@ -4960,6 +5002,11 @@ export interface components {
              * @default 9
              */
             calendar_work_start_hour: number;
+            /**
+             * Console Url
+             * @default
+             */
+            console_url: string;
             /**
              * Email Ai Notice
              * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
@@ -5094,6 +5141,16 @@ export interface components {
         /** RuntimeSettingsWrite */
         RuntimeSettingsWrite: {
             /**
+             * Advisor Alerts Digest Hour
+             * @default 8
+             */
+            advisor_alerts_digest_hour: number;
+            /**
+             * Advisor Alerts Enabled
+             * @default true
+             */
+            advisor_alerts_enabled: boolean;
+            /**
              * Agent Auto Reply
              * @default true
              */
@@ -5159,6 +5216,11 @@ export interface components {
              * @default 9
              */
             calendar_work_start_hour: number;
+            /**
+             * Console Url
+             * @default
+             */
+            console_url: string;
             /**
              * Email Ai Notice
              * @default Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.
@@ -6236,6 +6298,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserRead"];
+                };
+            };
+        };
+    };
+    my_alerts_api_v1_auth_me_alerts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertPreferences"];
+                };
+            };
+        };
+    };
+    set_my_alerts_api_v1_auth_me_alerts_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertPreferences"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertPreferences"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

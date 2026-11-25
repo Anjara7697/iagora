@@ -293,6 +293,20 @@
         "title": "AgentRunResult",
         "type": "object"
       },
+      "AlertPreferences": {
+        "description": "Alertes par email de l'utilisateur (D-49).",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "AlertPreferences",
+        "type": "object"
+      },
       "Analytics": {
         "description": "Analyses (Pilotage) sur la période, prospects fictifs exclus. Une valeur None signifie\n« pas de donnée » : elle n'est jamais remplacée par une estimation.",
         "properties": {
@@ -6773,6 +6787,18 @@
       },
       "RuntimeSettingsRead": {
         "properties": {
+          "advisor_alerts_digest_hour": {
+            "default": 8,
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Advisor Alerts Digest Hour",
+            "type": "integer"
+          },
+          "advisor_alerts_enabled": {
+            "default": true,
+            "title": "Advisor Alerts Enabled",
+            "type": "boolean"
+          },
           "agent_auto_reply": {
             "default": true,
             "title": "Agent Auto Reply",
@@ -6859,6 +6885,13 @@
             "minimum": 0.0,
             "title": "Calendar Work Start Hour",
             "type": "integer"
+          },
+          "console_url": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Console Url",
+            "type": "string"
           },
           "email_ai_notice": {
             "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
@@ -7058,6 +7091,18 @@
       },
       "RuntimeSettingsWrite": {
         "properties": {
+          "advisor_alerts_digest_hour": {
+            "default": 8,
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Advisor Alerts Digest Hour",
+            "type": "integer"
+          },
+          "advisor_alerts_enabled": {
+            "default": true,
+            "title": "Advisor Alerts Enabled",
+            "type": "boolean"
+          },
           "agent_auto_reply": {
             "default": true,
             "title": "Agent Auto Reply",
@@ -7144,6 +7189,13 @@
             "minimum": 0.0,
             "title": "Calendar Work Start Hour",
             "type": "integer"
+          },
+          "console_url": {
+            "default": "",
+            "maxLength": 300,
+            "pattern": "^(https://\\S+)?$",
+            "title": "Console Url",
+            "type": "string"
           },
           "email_ai_notice": {
             "default": "Ce message a été rédigé par un assistant virtuel (IA) de DATUM Academy.",
@@ -9568,6 +9620,78 @@
           }
         ],
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me/alerts": {
+      "get": {
+        "description": "Alertes par email hors de la console (escalades, prospects chauds) : actives par défaut.",
+        "operationId": "my_alerts_api_v1_auth_me_alerts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertPreferences"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "My Alerts",
+        "tags": [
+          "auth"
+        ]
+      },
+      "put": {
+        "description": "Chacun coupe ou rétablit ses propres alertes.",
+        "operationId": "set_my_alerts_api_v1_auth_me_alerts_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertPreferences"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Set My Alerts",
         "tags": [
           "auth"
         ]

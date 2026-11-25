@@ -91,6 +91,14 @@ class Settings(BaseSettings):
     follow_up_window_end_hour: int = Field(19, ge=1, le=24)
     follow_up_weekdays_only: bool = True
 
+    # Alertes des conseillers hors de la console (D-49) : email immédiat pour les urgences,
+    # récapitulatif des autres points les jours ouvrés à partir de cette heure (fuseau de l'agenda).
+    # Elles partent par la boîte email de l'agent, seulement si son envoi est activé.
+    advisor_alerts_enabled: bool = True
+    advisor_alerts_digest_hour: int = Field(8, ge=0, le=23)
+    # Adresse publique de la console (https://…), pour les liens des alertes ; vide : sans lien.
+    console_url: str = ""
+
     # Connecteur email (IMAP pour recevoir, SMTP pour envoyer). Les identifiants ne vont que dans
     # le .env local : jamais dans Git, jamais dans les journaux (S-04). Valeurs IONOS à vérifier.
     email_enabled: bool = False

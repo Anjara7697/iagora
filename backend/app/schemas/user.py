@@ -72,3 +72,9 @@ class AdvisorRead(BaseModel):
 
     id: int
     username: str
+
+
+class AlertPreferences(BaseModel):
+    """Alertes par email de l'utilisateur (D-49)."""
+
+    enabled: bool

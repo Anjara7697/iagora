@@ -213,6 +213,32 @@ export function AgentSection({
             onChange={(v) => set("follow_up_weekdays_only", v)}
             title="Relances en semaine uniquement"
           />
+          <Toggle
+            checked={form.advisor_alerts_enabled}
+            onChange={(v) => set("advisor_alerts_enabled", v)}
+            title="Alertes des conseillers par email"
+            note="Urgences tout de suite (situation sensible, données personnelles, prospect très chaud), le reste dans un récapitulatif chaque jour ouvré. Elles partent par la boîte email de l’agent, si son envoi est activé ; chacun peut couper les siennes dans Mon compte."
+          />
+          <Field label="Heure du récapitulatif (fuseau de l’agenda)">
+            <NumberInput
+              min={0}
+              max={23}
+              disabled={!form.advisor_alerts_enabled}
+              {...num("advisor_alerts_digest_hour")}
+            />
+          </Field>
+          <Field
+            label="Adresse de la console"
+            note="Pour les liens des alertes vers la fiche du prospect, par exemple https://console.datum.fr. Vide : alertes sans lien."
+          >
+            <TextInput
+              type="url"
+              maxLength={300}
+              placeholder="https://"
+              value={form.console_url}
+              onChange={(e) => set("console_url", e.target.value)}
+            />
+          </Field>
           <InfoRow
             label="Seuils de décision de l’agent"
             note="Valeurs du cahier des charges par défaut (50, 24, 0,5), à confirmer avec DATUM. Les règles restent les mêmes : seuls les seuils changent."

@@ -5,6 +5,7 @@ import { useCurrentUser } from "@/lib/session";
 import { Btn, TextInput } from "@/components/ds/controls";
 import { PageHeader, Screen } from "@/components/ds/layout";
 import { ActionsBar, Feedback, SettingRow as Field, SettingsCard as Section } from "@/components/ds/settings";
+import { MyAlerts } from "@/components/account/MyAlerts";
 import { MyCalendar } from "@/components/account/MyCalendar";
 import { MyZoom } from "@/components/account/MyZoom";
 import { api, ApiError } from "@/lib/api";
@@ -113,6 +114,7 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <MyCalendar />
           <MyZoom />
+          <MyAlerts />
         </div>
       )}
     </Screen>

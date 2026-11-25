@@ -604,6 +604,32 @@ de cinq, sans action, figurait sur Aujourd'hui. Un conseiller ne pouvait ni arr�
 
 **Suite.** « Ne plus relancer ce prospect » (réglage par prospect, migration) si le besoin apparaît.
 
+## D-49 — Alertes du conseiller hors de la console (email immédiat + récapitulatif)
+
+**Contexte.** Une escalade ou un prospect devenu chaud n'apparaissait que dans la console (À traiter, Aujourd'hui) :
+un conseiller qui ne l'ouvrait pas l'apprenait tard.
+
+**Décision** (responsable du projet, 25/11/2026) : **email immédiat pour les urgences, récapitulatif pour le reste.**
+- **Urgent** (email dans les 5 minutes, à toute heure) : transfert pour situation sensible ou demande sur les données
+  personnelles, transfert d'un prospect très chaud, prospect qui devient très chaud.
+- **Récapitulatif** (un email par destinataire, jours ouvrés, à partir de 8 h par défaut, fuseau de l'agenda) : les autres
+  transferts (lacune, incident, inscription, demande de conseiller…) et les prospects devenus chauds, **encore
+  d'actualité** : un transfert déjà repris ou un prospect redescendu n'y figure plus.
+- **Destinataires** : le conseiller affecté au prospect, à défaut le responsable de la campagne, à défaut les
+  administrateurs. Le conseiller qui a lui-même relevé le score n'est pas prévenu de son geste.
+- **Désabonnement** : chacun coupe ses alertes dans Mon compte ; l'administrateur les coupe pour tous dans Paramètres
+  (Agent et relances), où se règlent aussi l'heure du récapitulatif et l'adresse de la console (liens).
+- **Contenu** écrit par le code : motif, prénom et initiale, campagne, niveau, lien vers la fiche. Jamais le message
+  du prospect ni le résumé du modèle. Rien pour un prospect fictif (`@demo.example.com`) ; le bac à sable email
+  s'applique aussi aux conseillers.
+- **Fonctionnement** : la boucle des relances repère les transferts et les variations du score total qui franchissent
+  un seuil, et enregistre chaque alerte une fois (`advisor_alerts`, identifiant unique). Rien d'antérieur à la première
+  activation n'est envoyé. Envoi par la boîte email de l'agent, seulement si son envoi est activé ; sinon les alertes
+  attendent, 3 jours au plus. Elles sont effacées avec la fiche du prospect (droit à l'effacement).
+- Un prospect qui atteint « chaud » ou « très chaud » n'est signalé qu'une fois par niveau et par campagne.
+
+**Suite.** Autres canaux (Slack, Teams, SMS) si le besoin apparaît.
+
 ## D-50 — Apprendre des questions sans réponse
 
 **Contexte.** Une question absente de la base est transférée au conseiller (`question_hors_base`), qui répond au
