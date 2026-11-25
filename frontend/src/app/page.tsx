@@ -1,18 +1,19 @@
 "use client";
 
 import { Alert, Avatar, Chip } from "@heroui/react";
-import { ArrowRight, CalendarClock, CircleCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CircleCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { AppointmentStatus, MeetingLink, timeFormats } from "@/components/appointments/shared";
 import { Collapse } from "@/components/ds/collapse";
+import { UpcomingFollowUps } from "@/components/followups/FollowUps";
 import { LinkButton, TextLink } from "@/components/ds/controls";
 import { EmptyText, ErrorState, Eyebrow, PageHeader, Screen, Section, cx, initialsOf } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { LevelBadge, Loading } from "@/components/ds/ui";
 import { qs } from "@/lib/api";
-import { PRIORITIES, STAGES, firstNameOf, formatDate, fullName, label } from "@/lib/labels";
+import { PRIORITIES, STAGES, firstNameOf, fullName, label } from "@/lib/labels";
 import { useApi } from "@/lib/useApi";
 import type { Appointment, DashboardSummary, Page, TodoItem } from "@/lib/types";
 
@@ -50,6 +51,8 @@ const rise = (rank: number, className?: string) => ({
  */
 export default function Home() {
   const user = useCurrentUser();
+  // Relu après Annuler ou Décaler ; le résumé donne le premier compte.
+  const [followUpsTotal, setFollowUpsTotal] = useState<number | null>(null);
   const summary = useApi<DashboardSummary>("/dashboard/summary");
   const todo = useApi<TodoCounts>("/todo?limit=1");
   const incidents = useApi<Page<TodoItem>>("/todo?kind=incident&limit=1");
@@ -301,42 +304,11 @@ export default function Home() {
         <section aria-label="Relances programmées" {...rise(3, "border-b border-separator pb-2")}>
           {/* Relances repliées : elles se déroulent seules, on les consulte au besoin. */}
           <Collapse
-            title={`Relances programmées (${s.follow_ups_total})`}
+            title={`Relances programmées (${followUpsTotal ?? s.follow_ups_total})`}
             triggerClassName="w-full py-2 type-title-sm font-semibold"
             bodyClassName="flex flex-col"
           >
-            {s.follow_ups.length === 0 && <EmptyText>Aucune relance programmée.</EmptyText>}
-            <ul className="flex flex-col divide-y divide-separator">
-              {s.follow_ups.map((f) => (
-                <li key={f.id} className="flex gap-3 py-3">
-                  <span
-                    className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-muted"
-                    aria-hidden="true"
-                  >
-                    <CalendarClock className="size-4" />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/prospects/${f.prospect_id}`}
-                        className="rounded type-body font-medium text-link outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {f.prospect_name}
-                      </Link>
-                      <span className="flex-1" />
-                      <span className="type-caption text-muted tabular-nums">{formatDate(f.scheduled_at)}</span>
-                    </span>
-                    {f.reason && <span className="type-body-sm text-foreground">{f.reason}</span>}
-                    <span className="type-caption text-muted">Annulée si le prospect répond, se désinscrit ou est transféré.</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {s.follow_ups_total > s.follow_ups.length && (
-              <p className="border-t border-separator py-3 type-body-sm text-muted">
-                + {s.follow_ups_total - s.follow_ups.length} autre(s) relance(s) programmée(s).
-              </p>
-            )}
+            <UpcomingFollowUps readOnly={user?.role === "VIEWER"} onTotal={setFollowUpsTotal} />
           </Collapse>
         </section>
       )}

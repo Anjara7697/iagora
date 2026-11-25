@@ -61,6 +61,23 @@ async function mockApi(
         code = 500;
         body = { detail: "Erreur interne du serveur", request_id: "a1b2c3d4e5f60718" };
       } else body = summary;
+    } else if (path === "/follow-ups") {
+      body = {
+        items: [
+          {
+            id: 1,
+            prospect_id: 7,
+            prospect_name: "Marie Dupont",
+            channel: "email",
+            scheduled_at: "2026-10-27T09:00:00Z",
+            expected_at: "2026-10-27T09:00:00Z",
+            reason: "Relance J+7",
+          },
+        ],
+        total: 3,
+        limit: 5,
+        offset: 0,
+      };
     } else if (path === "/appointments") {
       body = {
         items: [
@@ -205,9 +222,8 @@ test("accueil : salutation, répartition de la file, signaux forts, activité, r
   await expect(follow.getByText("Marie Dupont")).toBeHidden();
   await follow.getByRole("button", { name: "Relances programmées (3)" }).click();
   await expect(follow.getByText("Marie Dupont")).toBeVisible();
-  await expect(
-    follow.getByText("+ 2 autre(s) relance(s) programmée(s)."),
-  ).toBeVisible();
+  await expect(follow.getByRole("button", { name: "Afficher 2 relances de plus (2 restantes)" })).toBeVisible();
+  await expect(follow.getByRole("button", { name: "Décaler la relance de Marie Dupont" })).toBeVisible();
   // L'entonnoir est dans le Tableau de bord (UX-09).
   await expect(page.getByRole("region", { name: "Entonnoir" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /voir le tableau de bord/ })).toHaveAttribute("href", "/dashboard");

@@ -156,3 +156,10 @@ async def test_advisor_only_sees_and_changes_follow_ups_in_scope(
     await entrust(client, advisor, pid)
     assert (await advisor.get(f"{API}/follow-ups")).json()["total"] == 1
     assert (await advisor.post(f"{API}/follow-ups/{fid}/cancel")).status_code == 204
+
+
+async def test_the_general_list_leaves_fictitious_prospects_out(client, session_factory):
+    pid, mid, _ = await lead(client, "Bonjour", email="sim.camille@demo.example.com")
+    await _follow_up(session_factory, pid, mid, datetime.now(UTC) + timedelta(days=1))
+    assert (await client.get(f"{API}/follow-ups")).json()["total"] == 0
+    assert len((await client.get(f"{API}/prospects/{pid}/follow-ups")).json()) == 1

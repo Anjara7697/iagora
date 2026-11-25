@@ -1093,6 +1093,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Follow Ups
+         * @description Relances à venir, la plus proche d'abord (périmètre du conseiller).
+         */
+        get: operations["list_follow_ups_api_v1_follow_ups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{follow_up_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Follow Up
+         * @description Annule cette relance ; 409 si elle est déjà partie ou annulée.
+         */
+        post: operations["cancel_follow_up_api_v1_follow_ups__follow_up_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-ups/{follow_up_id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reschedule Follow Up
+         * @description Décale cette relance ; elle reste soumise à la fenêtre d'envoi et aux garde-fous.
+         */
+        post: operations["reschedule_follow_up_api_v1_follow_ups__follow_up_id__reschedule_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -1696,6 +1756,26 @@ export interface paths {
          *     pas). Le rapport liste les événements d'agenda et de visio à supprimer à la main.
          */
         post: operations["erase_prospect_api_v1_prospects__prospect_id__erase_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospect_id}/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prospect Follow Ups
+         * @description Relances à venir d'un prospect (la première est « la prochaine relance »).
+         */
+        get: operations["prospect_follow_ups_api_v1_prospects__prospect_id__follow_ups_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3570,6 +3650,15 @@ export interface components {
              */
             without_email: number;
         };
+        /** FollowUpReschedule */
+        FollowUpReschedule: {
+            /**
+             * Scheduled At
+             * Format: date-time
+             * @description Nouvelle heure, avec fuseau, dans le futur et à 90 jours au plus
+             */
+            scheduled_at: string;
+        };
         /** FunnelStep */
         FunnelStep: {
             /**
@@ -4249,6 +4338,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PlannedFollowUp] */
+        Page_PlannedFollowUp_: {
+            /** Items */
+            items: components["schemas"]["PlannedFollowUp"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** Page[ProspectDetail] */
         Page_ProspectDetail_: {
             /** Items */
@@ -4283,6 +4383,37 @@ export interface components {
          * @enum {integer}
          */
         Period: 7 | 30 | 90;
+        /**
+         * PlannedFollowUp
+         * @description Relance programmée par l'agent, pas encore partie.
+         */
+        PlannedFollowUp: {
+            /**
+             * Channel
+             * @description Canal prévu ; None : celui de la conversation
+             */
+            channel?: string | null;
+            /**
+             * Expected At
+             * Format: date-time
+             * @description Heure de départ prévue : `scheduled_at`, repoussée à l'ouverture de la fenêtre d'envoi si besoin. Indicative : un arrêt de l'agent la retarde encore.
+             */
+            expected_at: string;
+            /** Id */
+            id: number;
+            /** Prospect Id */
+            prospect_id: number;
+            /** Prospect Name */
+            prospect_name: string;
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Scheduled At
+             * Format: date-time
+             * @description Heure demandée par l'agent ou le conseiller
+             */
+            scheduled_at: string;
+        };
         /** ProspectDetail */
         ProspectDetail: {
             /**
@@ -7643,6 +7774,102 @@ export interface operations {
             };
         };
     };
+    list_follow_ups_api_v1_follow_ups_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlannedFollowUp_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_follow_up_api_v1_follow_ups__follow_up_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                follow_up_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reschedule_follow_up_api_v1_follow_ups__follow_up_id__reschedule_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                follow_up_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FollowUpReschedule"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedFollowUp"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     liveness_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -8798,6 +9025,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErasureReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prospect_follow_ups_api_v1_prospects__prospect_id__follow_ups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                prospect_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedFollowUp"][];
                 };
             };
             /** @description Validation Error */

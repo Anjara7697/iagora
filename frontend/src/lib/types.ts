@@ -253,6 +253,7 @@ export type EmailStatus = {
 export type EmailCheck = Schemas["EmailCheck"];
 
 export type DashboardSummary = Schemas["DashboardSummary"];
+export type PlannedFollowUp = Schemas["PlannedFollowUp"];
 
 export type TreatedItem = {
   id: string;

@@ -12,6 +12,7 @@ from app.models.enums import ConsentStatus, ConversionStage, FollowUpStatus
 from app.schemas.follow_up import PlannedFollowUp
 from app.services import commercial_context, references
 from app.services import scope as scope_service
+from app.services.demo import demo_filter
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 from app.services.prospects import get_prospect
 from app.services.scope import EVERYTHING, Scope
@@ -140,14 +141,28 @@ async def list_planned(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[PlannedFollowUp], int]:
-    """Relances en attente, la plus proche d'abord, dans le périmètre du conseiller."""
+    """Relances en attente, la plus proche d'abord, dans le périmètre du conseiller.
+
+    La liste générale écarte les prospects fictifs (comme « Aujourd'hui » et l'exécuteur, qui ne
+    les relance pas) ; la liste d'un prospect les montre, pour la recette.
+    """
     where = [
         FollowUp.status == FollowUpStatus.SCHEDULED,
         scope_service.condition(scope, FollowUp.prospect_id),
     ]
     if prospect_id is not None:
         where.append(FollowUp.prospect_id == prospect_id)
-    total = await session.scalar(select(func.count()).select_from(FollowUp).where(*where)) or 0
+    else:
+        where.append(~demo_filter())
+    total = (
+        await session.scalar(
+            select(func.count())
+            .select_from(FollowUp)
+            .join(Prospect, Prospect.id == FollowUp.prospect_id)
+            .where(*where)
+        )
+        or 0
+    )
     rows = await session.execute(
         select(FollowUp, Prospect, Channel.name)
         .join(Prospect, Prospect.id == FollowUp.prospect_id)
