@@ -312,6 +312,16 @@ test("rechercher et filtrer les connecteurs", async ({ page }) => {
   await expect(cards).toHaveCount(4); // agenda, Zoom, jetons, Meta
 });
 
+test("mobile : les quatre filtres tiennent sur la largeur, sans défilement", { tag: "@mobile" }, async ({ page }) => {
+  await mockApi(page);
+  await open(page);
+  const filters = page.getByRole("tablist", { name: "Filtrer les connecteurs" });
+  for (const name of ["Tous", "Configurés", "À configurer", "Bientôt"])
+    await expect(filters.getByRole("tab", { name, exact: true })).toBeInViewport({ ratio: 1 });
+  expect(await filters.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect(page.getByRole("button", { name: "Onglets suivants" })).toHaveCount(0);
+});
+
 test("le panneau est adressable, se ferme avec Échap et rend le focus", async ({
   page,
 }) => {
