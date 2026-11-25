@@ -16,6 +16,7 @@ import ProspectHeader, { type ProspectAction } from "@/components/prospect/Prosp
 import ProspectJourney from "@/components/prospect/ProspectJourney";
 import ProspectOverview from "@/components/prospect/ProspectOverview";
 import { DuplicatesPanel, useDuplicateCount } from "@/components/prospects/DuplicatesPanel";
+import { NextFollowUp } from "@/components/followups/FollowUps";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { BackLink, Btn, ErrorText, Field, Notice, TabListContainer, TextBox, TextInput } from "@/components/ds/controls";
 import { DetailLoadError, Screen } from "@/components/ds/layout";
@@ -226,6 +227,7 @@ function ProspectDetail() {
               </Alert.Content>
             </Alert>
           )}
+          <NextFollowUp prospectId={p.id} readOnly={!canWrite} revision={`${revision}:${conv?.messages.length ?? 0}:${p.consent_status}`} />
           <Tabs variant="secondary" align="start" selectedKey={tab} onSelectionChange={(key) => showTab(key as ProspectTab)}>
             <TabListContainer>
               <Tabs.List aria-label="Sections de la fiche prospect">

@@ -584,3 +584,22 @@ et l'événement Google était créé sans invité (`sendUpdates=none`).
 
 **Suite.** Un second rappel (1 h avant) si les absences restent fréquentes ; synchroniser les annulations faites
 dans Google pour ne pas rappeler un rendez-vous annulé hors d'IAGORA.
+
+## D-48 — Relances prévues visibles, annulables et décalables
+
+**Contexte.** L'agent programmait des relances (`follow_ups`) qu'aucun écran ne montrait en détail : seule une liste
+de cinq, sans action, figurait sur Aujourd'hui. Un conseiller ne pouvait ni arrêter ni repousser une relance.
+
+**Décision** (responsable du projet, 25/11/2026).
+- « Prochaine relance : lundi 16 novembre à 10 h » sur la conversation et la fiche prospect ; liste complète,
+  5 par 5, sur Aujourd'hui. L'heure montrée est celle du **départ prévu** (`expected_at`) : une relance programmée
+  hors des heures d'envoi part à leur ouverture, et l'heure demandée est rappelée.
+- **Annuler** arrête cette relance seulement : si l'agent écrit de nouveau au prospect, il pourra en programmer une
+  autre. Le motif garde « annulée par <utilisateur> ».
+- **Décaler** : 1 jour, 3 jours, une semaine, ou une date et une heure au choix (dans le futur, 90 jours au plus).
+  Les garde-fous d'exécution restent appliqués à la nouvelle heure.
+- Une relance déjà partie ou annulée entre l'affichage et le clic répond 409 : rien n'est prétendu arrêté.
+- API : `GET /follow-ups`, `GET /prospects/{id}/follow-ups`, `POST /follow-ups/{id}/cancel`,
+  `POST /follow-ups/{id}/reschedule`. Conseillers et administrateurs agissent, l'observateur consulte ; périmètre D-23.
+
+**Suite.** « Ne plus relancer ce prospect » (réglage par prospect, migration) si le besoin apparaît.

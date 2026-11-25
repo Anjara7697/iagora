@@ -243,11 +243,27 @@ const members = [
 const page = (items: unknown[], limit: number, offset = 0) => ({ items, total: items.length, limit, offset });
 
 /** Réponse de l'API simulée pour une requête GET, ou `undefined` si rien n'est prévu. */
+const followUps = [
+  {
+    id: 1,
+    prospect_id: 2,
+    prospect_name: "Ahmed Belkacem",
+    channel: "email",
+    scheduled_at: "2026-11-20T09:00:00Z",
+    expected_at: "2026-11-20T09:00:00Z",
+    reason: "Relance J+7",
+  },
+];
+
 function respond(path: string, query: URLSearchParams): unknown {
   const limit = Number(query.get("limit") ?? 50);
+  // Relances prévues d'un prospect : aucune dans ce jeu (leur carte a ses propres tests, follow-ups.spec.ts).
+  if (/^\/prospects\/\d+\/follow-ups$/.test(path)) return [];
   switch (path) {
     case "/auth/me":
       return advisor;
+    case "/follow-ups":
+      return page(followUps, limit);
     case "/agent/mode":
       return { mode: "assisted" };
     case "/agent/activity":

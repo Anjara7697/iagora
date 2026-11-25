@@ -3450,6 +3450,21 @@
         "title": "FirstContactsRead",
         "type": "object"
       },
+      "FollowUpReschedule": {
+        "properties": {
+          "scheduled_at": {
+            "description": "Nouvelle heure, avec fuseau, dans le futur et à 90 jours au plus",
+            "format": "date-time",
+            "title": "Scheduled At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheduled_at"
+        ],
+        "title": "FollowUpReschedule",
+        "type": "object"
+      },
       "FunnelStep": {
         "properties": {
           "count": {
@@ -5284,6 +5299,37 @@
         "title": "Page[InteractionRead]",
         "type": "object"
       },
+      "Page_PlannedFollowUp_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedFollowUp"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[PlannedFollowUp]",
+        "type": "object"
+      },
       "Page_ProspectDetail_": {
         "properties": {
           "items": {
@@ -5376,6 +5422,67 @@
         ],
         "title": "Period",
         "type": "integer"
+      },
+      "PlannedFollowUp": {
+        "description": "Relance programmée par l'agent, pas encore partie.",
+        "properties": {
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Canal prévu ; None : celui de la conversation",
+            "title": "Channel"
+          },
+          "expected_at": {
+            "description": "Heure de départ prévue : `scheduled_at`, repoussée à l'ouverture de la fenêtre d'envoi si besoin. Indicative : un arrêt de l'agent la retarde encore.",
+            "format": "date-time",
+            "title": "Expected At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "prospect_id": {
+            "title": "Prospect Id",
+            "type": "integer"
+          },
+          "prospect_name": {
+            "title": "Prospect Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "scheduled_at": {
+            "description": "Heure demandée par l'agent ou le conseiller",
+            "format": "date-time",
+            "title": "Scheduled At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prospect_id",
+          "prospect_name",
+          "scheduled_at",
+          "expected_at"
+        ],
+        "title": "PlannedFollowUp",
+        "type": "object"
       },
       "ProspectDetail": {
         "properties": {
@@ -12015,6 +12122,167 @@
         ]
       }
     },
+    "/api/v1/follow-ups": {
+      "get": {
+        "description": "Relances à venir, la plus proche d'abord (périmètre du conseiller).",
+        "operationId": "list_follow_ups_api_v1_follow_ups_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlannedFollowUp_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Follow Ups",
+        "tags": [
+          "follow-ups"
+        ]
+      }
+    },
+    "/api/v1/follow-ups/{follow_up_id}/cancel": {
+      "post": {
+        "description": "Annule cette relance ; 409 si elle est déjà partie ou annulée.",
+        "operationId": "cancel_follow_up_api_v1_follow_ups__follow_up_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "follow_up_id",
+            "required": true,
+            "schema": {
+              "title": "Follow Up Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Cancel Follow Up",
+        "tags": [
+          "follow-ups"
+        ]
+      }
+    },
+    "/api/v1/follow-ups/{follow_up_id}/reschedule": {
+      "post": {
+        "description": "Décale cette relance ; elle reste soumise à la fenêtre d'envoi et aux garde-fous.",
+        "operationId": "reschedule_follow_up_api_v1_follow_ups__follow_up_id__reschedule_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "follow_up_id",
+            "required": true,
+            "schema": {
+              "title": "Follow Up Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpReschedule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlannedFollowUp"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Reschedule Follow Up",
+        "tags": [
+          "follow-ups"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "description": "Le processus repond.",
@@ -14040,6 +14308,58 @@
         "summary": "Erase Prospect",
         "tags": [
           "prospects"
+        ]
+      }
+    },
+    "/api/v1/prospects/{prospect_id}/follow-ups": {
+      "get": {
+        "description": "Relances à venir d'un prospect (la première est « la prochaine relance »).",
+        "operationId": "prospect_follow_ups_api_v1_prospects__prospect_id__follow_ups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "prospect_id",
+            "required": true,
+            "schema": {
+              "title": "Prospect Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlannedFollowUp"
+                  },
+                  "title": "Response Prospect Follow Ups Api V1 Prospects  Prospect Id  Follow Ups Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Prospect Follow Ups",
+        "tags": [
+          "follow-ups"
         ]
       }
     },

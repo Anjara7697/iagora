@@ -30,6 +30,7 @@ import { Box } from "@/components/ds/card";
 import { rowName, STATUS_TONE } from "@/components/conversations/shared";
 import { ConversationContext } from "@/components/conversations/ConversationContext";
 import { AgentActivityCard } from "@/components/agent/AgentActivity";
+import { NextFollowUp } from "@/components/followups/FollowUps";
 import { useAgentActivity } from "@/components/agent/useAgentActivity";
 
 /** Changements d'état qui demandent confirmation : leur effet est dit avant d'agir. */
@@ -316,6 +317,12 @@ export function ConversationDetail({
           </Notice>
         </section>
       )}
+      {/* Relue quand le fil ou l'état change : une réponse ou un transfert annule la relance. */}
+      <NextFollowUp
+        prospectId={summary.prospect_id}
+        readOnly={readOnly}
+        revision={`${conv?.messages.length ?? 0}:${conv?.status ?? ""}`}
+      />
       <ConversationContext summary={summary} conv={conv} prospect={p} />
       {conv && (
         <Box as="section" className={`gap-4 p-5 ${reveal(3).className}`} style={reveal(3).style} aria-label="Fil de la conversation">
