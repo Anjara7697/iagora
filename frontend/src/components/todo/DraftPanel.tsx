@@ -5,7 +5,7 @@
 import { Check, Paperclip, Pencil, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { Btn, ErrorText, Field, Notice, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
+import { Btn, ErrorText, Field, FilterChip, Notice, Tag, TextBox, TextInput, TextLink } from "@/components/ds/controls";
 import { Eyebrow } from "@/components/ds/layout";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { api, ApiError, download } from "@/lib/api";
@@ -17,6 +17,28 @@ import { PanelProps, TODO_KEYS, useReportDirty, itemName } from "@/components/to
 import { ariaKeyShortcut, type ShortcutKey } from "@/lib/shortcuts";
 import { useIsMac } from "@/lib/useIsMac";
 import { useShortcuts } from "@/lib/useShortcuts";
+
+/** Longueur maximale d'une consigne (la même limite côté API). */
+export const INSTRUCTION_MAX = 300;
+
+/** Raccourcis de consigne : chacun s'ajoute au champ, ou s'en retire. Aucun ne lève une règle de l'agent. */
+export const INSTRUCTION_SHORTCUTS = ["Plus court", "Plus chaleureux", "Parle du financement", "Sans question à la fin"];
+
+/** Ajoute ou retire un raccourci de la consigne, séparé des autres par un point. */
+export function toggleShortcut(instruction: string, shortcut: string): string {
+  const parts = instruction
+    .split(".")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const next = parts.some((p) => p.toLowerCase() === shortcut.toLowerCase())
+    ? parts.filter((p) => p.toLowerCase() !== shortcut.toLowerCase())
+    : [...parts, shortcut];
+  return next.length ? `${next.join(". ")}.` : "";
+}
+
+function hasShortcut(instruction: string, shortcut: string): boolean {
+  return instruction.split(".").some((p) => p.trim().toLowerCase() === shortcut.toLowerCase());
+}
 
 export function DraftPanel({
   item,
@@ -37,6 +59,7 @@ export function DraftPanel({
   const [editing, setEditing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+  const [instruction, setInstruction] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +152,11 @@ export function DraftPanel({
             <p className="type-body-sm whitespace-pre-wrap text-muted">{draft.footer}</p>
           </div>
         )}
+        {draft.instruction && (
+          <p className="type-caption text-muted">
+            Version rédigée avec la consigne : « {draft.instruction} »
+          </p>
+        )}
         <p className="type-caption text-muted">
           C’est le texte exact qui partira
           {draft.footer ? ", pied de message compris" : ""}.
@@ -178,7 +206,10 @@ export function DraftPanel({
             variant="secondary"
             className="max-sm:flex-1"
             disabled={busy}
-            onClick={() => (changed ? setConfirmRegenerate(true) : void act("regenerate"))}
+            onClick={() => {
+              setInstruction("");
+              setConfirmRegenerate(true);
+            }}
           >
             <RefreshCw className="size-4" aria-hidden="true" />
             Régénérer
@@ -209,13 +240,47 @@ export function DraftPanel({
       <ConfirmDialog
         isOpen={confirmRegenerate}
         onOpenChange={setConfirmRegenerate}
-        status="warning"
+        status={changed ? "warning" : "accent"}
         title="Régénérer la réponse ?"
-        description="Votre version modifiée sera perdue : l’agent propose une nouvelle réponse à la place."
-        cancelLabel="Garder ma version"
+        description={
+          changed
+            ? "Votre version modifiée sera perdue : l’agent propose une nouvelle réponse à la place."
+            : "L’agent rédige une nouvelle version à la place de celle-ci."
+        }
+        cancelLabel={changed ? "Garder ma version" : "Annuler"}
         confirmLabel="Régénérer"
-        onConfirm={() => void act("regenerate")}
-      />
+        confirmDisabled={instruction.length > INSTRUCTION_MAX}
+        onConfirm={() => void act("regenerate", instruction.trim() ? { instruction: instruction.trim() } : {})}
+      >
+        <div className="flex flex-col gap-2 pt-3">
+          <Field
+            label="Consigne pour l’agent (facultative)"
+            hint={`${instruction.length} / ${INSTRUCTION_MAX} caractères. Elle oriente le ton, la longueur ou le sujet ; l’agent n’écrit toujours que ce que la base de connaissances confirme.`}
+          >
+            <TextBox
+              autoFocus
+              rows={2}
+              maxLength={INSTRUCTION_MAX}
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              placeholder="Ex. plus court, parlez de l’alternance"
+            />
+          </Field>
+          <div role="group" aria-label="Consignes rapides" className="flex flex-wrap gap-1.5">
+            {INSTRUCTION_SHORTCUTS.map((shortcut) => (
+              <FilterChip
+                key={shortcut}
+                className="rounded-lg"
+                pressed={hasShortcut(instruction, shortcut)}
+                isDisabled={!hasShortcut(instruction, shortcut) && toggleShortcut(instruction, shortcut).length > INSTRUCTION_MAX}
+                onClick={() => setInstruction((current) => toggleShortcut(current, shortcut))}
+              >
+                {shortcut}
+              </FilterChip>
+            ))}
+          </div>
+        </div>
+      </ConfirmDialog>
       <ConfirmDialog
         isOpen={rejecting}
         onOpenChange={setRejecting}

@@ -170,6 +170,7 @@ async def list_todo(
                             for a in meta.get("attachments") or []
                             if isinstance(a, dict) and a.get("id") and a.get("label")
                         ],
+                        instruction=meta.get("instruction"),
                     ),
                     recommendation=TodoRecommendation(
                         action=(

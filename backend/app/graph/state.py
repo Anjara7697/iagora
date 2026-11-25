@@ -111,6 +111,8 @@ class SalesAgentState(TypedDict, total=False):
     conversation_id: str
     trigger: Literal["inbound_message", "first_contact", "follow_up"]
     inbound_text: str
+    # Consigne d'un conseiller pour cette version (« Régénérer »), guide la rédaction seulement.
+    instruction: str | None
     # Contexte
     ctx: ProspectContext
     answer_channel: str

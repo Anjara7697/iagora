@@ -24,6 +24,7 @@ from app.schemas.todo import (
     AgentModeUpdate,
     BatchResult,
     DraftApprove,
+    DraftRegenerate,
     DraftReject,
     FirstContactApproval,
     OptOutReviewDecision,
@@ -244,11 +245,16 @@ async def regenerate_draft(
     llm: Llm,
     calendar: CalendarDep,
     knowledge: KnowledgeDep,
+    payload: DraftRegenerate | None = None,
 ) -> AgentRunResult:
-    """Remplace le brouillon par une nouvelle version rédigée par l'agent."""
+    """Remplace le brouillon par une nouvelle version rédigée par l'agent. Une consigne du
+    conseiller (« plus court », « parle du financement ») peut guider cette version : elle ne
+    lève aucune règle (faits sourcés, vouvoiement, une question au plus, pas de rendez-vous
+    proposé par le modèle) et reste tracée dans « Décisions de l'agent »."""
     if await agent_settings.get_mode(db) is AgentMode.MANUAL:
         raise ConflictError("Agent en mode manuel (arrêt d'urgence) : aucune réponse automatique")
-    await drafts.supersede(db, conversation_id, message_id, user.id)
+    instruction = payload.instruction if payload else None
+    await drafts.supersede(db, conversation_id, message_id, user.id, instruction)
     return await runtime.run_agent(
         session,
         db,
@@ -256,6 +262,7 @@ async def regenerate_draft(
         calendar=calendar,
         knowledge=knowledge,
         conversation_id=conversation_id,
+        instruction=instruction,
     )
 
 

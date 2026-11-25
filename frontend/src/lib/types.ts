@@ -154,6 +154,8 @@ export type AgentRun = {
   llm: { provider?: string; model?: string };
   trace: TraceEntry[];
   started_at: string;
+  /** Consigne du conseiller qui a demandé cette version (« Régénérer »). */
+  instruction?: string | null;
 };
 
 export type History = {
@@ -207,6 +209,8 @@ export type TodoItem = {
     footer?: string | null;
     /** Documents de la campagne joints par l'agent (D-42). */
     attachments?: DraftAttachment[];
+    /** Consigne du conseiller suivie pour cette version (« Régénérer »). */
+    instruction?: string | null;
   } | null;
   handoff: HandoffSheet | null;
   recommendation: {

@@ -35,6 +35,11 @@ export default function ProspectDecisions({
           style={reveal(index + 1).style}
         >
           <div className="type-caption text-muted tabular-nums">{formatDate(r.started_at)}</div>
+          {r.instruction && (
+            <p className="type-body-sm text-foreground">
+              <span className="text-muted">Régénérée avec la consigne :</span> « {r.instruction} »
+            </p>
+          )}
           <RunView run={r} />
           {r.reply && (
             <blockquote className="rounded-lg border-l-2 border-agent/40 bg-surface-secondary px-4 py-3 type-body whitespace-pre-wrap text-foreground">

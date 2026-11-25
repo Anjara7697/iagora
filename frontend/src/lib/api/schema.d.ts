@@ -693,7 +693,10 @@ export interface paths {
         put?: never;
         /**
          * Regenerate Draft
-         * @description Remplace le brouillon par une nouvelle version rédigée par l'agent.
+         * @description Remplace le brouillon par une nouvelle version rédigée par l'agent. Une consigne du
+         *     conseiller (« plus court », « parle du financement ») peut guider cette version : elle ne
+         *     lève aucune règle (faits sourcés, vouvoiement, une question au plus, pas de rendez-vous
+         *     proposé par le modèle) et reste tracée dans « Décisions de l'agent ».
          */
         post: operations["regenerate_draft_api_v1_conversations__conversation_id__drafts__message_id__regenerate_post"];
         delete?: never;
@@ -2338,6 +2341,11 @@ export interface components {
             conversation_id: string;
             /** Handoff Reason */
             handoff_reason: string | null;
+            /**
+             * Instruction
+             * @description Consigne du conseiller qui a demandé cette version (« Régénérer »)
+             */
+            instruction?: string | null;
             /** Llm */
             llm: {
                 [key: string]: unknown;
@@ -3205,6 +3213,14 @@ export interface components {
             conversation_id: string;
             /** Message Id */
             message_id: string;
+        };
+        /** DraftRegenerate */
+        DraftRegenerate: {
+            /**
+             * Instruction
+             * @description Consigne libre pour la nouvelle version (ton, longueur, sujet à mettre en avant). Elle guide la rédaction sans lever les règles de l'agent.
+             */
+            instruction?: string | null;
         };
         /** DraftReject */
         DraftReject: {
@@ -5385,6 +5401,11 @@ export interface components {
              * @description Pied de message ajouté automatiquement (non modifiable)
              */
             footer?: string | null;
+            /**
+             * Instruction
+             * @description Consigne du conseiller suivie pour rédiger cette version
+             */
+            instruction?: string | null;
             /** Message Id */
             message_id: string;
             /**
@@ -7073,7 +7094,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DraftRegenerate"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {

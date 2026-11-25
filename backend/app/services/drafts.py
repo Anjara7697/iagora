@@ -129,13 +129,18 @@ async def reject(
     return await _update(db, conversation_id, message_id, fields, None)
 
 
-async def supersede(db: Any, conversation_id: str, message_id: str, actor_id: int) -> MessageRead:
+async def supersede(
+    db: Any, conversation_id: str, message_id: str, actor_id: int, instruction: str | None = None
+) -> MessageRead:
+    """Remplace le brouillon (« Régénérer ») ; la consigne éventuelle est gardée avec lui."""
     await _pending(db, conversation_id, message_id)
-    fields = {
+    fields: dict[str, Any] = {
         "status": "superseded",
         "decided_by": actor_id,
         "decided_at": datetime.now(UTC),
     }
+    if instruction:
+        fields["instruction"] = instruction
     return await _update(db, conversation_id, message_id, fields, None)
 
 
