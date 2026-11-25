@@ -38,9 +38,14 @@ const same = (a: Draft, b: Draft) =>
  * (vérifiées par le code). Enregistrées à part des autres paramètres : chaque enregistrement est une version.
  */
 export function HouseRulesSection({ hidden, onDirty }: { hidden: boolean; onDirty: (dirty: boolean) => void }) {
-  const current = useApi<HouseRules>("/settings/house-rules");
-  const history = useApi<HouseRules[]>("/settings/house-rules/history");
-  const reasons = useApi<Analytics>(hidden ? null : "/analytics?days=30");
+  // Chargées à la première ouverture de la section seulement, puis gardées (une saisie en cours n'est pas perdue).
+  const [opened, setOpened] = useState(!hidden);
+  useEffect(() => {
+    if (!hidden) setOpened(true);
+  }, [hidden]);
+  const current = useApi<HouseRules>(opened ? "/settings/house-rules" : null);
+  const history = useApi<HouseRules[]>(opened ? "/settings/house-rules/history" : null);
+  const reasons = useApi<Analytics>(opened ? "/analytics?days=30" : null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [phrase, setPhrase] = useState("");
   const [busy, setBusy] = useState(false);
