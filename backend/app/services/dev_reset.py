@@ -64,6 +64,7 @@ COLLECTIONS: list[tuple[str, str]] = [
     ("décisions de l'agent", AGENT_RUNS),
     ("file de l'agent", AGENT_EVENTS),
     ("événements Meta reçus", meta_leads.COLLECTION),
+    ("réponses proposées pour la base", "kb_suggestions"),
 ]
 
 

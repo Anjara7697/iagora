@@ -182,6 +182,8 @@ class HandoffSheet:
     qualification: dict[str, Any]
     pending_question: str | None
     recommended_action: str
+    # Programme du prospect : la réponse proposée rejoint sa FAQ (D-50).
+    target_code: str | None = None
 
 
 # --- Ports d'accès ---

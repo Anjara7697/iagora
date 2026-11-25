@@ -272,6 +272,7 @@ async function mockApi(
 ) {
   const calls: Calls = { posts: [] };
   let items = [draftItem, gapItem];
+  let suggestion: Record<string, unknown> | null = null;
   const decisions: unknown[] = [];
   let mode = opts.mode ?? "assisted";
   await page.context().route("**/api/v1/**", async (route) => {
@@ -324,6 +325,24 @@ async function mockApi(
       }
       code = action === "regenerate" ? 201 : 200;
       body = { ok: true };
+    } else if (path === "/knowledge/suggestions/prefill")
+      body = {
+        question: "Le certificat est-il reconnu par l'État ?",
+        answer: "Oui, le titre est inscrit au RNCP (niveau 7).",
+        target_code: "ebihar_students",
+        existing: suggestion,
+      };
+    else if (path === "/knowledge/suggestions" && request.method() === "POST") {
+      const payload = request.postDataJSON() as Record<string, unknown>;
+      calls.posts.push({ path, method: "POST", body: payload });
+      suggestion = {
+        id: "s1", status: "pending", question: payload.question, answer: payload.answer,
+        target_code: payload.target_code, prospect_question: null, conversation_id: "c2",
+        prospect_id: 2, proposed_by: "conseiller", created_at: new Date().toISOString(),
+        decided_by: null, decided_at: null, reason: null, document_slug: null,
+      };
+      code = 201;
+      body = suggestion;
     } else code = 404;
     await route.fulfill({ status: code, json: body });
   });
@@ -1185,4 +1204,28 @@ test("clavier : les raccourcis de la file figurent dans la palette", async ({ pa
   await page.keyboard.press("Control+k");
   await expect(palette.getByRole("option", { name: /Valider la réponse/ })).toBeVisible();
   await expect(palette.getByRole("option", { name: /Modifier la réponse/ })).toBeVisible();
+});
+
+test("question sans réponse : le conseiller propose la réponse pour la base", async ({ page }) => {
+  const calls = await mockApi(page);
+  await open(page);
+  const list = page.getByRole("complementary", { name: "Éléments à traiter" });
+  await list.getByRole("button", { name: /Ahmed Belkacem/ }).click();
+  const learn = page.getByRole("region", { name: "Apprendre de cette question" });
+  await learn.getByRole("button", { name: "Ajouter à la base" }).click();
+  // Pré-rempli : la question du prospect, la réponse déjà envoyée par le conseiller, le programme.
+  await expect(learn.getByLabel("Question")).toHaveValue("Le certificat est-il reconnu par l'État ?");
+  await expect(learn.getByLabel("Réponse")).toHaveValue("Oui, le titre est inscrit au RNCP (niveau 7).");
+  await expect(learn.getByText("Un administrateur la relira avant qu’elle entre dans la base.")).toBeVisible();
+  await learn.getByLabel("Question").fill("Le certificat est-il reconnu par l’État ?");
+  await learn.getByRole("button", { name: "Proposer la réponse" }).click();
+  await expect(learn.getByText(/attend la validation d’un administrateur/)).toBeVisible();
+  await expect(learn.getByRole("button", { name: "Ajouter à la base" })).toHaveCount(0);
+  expect(calls.posts.find((p) => p.path === "/knowledge/suggestions")?.body).toEqual({
+    conversation_id: "c2",
+    question: "Le certificat est-il reconnu par l’État ?",
+    answer: "Oui, le titre est inscrit au RNCP (niveau 7).",
+    target_code: "ebihar_students",
+  });
+  await auditA11y(page, "À traiter, proposition pour la base");
 });

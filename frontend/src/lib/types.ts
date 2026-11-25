@@ -238,6 +238,11 @@ export type KnowledgeDocumentDetail = KnowledgeDocument & {
 };
 
 export type SearchHit = Schemas["SearchHit"];
+
+/** Réponse proposée pour la base après une question sans réponse (D-50). */
+export type KbSuggestion = Schemas["KbSuggestionRead"];
+export type KbSuggestionPage = Schemas["KbSuggestionPage"];
+export type KbSuggestionPrefill = Schemas["KbSuggestionPrefill"];
 export type SearchResult = Schemas["SearchResult"];
 
 export type EmailStatus = {

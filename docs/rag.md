@@ -54,6 +54,29 @@ La page **Base de connaissances** de la console (menu « Intelligence ») permet
 API : `GET /knowledge/status | documents | documents/{slug}`, `PUT/DELETE /knowledge/documents/{slug}`,
 `POST /knowledge/search`, `POST /knowledge/reindex` (écritures réservées aux administrateurs).
 
+## Apprendre des questions sans réponse (D-50)
+
+Quand l'agent transfère une question faute d'extrait (motif `question_hors_base`), la demande « Réponses à
+compléter » de **À traiter** porte un encart **Apprendre de cette question** :
+
+1. **Ajouter à la base** ouvre un formulaire pré-rempli : la question du prospect, la dernière réponse écrite par le
+   conseiller dans la conversation après le transfert, et le programme du prospect. Le conseiller reformule la
+   question de façon générale (sans nom ni donnée personnelle) et **propose** la réponse.
+2. Un **administrateur** la relit dans l'onglet **Réponses proposées** de la Base de connaissances : il peut corriger
+   la question, la réponse ou le programme, puis **valider** ou **refuser** (motif facultatif, visible du conseiller).
+   Un administrateur qui ajoute lui-même la réponse la valide du même geste.
+3. La réponse validée devient une section `## question` du document **« Questions des prospects »** de son programme
+   (`questions-prospects-<code>`), ou du document commun (`questions-prospects`). Une question déjà présente (même
+   intitulé) est remplacée, pas dupliquée. L'agent s'en sert dès la question suivante.
+
+Rien n'entre dans la base sans validation. Les propositions sont dans MongoDB (`kb_suggestions`, pas de migration).
+Effacement d'un prospect : ses propositions non validées sont supprimées ; une réponse validée reste dans la FAQ,
+sans lien ni question d'origine.
+
+API : `GET /knowledge/suggestions` (`?status=pending`, `?conversation_id=`), `GET /knowledge/suggestions/prefill`,
+`POST /knowledge/suggestions` (conseiller, administrateur), `POST /knowledge/suggestions/{id}/approve | reject`
+(administrateur).
+
 ## Commandes (`python -m app.cli …`, via `docker compose exec backend`)
 
 | Commande | Rôle |

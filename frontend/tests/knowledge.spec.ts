@@ -14,13 +14,31 @@ const doc = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const proposal = {
+  id: "s1",
+  status: "pending",
+  question: "Le certificat est-il reconnu par l’État ?",
+  answer: "Oui, le titre est inscrit au RNCP (niveau 7).",
+  target_code: "ebihar_students",
+  prospect_question: "Bonjour, le certificat est-il reconnu par l'État ? Merci, Ahmed",
+  conversation_id: "c2",
+  prospect_id: 2,
+  proposed_by: "conseiller",
+  created_at: "2026-11-25T10:00:00Z",
+  decided_by: null,
+  decided_at: null,
+  reason: null,
+  document_slug: null,
+};
+
 type Calls = { requests: { method: string; path: string; body: unknown }[] };
 
 async function mockApi(
   page: Page,
-  opts: { role?: string; configured?: boolean; docs?: unknown[] } = {},
+  opts: { role?: string; configured?: boolean; docs?: unknown[]; suggestions?: unknown[] } = {},
 ) {
   const calls: Calls = { requests: [] };
+  let suggestions = opts.suggestions ?? [];
   const docs = opts.docs ?? [doc()];
   await page.route("**/api/v1/**", async (route) => {
     const request = route.request();
@@ -92,6 +110,13 @@ async function mockApi(
           },
         ],
       };
+    } else if (path === "/knowledge/suggestions") {
+      body = { items: suggestions, total: suggestions.length };
+    } else if (path.startsWith("/knowledge/suggestions/")) {
+      calls.requests.push({ method: "POST", path, body: request.postDataJSON() });
+      suggestions = [];
+      body = { ...proposal, status: path.endsWith("approve") ? "approved" : "rejected",
+        document_slug: "questions-prospects-ebihar_students" };
     } else if (path === "/knowledge/reindex") {
       calls.requests.push({ method: "POST", path, body: null });
       body = { documents: 1 };
@@ -565,4 +590,38 @@ test("accessibilité : alertes, panneau, éditeur, testeur, états vides et mobi
   await page.goto("/knowledge?doc=ebihar");
   await expect(page.getByRole("dialog", { name: "Programme eBIHAR" })).toBeVisible();
   await auditA11y(page, "base de connaissances : document sur mobile");
+});
+
+test("réponses proposées : l'administrateur corrige, range et valide", async ({ page }) => {
+  const calls = await mockApi(page, { suggestions: [proposal] });
+  await open(page);
+  await expect(page.getByText("1 réponse proposée à valider")).toBeVisible();
+  await page.getByRole("button", { name: "Relire la réponse" }).click();
+  await expect(page).toHaveURL(/tab=suggestions/);
+  const card = page.getByRole("article", { name: /Proposition : Le certificat/ });
+  await expect(card.getByText(/Merci, Ahmed/)).toBeVisible();
+  await card.getByLabel("Réponse").fill("Oui : titre RNCP de niveau 7, reconnu par l’État.");
+  await choose(card.getByLabel("Programme concerné"), { label: "Tous les programmes" });
+  await auditA11y(page, "réponses proposées");
+  await card.getByRole("button", { name: "Valider et ajouter" }).click();
+  await expect(page.getByText("Aucune réponse à valider")).toBeVisible();
+  expect(calls.requests.at(-1)).toEqual({
+    method: "POST",
+    path: "/knowledge/suggestions/s1/approve",
+    body: {
+      question: "Le certificat est-il reconnu par l’État ?",
+      answer: "Oui : titre RNCP de niveau 7, reconnu par l’État.",
+      target_code: null,
+    },
+  });
+});
+
+test("réponses proposées : un conseiller consulte sans pouvoir valider", async ({ page }) => {
+  await mockApi(page, { role: "ADVISOR", suggestions: [proposal] });
+  await open(page);
+  await expect(page.getByText("1 réponse proposée à valider")).toHaveCount(0);
+  await page.getByRole("tab", { name: /Réponses proposées/ }).click();
+  const card = page.getByRole("article", { name: /Proposition : Le certificat/ });
+  await expect(card.getByText("Oui, le titre est inscrit au RNCP (niveau 7).")).toBeVisible();
+  await expect(card.getByRole("button", { name: "Valider et ajouter" })).toHaveCount(0);
 });

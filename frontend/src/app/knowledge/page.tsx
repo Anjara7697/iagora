@@ -13,11 +13,12 @@ import DocumentList from "@/components/knowledge/DocumentList";
 import DocumentPanel from "@/components/knowledge/DocumentPanel";
 import KnowledgeAlerts from "@/components/knowledge/KnowledgeAlerts";
 import SearchTester from "@/components/knowledge/SearchTester";
+import SuggestionList from "@/components/knowledge/SuggestionList";
 import { api, ApiError } from "@/lib/api";
 import { KNOWLEDGE_TABS, knowledgeHref, readKnowledgeView, type KnowledgeTab, type KnowledgeView } from "@/lib/knowledgeNav";
 import { replaceUrl } from "@/lib/url";
 import { useApi } from "@/lib/useApi";
-import type { KnowledgeDocument, KnowledgeStatus } from "@/lib/types";
+import type { KbSuggestionPage, KnowledgeDocument, KnowledgeStatus } from "@/lib/types";
 
 export default function KnowledgePage() {
   return (
@@ -42,6 +43,8 @@ function Knowledge() {
   const toReindex = docs.data?.filter((d) => d.needs_reindex).length ?? 0;
   const gaps = useApi<{ counts: Record<string, number> }>("/todo?limit=1");
   const gapCount = gaps.data?.counts?.kb_gap ?? 0;
+  const pending = useApi<KbSuggestionPage>("/knowledge/suggestions?status=pending&limit=1");
+  const pendingCount = pending.data?.total ?? 0;
   const canAdd = isAdmin && status.data?.configured === true;
   const startCreating = () => {
     navigate({ doc: null, tab: "documents" });
@@ -74,6 +77,9 @@ function Knowledge() {
         reindexing={reindexing}
         showingReindex={view.tab === "documents" && view.status === "reindex"}
         gapCount={gapCount}
+        pendingCount={pendingCount}
+        showingSuggestions={view.tab === "suggestions"}
+        onShowSuggestions={() => navigate({ tab: "suggestions", doc: null })}
         onShowReindex={() => navigate({ tab: "documents", q: "", programme: "", status: "reindex" })}
         onReindex={async () => {
           setReindexing(true);
@@ -98,6 +104,11 @@ function Knowledge() {
             {Object.entries(KNOWLEDGE_TABS).map(([key, title]) => (
               <Tabs.Tab key={key} id={key}>
                 {title}
+                {key === "suggestions" && pendingCount > 0 && (
+                  <span className="ml-1.5 rounded-full bg-warning-soft px-1.5 type-caption font-medium text-warning-soft-foreground tabular-nums">
+                    {pendingCount}
+                  </span>
+                )}
                 <Tabs.Indicator />
               </Tabs.Tab>
             ))}
@@ -127,6 +138,16 @@ function Knowledge() {
               }
             />
           )}
+        </Tabs.Panel>
+        <Tabs.Panel id="suggestions" className="pt-4">
+          <SuggestionList
+            isAdmin={isAdmin}
+            configured={status.data?.configured === true}
+            onChanged={() => {
+              pending.reload();
+              docs.reload();
+            }}
+          />
         </Tabs.Panel>
         <Tabs.Panel id="test" className="flex flex-col gap-4 pt-4">
           {status.data && <SearchTester status={status.data} />}

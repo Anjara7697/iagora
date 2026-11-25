@@ -17,6 +17,7 @@ from app.api.v1 import (
     health,
     imports,
     integrations,
+    kb_suggestions,
     knowledge,
     leads,
     meta,
@@ -44,6 +45,7 @@ api_router.include_router(campaign_prospects.router)
 api_router.include_router(conversations.router)
 api_router.include_router(follow_ups.router)
 api_router.include_router(todo.router)
+api_router.include_router(kb_suggestions.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(integrations.router)
 api_router.include_router(calendar.admin_router)

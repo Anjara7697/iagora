@@ -1582,6 +1582,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Suggestions
+         * @description Propositions, les plus récentes d'abord (périmètre du conseiller).
+         */
+        get: operations["list_suggestions_api_v1_knowledge_suggestions_get"];
+        put?: never;
+        /**
+         * Propose
+         * @description « Ajouter à la base » : la réponse attend la validation d'un administrateur.
+         */
+        post: operations["propose_api_v1_knowledge_suggestions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/suggestions/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prefill
+         * @description Question du prospect, réponse du conseiller et programme, pour pré-remplir la proposition.
+         */
+        get: operations["prefill_api_v1_knowledge_suggestions_prefill_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/suggestions/{suggestion_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve
+         * @description Valide la réponse (corrigée au besoin) : elle rejoint la FAQ de son programme.
+         */
+        post: operations["approve_api_v1_knowledge_suggestions__suggestion_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/knowledge/suggestions/{suggestion_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject
+         * @description Refuse la proposition : rien n'entre dans la base, le motif reste dans l'historique.
+         */
+        post: operations["reject_api_v1_knowledge_suggestions__suggestion_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads": {
         parameters: {
             query?: never;
@@ -3885,6 +3969,104 @@ export interface components {
          * @enum {string}
          */
         InterestLevel: "cold" | "warm" | "hot" | "very_hot";
+        /**
+         * KbSuggestionApprove
+         * @description Champs omis : on garde ceux de la proposition. `target_code: null` : document commun.
+         */
+        KbSuggestionApprove: {
+            /** Answer */
+            answer?: string | null;
+            /** Question */
+            question?: string | null;
+            /** Target Code */
+            target_code?: string | null;
+        };
+        /** KbSuggestionCreate */
+        KbSuggestionCreate: {
+            /** Answer */
+            answer: string;
+            /** Conversation Id */
+            conversation_id: string;
+            /** Question */
+            question: string;
+            /** Target Code */
+            target_code?: string | null;
+        };
+        /** KbSuggestionPage */
+        KbSuggestionPage: {
+            /** Items */
+            items: components["schemas"]["KbSuggestionRead"][];
+            /** Total */
+            total: number;
+        };
+        /** KbSuggestionPrefill */
+        KbSuggestionPrefill: {
+            /**
+             * Answer
+             * @description Dernière réponse du conseiller après le transfert
+             */
+            answer: string;
+            /** @description Dernière proposition faite pour cette conversation */
+            existing?: components["schemas"]["KbSuggestionRead"] | null;
+            /** Question */
+            question: string;
+            /** Target Code */
+            target_code: string | null;
+        };
+        /** KbSuggestionRead */
+        KbSuggestionRead: {
+            /** Answer */
+            answer: string;
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at?: string | null;
+            /** Decided By */
+            decided_by?: string | null;
+            /**
+             * Document Slug
+             * @description FAQ où la réponse a été ajoutée
+             */
+            document_slug?: string | null;
+            /** Id */
+            id: string;
+            /** Proposed By */
+            proposed_by?: string | null;
+            /** Prospect Id */
+            prospect_id?: number | null;
+            /**
+             * Prospect Question
+             * @description Question telle que posée
+             */
+            prospect_question?: string | null;
+            /** Question */
+            question: string;
+            /**
+             * Reason
+             * @description Motif du refus
+             */
+            reason?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+            /**
+             * Target Code
+             * @description Programme ; vide : commun à tous
+             */
+            target_code: string | null;
+        };
+        /** KbSuggestionReject */
+        KbSuggestionReject: {
+            /** Reason */
+            reason?: string | null;
+        };
         /** KnowledgeStatus */
         KnowledgeStatus: {
             /**
@@ -8745,6 +8927,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeStatus"];
+                };
+            };
+        };
+    };
+    list_suggestions_api_v1_knowledge_suggestions_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                conversation_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSuggestionPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_api_v1_knowledge_suggestions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbSuggestionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSuggestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefill_api_v1_knowledge_suggestions_prefill_get: {
+        parameters: {
+            query: {
+                conversation_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSuggestionPrefill"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_v1_knowledge_suggestions__suggestion_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbSuggestionApprove"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSuggestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_api_v1_knowledge_suggestions__suggestion_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KbSuggestionReject"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KbSuggestionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

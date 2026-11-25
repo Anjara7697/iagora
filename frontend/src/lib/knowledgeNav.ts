@@ -8,7 +8,7 @@ import { SLUG_PATTERN } from "@/lib/knowledgeDoc";
  */
 type Query = { get: (key: string) => string | null };
 
-export const KNOWLEDGE_TABS = { documents: "Documents", test: "Tester une question" };
+export const KNOWLEDGE_TABS = { documents: "Documents", suggestions: "Réponses proposées", test: "Tester une question" };
 export type KnowledgeTab = keyof typeof KNOWLEDGE_TABS;
 
 /** Filtre de programme : vide = tous, `common` = documents communs à tous les programmes, sinon un code. */

@@ -20,6 +20,7 @@ import { Box } from "@/components/ds/card";
 import { KindFilter, revealed, PanelProps, TASK_LABELS, itemName, KIND_TONE, PRIORITY_TONE, RISK_TONE, Confidence, DetailHead } from "@/components/todo/shared";
 import { DraftPanel } from "@/components/todo/DraftPanel";
 import { ApplicationReview, EnrollmentReview, OptOutReview } from "@/components/todo/ReviewPanels";
+import { AddToKnowledge } from "@/components/knowledge/AddToKnowledge";
 
 export function TodoDetail({
   kind,
@@ -193,6 +194,7 @@ triggerClassName="w-full px-5 py-3 hover:bg-surface-secondary focus-visible:ring
           {item.kind === "opt_out_check" && <OptOutReview {...panel} />}
           {item.kind === "enrollment" && <EnrollmentReview {...panel} />}
           {!decides && evidence}
+          {item.kind === "kb_gap" && <AddToKnowledge key={item.id} conversationId={item.conversation_id} />}
         </div>
         {decides && rec && <aside aria-label="Contexte de la décision" className="flex min-w-0 flex-col gap-4">{evidence}</aside>}
       </div>

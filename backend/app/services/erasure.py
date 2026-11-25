@@ -52,6 +52,7 @@ MONGO_COLLECTIONS = (
 # Ces événements servent de marqueur d'idempotence (un rejeu ne recrée rien) : on ne les supprime
 # pas, on coupe seulement leur lien avec la fiche effacée.
 UNLINK_COLLECTIONS = ("meta_lead_events",)
+KB_SUGGESTIONS = "kb_suggestions"
 
 
 def fingerprint(value: str | None, *, phone: bool = False) -> str | None:
@@ -97,6 +98,15 @@ async def _delete_mongo(db: Any, prospect_id: int) -> int:
         await db[name].update_many(
             {"prospect_id": prospect_id}, {"$unset": {"prospect_id": "", "interaction_id": ""}}
         )
+    # Réponses proposées pour la base (D-50) : celles qui n'y sont pas entrées disparaissent ; une
+    # réponse validée reste dans la FAQ, sans lien ni question d'origine du prospect.
+    await db[KB_SUGGESTIONS].delete_many(
+        {"prospect_id": prospect_id, "status": {"$ne": "approved"}}
+    )
+    await db[KB_SUGGESTIONS].update_many(
+        {"prospect_id": prospect_id},
+        {"$unset": {"prospect_id": "", "conversation_id": "", "prospect_question": ""}},
+    )
     return conversations
 
 
