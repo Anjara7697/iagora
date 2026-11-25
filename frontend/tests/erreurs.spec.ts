@@ -60,3 +60,28 @@ test("titre du document propre à chaque écran, mis à jour en naviguant", asyn
   await expect(page.getByRole("heading", { name: "Paramètres", exact: true })).toBeVisible();
   await expect(page).toHaveTitle("Paramètres · IAGORA");
 });
+
+test("fiche impossible à charger : le titre de page reste affiché, « introuvable » pour un 404", { tag: ["@mobile"] }, async ({ page }) => {
+  await mockConsole(page);
+  await page.route("**/api/v1/prospects/1", (route) => route.fulfill({ status: 500, json: { detail: "Erreur interne" } }));
+  await page.goto("/prospects/1");
+  await expect(page.getByRole("heading", { level: 1, name: "Fiche prospect" })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Impossible de charger la fiche : Erreur interne" })).toBeVisible();
+  await auditA11y(page, "fiche prospect en erreur", [], { strict: true });
+
+  await page.route("**/api/v1/campaigns/1", (route) => route.fulfill({ status: 404, json: { detail: "Introuvable" } }));
+  await page.goto("/campaigns/1");
+  await expect(page.getByRole("heading", { level: 1, name: "Campagne introuvable" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Réessayer" })).toHaveCount(0);
+});
+
+test("onglets : sur une ligne, et flèches de défilement nommées en français", { tag: ["@mobile"] }, async ({ page }) => {
+  await mockConsole(page);
+  await page.goto("/integrations");
+  await expect(page.getByText("Messagerie email").first()).toBeVisible();
+  for (const tab of await page.locator(".tabs__tab").filter({ visible: true }).all()) {
+    const box = await tab.boundingBox();
+    expect(box?.height ?? 0, await tab.innerText()).toBeLessThan(48);
+  }
+  await expect(page.getByRole("button", { name: /Scroll tabs/ })).toHaveCount(0);
+});

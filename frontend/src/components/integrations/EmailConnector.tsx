@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { EmailSettings } from "@/components/integrations/EmailSettings";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { Btn, ErrorText, Notice, TAB_RADIUS } from "@/components/ds/controls";
+import { Btn, ErrorText, Notice, TAB_RADIUS, TabListContainer } from "@/components/ds/controls";
 import { cx } from "@/components/ds/layout";
 import { ActionsBar, InfoRow, StatePill, Stats } from "@/components/ds/settings";
 import { api, failure } from "@/lib/api";
@@ -100,7 +100,7 @@ export function EmailConnector({
         </Notice>
       )}
       <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(key as EmailTab)}>
-        <Tabs.ListContainer className={TAB_RADIUS.container}>
+        <TabListContainer className={TAB_RADIUS.container}>
           <Tabs.List aria-label="Messagerie">
             {(
               [
@@ -114,7 +114,7 @@ export function EmailConnector({
               </Tabs.Tab>
             ))}
           </Tabs.List>
-        </Tabs.ListContainer>
+        </TabListContainer>
         <Tabs.Panel id="overview" className="pt-4" shouldForceMount hidden={tab !== "overview"}>
       <section aria-label="Messagerie" className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 rounded-lg bg-surface-secondary px-4 py-4">

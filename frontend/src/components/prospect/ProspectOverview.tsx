@@ -121,7 +121,7 @@ export default function ProspectOverview({
               ["Créé le", formatDate(p.created_at)],
               ["Canal de l’échange", conv ? label(CHANNELS, conv.channel) : "Non renseigné"],
             ].map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[140px_minmax(0,1fr)] gap-3">
+              <div key={k} className="grid grid-cols-1 gap-0.5 sm:grid-cols-[140px_minmax(0,1fr)] sm:gap-3">
                 <dt className="type-body-sm text-muted">{k}</dt>
                 <dd className="type-body break-words text-foreground">{v}</dd>
               </div>

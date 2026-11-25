@@ -73,6 +73,9 @@ règle se décide avec le responsable du projet, puis s'écrit ici.
 3. **Onglets** : sections d'une fiche (prospect, campagne, base de connaissances) en `Tabs` HeroUI soulignés
    (`variant="secondary" align="start"`), chaque onglet à la largeur de son texte ; l'onglet ouvert dans l'adresse
    (`?tab=…`). Un choix exclusif court (Pipeline / Table) reste en segments (`Segmented`, `TAB_RADIUS`).
+   Un onglet ou un segment tient sur une ligne ; sous 640 px, les onglets d'une fiche passent à la ligne au lieu
+   de défiler. Toute liste d'onglets passe par `TabListContainer` (`ds/controls.tsx`) plutôt que
+   `Tabs.ListContainer`, pour des flèches de défilement nommées en français.
 4. **Tableaux** : le `Table` HeroUI (via `DataTable`) est posé directement sur la page, sans carte autour.
    Toute la ligne ouvre l'élément (clic et Entrée). Sous 640 px, le tableau devient une liste de lignes à deux
    niveaux (`CompactList`, `CompactRow` de `ds/table.tsx`) : nom et état sur la première ligne, détails en dessous,

@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { Btn } from "@/components/ds/controls";
+import { Btn, TabListContainer } from "@/components/ds/controls";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Collapse } from "@/components/ds/collapse";
@@ -93,7 +93,7 @@ function Knowledge() {
       />
 
       <Tabs variant="secondary" align="start" {...reveal(4)} selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as KnowledgeTab })}>
-        <Tabs.ListContainer>
+        <TabListContainer>
           <Tabs.List aria-label="Sections de la base de connaissances">
             {Object.entries(KNOWLEDGE_TABS).map(([key, title]) => (
               <Tabs.Tab key={key} id={key}>
@@ -102,7 +102,7 @@ function Knowledge() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
-        </Tabs.ListContainer>
+        </TabListContainer>
         <Tabs.Panel id="documents" className="pt-4">
           {docs.error ? (
             <ErrorState message={`Impossible de charger les documents : ${docs.error.message}`} onRetry={docs.reload} />

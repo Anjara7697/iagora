@@ -277,6 +277,17 @@
   .tabs--secondary .tabs__tab {
     width: auto;
   }
+  /* Un onglet ou un segment tient sur une ligne (« 30 jours », « À venir ») : faute de place, la liste défile. */
+  .tabs__tab {
+    white-space: nowrap;
+  }
+  /* Onglets d'une fiche sur mobile : ils passent à la ligne plutôt que de cacher le dernier derrière une flèche. */
+  @media (width < 40rem) {
+    .tabs--secondary .tabs__list[data-orientation="horizontal"] {
+      flex-wrap: wrap;
+      width: 100%;
+    }
+  }
   /* Les alertes ont déjà un fond coloré : ni ombre ni filet. */
   .alert {
     box-shadow: none;

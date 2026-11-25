@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
-import { Btn, Notice } from "@/components/ds/controls";
+import { Btn, Notice, TabListContainer } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
@@ -136,7 +136,7 @@ function Evaluation() {
         selectedKey={view.tab}
         onSelectionChange={(key) => navigate({ tab: key as EvaluationTab })}
       >
-        <Tabs.ListContainer>
+        <TabListContainer>
           <Tabs.List aria-label="Sections de l’évaluation">
             {Object.entries(EVALUATION_TABS).map(([key, title]) => (
               <Tabs.Tab key={key} id={key}>
@@ -145,7 +145,7 @@ function Evaluation() {
               </Tabs.Tab>
             ))}
           </Tabs.List>
-        </Tabs.ListContainer>
+        </TabListContainer>
 
         <Tabs.Panel id="history" className="pt-4">
           {runs.error ? (
