@@ -70,7 +70,7 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
 2. **Premier contact** d'un prospect au consentement « inconnu » : autorisé aujourd'hui ; à valider avec
    le tuteur au regard du RGPD.
 3. **Effacement RGPD** (suppression/anonymisation d'un prospect et de ses conversations) : à planifier.
-4. Fusion de fiches en double : non prévue.
+4. Fusion de fiches en double : file « Doublons à trancher » et fusion manuelle livrées (voir [doublons.md](doublons.md)).
 
 ## Lots 4 à 6 — consolidation (✅)
 
@@ -104,5 +104,5 @@ au lot qui le traite. Statuts : ✅ corrigé · ⏳ prévu · ❓ décision à p
   éléments « lacune de la base » et « incident ».
 - `/todo` : pagination côté base (aujourd'hui 500 conversations max) et champ `has_pending_draft`.
 - Endpoint de synthèse du tableau de bord, relances et rendez-vous visibles dans l'interface.
-- Effacement/anonymisation RGPD d'un prospect, fusion de doublons, jetons de service pour les webhooks.
+- Effacement/anonymisation RGPD d'un prospect, jetons de service pour les webhooks.
 - Comptes : insensibilité à la casse des identifiants, changement de mot de passe par l'utilisateur.

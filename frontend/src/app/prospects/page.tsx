@@ -17,6 +17,7 @@ import { EmptyPanel, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { TablePagination } from "@/components/ds/table";
 import { Loading, Skeleton } from "@/components/ds/ui";
+import { DuplicatesPanel, useDuplicateCount } from "@/components/prospects/DuplicatesPanel";
 import { ProspectFilters } from "@/components/prospects/ProspectFilters";
 import { ProspectPipeline } from "@/components/prospects/ProspectPipeline";
 import { ProspectTable } from "@/components/prospects/ProspectTable";
@@ -49,6 +50,9 @@ function Prospects() {
   const canWrite = !!user && user.role !== "VIEWER";
   const [exportError, setExportError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Doublons à trancher (fiches reliées par un même lead) : jamais fusionnés sans décision.
+  const duplicates = useDuplicateCount();
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
   const limit = view === "pipeline" ? PIPELINE_LIMIT : LIMIT;
   const resultsHref = prospectResultsHref(state);
   const profileHref = (id: number) =>
@@ -174,6 +178,29 @@ function Prospects() {
         )}
         <FiltersButton count={panelCount} onPress={() => setFiltersOpen(true)} />
       </ListToolbar>
+      {!!duplicates.count && (
+        <Notice tone="warning">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              {duplicates.count === 1
+                ? "1 doublon à trancher : deux fiches semblent décrire la même personne."
+                : `${duplicates.count} doublons à trancher : des fiches semblent décrire la même personne.`}
+            </span>
+            <Btn size="sm" variant="secondary" onClick={() => setDuplicatesOpen(true)}>
+              {canWrite ? "Trancher" : "Voir"}
+            </Btn>
+          </div>
+        </Notice>
+      )}
+      <DuplicatesPanel
+        open={duplicatesOpen}
+        onClose={() => setDuplicatesOpen(false)}
+        readOnly={!canWrite}
+        onChanged={() => {
+          duplicates.reload();
+          reload();
+        }}
+      />
       {pendingCampaign && (
         <Notice tone="warning">
           Ces prospects attendent une campagne et une source. Ouvrez une fiche pour les attribuer ; l’agent attend cette

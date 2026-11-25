@@ -370,3 +370,6 @@ export type DashboardOverview = Schemas["DashboardOverview"];
 
 /** Analyses (Pilotage) : `GET /analytics?days=7|30|90`. Une valeur null signifie « pas de donnée ». */
 export type Analytics = Schemas["Analytics"];
+
+/** Doublon suspect : deux fiches qui semblent décrire la même personne, à trancher (fusion ou « distinctes »). */
+export type DuplicatePair = Schemas["DuplicatePair"];

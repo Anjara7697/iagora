@@ -98,3 +98,11 @@ class ScoringSignal(StrEnum):
     NO_RESPONSE = "no_response"
     PROFILE_TARGET_MATCH = "profile_target_match"
     PROFILE_COMPLETED = "profile_completed"
+
+
+class DuplicateStatus(StrEnum):
+    """Doublon suspect : à trancher, fusionné, ou déclaré « deux personnes distinctes »."""
+
+    PENDING = "pending"
+    MERGED = "merged"
+    DISTINCT = "distinct"

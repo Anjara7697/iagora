@@ -3,7 +3,7 @@
 import { draftStatus } from "@/lib/messages";
 import { Alert, Tabs, toast } from "@heroui/react";
 import { ShieldCheck, Trash2 } from "lucide-react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { EraseForm, ErasureResult } from "@/components/prospect/ErasePanel";
@@ -15,8 +15,9 @@ import ProspectDecisions from "@/components/prospect/ProspectDecisions";
 import ProspectHeader, { type ProspectAction } from "@/components/prospect/ProspectHeader";
 import ProspectJourney from "@/components/prospect/ProspectJourney";
 import ProspectOverview from "@/components/prospect/ProspectOverview";
+import { DuplicatesPanel, useDuplicateCount } from "@/components/prospects/DuplicatesPanel";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { BackLink, Btn, ErrorText, Field, TextBox, TextInput } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, Field, Notice, TextBox, TextInput } from "@/components/ds/controls";
 import { Screen } from "@/components/ds/layout";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading } from "@/components/ds/ui";
@@ -68,6 +69,9 @@ function ProspectDetail() {
   const [confirm, setConfirm] = useState<keyof typeof CONFIRM | null>(null);
   const [panel, setPanel] = useState<"consent" | "erase" | null>(null);
   const [attributing, setAttributing] = useState(false);
+  const router = useRouter();
+  const duplicates = useDuplicateCount(Number(id));
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
   const [consentSource, setConsentSource] = useState("");
   // Lever une désinscription exige un motif écrit : la preuve de la nouvelle demande (décision D-20).
   const [consentReason, setConsentReason] = useState("");
@@ -177,6 +181,34 @@ function ProspectDetail() {
             onAction={onAction}
           />
           {actionError && !panel && <ErrorText>{actionError}</ErrorText>}
+          {!!duplicates.count && (
+            <Notice tone="warning">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span>Doublon possible : une autre fiche semble décrire la même personne.</span>
+                <Btn size="sm" variant="secondary" onClick={() => setDuplicatesOpen(true)}>
+                  {canWrite ? "Trancher" : "Voir"}
+                </Btn>
+              </div>
+            </Notice>
+          )}
+          <DuplicatesPanel
+            open={duplicatesOpen}
+            onClose={() => setDuplicatesOpen(false)}
+            prospectId={p.id}
+            readOnly={!canWrite}
+            onChanged={(keptId) => {
+              duplicates.reload();
+              if (keptId && keptId !== p.id) {
+                // Cette fiche a été fusionnée dans l'autre : elle n'existe plus.
+                setDuplicatesOpen(false);
+                router.replace(`/prospects/${keptId}`);
+              } else {
+                prospect.reload();
+                conversation.reload();
+                setRevision((v) => v + 1);
+              }
+            }}
+          />
           {p.consent_status === "opted_out" && (
             <Alert status="danger" role="status">
               <Alert.Indicator />

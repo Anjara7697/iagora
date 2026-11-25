@@ -8,6 +8,7 @@ from app.models.auth_session import AuthSession
 from app.models.campaign import Campaign, CampaignSource, CampaignTarget, Source, Target
 from app.models.channel import Channel, ConsentEvent, ProspectChannel
 from app.models.conversation import Interaction
+from app.models.duplicate import DuplicateCandidate
 from app.models.erasure import ErasureRecord
 from app.models.follow_up import FollowUp
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
@@ -24,6 +25,7 @@ __all__ = [
     "CampaignTarget",
     "Channel",
     "ConsentEvent",
+    "DuplicateCandidate",
     "ErasureRecord",
     "FollowUp",
     "Interaction",
