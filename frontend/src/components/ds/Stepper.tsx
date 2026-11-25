@@ -31,12 +31,13 @@ export function Stepper({
           <ProgressBar.Fill />
         </ProgressBar.Track>
       </ProgressBar>
-      <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+      {/* Mobile : l'étape en cours prend la place libre, les autres se réduisent à leur numéro. */}
+      <ol className="flex gap-2 sm:grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((step, i) => {
           const done = i < current;
           const active = i === current;
           return (
-            <li key={step.id}>
+            <li key={step.id} className={active ? "min-w-0 flex-1" : "shrink-0"}>
               <Button
                 variant={active ? "secondary" : "ghost"}
                 isDisabled={!done}
@@ -48,7 +49,7 @@ export function Stepper({
                   {done ? <Check className="size-3" aria-label="terminée" /> : <Chip.Label>{i + 1}</Chip.Label>}
                 </Chip>
                 <span className="flex min-w-0 flex-col">
-                  <span className="type-body font-medium text-foreground">{step.title}</span>
+                  <span className={cx("type-body font-medium text-foreground", !active && "sr-only sm:not-sr-only")}>{step.title}</span>
                   {step.description && <span className="hidden type-caption text-muted sm:block">{step.description}</span>}
                 </span>
               </Button>

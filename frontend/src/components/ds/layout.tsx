@@ -168,6 +168,32 @@ export function Section({
 
 /** Erreur de chargement lisible, avec nouvelle tentative. */
 /** Erreur de chargement : `Alert` HeroUI danger (même apparence que `ErrorText`), avec « Réessayer » à droite. */
+/**
+ * Fiche impossible à charger : le titre de page (h1) reste affiché pour garder le contexte. Une fiche absente (404) est
+ * « introuvable », sans nouvelle tentative ; toute autre erreur dit ce qui a échoué et propose « Réessayer ».
+ */
+export function DetailLoadError({
+  error,
+  title,
+  what,
+  notFound,
+  onRetry,
+}: {
+  error: { status?: number; message: string };
+  title: string;
+  what: string;
+  notFound: { title: string; subtitle: string };
+  onRetry?: () => void;
+}) {
+  if (error.status === 404) return <PageHeader title={notFound.title} subtitle={notFound.subtitle} />;
+  return (
+    <>
+      <PageHeader title={title} />
+      <ErrorState message={`${what} : ${error.message}`} onRetry={onRetry} />
+    </>
+  );
+}
+
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <Alert role="alert" status="danger" className="flex-wrap items-center">

@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useCurrentUser } from "@/lib/session";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { BackLink, Btn, ErrorText, LinkButton, Notice } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, LinkButton, Notice, TabListContainer } from "@/components/ds/controls";
 import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Skeleton } from "@/components/ds/ui";
@@ -220,7 +220,7 @@ function Run() {
           </section>
 
           <Tabs variant="secondary" align="start" {...reveal(2)} selectedKey={tab} onSelectionChange={(key) => setView({ tab: key as Tab, item: null })}>
-            <Tabs.ListContainer className="print:hidden">
+            <TabListContainer className="print:hidden">
               <Tabs.List aria-label="Sections du passage">
                 {Object.entries(TABS).map(([key, title]) => (
                   <Tabs.Tab key={key} id={key}>
@@ -229,7 +229,7 @@ function Run() {
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs.ListContainer>
+            </TabListContainer>
             <Tabs.Panel id="indicators" className="max-w-4xl pt-4">
               {data.indicators.length > 0 ? (
                 <IndicatorTable runs={[data]} />

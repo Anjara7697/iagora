@@ -17,8 +17,8 @@ import ProspectJourney from "@/components/prospect/ProspectJourney";
 import ProspectOverview from "@/components/prospect/ProspectOverview";
 import { DuplicatesPanel, useDuplicateCount } from "@/components/prospects/DuplicatesPanel";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
-import { BackLink, Btn, ErrorText, Field, Notice, TextBox, TextInput } from "@/components/ds/controls";
-import { Screen } from "@/components/ds/layout";
+import { BackLink, Btn, ErrorText, Field, Notice, TabListContainer, TextBox, TextInput } from "@/components/ds/controls";
+import { DetailLoadError, Screen } from "@/components/ds/layout";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
 import { Loading } from "@/components/ds/ui";
 import { api, ApiError } from "@/lib/api";
@@ -166,7 +166,16 @@ function ProspectDetail() {
           <ProspectResultsReturn />
         </Suspense>
       </div>
-      <Loading loading={prospect.loading && !prospect.data} error={prospect.error} onRetry={prospect.reload} />
+      <Loading loading={prospect.loading && !prospect.data} error={null} />
+      {prospect.error && !p && (
+        <DetailLoadError
+          error={prospect.error}
+          title="Fiche prospect"
+          what="Impossible de charger la fiche"
+          notFound={{ title: "Prospect introuvable", subtitle: "La fiche a peut-être été supprimée ou fusionnée avec une autre." }}
+          onRetry={prospect.reload}
+        />
+      )}
       {p && (
         <>
           <ProspectHeader
@@ -218,7 +227,7 @@ function ProspectDetail() {
             </Alert>
           )}
           <Tabs variant="secondary" align="start" selectedKey={tab} onSelectionChange={(key) => showTab(key as ProspectTab)}>
-            <Tabs.ListContainer>
+            <TabListContainer>
               <Tabs.List aria-label="Sections de la fiche prospect">
                 {Object.entries(PROSPECT_TABS).map(([key, title]) => (
                   <Tabs.Tab key={key} id={key}>
@@ -227,7 +236,7 @@ function ProspectDetail() {
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs.ListContainer>
+            </TabListContainer>
             <Tabs.Panel id="overview" className="pt-4">
               <ProspectOverview
                 prospect={p}

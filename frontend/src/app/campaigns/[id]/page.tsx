@@ -12,10 +12,10 @@ import { FirstContacts } from "@/components/campaign/FirstContacts";
 import CampaignSettings from "@/components/campaign/CampaignSettings";
 import CampaignSources from "@/components/campaign/CampaignSources";
 import CampaignForm, { type CampaignValues } from "@/components/campaign/CampaignForm";
-import { BackLink, Btn, ErrorText, LinkButton } from "@/components/ds/controls";
+import { BackLink, Btn, ErrorText, LinkButton, TabListContainer } from "@/components/ds/controls";
 import { ConfirmDialog } from "@/components/ds/ConfirmDialog";
 import { useDiscardGuard } from "@/components/ds/useDiscardGuard";
-import { ErrorState, PageHeader, Screen } from "@/components/ds/layout";
+import { DetailLoadError, ErrorState, PageHeader, Screen } from "@/components/ds/layout";
 import { reveal } from "@/components/ds/motion";
 import { Drawer } from "@/components/ds/Drawer";
 import { Loading } from "@/components/ds/ui";
@@ -92,7 +92,16 @@ function CampaignDetail() {
   return (
     <Screen scroll>
       <BackLink href={view.from ?? "/campaigns"}>Campagnes</BackLink>
-      <Loading loading={campaign.loading} error={campaign.error} onRetry={campaign.reload} />
+      <Loading loading={campaign.loading} error={null} />
+      {campaign.error && !c && (
+        <DetailLoadError
+          error={campaign.error}
+          title="Campagne"
+          what="Impossible de charger la campagne"
+          notFound={{ title: "Campagne introuvable", subtitle: "Elle a peut-être été supprimée." }}
+          onRetry={campaign.reload}
+        />
+      )}
       {c && (
         <>
           <PageHeader
@@ -174,7 +183,7 @@ function CampaignDetail() {
           {error && !editing && <ErrorText>{error}</ErrorText>}
 
           <Tabs variant="secondary" align="start" selectedKey={view.tab} onSelectionChange={(key) => navigate({ tab: key as CampaignView["tab"], stage: "", page: 1 })}>
-            <Tabs.ListContainer>
+            <TabListContainer>
               <Tabs.List aria-label="Sections de la campagne">
                 {Object.entries(CAMPAIGN_TABS).map(([key, title]) => (
                   <Tabs.Tab key={key} id={key}>
@@ -183,7 +192,7 @@ function CampaignDetail() {
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-            </Tabs.ListContainer>
+            </TabListContainer>
             <Tabs.Panel id="overview" className="pt-4">
               {stats.error && <ErrorState message={`Statistiques indisponibles : ${stats.error.message}`} onRetry={stats.reload} />}
               {stats.data && <CampaignOverview stats={stats.data} />}

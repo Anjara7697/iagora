@@ -120,6 +120,35 @@ export function TextLink(props: ComponentProps<typeof HeroLink>) {
 /** Arrondi « lg » des onglets HeroUI : conteneur, onglet et indicateur (cadre blanc de l'onglet choisi). */
 export const TAB_RADIUS = { container: "rounded-lg", tab: "rounded-lg", indicator: "rounded-lg" } as const;
 
+/** Flèches de défilement des onglets HeroUI : leurs libellés sont écrits en anglais dans la bibliothèque. */
+const TAB_SCROLL_LABELS: Record<string, string> = {
+  "Scroll tabs left": "Onglets précédents",
+  "Scroll tabs right": "Onglets suivants",
+  "Scroll tabs up": "Onglets précédents",
+  "Scroll tabs down": "Onglets suivants",
+};
+
+/**
+ * Conteneur d'une liste d'onglets : `Tabs.ListContainer` HeroUI, avec les flèches de défilement nommées en français
+ * (rendu personnalisé `render`, seul moyen de changer ces libellés). À utiliser à la place de `Tabs.ListContainer`.
+ */
+export function TabListContainer(props: { className?: string; children?: ReactNode }) {
+  return (
+    <Tabs.ListContainer
+      {...props}
+      render={({ children, ...rest }) => (
+        <div {...rest}>
+          {Children.map(children, (child) => {
+            if (!isValidElement<{ "aria-label"?: string }>(child)) return child;
+            const french = TAB_SCROLL_LABELS[child.props["aria-label"] ?? ""];
+            return french ? cloneElement(child, { "aria-label": french }) : child;
+          })}
+        </div>
+      )}
+    />
+  );
+}
+
 /**
  * Choix exclusif sur une ligne : `Tabs` HeroUI (panneaux vides et masqués : le contenu est géré par l'écran). Accepte les propriétés de `Tabs`
  * (variant, orientation…) ; `label` nomme la liste, `onChange` reçoit la valeur choisie.
@@ -138,7 +167,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <Tabs selectedKey={value} onSelectionChange={(key) => onChange(String(key) as T)} {...rest}>
-      <Tabs.ListContainer className={TAB_RADIUS.container}>
+      <TabListContainer className={TAB_RADIUS.container}>
         <Tabs.List aria-label={label}>
           {options.map((o) => (
             <Tabs.Tab key={o.value} id={o.value} className={TAB_RADIUS.tab}>
@@ -147,7 +176,7 @@ export function Segmented<T extends string>({
             </Tabs.Tab>
           ))}
         </Tabs.List>
-      </Tabs.ListContainer>
+      </TabListContainer>
       {options.map((o) => (
         <Tabs.Panel key={o.value} id={o.value} className="hidden">
           <></>
