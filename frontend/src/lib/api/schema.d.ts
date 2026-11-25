@@ -885,6 +885,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Duplicates
+         * @description Doublons à trancher (les deux fiches doivent être dans le périmètre de l'utilisateur).
+         */
+        get: operations["list_duplicates_api_v1_duplicates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicates/{duplicate_id}/distinct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Distinct
+         * @description Deux personnes différentes : la paire sort de la file et n'y revient pas.
+         */
+        post: operations["mark_distinct_api_v1_duplicates__duplicate_id__distinct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/duplicates/{duplicate_id}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Duplicate
+         * @description Fusionne les deux fiches dans `keep_prospect_id` ; l'autre fiche est supprimée et tout son
+         *     historique (campagnes, conversations, consentements, relances, rendez-vous) est rattaché à la
+         *     fiche gardée. Une désinscription de l'une des deux s'applique à la fiche fusionnée.
+         */
+        post: operations["merge_duplicate_api_v1_duplicates__duplicate_id__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evaluations": {
         parameters: {
             query?: never;
@@ -3026,6 +3088,68 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** DuplicatePair */
+        DuplicatePair: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kept Prospect Id */
+            kept_prospect_id: number | null;
+            /**
+             * Matched Fields
+             * @description Identifiants partagés (email, phone, ...)
+             */
+            matched_fields: string[];
+            /** Other Prospect Id */
+            other_prospect_id: number;
+            /** Prospect Id */
+            prospect_id: number;
+            /**
+             * Prospects
+             * @description Les deux fiches, la plus ancienne d'abord
+             */
+            prospects: components["schemas"]["ProspectRead"][];
+            /** Resolved At */
+            resolved_at: string | null;
+            status: components["schemas"]["DuplicateStatus"];
+        };
+        /**
+         * DuplicateRead
+         * @description Paire de fiches qui semblent décrire la même personne.
+         */
+        DuplicateRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Id */
+            id: number;
+            /** Kept Prospect Id */
+            kept_prospect_id: number | null;
+            /**
+             * Matched Fields
+             * @description Identifiants partagés (email, phone, ...)
+             */
+            matched_fields: string[];
+            /** Other Prospect Id */
+            other_prospect_id: number;
+            /** Prospect Id */
+            prospect_id: number;
+            /** Resolved At */
+            resolved_at: string | null;
+            status: components["schemas"]["DuplicateStatus"];
+        };
+        /**
+         * DuplicateStatus
+         * @description Doublon suspect : à trancher, fusionné, ou déclaré « deux personnes distinctes ».
+         * @enum {string}
+         */
+        DuplicateStatus: "pending" | "merged" | "distinct";
         /** EmailAutodetect */
         EmailAutodetect: {
             /** Imap Host */
@@ -3666,6 +3790,14 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** MergeRequest */
+        MergeRequest: {
+            /**
+             * Keep Prospect Id
+             * @description Fiche gardée ; l'autre est supprimée
+             */
+            keep_prospect_id: number;
+        };
         /** MessageCreate */
         MessageCreate: {
             /** Content */
@@ -3962,6 +4094,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[DuplicatePair] */
+        Page_DuplicatePair_: {
+            /** Items */
+            items: components["schemas"]["DuplicatePair"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** Page[InteractionRead] */
         Page_InteractionRead_: {
             /** Items */
@@ -4124,6 +4267,57 @@ export interface components {
             /** Interaction Id */
             interaction_id: number;
             prospect: components["schemas"]["ProspectDetail"];
+        };
+        /** ProspectRead */
+        ProspectRead: {
+            /** Consent Given At */
+            consent_given_at: string | null;
+            /** Consent Source */
+            consent_source: string | null;
+            consent_status: components["schemas"]["ConsentStatus"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Channel Id */
+            current_channel_id: number | null;
+            /** Email */
+            email: string | null;
+            /** Facebook Id */
+            facebook_id: string | null;
+            /** First Name */
+            first_name: string | null;
+            /** Id */
+            id: number;
+            /** Instagram Id */
+            instagram_id: string | null;
+            /**
+             * Is Demo
+             * @description Prospect fictif (simulateur, démonstration) : jamais contacté pour de vrai.
+             */
+            readonly is_demo: boolean;
+            /** Last Name */
+            last_name: string | null;
+            /** Linkedin Id */
+            linkedin_id: string | null;
+            /** Opted Out At */
+            opted_out_at: string | null;
+            /** Origin Channel Id */
+            origin_channel_id: number | null;
+            /** Phone */
+            phone: string | null;
+            /** Profile */
+            profile: {
+                [key: string]: unknown;
+            };
+            /** Target Id */
+            target_id: number | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ProspectUpdate */
         ProspectUpdate: {
@@ -6914,6 +7108,105 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    list_duplicates_api_v1_duplicates_get: {
+        parameters: {
+            query?: {
+                prospect_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DuplicatePair_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_distinct_api_v1_duplicates__duplicate_id__distinct_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                duplicate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_duplicate_api_v1_duplicates__duplicate_id__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                duplicate_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

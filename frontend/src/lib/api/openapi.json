@@ -2500,6 +2500,160 @@
         "title": "DraftReject",
         "type": "object"
       },
+      "DuplicatePair": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kept_prospect_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kept Prospect Id"
+          },
+          "matched_fields": {
+            "description": "Identifiants partagés (email, phone, ...)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Matched Fields",
+            "type": "array"
+          },
+          "other_prospect_id": {
+            "title": "Other Prospect Id",
+            "type": "integer"
+          },
+          "prospect_id": {
+            "title": "Prospect Id",
+            "type": "integer"
+          },
+          "prospects": {
+            "description": "Les deux fiches, la plus ancienne d'abord",
+            "items": {
+              "$ref": "#/components/schemas/ProspectRead"
+            },
+            "title": "Prospects",
+            "type": "array"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DuplicateStatus"
+          }
+        },
+        "required": [
+          "id",
+          "prospect_id",
+          "other_prospect_id",
+          "matched_fields",
+          "status",
+          "kept_prospect_id",
+          "created_at",
+          "resolved_at",
+          "prospects"
+        ],
+        "title": "DuplicatePair",
+        "type": "object"
+      },
+      "DuplicateRead": {
+        "description": "Paire de fiches qui semblent décrire la même personne.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kept_prospect_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kept Prospect Id"
+          },
+          "matched_fields": {
+            "description": "Identifiants partagés (email, phone, ...)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Matched Fields",
+            "type": "array"
+          },
+          "other_prospect_id": {
+            "title": "Other Prospect Id",
+            "type": "integer"
+          },
+          "prospect_id": {
+            "title": "Prospect Id",
+            "type": "integer"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DuplicateStatus"
+          }
+        },
+        "required": [
+          "id",
+          "prospect_id",
+          "other_prospect_id",
+          "matched_fields",
+          "status",
+          "kept_prospect_id",
+          "created_at",
+          "resolved_at"
+        ],
+        "title": "DuplicateRead",
+        "type": "object"
+      },
+      "DuplicateStatus": {
+        "description": "Doublon suspect : à trancher, fusionné, ou déclaré « deux personnes distinctes ».",
+        "enum": [
+          "pending",
+          "merged",
+          "distinct"
+        ],
+        "title": "DuplicateStatus",
+        "type": "string"
+      },
       "EmailAutodetect": {
         "properties": {
           "imap_host": {
@@ -4023,6 +4177,21 @@
         "title": "MembershipUpdate",
         "type": "object"
       },
+      "MergeRequest": {
+        "properties": {
+          "keep_prospect_id": {
+            "description": "Fiche gardée ; l'autre est supprimée",
+            "exclusiveMinimum": 0.0,
+            "title": "Keep Prospect Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "keep_prospect_id"
+        ],
+        "title": "MergeRequest",
+        "type": "object"
+      },
       "MessageCreate": {
         "properties": {
           "content": {
@@ -4755,6 +4924,37 @@
         "title": "Page[ConversationSummary]",
         "type": "object"
       },
+      "Page_DuplicatePair_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicatePair"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "Page[DuplicatePair]",
+        "type": "object"
+      },
       "Page_InteractionRead_": {
         "properties": {
           "items": {
@@ -5309,6 +5509,206 @@
           "interaction_id"
         ],
         "title": "ProspectIngestResult",
+        "type": "object"
+      },
+      "ProspectRead": {
+        "properties": {
+          "consent_given_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Given At"
+          },
+          "consent_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Source"
+          },
+          "consent_status": {
+            "$ref": "#/components/schemas/ConsentStatus"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Channel Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "facebook_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facebook Id"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "instagram_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instagram Id"
+          },
+          "is_demo": {
+            "description": "Prospect fictif (simulateur, démonstration) : jamais contacté pour de vrai.",
+            "readOnly": true,
+            "title": "Is Demo",
+            "type": "boolean"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "linkedin_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin Id"
+          },
+          "opted_out_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opted Out At"
+          },
+          "origin_channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Channel Id"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "target_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "linkedin_id",
+          "facebook_id",
+          "instagram_id",
+          "target_id",
+          "origin_channel_id",
+          "current_channel_id",
+          "profile",
+          "consent_status",
+          "consent_source",
+          "consent_given_at",
+          "opted_out_at",
+          "created_at",
+          "updated_at",
+          "is_demo"
+        ],
+        "title": "ProspectRead",
         "type": "object"
       },
       "ProspectUpdate": {
@@ -10668,6 +11068,190 @@
         "summary": "Purge Demo Data",
         "tags": [
           "demo"
+        ]
+      }
+    },
+    "/api/v1/duplicates": {
+      "get": {
+        "description": "Doublons à trancher (les deux fiches doivent être dans le périmètre de l'utilisateur).",
+        "operationId": "list_duplicates_api_v1_duplicates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "prospect_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prospect Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DuplicatePair_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Duplicates",
+        "tags": [
+          "duplicates"
+        ]
+      }
+    },
+    "/api/v1/duplicates/{duplicate_id}/distinct": {
+      "post": {
+        "description": "Deux personnes différentes : la paire sort de la file et n'y revient pas.",
+        "operationId": "mark_distinct_api_v1_duplicates__duplicate_id__distinct_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "duplicate_id",
+            "required": true,
+            "schema": {
+              "title": "Duplicate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Mark Distinct",
+        "tags": [
+          "duplicates"
+        ]
+      }
+    },
+    "/api/v1/duplicates/{duplicate_id}/merge": {
+      "post": {
+        "description": "Fusionne les deux fiches dans `keep_prospect_id` ; l'autre fiche est supprimée et tout son\nhistorique (campagnes, conversations, consentements, relances, rendez-vous) est rattaché à la\nfiche gardée. Une désinscription de l'une des deux s'applique à la fiche fusionnée.",
+        "operationId": "merge_duplicate_api_v1_duplicates__duplicate_id__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "duplicate_id",
+            "required": true,
+            "schema": {
+              "title": "Duplicate Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Merge Duplicate",
+        "tags": [
+          "duplicates"
         ]
       }
     },
