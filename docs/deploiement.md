@@ -10,6 +10,10 @@ reverse proxy de l'hôte les joint. Les bases ne sont jamais publiées.
 > se construisent, les migrations passent et l'API est joignable en HTTPS derrière Caddy. **Pas encore
 > fait** : l'environnement de production, la planification des sauvegardes hors serveur et la recette
 > des connecteurs réels (Google Agenda, Zoom, boîte définitive).
+>
+> **Serveur de l'école (25 novembre 2026)** : déploiement commencé dans `/srv/datum-admin/platforms/commercial`
+> (code cloné, `deploy/.env` refait), puis **mis en pause**. Rien n'y est en service. Pour reprendre, suivre ce
+> document à partir du §2 en adaptant le dossier.
 
 ## 1. Deux environnements
 

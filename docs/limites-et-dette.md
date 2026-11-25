@@ -14,9 +14,10 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P3 | Rendez-vous : un seul rappel (la veille) ; avec un compte de service Google (`.env`), le prospect n'est pas invité à l'événement (il reçoit le lien dans la réponse et le rappel) | [calendar.md](calendar.md) |
 | P2 | Meta Lead Ads : webhook, sécurité, mapping et simulation livrés ; recette réelle en attente des accès et permissions. LinkedIn non branché | [sources-leads.md](sources-leads.md) |
 | P3 | Le RAG complète une question de suivi courte (moins de six mots) avec les deux messages précédents du prospect (D-43) ; un changement de sujet non annoncé peut encore manquer de contexte | [rag.md](rag.md) |
-| P3 | Doublons repérés seulement quand un même lead porte les identifiants de deux fiches (pas de rapprochement par nom) ; une fusion ne se défait pas | [doublons.md](doublons.md) |
+| P3 | Doublons repérés seulement quand un même lead porte les identifiants de deux fiches (pas de rapprochement par nom) ; ceux créés avant la migration 0017 ne sont repérés que si un nouveau lead les relie ; une fusion ne se défait pas | [doublons.md](doublons.md) |
 | P3 | Emails rapprochés regroupés pendant 120 s ; un email arrivé juste après, alors que la réponse automatique aux précédents est déjà prête, reçoit la sienne | [email.md](email.md) |
-| P3 | Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes | [calendar.md](calendar.md) |
+| P3 | Rendez-vous disponible en consultation, sans modification ni synchronisation des changements externes : un rendez-vous annulé dans Google reste « planifié » dans IAGORA et reçoit quand même son rappel de la veille | [calendar.md](calendar.md) |
+| P3 | Pas de sélection multiple dans les tableaux (reportée : aucune action groupée dans l'API) | [passation.md](passation.md) §2bis |
 | P3 | Prospects fictifs comptés dans la campagne choisie par le simulateur tant qu'ils ne sont pas purgés | [demo-mode.md](demo-mode.md) |
 | P3 | Email : mise en page HTML simple, pas de pièces jointes ni d'images intégrées ; Gmail et Microsoft 365 en OAuth non gérés (mot de passe d'application nécessaire) | [email.md](email.md) |
 
@@ -26,7 +27,7 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 |---|---|---|
 | P3 | Un message resté `sending` après un arrêt brutal n'est jamais renvoyé seul : il passe en échec « envoi interrompu » après 15 minutes, le conseiller vérifie puis relance | [email.md](email.md) |
 | P1 | Pas de transaction entre PostgreSQL, MongoDB, le LLM et SMTP : une panne en plein workflow peut demander de vérifier les traces avant reprise | [intake.md](intake.md) |
-| P1 | Seul l'environnement `dev` est déployé et vérifié ; production, restauration d'une sauvegarde et quotas Gemini en usage réel restent à vérifier | [deploiement.md](deploiement.md) §8 |
+| P1 | Seul l'environnement `dev` est déployé et vérifié ; production, restauration d'une sauvegarde et quotas Gemini en usage réel restent à vérifier. Déploiement sur le serveur de l'école commencé puis mis en pause | [deploiement.md](deploiement.md) §8 |
 | P2 | Tâches de fond dans le processus de l'API : garder `--workers 1` (un second processus éventuel ne sert que le HTTP avec `BACKGROUND_WORKERS_ENABLED=false`) ; un worker dédié si la charge augmente | [architecture.md](architecture.md) |
 | P3 | File « À traiter » : 500 conversations examinées au plus ; au-delà, l'écran l'annonce (« Liste incomplète ») ; pagination côté base à faire si ce volume est atteint | [advisor-workflow.md](advisor-workflow.md) |
 | P3 | Limitation des connexions en mémoire, par processus (une seule instance déployée) : un compteur partagé (Redis) si plusieurs instances | `core/ratelimit.py` |
@@ -42,7 +43,8 @@ Priorités : **P1** avant une mise en production réelle · **P2** avant une mon
 | P1 | Recette manuelle avec Gemini : STOP et « question inconnue » à confirmer | [recette-locale.md](recette-locale.md) |
 | P3 | Les tests navigateur détaillés utilisent une API simulée ; un parcours contre le vrai backend (job CI `e2e-api`) et le contrat de types (`src/lib/api/contract.ts`) couvrent l'intégration réelle | [frontend/integration-prototype.md](frontend/integration-prototype.md) |
 | P2 | Le workflow n8n est testé hors ligne seulement, jamais sur le moteur n8n du serveur | [n8n/README.md](n8n/README.md) |
-| P2 | Qualité des réponses : l'outil `eval-agent` et son jeu de questions de référence existent ; la mesure avec le vrai modèle (`eval-agent --live`) reste à faire et à suivre | [agent-testing.md](agent-testing.md) |
+| P1 | Qualité des réponses : `eval-agent` passe hors ligne (62/62 le 25/11/2026), mais la mesure avec le vrai modèle (`eval-agent --live`), prête, n'a jamais été lancée ; obligatoire avant un pilote | [agent-testing.md](agent-testing.md) |
+| P3 | `test_auto_agent.py::test_a_follow_up_is_executed_only_once_even_with_concurrent_workers` échoue sur `dev` hors CI (constaté sans PostgreSQL) ; vert en CI sur PostgreSQL réel | `backend/tests/test_auto_agent.py` |
 
 ## Documentation
 
