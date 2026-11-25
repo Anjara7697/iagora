@@ -726,6 +726,41 @@ async def test_campaign_subject_and_links_reach_the_agent_and_invented_links_are
     assert retry and "datum-promo.example/offre" in retry[-1]  # le nouvel essai l'interdit
 
 
+async def test_the_campaign_brief_reaches_the_agent_and_answers_until_the_campaign_ends(
+    client, env
+):
+    """D-52 : la date limite de la fiche répond à la question (sans transfert) et justifie la date
+    citée ; une fois la campagne terminée, la fiche n'est plus donnée à l'agent."""
+    question = "Jusqu'à quand puis-je candidater ?"
+    pid, mid, cid = await lead(client, question)
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    brief = {"key_dates": "Date limite de candidature : 15 décembre", "avoid": "Pas de septembre"}
+    await client.patch(f"{API}/campaigns/{campaign_id}", json={"brief": brief})
+    env.llm.qualification = Qualification(intent="question")
+    env.llm.reply = "Vous pouvez candidater jusqu'au 15 décembre."
+    out = (await run(client, cid)).json()
+    assert out.get("handoff_reason") is None
+    assert out["reply"] == "Vous pouvez candidater jusqu'au 15 décembre."
+    system = env.llm.generate_calls[0][0]
+    assert "- Dates importantes : Date limite de candidature : 15 décembre" in system
+    assert "Pas de septembre" in system
+
+    pid, mid, cid = await lead(client, question)
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    await client.patch(
+        f"{API}/campaigns/{campaign_id}",
+        json={
+            "brief": brief,
+            "start_date": "2020-01-01T00:00:00Z",
+            "end_date": "2020-02-01T00:00:00Z",
+        },
+    )
+    calls = len(env.llm.generate_calls)
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"  # campagne terminée : plus de fiche
+    assert all("Fiche de la campagne" not in c[0] for c in env.llm.generate_calls[calls:])
+
+
 async def test_the_agent_attaches_a_campaign_document_and_never_announces_a_missing_one(
     client, env
 ):

@@ -850,6 +850,29 @@ test("réglages : objet du premier email et liens validés pour l'agent", async 
     });
 });
 
+test("réglages : fiche de la campagne pour l'agent (D-52)", { tag: ["@mobile"] }, async ({ page }) => {
+  const calls = await mockApi(page);
+  await login(page, "/campaigns/1?tab=settings");
+  const panel = page.getByRole("region", { name: "Fiche de la campagne" });
+  const save = panel.getByRole("button", { name: "Enregistrer la fiche" });
+  await expect(save).toBeDisabled();
+  await panel.getByLabel("Offre et message clé").fill("Rentrée de janvier en alternance : frais de dossier offerts");
+  await panel.getByLabel("Dates importantes").fill("Date limite de candidature : 15 décembre\nRentrée : 12 janvier");
+  await panel.getByLabel("À ne pas dire").fill("Ne pas parler de la rentrée de septembre.");
+  await auditA11y(page, "réglages : fiche de la campagne", [], { strict: true });
+  await save.click();
+  await expect
+    .poll(() => calls.requests.find((r) => r.method === "PATCH" && "brief" in (r.body as object))?.body)
+    .toEqual({
+      brief: {
+        offer: "Rentrée de janvier en alternance : frais de dossier offerts",
+        key_dates: "Date limite de candidature : 15 décembre\nRentrée : 12 janvier",
+        conditions: "",
+        avoid: "Ne pas parler de la rentrée de septembre.",
+      },
+    });
+});
+
 test("réglages : autonomie de l'agent par type de message (D-51)", async ({ page }) => {
   const calls = await mockApi(page);
   await login(page, "/campaigns/1?tab=settings");
@@ -886,7 +909,7 @@ test("réglages : un seul bouton principal et audit strict de l'onglet", async (
   await expect(page.getByRole("region", { name: "Pour l’agent" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Documents à joindre" }).getByText("Aucun document.")).toBeVisible();
   // Chaque bloc s'enregistre seul : ses boutons sont secondaires, le bouton principal reste celui de l'en-tête.
-  for (const name of ["Enregistrer les programmes", "Enregistrer l’autonomie", "Enregistrer pour l’agent", "Ajouter le document", "Enregistrer le responsable"])
+  for (const name of ["Enregistrer la fiche", "Enregistrer les programmes", "Enregistrer l’autonomie", "Enregistrer pour l’agent", "Ajouter le document", "Enregistrer le responsable"])
     await expect(page.getByRole("button", { name })).not.toHaveClass(/button--primary/);
   expect(await page.locator(".button--primary:visible").count()).toBeLessThanOrEqual(1);
   await auditA11y(page, "fiche : onglet Réglages", [], { strict: true });

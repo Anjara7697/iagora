@@ -1,6 +1,7 @@
 """Les consignes données au modèle : contenu vérifié, car elles pilotent le comportement réel."""
 
 import re
+from datetime import date
 
 from app.graph import prompts
 from app.graph.ports import HistoryMessage, ProspectContext
@@ -282,3 +283,24 @@ def test_the_attachment_line_names_campaign_documents_only():
     plain = "Votre pièce jointe : le CV est bien reçu, merci."
     assert prompts.split_attachments(plain, files) == ([], plain)
     assert prompts.split_attachments("PJ : Calendrier", []) == ([], "")
+
+
+def test_the_campaign_brief_is_a_validated_source_and_its_avoid_line_an_instruction():
+    """D-52 : offre, dates et conditions sont des faits citables ; « à éviter » n'en est pas un."""
+    brief = {
+        "offer": "Frais de dossier offerts",
+        "key_dates": "Date limite : 15 décembre\nRentrée : 12 janvier",
+        "avoid": "Ne pas parler de septembre",
+    }
+    with_brief = ProspectContext(**{**ctx().__dict__, "campaign_brief": brief})
+    block = prompts.brief_block(with_brief, today=date(2026, 11, 25))
+    assert "Fiche de la campagne « eBIHAR »" in block and "l'emporte sur eux" in block
+    assert "- Offre et message clé : Frais de dossier offerts" in block
+    assert "- Dates importantes : Date limite : 15 décembre ; Rentrée : 12 janvier" in block
+    assert "Nous sommes le 25 novembre 2026" in block
+    assert "À ne pas dire ni promettre dans cette campagne : Ne pas parler de septembre" in block
+    assert "Conditions particulières" not in block  # champ vide : absent
+    assert "Fiche de la campagne" in prompts.reply_system(with_brief, {}, [], [], mode="continue")
+    assert prompts.brief_sources(brief) == [brief["offer"], brief["key_dates"]]
+    assert prompts.brief_block(ctx()) == "" and "Fiche de la campagne" not in reply()
+    assert "ni dans la fiche de la campagne" in prompts.ADVISOR_RULE

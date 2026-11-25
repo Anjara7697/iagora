@@ -186,6 +186,10 @@ async def update_campaign(
         changes["email_subject"] = " ".join((changes["email_subject"] or "").split()) or None
     if changes.get("resources") is None:
         changes.pop("resources", None)
+    if changes.get("brief") is None:
+        changes.pop("brief", None)
+    else:  # champs vides retirés : une fiche vide vaut {}
+        changes["brief"] = {k: v for k, v in changes["brief"].items() if v}
     for field, value in changes.items():
         setattr(campaign, field, value)
     if target_codes is not None:

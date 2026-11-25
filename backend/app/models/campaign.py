@@ -40,6 +40,9 @@ class Campaign(TimestampMixin, Base):
     resources: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, default=list, server_default=text("'[]'")
     )
+    # Fiche de campagne (D-52) : offre, dates importantes, conditions et points à éviter, propres
+    # à cette campagne. Donnée à l'agent à chaque message, comme source de faits validée.
+    brief: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
 
 
 class CampaignTarget(Base):

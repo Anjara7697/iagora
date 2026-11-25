@@ -7,6 +7,7 @@ vérifiées après coup par du code (policy.ungrounded_claims) : on ne se fie pa
 import hashlib
 import re
 from collections.abc import Sequence
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -129,6 +130,51 @@ def resources_block(resources: Sequence[dict[str, Any]]) -> str:
         "Liens validés de la campagne : propose-en un seulement s'il répond au besoin du prospect, "
         "en recopiant l'adresse exacte ; n'écris aucun autre lien.\n" + "\n".join(lines)
     )
+
+
+# Fiche de campagne (D-52) : offre, dates et conditions sont des faits validés ; « à éviter » est
+# une consigne, jamais une source.
+BRIEF_FACTS = {
+    "offer": "Offre et message clé",
+    "key_dates": "Dates importantes",
+    "conditions": "Conditions particulières",
+}
+
+
+def brief_sources(brief: dict[str, str]) -> list[str]:
+    """Textes de la fiche qui justifient un fait (prix, date, condition) dans une réponse."""
+    return [brief[k] for k in BRIEF_FACTS if brief.get(k)]
+
+
+def _brief_text(text: str) -> str:
+    """Texte de la fiche sur une ligne (ses lignes séparées par « ; ») : écrit par un
+    administrateur, borné par le schéma (800 caractères au plus), jamais tronqué."""
+    return " ; ".join(" ".join(line.split()) for line in text.splitlines() if line.strip())
+
+
+def brief_block(ctx: ProspectContext, today: date | None = None) -> str:
+    """Fiche de la campagne, donnée à chaque message tant que la campagne n'est pas terminée."""
+    brief = ctx.campaign_brief
+    facts = [(label, brief[k]) for k, label in BRIEF_FACTS.items() if brief.get(k)]
+    avoid = brief.get("avoid", "")
+    if not facts and not avoid:
+        return ""
+    day = today or datetime.now(ZoneInfo("Europe/Paris")).date()
+    lines = [
+        f"Fiche de la campagne « {_inline(ctx.campaign_name or 'en cours')} » (validée par "
+        "l'école) : ce qu'elle dit est une source de faits au même titre que les extraits, et "
+        "l'emporte sur eux en cas de désaccord. Mets en avant ce qui concerne le prospect, sans "
+        "tout recopier."
+    ]
+    lines += [f"- {label} : {_brief_text(text)}" for label, text in facts]
+    if facts:
+        lines.append(
+            f"Nous sommes le {day.day} {_MONTHS[day.month - 1]} {day.year} : ne présente jamais "
+            "une date passée comme à venir."
+        )
+    if avoid:
+        lines.append(f"À ne pas dire ni promettre dans cette campagne : {_brief_text(avoid)}")
+    return "\n".join(lines) + "\n"
 
 
 MAX_ATTACHMENTS = 2
@@ -306,7 +352,8 @@ ADVISOR_MARKER = "[CONSEILLER]"
 _ADVISOR_MARKER = re.compile(r"\[\s*conseiller\s*\]", re.IGNORECASE)
 ADVISOR_RULE = (
     "Questions sans réponse : si le prospect pose une question précise dont la réponse ne "
-    "figure ni dans les extraits ni dans la liste des formations, commence ton message par "
+    "figure ni dans les extraits, ni dans la fiche de la campagne, ni dans la liste des "
+    "formations, commence ton message par "
     f"{ADVISOR_MARKER} : un conseiller "
     "reprendra la conversation. N'utilise jamais ce signal si les extraits répondent, même selon "
     "les cas ou à titre indicatif."
@@ -415,7 +462,7 @@ Ce que l'on sait de lui :
 Extraits de la base de connaissances validée (seule source de faits précis) :
 {knowledge}
 
-{resources_block(ctx.campaign_resources)}
+{brief_block(ctx)}{resources_block(ctx.campaign_resources)}
 {files_block(ctx.campaign_files, ctx.channel)}
 
 Mission : {goal}

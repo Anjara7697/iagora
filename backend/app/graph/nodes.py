@@ -249,6 +249,9 @@ class WorkflowNodes:
             q is not None
             and q.intent == "question"
             and not passages
+            # D-52 : la fiche de la campagne peut répondre (date limite, offre) ; sinon le modèle
+            # signale lui-même la question sans réponse.
+            and not prompts.brief_sources(ctx.campaign_brief)
             and not asks_catalogue
             and not about_agent
         ):
@@ -277,6 +280,7 @@ class WorkflowNodes:
         ]
         sources = [p.text for p in passages]
         sources += [ctx.campaign_name or "", ctx.source_name or "", prompts.CATALOGUE]
+        sources += prompts.brief_sources(ctx.campaign_brief)
         # D-39 : seuls les liens des ressources de la campagne et des sources peuvent partir.
         allowed_links = sources + [str(r.get("url", "")) for r in ctx.campaign_resources]
         conversation = [m.content for m in ctx.history]

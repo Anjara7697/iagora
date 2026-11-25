@@ -206,6 +206,31 @@ async def test_campaign_resources_and_imposed_subject_are_saved_and_validated(cl
     assert cleared["email_subject"] is None and cleared["resources"] == []
 
 
+async def test_the_campaign_brief_is_saved_cleaned_and_cleared(client):
+    """D-52 : la fiche de campagne (offre, dates, conditions, à éviter), remplacée d'un bloc."""
+    cid = (await _create(client)).json()["id"]
+    assert (await client.get(f"/api/v1/campaigns/{cid}")).json()["brief"] == {
+        "offer": "",
+        "key_dates": "",
+        "conditions": "",
+        "avoid": "",
+    }
+    brief = {
+        "offer": "  Frais de dossier   offerts ",
+        "key_dates": "Date limite : 15 décembre\n\n  Rentrée : 12 janvier ",
+    }
+    body = (await client.patch(f"/api/v1/campaigns/{cid}", json={"brief": brief})).json()
+    assert body["brief"]["offer"] == "Frais de dossier offerts"
+    assert body["brief"]["key_dates"] == "Date limite : 15 décembre\nRentrée : 12 janvier"
+    assert body["brief"]["conditions"] == "" and body["brief"]["avoid"] == ""
+    kept = (await client.patch(f"/api/v1/campaigns/{cid}", json={"name": "Renommée"})).json()
+    assert kept["brief"]["offer"] == "Frais de dossier offerts"  # inchangée si absente
+    too_long = await client.patch(f"/api/v1/campaigns/{cid}", json={"brief": {"offer": "x" * 801}})
+    assert too_long.status_code == 422
+    cleared = (await client.patch(f"/api/v1/campaigns/{cid}", json={"brief": {}})).json()
+    assert set(cleared["brief"].values()) == {""}
+
+
 PDF = b"%PDF-1.7\n" + b"0" * 64
 
 

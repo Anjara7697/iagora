@@ -3,7 +3,7 @@
 import dataclasses
 import logging
 from collections.abc import Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import false, select
@@ -76,6 +76,16 @@ def _pending_slots(messages: Sequence[dict[str, Any]]) -> list[Slot]:
     return []
 
 
+def _live_brief(brief: dict[str, Any] | None, end_date: datetime | None) -> dict[str, str]:
+    """Fiche de campagne donnée à l'agent (D-52), jamais après la date de fin de la campagne :
+    une offre ou une date limite échue ne se cite plus."""
+    if end_date is not None:
+        end = end_date if end_date.tzinfo else end_date.replace(tzinfo=UTC)
+        if end < datetime.now(UTC):
+            return {}
+    return {k: str(v) for k, v in (brief or {}).items() if v}
+
+
 def _can_hold_meetings(user: User) -> bool:
     return bool(user.is_active) and user.role in (UserRole.ADMIN, UserRole.ADVISOR)
 
@@ -104,6 +114,8 @@ class DbGateway:
                     Campaign.email_subject,
                     Campaign.resources,
                     Campaign.id,
+                    Campaign.brief,
+                    Campaign.end_date,
                 )
                 .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
                 .join(Campaign, Campaign.id == CampaignSource.campaign_id)
@@ -159,6 +171,7 @@ class DbGateway:
             profile=dict(prospect.profile or {}),
             campaign_subject=row[4] if row else None,
             campaign_resources=list(row[5] or []) if row else [],
+            campaign_brief=_live_brief(row[7], row[8]) if row else {},
             campaign_files=[
                 {
                     "id": f["id"],

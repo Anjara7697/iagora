@@ -148,6 +148,9 @@ class ProspectContext:
     # Documents de la campagne (D-42) que l'agent peut joindre à un email : id, label, usage,
     # filename, campaign_id.
     campaign_files: list[dict[str, Any]] = field(default_factory=list)
+    # Fiche de la campagne (D-52) : offer, key_dates, conditions, avoid ; vide après la date de
+    # fin de la campagne.
+    campaign_brief: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
