@@ -60,3 +60,18 @@ Option : « Jusqu'à quand puis-je candidater ? » montre que l'agent répond av
   boîte mail. Elles se racontent avec la fiche de Chloé Dubois.
 - Plan B si Gemini ne répond pas : la conversation part dans À traiter avec le motif d'indisponibilité, c'est le
   comportement voulu ; puis la vidéo.
+
+## Enregistrer la démo en vidéo
+
+Une vidéo commentée enlève le risque d'une panne de Gemini ou du réseau devant le jury.
+
+- Préparer comme la veille, puis `seed-demo --reset` juste avant d'enregistrer.
+- Fenêtre en plein écran, zoom 125 %, notifications coupées, PC à l'heure de Paris. Enregistrer sans le son et
+  commenter en direct, ou enregistrer la voix ensuite.
+- Suivre l'ordre de la démo ci-dessus. Au montage, accélérer les attentes (rédaction de l'agent, chargements) : la
+  démo tient alors en environ 5 minutes. Garder la version longue en réserve pour les questions.
+- Partie possible seulement en vidéo, avec une **boîte email de test** ([recette-locale.md](recette-locale.md),
+  § 4) : un email de prospect relevé par la boîte, puis un email avec un dossier de candidature en PDF repéré dans
+  « À traiter → Candidatures » ([candidatures.md](candidatures.md)). Garder `EMAIL_SANDBOX_RECIPIENTS` limité à
+  l'adresse de test. Ce prospect n'est pas en `@demo.example.com` : la purge démo ne le supprime pas, l'effacer
+  ensuite depuis sa fiche (administrateur).
