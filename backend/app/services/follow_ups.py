@@ -12,7 +12,7 @@ from app.models.enums import ConsentStatus, ConversionStage, FollowUpStatus
 from app.schemas.follow_up import PlannedFollowUp
 from app.services import commercial_context, references
 from app.services import scope as scope_service
-from app.services.demo import demo_filter
+from app.services.demo import not_demo
 from app.services.errors import ConflictError, NotFoundError, ValidationFailure
 from app.services.prospects import get_prospect
 from app.services.scope import EVERYTHING, Scope
@@ -153,7 +153,7 @@ async def list_planned(
     if prospect_id is not None:
         where.append(FollowUp.prospect_id == prospect_id)
     else:
-        where.append(~demo_filter())
+        where.append(not_demo())  # sauf démonstration hors production
     total = (
         await session.scalar(
             select(func.count())

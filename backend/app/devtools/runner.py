@@ -96,6 +96,25 @@ async def ensure_demo_brochure(db: Any, campaign_id: int) -> None:
         )  # fmt: skip
 
 
+# Fiche de la campagne du parcours guidé (D-52) : valeurs FICTIVES, pour montrer en démonstration
+# que l'agent cite la fiche (date limite, offre) et transfère toujours une question qui n'en relève pas.
+DEMO_BRIEF = {
+    "offer": "Offre fictive de démonstration : frais de candidature offerts pour toute candidature "
+    "déposée avant la date limite.",
+    "key_dates": "Date limite de candidature (fictive) : 15 janvier 2027.",
+    "conditions": "Offre fictive réservée aux candidats titulaires d'un bac+3.",
+    "avoid": "Ne jamais promettre une place en entreprise ni un emploi à la sortie.",
+}
+
+
+async def ensure_demo_brief(session: AsyncSession, campaign_id: int) -> None:
+    """Remplit la fiche de la campagne de démonstration si elle est vide (une seule fois)."""
+    campaign = await session.get(Campaign, campaign_id)
+    if campaign is not None and not campaign.brief:
+        campaign.brief = dict(DEMO_BRIEF)
+        await session.commit()
+
+
 async def new_demo_prospect(
     session: AsyncSession,
     db: Any,
@@ -107,12 +126,16 @@ async def new_demo_prospect(
     channel: str = "email",
     campaign_name: str = SCENARIO_CAMPAIGN,
     brochure: bool = False,
+    brief: bool = False,
 ) -> tuple[int, int, str]:
     """Prospect fictif + conversation ouverte sur `channel` (l'email par défaut). Retourne
-    (prospect, rattachement, conversation). `brochure` : la campagne porte la brochure fictive."""
+    (prospect, rattachement, conversation). `brochure` : la campagne porte la brochure fictive ;
+    `brief` : sa fiche de campagne fictive."""
     campaign_id, source_id = await ensure_demo_campaign(session, campaign_name)
     if brochure:
         await ensure_demo_brochure(db, campaign_id)
+    if brief:
+        await ensure_demo_brief(session, campaign_id)
     token = secrets.token_hex(3)
     prospect, _, _ = await prospects.ingest_prospect(
         session,

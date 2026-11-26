@@ -4,6 +4,11 @@ Le simulateur et le jeu de démonstration (`seed-demo`) créent des **prospects 
 est en `@demo.example.com` (domaine réservé, jamais livrable). C'est la marque de reconnaissance de
 toutes les données fictives.
 
+- **Démonstration** : `DEMO_IN_DASHBOARD=true` (hors production uniquement) affiche aussi les prospects fictifs sur
+  « Aujourd'hui » et le tableau de bord, d'habitude exclus des chiffres. La campagne du parcours guidé porte une
+  fiche de campagne fictive (date limite, offre) et ses créneaux fictifs tombent en jours ouvrés. Le jeu `seed-demo`
+  contient une candidature déposée (Chloé Dubois) pour montrer la confirmation d'inscription. Mode d'emploi de la
+  soutenance : [demo-soutenance.md](demo-soutenance.md).
 - **Repérage** : l'API expose `is_demo` sur chaque prospect ; l'interface affiche un badge « Fictif »
   (prospects, conversations, à traiter, fiches, campagnes).
 - **Filtre** : `GET /prospects?demo=exclude|only|all` ; case « Masquer les prospects fictifs » dans la liste.

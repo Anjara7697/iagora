@@ -44,6 +44,7 @@ guide utilisateur, tableau des tâches). En cas de désaccord entre les deux, ce
 | [candidatures.md](candidatures.md) | Candidatures reçues par email : repérage, vérification par le conseiller |
 | [confirmation-inscription.md](confirmation-inscription.md) | Confirmer une inscription avec une preuve vérifiée |
 | [demo-mode.md](demo-mode.md) | Données fictives : repérage, filtre, purge |
+| [demo-soutenance.md](demo-soutenance.md) | Lancer la démo de soutenance en local : préparation, ordre des écrans |
 | [simulator-journey.md](simulator-journey.md) | Parcours guidé du simulateur |
 
 ## Connecteurs

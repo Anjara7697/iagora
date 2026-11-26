@@ -1,5 +1,6 @@
 """Synthèse du tableau de bord « Aujourd'hui » : signaux forts, activité de l'agent, relances,
-entonnoir. Les prospects fictifs (@demo.example.com) sont exclus des chiffres."""
+entonnoir. Les prospects fictifs (@demo.example.com) sont exclus des chiffres, sauf pour une
+démonstration hors production (`DEMO_IN_DASHBOARD=true`)."""
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -29,7 +30,7 @@ from app.schemas.dashboard import (
 )
 from app.services import agent_settings, commercial_context, conversations
 from app.services import scope as scope_service
-from app.services.demo import demo_filter
+from app.services.demo import demo_prospect_ids, not_demo, show_demo_in_lists
 from app.services.scope import EVERYTHING, Scope
 
 _DONE = (ConversionStage.LOST, ConversionStage.CONVERTED)
@@ -49,7 +50,7 @@ async def hot_prospects(
         .join(CampaignSource, CampaignSource.id == CampaignProspect.campaign_source_id)
         .join(Campaign, Campaign.id == CampaignSource.campaign_id)
         .where(
-            ~demo_filter(),
+            not_demo(),
             scope_service.condition(scope),
             Prospect.consent_status != ConsentStatus.OPTED_OUT,
             CampaignProspect.conversion_stage.notin_(_DONE),
@@ -85,7 +86,7 @@ async def agent_activity(
     session: AsyncSession, db: Any, hours: int = 24, scope: Scope = EVERYTHING
 ) -> AgentActivity:
     since = datetime.now(UTC) - timedelta(hours=hours)
-    demo_ids = list(await session.scalars(select(Prospect.id).where(demo_filter())))
+    demo_ids = [] if show_demo_in_lists() else await demo_prospect_ids(session)
     who = scope_service.mongo_match(await scope_service.prospect_ids(session, scope), demo_ids)
     base: dict[str, Any] = {"started_at": {"$gte": since}, **who}
     runs = await db["agent_runs"].find(base).to_list(None)
@@ -130,7 +131,7 @@ async def scheduled_follow_ups(
 ) -> tuple[list[ScheduledFollowUp], int]:
     where = (
         FollowUp.status == FollowUpStatus.SCHEDULED,
-        ~demo_filter(),
+        not_demo(),
         scope_service.condition(scope),
     )
     total = (
@@ -171,7 +172,7 @@ async def funnel(
         .join(Prospect, Prospect.id == CampaignProspect.prospect_id)
         .where(
             CampaignProspect.first_seen_at >= since,
-            ~demo_filter(),
+            not_demo(),
             scope_service.condition(scope),
             CampaignProspect.id.in_(commercial_context.latest_ids()),
         )
@@ -239,7 +240,7 @@ async def overview(
             .outerjoin(Target, Target.id == Prospect.target_id)
             .where(
                 CampaignProspect.first_seen_at >= since,
-                ~demo_filter(),
+                not_demo(),
                 scope_service.condition(scope),
                 CampaignProspect.id.in_(commercial_context.latest_ids()),
             )

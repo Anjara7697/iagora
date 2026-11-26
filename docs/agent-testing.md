@@ -5,7 +5,7 @@ Cinq outils, du plus rapide au plus rigoureux. Ils ne s'exécutent **jamais en p
 
 | Outil | Commande | Usage |
 |---|---|---|
-| Jeu de données de démo | `python -m app.cli seed-demo` | Peupler la base (14 prospects à tous les stades, conversations, transfert, rendez-vous, relance, opt-out) pour le développement du tableau de bord et les démonstrations |
+| Jeu de données de démo | `python -m app.cli seed-demo` | Peupler la base (15 prospects à tous les stades dont une candidature déposée, conversations, transfert, rendez-vous, relance, opt-out) pour le développement du tableau de bord et les démonstrations |
 | Scénarios de recette | `python -m app.cli scenario` | Rejouer des cas complets et vérifier le comportement de l'agent ; produit un rapport |
 | Simulateur de conversation | `python -m app.cli chat` | Jouer le prospect à la main et voir la décision de l'agent à chaque message |
 | Évaluation quantitative | `python -m app.cli eval-agent` | Mesurer l'agent sur un jeu de cas annotés : intention, décision, transferts, réponses sourcées, chiffres inventés, latence |

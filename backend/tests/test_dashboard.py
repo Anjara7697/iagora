@@ -75,6 +75,35 @@ async def test_fictitious_prospects_are_left_out(client, env, session_factory): 
         assert (await s.scalars(select(FollowUp))).all()  # elles existent bien en base
 
 
+async def test_a_demonstration_shows_fictitious_prospects_outside_production(
+    client,
+    env,
+    session_factory,
+    monkeypatch,  # noqa: F811
+):
+    """DEMO_IN_DASHBOARD : la soutenance montre les prospects fictifs ; jamais en production."""
+    from app.config import get_settings
+
+    pid, mid, cid = await lead(client, "Bonjour", email="sim.camille@demo.example.com")
+    await run(client, cid)
+    async with session_factory() as s:
+        s.add(
+            FollowUp(
+                prospect_id=pid,
+                campaign_prospect_id=mid,
+                scheduled_at=datetime.now(UTC) + timedelta(days=1),
+            )
+        )
+        await s.commit()
+    monkeypatch.setattr(get_settings(), "demo_in_dashboard", True)
+    body = await summary(client)
+    assert body["leads"] == 1 and body["follow_ups_total"] >= 1
+    assert body["activity"]["prospects_analysed"] == 1
+    monkeypatch.setattr(get_settings(), "environment", "production")
+    body = await summary(client)
+    assert body["leads"] == 0 and body["follow_ups_total"] == 0
+
+
 async def test_viewer_can_read_the_summary(make_client):
     viewer = await make_client(UserRole.VIEWER)
     assert (await viewer.get(f"{API}/dashboard/summary")).status_code == 200
