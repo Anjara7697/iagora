@@ -249,9 +249,9 @@ class WorkflowNodes:
             q is not None
             and q.intent == "question"
             and not passages
-            # D-52 : la fiche de la campagne peut répondre (date limite, offre) ; sinon le modèle
-            # signale lui-même la question sans réponse.
-            and not prompts.brief_sources(ctx.campaign_brief)
+            # D-52 : la fiche de la campagne peut répondre (date limite, offre), seulement si la
+            # question porte sur ce qu'elle dit ; toute autre question reste transférée (audit I3).
+            and not prompts.brief_covers(text, ctx.campaign_brief)
             and not asks_catalogue
             and not about_agent
         ):
