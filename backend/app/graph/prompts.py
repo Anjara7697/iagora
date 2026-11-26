@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from app.graph.policy import FIELD_LABELS
+from app.graph.policy import FIELD_LABELS, normalize
 from app.graph.ports import (
     ChatMessage,
     HistoryMessage,
@@ -186,6 +186,34 @@ BRIEF_FACTS = {
 def brief_sources(brief: dict[str, str]) -> list[str]:
     """Textes de la fiche qui justifient un fait (prix, date, condition) dans une réponse."""
     return [brief[k] for k in BRIEF_FACTS if brief.get(k)]
+
+
+# Sujets dont une fiche de campagne parle (offre, dates, conditions) : une question qui en relève
+# peut être répondue par la fiche, sans extrait de la base (D-52).
+_BRIEF_TOPICS = (
+    "date", "quand", "limite", "delai", "rentree", "debut", "commence", "fin ", "jusqu",
+    "prix", "cout", "tarif", "frais", "combien", "euro", "remise", "reduction", "offre",
+    "promo", "gratuit", "places", "condition", "eligib", "inscri", "candidat", "dossier",
+)  # fmt: skip
+_WORD = re.compile(r"[a-z0-9]{5,}")
+_COMMON = {
+    "bonjour", "merci", "votre", "quels", "quelle", "quelles", "comment", "pourquoi",
+    "avoir", "faire", "programme", "formation", "datum", "academy",
+}  # fmt: skip
+
+
+def brief_covers(question: str, brief: dict[str, str]) -> bool:
+    """Vrai si la fiche peut répondre à cette question : elle a des faits, et la question porte
+    sur un sujet de fiche (date, prix, conditions…) ou reprend un mot significatif de la fiche.
+    Sinon la question sans extrait reste transférée par le code (NF-10, audit I3)."""
+    facts = brief_sources(brief)
+    if not facts:
+        return False
+    asked = normalize(question)
+    if any(topic in asked for topic in _BRIEF_TOPICS):
+        return True
+    words = set(_WORD.findall(asked)) - _COMMON
+    return bool(words & set(_WORD.findall(normalize(" ".join(facts)))))
 
 
 def _brief_text(text: str) -> str:

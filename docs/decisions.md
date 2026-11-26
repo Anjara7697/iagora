@@ -682,9 +682,12 @@ de connaissances par campagne).
 - Offre, dates et conditions sont **des faits validés** : donnés à l'agent à chaque message, ils **l'emportent sur la
   base de connaissances** en cas de désaccord et justifient un prix, une date ou une condition au contrôle après coup
   (NF-10). « À ne pas dire » est une consigne, jamais une source.
-- Une question sans extrait de la base n'est plus transférée d'office quand la fiche contient des faits : le modèle
-  répond avec la fiche ou signale lui-même la question sans réponse.
-- **Après la date de fin de la campagne**, la fiche n'est plus donnée à l'agent. La date du jour lui est donnée pour ne
+- Une question sans extrait de la base n'est plus transférée d'office quand la fiche contient des faits **et que la
+  question en relève** (date, prix, frais, places, conditions, inscription, ou un mot de la fiche) : le modèle répond
+  avec la fiche ou signale lui-même la question sans réponse. Toute autre question sans extrait (logement, débouchés…)
+  reste transférée par le code (correctif de l'audit I3, 26/11/2026).
+- **Après la date de fin de la campagne**, la fiche n'est plus donnée à l'agent. Le jour de fin est inclus, en heure de
+  Paris (correctif de l'audit I2, 26/11/2026). La date du jour lui est donnée pour ne
   jamais présenter une date passée comme à venir.
 - Stockage : colonne JSON `campaigns.brief` (migration 0018), champ `brief` de `PATCH /campaigns/{id}`.
 

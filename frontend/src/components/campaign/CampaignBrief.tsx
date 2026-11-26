@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Btn, Field, TextBox } from "@/components/ds/controls";
 import { Panel } from "@/components/ds/layout";
 import type { Campaign } from "@/lib/types";
+import { campaignEnded } from "@/lib/campaignDates";
 
 type Brief = { offer: string; key_dates: string; conditions: string; avoid: string };
 type Key = keyof Brief;
@@ -62,7 +63,7 @@ export default function CampaignBrief({
   };
   const [brief, setBrief] = useState<Brief>(initial);
   const changed = FIELDS.some(({ key }) => brief[key].trim() !== initial[key].trim());
-  const ended = !!campaign.end_date && new Date(campaign.end_date) < new Date();
+  const ended = campaignEnded(campaign.end_date);
   const intro = ended
     ? "Campagne terminée : l’agent ne reçoit plus cette fiche."
     : "Ce qui est propre à cette campagne. L’agent la lit à chaque message et la fait passer avant la base de connaissances.";

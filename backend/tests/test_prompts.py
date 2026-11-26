@@ -304,3 +304,14 @@ def test_the_campaign_brief_is_a_validated_source_and_its_avoid_line_an_instruct
     assert prompts.brief_sources(brief) == [brief["offer"], brief["key_dates"]]
     assert prompts.brief_block(ctx()) == "" and "Fiche de la campagne" not in reply()
     assert "ni dans la fiche de la campagne" in prompts.ADVISOR_RULE
+
+
+def test_the_brief_covers_only_questions_about_what_it_says():
+    """Audit I3 : dates, prix, conditions ou un mot de la fiche ; pas le logement ni l'emploi."""
+    brief = {"offer": "Frais de dossier offerts", "key_dates": "Date limite : 15 décembre"}
+    assert prompts.brief_covers("Jusqu'à quand puis-je candidater ?", brief)
+    assert prompts.brief_covers("Combien coûte le master ?", brief)
+    assert prompts.brief_covers("Le dossier est-il payant ?", brief)
+    assert not prompts.brief_covers("Proposez-vous un logement étudiant ?", brief)
+    assert not prompts.brief_covers("Quels débouchés après le master ?", brief)
+    assert not prompts.brief_covers("Jusqu'à quand ?", {"avoid": "Pas de septembre"})

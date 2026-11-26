@@ -5,6 +5,7 @@ import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import false, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,13 +77,19 @@ def _pending_slots(messages: Sequence[dict[str, Any]]) -> list[Slot]:
     return []
 
 
+def campaign_ended(end_date: datetime, now: datetime | None = None) -> bool:
+    """Le jour de fin est inclus (audit I2) : la console l'enregistre à 00:00 UTC, la campagne
+    se termine donc à la fin de ce jour, en heure de Paris."""
+    end_day = (end_date if end_date.tzinfo else end_date.replace(tzinfo=UTC)).astimezone(UTC).date()
+    today = (now or datetime.now(UTC)).astimezone(ZoneInfo("Europe/Paris")).date()
+    return today > end_day
+
+
 def _live_brief(brief: dict[str, Any] | None, end_date: datetime | None) -> dict[str, str]:
     """Fiche de campagne donnée à l'agent (D-52), jamais après la date de fin de la campagne :
     une offre ou une date limite échue ne se cite plus."""
-    if end_date is not None:
-        end = end_date if end_date.tzinfo else end_date.replace(tzinfo=UTC)
-        if end < datetime.now(UTC):
-            return {}
+    if end_date is not None and campaign_ended(end_date):
+        return {}
     return {k: str(v) for k, v in (brief or {}).items() if v}
 
 

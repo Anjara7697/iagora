@@ -761,6 +761,24 @@ async def test_the_campaign_brief_reaches_the_agent_and_answers_until_the_campai
     assert all("Fiche de la campagne" not in c[0] for c in env.llm.generate_calls[calls:])
 
 
+async def test_a_question_the_campaign_brief_does_not_cover_is_still_handed_off(client, env):
+    """Audit I3 : une fiche remplie ne lève le transfert que pour les questions qui en relèvent ;
+    une question hors sujet sans extrait part au conseiller sans passer par la rédaction."""
+    question = "Proposez-vous un logement étudiant sur place ?"
+    pid, mid, cid = await lead(client, question)
+    await say(client, cid, "Merci d'avance", role="agent")
+    await say(client, cid, question)
+    campaign_id = (await client.get(f"{API}/prospects/{pid}")).json()["campaigns"][0]["campaign_id"]
+    brief = {"offer": "Frais de dossier offerts", "key_dates": "Date limite : 15 décembre"}
+    await client.patch(f"{API}/campaigns/{campaign_id}", json={"brief": brief})
+    env.llm.qualification = Qualification(intent="question")
+    calls = len(env.llm.generate_calls)
+    out = (await run(client, cid)).json()
+    assert out["handoff_reason"] == "question_hors_base"
+    # le code transfère sans faire rédiger de réponse (seul le résumé du transfert est demandé)
+    assert all("Fiche de la campagne" not in c[0] for c in env.llm.generate_calls[calls:])
+
+
 async def test_the_agent_attaches_a_campaign_document_and_never_announces_a_missing_one(
     client, env
 ):
