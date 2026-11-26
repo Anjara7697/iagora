@@ -162,6 +162,21 @@ DEMOS = [
         ],
         extra="appointment",
     ),
+    # Candidature déposée : prête pour montrer « Confirmer l'inscription » avec une preuve.
+    Demo(
+        "Chloé",
+        "Dubois",
+        0,
+        1,
+        S.APPLIED,
+        95,
+        70,
+        profile={"study_level": "Bac+3", "goal": "data analyst"},
+        messages=[
+            (P, "Bonjour, j'ai déposé mon dossier de candidature hier."),
+            (A, "Merci Chloé, un conseiller vérifie votre dossier et revient vers vous."),
+        ],
+    ),
     Demo(
         "Sarah",
         "Bonnet",

@@ -286,3 +286,22 @@ async def test_dispatch_after_todo_approval_does_not_generate_or_approve(
     assert len(model.extract_calls) == calls
     await agent_settings.set_mode(mongo_db, AgentMode.MANUAL, None)
     assert (await client.post(f"/api/v1/simulation/{cid}/dispatch")).status_code == 200
+
+
+async def test_guided_campaign_has_its_fictitious_brief_and_weekday_slots(
+    client, model, session_factory
+):
+    """Démo de soutenance : la campagne du parcours guidé porte une fiche fictive (D-52), et les
+    créneaux fictifs ne tombent jamais un samedi ni un dimanche."""
+    from app.devtools.runner import DEMO_BRIEF, GUIDED_CAMPAIGN
+    from app.models import Campaign
+
+    await start(client)
+    async with session_factory() as s:
+        campaign = await s.scalar(select(Campaign).where(Campaign.name == GUIDED_CAMPAIGN))
+        assert campaign is not None and campaign.brief == DEMO_BRIEF
+    for weekday in range(7):  # session créée chaque jour de la semaine
+        created = datetime(2026, 11, 23, 10, tzinfo=UTC) + timedelta(days=weekday)
+        doc = {"_id": "x", "simulation": {"created_at": created}}
+        slots = simulation.calendar_for(doc).slots
+        assert len(slots) == 3 and all(sl.start.weekday() < 5 for sl in slots)

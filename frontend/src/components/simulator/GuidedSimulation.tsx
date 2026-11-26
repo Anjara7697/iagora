@@ -309,7 +309,13 @@ export default function GuidedSimulation({ onBack }: { onBack: () => void }) {
                 <Btn
                   variant="ghost"
                   disabled={busy}
-                  onClick={() => void guard("Actualisation du bilan impossible", () => refresh(session))}
+                  onClick={() =>
+                    void guard("Actualisation du bilan impossible", async () => {
+                      // Un brouillon validé dans « À traiter » rejoint la boîte fictive du prospect.
+                      await api(`/simulation/${session.conversation_id}/dispatch`, { method: "POST" });
+                      await refresh(session);
+                    })
+                  }
                 >
                   <RefreshCw className="size-4" aria-hidden="true" />
                   Actualiser le bilan

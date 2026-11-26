@@ -106,7 +106,7 @@ async def count(session, model):
 async def test_seed_creates_a_coherent_dataset(session_factory, mongo_db):
     async with session_factory() as s:
         summary = await seed.seed_demo(s, mongo_db)
-        assert summary.created == len(seed.DEMOS) == 14
+        assert summary.created == len(seed.DEMOS) == 15
         emails = list(await s.scalars(select(Prospect.email)))
         assert all(
             e.endswith("@demo.example.com") for e in emails
@@ -132,7 +132,7 @@ async def test_seed_covers_every_stage_family(session_factory, mongo_db):
     st = ConversionStage
     wanted = {
         st.NEW, st.CONTACTED, st.IN_CONVERSATION, st.QUALIFIED,
-        st.MEETING_PROPOSED, st.MEETING_SCHEDULED, st.TO_FOLLOW_UP, st.LOST,
+        st.MEETING_PROPOSED, st.MEETING_SCHEDULED, st.APPLIED, st.TO_FOLLOW_UP, st.LOST,
     }  # fmt: skip
     assert wanted <= stages
 
@@ -142,10 +142,10 @@ async def test_seed_is_idempotent_and_reset_rebuilds(session_factory, mongo_db):
         await seed.seed_demo(s, mongo_db)
         again = await seed.seed_demo(s, mongo_db)
         assert again.already_present and again.created == 0
-        assert await count(s, Prospect) == 14
+        assert await count(s, Prospect) == 15
         rebuilt = await seed.seed_demo(s, mongo_db, reset=True)
-        assert rebuilt.removed == 14 and rebuilt.created == 14
-        assert await count(s, Prospect) == 14 and await count(s, Campaign) == 3
+        assert rebuilt.removed == 15 and rebuilt.created == 15
+        assert await count(s, Prospect) == 15 and await count(s, Campaign) == 3
 
 
 async def test_reset_only_removes_demo_data(session_factory, mongo_db):
@@ -156,7 +156,7 @@ async def test_reset_only_removes_demo_data(session_factory, mongo_db):
         real, _, _ = await prospects.ingest_prospect(s, ProspectIngest(email="vrai@client.fr"))
         await seed.seed_demo(s, mongo_db)
         removed = await seed.reset_demo(s, mongo_db)
-        assert removed == 14
+        assert removed == 15
         remaining = list(await s.scalars(select(Prospect.email)))
     assert remaining == ["vrai@client.fr"]
     assert await mongo_db["conversations"].count_documents({}) == 0
@@ -170,9 +170,9 @@ async def test_cleanup_removes_recette_prospects_but_keeps_the_demo_dataset(
     for scenario in get_scenarios(["opt_out", "cold_prospect"]):
         await play(session_factory, mongo_db, scenario)
     async with session_factory() as s:
-        assert await count(s, Prospect) == 16
+        assert await count(s, Prospect) == 17
         removed = await commands.cleanup_recette(s, mongo_db)
-        assert removed == 2 and await count(s, Prospect) == 14
+        assert removed == 2 and await count(s, Prospect) == 15
 
 
 # --- Simulateur de conversation ---

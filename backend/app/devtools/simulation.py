@@ -34,7 +34,7 @@ GUIDE = [
 async def create(session: AsyncSession, db: Any, first_name: str) -> dict[str, Any]:
     pid, _, cid = await new_demo_prospect(
         session, db, label="journey", first_name=first_name, campaign_name=GUIDED_CAMPAIGN,
-        brochure=True,
+        brochure=True, brief=True,
     )  # fmt: skip
     await db[conversations.COLLECTION].update_one(
         {"_id": (await conversations.get_doc(db, cid))["_id"]},
@@ -58,14 +58,12 @@ def calendar_for(doc: dict[str, Any]) -> FakeCalendar:
     if created.tzinfo is None:
         created = created.replace(tzinfo=UTC)
     base = (created + timedelta(days=7)).replace(hour=13, minute=0, second=0, microsecond=0)
+    # Trois jours ouvrés : jamais de créneau le samedi ni le dimanche.
+    days = [d for d in (base + timedelta(days=i) for i in range(7)) if d.weekday() < 5][:3]
     return FakeCalendar(
         [
-            Slot(
-                id=f"simulation-{doc['_id']}-{i}",
-                start=base + timedelta(days=i),
-                end=base + timedelta(days=i, hours=1),
-            )
-            for i in range(3)
+            Slot(id=f"simulation-{doc['_id']}-{i}", start=day, end=day + timedelta(hours=1))
+            for i, day in enumerate(days)
         ]
     )
 

@@ -6,15 +6,28 @@ La purge ne touche QUE ces prospects (et leurs conversations / décisions de l'a
 
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.core.demo import DEMO_DOMAIN, DEMO_SUFFIX, is_demo_email
 from app.database.collections import AGENT_EVENTS, AGENT_RUNS, CONVERSATIONS
 from app.models import Prospect
 
-__all__ = ["DEMO_DOMAIN", "demo_filter", "is_demo_email"]
+__all__ = ["DEMO_DOMAIN", "demo_filter", "is_demo_email", "not_demo", "show_demo_in_lists"]
 _SUFFIX = DEMO_SUFFIX
+
+
+def show_demo_in_lists() -> bool:
+    """Démonstration hors production (`DEMO_IN_DASHBOARD=true`) : les prospects fictifs restent
+    visibles sur « Aujourd'hui », le tableau de bord et la liste des relances."""
+    settings = get_settings()
+    return settings.demo_in_dashboard and settings.environment != "production"
+
+
+def not_demo() -> Any:
+    """Écarte les prospects fictifs des chiffres, sauf démonstration hors production."""
+    return true() if show_demo_in_lists() else ~demo_filter()
 
 
 def demo_filter() -> Any:

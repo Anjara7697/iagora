@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     app_name: str = "Agent Intelligent Commercial 2.0"
     environment: Literal["development", "test", "production"] = "development"
     debug: bool = False
+    # Démonstration (soutenance) : montrer les prospects fictifs sur « Aujourd'hui » et le
+    # tableau de bord, exclus d'habitude des chiffres. Sans effet en production.
+    demo_in_dashboard: bool = False
     log_level: str = "INFO"
     api_v1_prefix: str = "/api/v1"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
